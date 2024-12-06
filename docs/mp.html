@@ -1,0 +1,22 @@
+<head>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<h1 id="介绍">介绍</h1>
+
+<p>网格参数化算法就是将计算机中的三维网格曲面“展平”到二维平面上，生活中常见的“展平”的案例包括：地球仪的展平与汽车贴膜等，在游戏工业中将原始曲面展到平面上，美术再对展平的图形贴上色彩纹理或包含细微凹凸信息的凹凸贴图的过程称之为纹理映射(Texture Mapping)</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/application.png" alt="application" style="zoom: 67%;" /></p>
+
+<p>由于在计算机中渲染管线最终是对三角形进行渲染，所以上面“展平”的过程也就是求解这样的一个映射</p>
+
+<p>$f :M \mapsto M’$,将嵌入在$R^3$中的三角网格M映射到嵌入在$R^2$中的三角网格M’</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/param_intro.png" alt="param_intro" /></p>
+
+<p>这个映射在大多数情况下是非平凡的(Non-Trivial)（在某些2.5D的场景下可以是平凡的，只要将z值设为0即可），具体来说需要满足以下的一些约束，
+映射是双射的，三角形不能翻转（flip over free）,三角形边不能自相交（self-intersection free），并且希望映射所造成的图像扭曲变形能尽可能小</p>
+
+<h2 id="基础算法">基础算法</h2>
+
+<h3 id="floater参数化方法">Floater参数化方法</h3>
+<p>由于网格可以认为是一个图，所以可以借助图论的方法来进行一个求解，借助图论中可平面图的理论的Tutte理论，Floater给出了一个算法，虽然该算法能满足约束条件但是映射的扭曲会很大</p>
