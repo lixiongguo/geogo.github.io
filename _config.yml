@@ -2,3 +2,7 @@ destination: docs
 markdown: kramdown
 kramdown:
   math_engine: mathjax
+excerpt_separator: <!--more-->
+plugins:
+  - jekyll-feed
+github_username: David Lee
