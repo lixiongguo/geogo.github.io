@@ -1,0 +1,8 @@
+- name: 主页
+  link: /index.html
+- name: GeoTopy
+  link: /geo_topy.html
+- name: Living
+  link: /living.html
+- name: DL&ML
+  link: /ml_dl.html
