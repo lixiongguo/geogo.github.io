@@ -2,7 +2,11 @@ destination: docs
 markdown: kramdown
 kramdown:
   math_engine: mathjax
+  entity_output: as_char  # 保留原始符号
 excerpt_separator: <!--more-->
+# highlighter-theme:autumn
+highlighter-theme : emacs
+# highlighter-theme : rouge
 plugins:
   - jekyll-feed
 github_username: David Lee

@@ -1,1 +1,7 @@
 {%- include default.html -%}
+
+<!-- 在<head>中添加 -->
+{{ content }}
+<!-- 在<body结束前添加 -->
+<canvas id="particle-canvas" style="position:fixed; top:0; left:0; z-index:-1;"></canvas>
+<script src="{{ '/assets/js/particles.js' | relative_url }}"></script>

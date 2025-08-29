@@ -3,7 +3,7 @@
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" /></head>
-<style>@import url(/public/css/syntax/.css);</style>
+<style>@import url(/public/css/syntax/emacs.css);</style>
   <title></title>
   <!-- <link href="/public/css/bootstrap.min.css" rel="stylesheet"> -->
 
@@ -50,7 +50,7 @@
 	    <li>
 	    	<a class="nav-item" href="/#几何与拓扑">
 				<span class="name">几何与拓扑</span>
-				<span class="badge">1</span>
+				<span class="badge">2</span>
 	    	</a>
  		</li>
 	    
@@ -64,7 +64,11 @@
 	  </nav>
 	</ul>
 </div>
-
+<ul class="nav">
+    <!-- ... 现有导航项 ... -->
+    <li><a href="/about">About me</a></li>
+    <!-- ... 现有导航项 ... -->
+</ul>
 <div class="sidebar-item sidebar-footer">
 	<p>Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a></p>
 </div>
@@ -212,5 +216,178 @@ gem install jekyll bundler</p>
 </article>
 		</div>
 	</div>
-  </body>
-</html>
+	<script>
+		MathJax = {
+			tex: {
+				inlineMath: [['$', '$'], ['\\(', '\\)']], // 同时支持 $ 和 \( \)
+				displayMath: [['$$', '$$'], ['\\[', '\\]']]
+			  }
+		};
+      // 打字机动画
+  function typeWriter(text, elementId, speed) {
+    let i = 0;
+    const element = document.getElementById(elementId);
+    element.innerHTML = "";
+    
+    function type() {
+      if (i < text.length) {
+        element.innerHTML += text.charAt(i);
+        i++;
+        setTimeout(type, speed);
+      }
+    }
+    
+    type();
+  }
+  
+  // 页面加载完成后执行打字机效果
+  window.addEventListener('load', function() {
+    typeWriter("Articles", "typewriter", 100);
+  });
+	  </script>
+	  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+</html><!-- 在<head>中添加 -->
+<article class="post">
+	<header class="post-header">
+		<div class="post-title"> 
+			Github Pages 建个人网站全程攻略
+		</div>
+		<time class="post-date dt-published" datetime="2025-03-06T00:00:00+08:00" itemprop="datePublished">2025/03/06
+		</time>		
+	</header>
+
+	<div class="post-content">
+		<h2 id="github-pages-建个人网站全程攻略">Github Pages 建个人网站全程攻略</h2>
+
+<h4 id="github-pages">GitHub Pages</h4>
+
+<p>1.建立github.io仓(命名要注意!! 注意是<strong>个人站点还是项目站点</strong>!!，很坑，详见后面解释)</p>
+
+<p>2.settings pages下进行设置</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20240911150939286.png" alt="image-20240911150939286" /></p>
+
+<p>修改后还要注意到需要build</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20240911151316835.png" alt="image-20240911151316835" /></p>
+
+<h3 id="jekyll">Jekyll</h3>
+
+<hr />
+
+<p><strong>Jekyll</strong> 是一个静态网站生成器，用于创建个人博客、项目网站或公司主页。它通过将 Markdown 或 HTML 文件转换为静态网页，生成一个完整的网站。</p>
+
+<p>jekyll安装教程 https://blog.csdn.net/qq_33919450/article/details/127859193</p>
+
+<p>先安装ruby https://www.ruby-lang.org/zh_cn/</p>
+
+<p>安装了 Ruby 之后，可以通过 Gem 包管理器安装 Jekyll
+gem install jekyll bundler</p>
+
+<p>创建一个新的 Jekyll 站点非常简单：</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20240911143228623.png" alt="image-20240911143228623" /></p>
+
+<p><strong>jekyll new myblog</strong>之后生成的目录结构</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306200049709.png" alt="image-20250306200049709" /></p>
+
+<p>重要的配置文件:_<strong>config.yml</strong> 其中destination:存放用来生成网页的根目录，exerpt_separator摘要分隔符</p>
+
+<p>很重要的，还有用来<strong>解析公式的math_engine</strong></p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306200749263.png" alt="image-20250306200749263" /></p>
+
+<p><strong>编写内容</strong>： Markdown文件放到<strong>_posts</strong> 目录下。格式要求 <code class="language-plaintext highlighter-rouge">YYYY-MM-DD-文章标题.md</code>（例如 <code class="language-plaintext highlighter-rouge">2023-10-05-我的博客.md</code>）。</p>
+
+<p>一般先用<strong>jekyll server</strong> 本地看下，然后再上传部署到git上。</p>
+
+<p>注意文章还要加上 <strong>Matter Front</strong>（<strong>文章抬头</strong>)</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306203729007.png" alt="image-20250306203729007" /></p>
+
+<p><strong>index.md</strong> 首页</p>
+
+<p><strong><em>layouts** 存放布局 。**</em>__include</strong> 存放可重用的HTML片段 他们一般直接用主题提供的就可以了</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306201002065.png" alt="image-20250306201002065" /></p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306201312027.png" alt="image-20250306201312027" /></p>
+
+<p><strong>_data</strong>存放结构化数据<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306201709498.png" alt="image-20250306201709498" /></p>
+
+<p><strong>Gemfile</strong> 定义Ruby依赖，比较重要</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306201521016.png" alt="image-20250306201521016" /></p>
+
+<p><strong>public</strong>放css等(一般用主题自带的)</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306201830950.png" alt="image-20250306201830950" /></p>
+
+<h4 id="部署站点"><strong>部署站点</strong></h4>
+
+<hr />
+
+<p>直接提交到 Git 库就可以，部署是自动的，就是这么简单！！</p>
+
+<p>一般不会马上就更新，需要3-5分钟部署。GitHub的<strong>Actions</strong>标签下查看部署进度</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306202145353.png" alt="image-20250306202145353" /></p>
+
+<h2 id="图床设置">图床设置</h2>
+
+<p>图床用来存放图片等资源的，需要把图片放到云端这样网站页面才能索引到。</p>
+
+<p>用<strong>Aliyun对象存储</strong>就可以</p>
+
+<p>申请Aliyun对象存储的 AccesssKey和ID，如果是新的端需要新创建</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20240911202439315.png" alt="image-20240911202439315" /></p>
+
+<p>Bucket</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20240911202551996.png" alt="image-20240911202551996" /></p>
+
+<p>下载<strong>PicGo</strong> https://picgo.github.io/PicGo-Doc/zh/</p>
+
+<p>PicGO设置</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20240911202628238.png" alt="image-20240911202628238" /></p>
+
+<p>最后<strong>在Typora设置</strong></p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20240911203150784.png" alt="image-20240911203150784" /></p>
+
+<p>Typora上传图片很简单，直接右键选择上传图片就可以。</p>
+
+<h3 id="主题">主题</h3>
+
+<hr />
+
+<p>实际上主题就是一个基本搞好的静态网站项目，可以在别人基础上做出好看的网页效果。</p>
+
+<p>使用的话就是简单的把文件拷到目录下就可以了。静态网站所以就是这么简单</p>
+
+<p>网上很多主题资源，有jekyll官方的网站，github也有很多免费的，找一个适合自己的</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306202405122.png" alt="image-20250306202405122" /></p>
+
+<p><strong>FAQ</strong></p>
+
+<p>Q:为什么会有无法自动路由到文件的情况？(后面会自动加上库的名称导致文件无法路由到)</p>
+
+<p>A:因为github pages站点的两种配置类型：1.站点类型 https://lixiongguo.github.io/  2. 项目站点 https://lixiongguo.github.io/ geogo.github.io/</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306195030026.png" alt="image-20250306195030026" /></p>
+
+<p>解决方法很简单直接改名字就可以了</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306195416757.png" alt="image-20250306195416757" /></p>
+
+
+	</div>
+</article>
+<!-- 在<body结束前添加 -->
+<canvas id="particle-canvas" style="position:fixed; top:0; left:0; z-index:-1;"></canvas>
+<script src="/assets/js/particles.js"></script>

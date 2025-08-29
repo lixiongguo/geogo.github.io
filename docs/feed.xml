@@ -1,4 +1,48 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-03-06T20:43:05+08:00</updated><id>http://localhost:4000/feed.xml</id><entry><title type="html">从零到DQN算法</title><link href="http://localhost:4000/ai/2025/03/06/rl-intro1-dqn.html" rel="alternate" type="text/html" title="从零到DQN算法" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/ai/2025/03/06/rl-intro1-dqn</id><content type="html" xml:base="http://localhost:4000/ai/2025/03/06/rl-intro1-dqn.html"><![CDATA[<p>本文主要介绍强化学习基础从零到DQN算法
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-08-29T21:36:53+08:00</updated><id>http://localhost:4000/feed.xml</id><entry><title type="html">离散曲面的微分算子</title><link href="http://localhost:4000/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/07/20/mesh-param-differential.html" rel="alternate" type="text/html" title="离散曲面的微分算子" /><published>2025-07-20T00:00:00+08:00</published><updated>2025-07-20T00:00:00+08:00</updated><id>http://localhost:4000/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/07/20/mesh-param-differential</id><content type="html" xml:base="http://localhost:4000/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/07/20/mesh-param-differential.html"><![CDATA[<p>本文主要介绍离散曲面的微分算子
+<!--more--></p>
+
+<h3 id="保角映射">保角映射</h3>
+
+<p>前面的文章中我们已经看到了求解映射的一个可行的方法。但是其有很大扭曲效果不好，所以要想办法看下能否尽可能减少扭曲。那我们看下什么样的映射扭曲是小的呢？</p>
+
+<p>我们再回头看下墨卡托映射，它虽然会使得不同国家的面积发生变形，但是形状一定是没有发生变化的(否则就要引起国家之间的边界冲突了)。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/%E5%9B%BE%E7%89%874.png" alt="图片4" /></p>
+
+<p>再看另外一个示例，如图这一映射将一个三维人脸曲面映射到平面圆盘上。我们在人脸曲面任意画两条相交曲线，这两条曲面上的曲线被映射到平面上的两条曲线，空间曲线的交点被映成平面曲线的交点，在交点处，空间曲线的夹角等于平面曲线的夹角。这两条空间曲线任意选取，其夹角都被映射完美保持。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250312183649382.png" alt="image-20250312183649382" /></p>
+
+<p>这种能保持角度的映射可以很好的保持图像不失真，我们称之为保角映射(Angle Preserving)，这种类型的映射我们可以认为至少是不错的所以是值得研究的。</p>
+
+<p>另外再回想一下大家初中学习过的相似三角形的概念也能印证这个，如果一个三角形与另一个三角形的角度都相同的话，那么它们就是
+“相似的”看起来是比较“像”的。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250318092257455.png" alt="image-20250318092257455" style="zoom:50%;" /></p>
+
+<h3 id="一种求解保角映射的方法">一种求解保角映射的方法</h3>
+
+<p>三角网格是由成千上万的三角形组合而成的，那么如果两个三角网格的每对三角形都尽可能相似的话，那么两个三角网格也可以认为是“相似”的，所以我们尝试着让每个小三角形都尽可能保持相似的从而保持整体的形状 ，这种从三角形角度考虑出发的方法称为<strong>ABF（Angle Based Flattening）</strong>算法</p>
+
+<p>设$\alpha_i^0$，$\alpha_i$分别为三角网格展开前后的某个内角值，那它们的映射前后的差值就是$(\alpha_i - \alpha_i^0)^2$，对所有的角度累加，从而得到一个能量值$E=min\Sigma(\alpha_i - \alpha_i^0)^2$，而我们要让这个能量值尽可能小。</p>
+
+<p>由于角度发生改变了，所以对于每个三角形我们要让内角和保持为$\pi$, 即$\Sigma_{\alpha_i\in t}{\alpha_i}=\pi$</p>
+
+<p>另外由于是展平到了平面上，所以对于内部每个顶点v，与它连接角度的角度和为$2\pi$,即$\Sigma_{\alpha_i\in v}=2\pi$</p>
+
+<p>(3)对于每个顶点v,其1-邻域两个对角$\beta_i与\gamma_i$满足如下关系$\prod \frac {sin_{\beta_i}} {sin\gamma_i}=1$、</p>
+
+<p>上面约束优化问题虽然可以通过Lagrange乘子法转化为无约束优化问题进行求解，但是由于约束(3)中含有非线性条件所以是不容易求解的，一种思路是将约束(3)进行线性化后再求解。</p>
+
+<h4 id="共形映射">共形映射</h4>
+
+<p>在传统的数学理论中称这类保持角度的映射为<strong>共形映射(Conformal Mapping)</strong>，对于这类映射的研究是卷帙浩繁的</p>
+
+<p>根据<strong>Riemman映照</strong>定理：</p>
+
+<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250712105434715.png" alt="image-20250712105434715" /></p>
+
+<p>清华笔记：计算共形几何讲义 （11）黎曼映照（Riemann Mapping）的存在性 https://blog.sciencenet.cn/blog-2472277-1180640.html</p>]]></content><author><name>David Lee</name></author><category term="几何与拓扑" /><summary type="html"><![CDATA[本文主要介绍离散曲面的微分算子]]></summary></entry><entry><title type="html">从零到DQN算法</title><link href="http://localhost:4000/ai/2025/03/06/rl-intro1-dqn.html" rel="alternate" type="text/html" title="从零到DQN算法" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/ai/2025/03/06/rl-intro1-dqn</id><content type="html" xml:base="http://localhost:4000/ai/2025/03/06/rl-intro1-dqn.html"><![CDATA[<p>本文主要介绍强化学习基础从零到DQN算法
 <!--more--></p>
 <h4 id="强化学习介绍">强化学习介绍</h4>
 
@@ -22,15 +66,19 @@
 
 <p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250228195426366.png" alt="image-20250228195426366" /></p>
 
+<p>强化学习中智能体与环境的交互过程要是<strong>马尔科夫决策过程MDP</strong>(Markov Decision Process)，要讲清楚这个概念需要不少的篇幅，我们可以先简单的理解就是交互过程是”无记忆“的</p>
+
 <table>
   <tbody>
     <tr>
-      <td>强化学习中智能体与环境的交互过程要是<strong>马尔科夫决策过程MDP</strong>(Markov Decision Process)，要讲清楚这个概念需要不少的篇幅，我们可以先简单的理解就是交互过程是”无记忆“的，即环境(environment)之后的状态(next state)$s_{t+1}$只取决于当前的状态(state)$s_t$和智能体的动作(action)$a_t$与之前的状态和动作无关即$P(s_{t+1}</td>
+      <td>即环境(environment)之后的状态(next state)$s_{t+1}$只取决于当前的状态(state) $s_t$ 和智能体的动作(action)  $a_t$与之前的状态和动作无关即$P(s_{t+1}</td>
       <td>s_t,a_t,s_{t-1},a_{t-1},…) = P(s_{t+1}</td>
-      <td>s_t,a_t) $。另外环境会对智能体所做的动作反馈奖励信号(reward),所以一般会将问题表述(formulate)为（”状态空间“，”动作空间“，”奖励机制“）三元组</td>
+      <td>s_t,a_t) $。</td>
     </tr>
   </tbody>
 </table>
+
+<p>另外环境会对智能体所做的动作反馈奖励信号(reward),所以一般会将问题表述(formulate)为（”状态空间“，”动作空间“，”奖励机制“）三元组</p>
 
 <p>另外考虑<strong>$\gamma$折扣因子</strong>（discount factor）取值范围为[0,1)，定义为奖励的衰减，比如下一个时间步$t+1$的奖励$r_{t+1}$折算到当前时间是$\gamma r_{t+1}$,引入折扣因子是因为远期利益具有 一定的不确定性，有时我们更希望能够尽快获得一些奖励，所以需要对远期利益打一些折扣。接近1更关注长期的累积奖励，接近0更考虑短期奖励。</p>
 
@@ -393,121 +441,7 @@ for episode in range(num_episodes):
 
 <p><strong>A.</strong>倒立摆的动力学方程</p>
 
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>]]></content><author><name>David Lee</name></author><category term="AI" /><summary type="html"><![CDATA[本文主要介绍强化学习基础从零到DQN算法]]></summary></entry><entry><title type="html">曲面展平与网格参数化算法</title><link href="http://localhost:4000/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/03/06/mesh-param-intro.html" rel="alternate" type="text/html" title="曲面展平与网格参数化算法" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/03/06/mesh-param-intro</id><content type="html" xml:base="http://localhost:4000/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/03/06/mesh-param-intro.html"><![CDATA[<p>本文主要介绍曲面展平与网格参数化算法
-<!--more--></p>
-<h4 id="曲面展平映射">曲面展平映射</h4>
-
-<p>如何将一个三维空间中的曲面摊平到二维的平面上？有时为了方便观察研究人们会将地球仪的表面展平。这在生活经验中看起来似乎不太起眼的问题，但是却蕴含着无限的几何与拓扑的奥秘。想象一下如果有一个曲面我们想要设计程序让计算机来做这个“展平”的话,似乎就不是一件容易的事了。</p>
-
-<p>比如通过CT扫描获取到腹部断层图像，然后用多视角几何的方法重建三维直肠曲面后，为了方便医生的观察，最后将这个直肠曲面平展到平面上。（使用这种方法，设备和病患没有接触，不需要麻醉，不会诱导并发症）</p>
-
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227101914414.png" alt="image-20250227101914414" /></p>
-
-<p>为了解决这个问题我们要从数学上找到一个<strong>展平映射</strong>$f:R^3\rightarrow R^{2}$，使得三维空间中曲面的点与二维空间中的点是相对应。</p>
-
-<p>为了先对这个问题有一个初步的了解，考虑最简单的情况，即最简单的二维曲面—球面。如下图所示这种绘制世界地图的“墨卡托投影法”。基本方法是假想在球面内部有一个光源，而球面外部包围着一个圆柱面,光线将球面的点投射到圆柱面上,再将圆柱面展开。</p>
-
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306100413501.png" alt="image-20250306100413501" style="zoom: 67%;" /></p>
-
-<p><strong>映射是有扭曲的</strong>,可以看到图中格陵兰岛面积跟非洲差不多大，但是真实相差很远。这种方法牺牲面积大小，保留角度和形状(也称为共形映射)沿着赤道不会发生扭曲，越靠近极点的地方面积扭曲就越大。</p>
-
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250228102623615.png" alt="image-20250228102623615" style="zoom:67%;" /></p>
-
-<p>对于更加复杂的曲面，又该如何计算呢？比如下图所示的大卫头像，我们限定后面要研究的对象都是”拓扑圆盘“的曲面（有一条简单曲线作为边界) 。</p>
-
-<h4 id="三角网格参数化">三角网格参数化</h4>
-
-<table>
-  <tbody>
-    <tr>
-      <td>如图，计算机中的曲面是由许多小三角形构成的,整体称为<strong>三角网格(Mesh)</strong> 记作$M={V,E,F</td>
-      <td>V,E,F为网格的顶点,边,面}$</td>
-    </tr>
-  </tbody>
-</table>
-
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306112054639.png" alt="image-20250306112054639" /></p>
-
-<p>在这样的设定下，那么我们要求的映射$f$又可以写成这样$f:M \rightarrow R^{2},\text M{是R^{3}中的三角网格}$ ,而将网格进行展平的算法称为”<strong>网格参数化算法</strong>“(Mesh Parameterization)，而要构造这样映射$f$只要对顶点集$V$找到一组$R^2$的坐标(一般称为”<strong>UV坐标</strong>“如下图所示）即可。</p>
-
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306113753650.png" alt="image-20250306113753650" style="zoom: 80%;" /></p>
-
-<p>注意到有一些约束条件是需要满足的</p>
-
-<p>1.映射之后内部的三角形的边是不能相交的</p>
-
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227112126656.png" alt="image-20250227112126656" style="zoom:50%;" /></p>
-
-<p>2.映射后三角形的定向是不能翻转的，否则也会有错乱的情况</p>
-
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227120632868.png" alt="image-20250227120632868" style="zoom: 50%;" /></p>
-
-<p>3.映射后的边界也是不能相交的</p>
-
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306151844519.png" alt="image-20250306151844519" style="zoom:50%;" /></p>
-
-<h4 id="正确但并不好的简单算法">正确但并不好的简单算法</h4>
-
-<p>类似上面的”墨卡托投影“的过程，我们可以先进行直觉性的假想实验。假设三角网格M是有弹性的，那么我们可以先外部施加力将边界固定下来，比如把它们固定到一个圆周上, 三角网格的边对力进行传导，那内部的点也会跟着改变。</p>
-
-<p>为了简化处理，假设对于内部某个顶点$v \in V_{int}$作用在它身上的力是均衡的，那它将会位于其邻居顶点所构成区域的质心位置，这样自然就形成了一个方程了。而整个过程是线性的，所以应该是容易解的。</p>
-
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306105030177.png" alt="image-20250306105030177" /></p>
-
-<ol>
-  <li>将$M$中的顶点集$V$进行编号(用数字代表顶点) $V={1,2,3,…n}$,并划分为内点集和边界点集即 $V = V_{int} \cup V_{bnd}$</li>
-  <li>
-    <table>
-      <tbody>
-        <tr>
-          <td>对内部顶点$v \in V_{int}$,设$N_v$为其邻居顶点集，则由于$v$位于质心位置则有$x_v = \frac 1 {</td>
-          <td>N_v</td>
-          <td>} \Sigma_{u \in N_v}x_u$</td>
-        </tr>
-      </tbody>
-    </table>
-  </li>
-  <li>对边界顶点$v \in V_{bnd}$,将边界点也进行排序并且$v$的序号$i_v$，由于边界点定在圆周上那么$x_{i_v}=(rcos({\theta_{i_v}}),rsin({\theta_{i_v}}))\$</li>
-</ol>
-
-<p>上面的过程实际上可以表示成两个实稀疏线性方程$Ax=b,A={a_{ij}}_{n*n}\$(u,v两个坐标),下面以其中一个坐标为例</p>
-
-<ol>
-  <li>
-    <table>
-      <tbody>
-        <tr>
-          <td>对任意的$v \in V_{int}$ , $A(v,u) = \begin{cases}  1 &amp;，  u=v \ -\frac 1 {</td>
-          <td>N_v</td>
-          <td>}&amp;， u \in N_v \ 0 &amp;，其它\end{cases} $</td>
-        </tr>
-      </tbody>
-    </table>
-  </li>
-  <li>对任意的$v \in V_{bnd}$, $A(v,u) = \begin{cases}  1 &amp;，  u=v \  0 &amp;，其它\end{cases} $，其边界序号为$i_v$ ,则$b_{i_v} = rcos({\theta_{i_v}})$</li>
-</ol>
-
-<p>C++中可以通过Eigen库来解这个稀疏线性方程组最后可以得到如下图结果</p>
-
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306143314990.png" alt="image-20250306143314990" style="zoom:67%;" /></p>
-
-<p>如果在表面贴上一层棋盘格，可以直观地观察到扭曲的大小</p>
-
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306144819046.png" alt="image-20250306144819046" style="zoom:67%;" /></p>
-
-<p>上面算法的正确性(解是存在的，并且符合约束条件)是有严格的数学保证，如果将三角网格(Mesh)看成是一个图(graph)的话，那么根据图论平面图理论中的<strong>Tutte定理</strong></p>
-
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250303203607936.png" alt="image-20250303203607936" /></p>
-
-<p>对于”拓扑圆盘“的三角网格，只要将边界点固定在一个凸多边形上，并且内部的点是其邻居的凸组合(上面算法设置内点位于邻居质心)就能形成一个合法的参数化。</p>
-
-<p>上面算法虽然是正确的，但是并不好，对于稍微复杂一些的曲面就会有很严重的扭曲。比如图中的兔头，耳朵部分的面积拉伸非常大。而对于如何尽可能减小扭曲，如何尽可能提高算法的效率是相关领域科研技术人员努力的目标</p>
-
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306152433544.png" alt="image-20250306152433544" /></p>
-
-<p>最后介绍一下”伪3D” : 对于一部分3D模型如果我们能够找到某个方向，在这个方向上曲面上的点之间不存在遮挡的话，那这样的话展平映射只要直接在这个方向上做投影就可以。比如对于平整的芯片来说就是这样的”伪3D“的场景。</p>
-
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227110050467.png" alt="image-20250227110050467" /></p>]]></content><author><name>David Lee</name></author><category term="几何与拓扑" /><summary type="html"><![CDATA[本文主要介绍曲面展平与网格参数化算法]]></summary></entry><entry><title type="html">Github Pages 建个人网站全程攻略</title><link href="http://localhost:4000/%E5%85%B6%E4%BB%96/2025/03/06/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97.html" rel="alternate" type="text/html" title="Github Pages 建个人网站全程攻略" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/%E5%85%B6%E4%BB%96/2025/03/06/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97</id><content type="html" xml:base="http://localhost:4000/%E5%85%B6%E4%BB%96/2025/03/06/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97.html"><![CDATA[<h2 id="github-pages-建个人网站全程攻略">Github Pages 建个人网站全程攻略</h2>
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>]]></content><author><name>David Lee</name></author><category term="AI" /><summary type="html"><![CDATA[本文主要介绍强化学习基础从零到DQN算法]]></summary></entry><entry><title type="html">Github Pages 建个人网站全程攻略</title><link href="http://localhost:4000/%E5%85%B6%E4%BB%96/2025/03/06/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97.html" rel="alternate" type="text/html" title="Github Pages 建个人网站全程攻略" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/%E5%85%B6%E4%BB%96/2025/03/06/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97</id><content type="html" xml:base="http://localhost:4000/%E5%85%B6%E4%BB%96/2025/03/06/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97.html"><![CDATA[<h2 id="github-pages-建个人网站全程攻略">Github Pages 建个人网站全程攻略</h2>
 
 <h4 id="github-pages">GitHub Pages</h4>
 
@@ -632,7 +566,137 @@ gem install jekyll bundler</p>
 
 <p>解决方法很简单直接改名字就可以了</p>
 
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306195416757.png" alt="image-20250306195416757" /></p>]]></content><author><name>David Lee</name></author><category term="其他" /><summary type="html"><![CDATA[Github Pages 建个人网站全程攻略 GitHub Pages 1.建立github.io仓(命名要注意!! 注意是个人站点还是项目站点!!，很坑，详见后面解释) 2.settings pages下进行设置 修改后还要注意到需要build Jekyll Jekyll 是一个静态网站生成器，用于创建个人博客、项目网站或公司主页。它通过将 Markdown 或 HTML 文件转换为静态网页，生成一个完整的网站。 jekyll安装教程 https://blog.csdn.net/qq_33919450/article/details/127859193 先安装ruby https://www.ruby-lang.org/zh_cn/ 安装了 Ruby 之后，可以通过 Gem 包管理器安装 Jekyll gem install jekyll bundler 创建一个新的 Jekyll 站点非常简单： jekyll new myblog之后生成的目录结构 重要的配置文件:_config.yml 其中destination:存放用来生成网页的根目录，exerpt_separator摘要分隔符 很重要的，还有用来解析公式的math_engine 编写内容： Markdown文件放到_posts 目录下。格式要求 YYYY-MM-DD-文章标题.md（例如 2023-10-05-我的博客.md）。 一般先用jekyll server 本地看下，然后再上传部署到git上。 注意文章还要加上 Matter Front（文章抬头) index.md 首页 layouts** 存放布局 。**__include 存放可重用的HTML片段 他们一般直接用主题提供的就可以了 _data存放结构化数据 Gemfile 定义Ruby依赖，比较重要 public放css等(一般用主题自带的) 部署站点 直接提交到 Git 库就可以，部署是自动的，就是这么简单！！ 一般不会马上就更新，需要3-5分钟部署。GitHub的Actions标签下查看部署进度 图床设置 图床用来存放图片等资源的，需要把图片放到云端这样网站页面才能索引到。 用Aliyun对象存储就可以 申请Aliyun对象存储的 AccesssKey和ID，如果是新的端需要新创建 Bucket 下载PicGo https://picgo.github.io/PicGo-Doc/zh/ PicGO设置 最后在Typora设置 Typora上传图片很简单，直接右键选择上传图片就可以。 主题 实际上主题就是一个基本搞好的静态网站项目，可以在别人基础上做出好看的网页效果。 使用的话就是简单的把文件拷到目录下就可以了。静态网站所以就是这么简单 网上很多主题资源，有jekyll官方的网站，github也有很多免费的，找一个适合自己的 FAQ Q:为什么会有无法自动路由到文件的情况？(后面会自动加上库的名称导致文件无法路由到) A:因为github pages站点的两种配置类型：1.站点类型 https://lixiongguo.github.io/ 2. 项目站点 https://lixiongguo.github.io/ geogo.github.io/ 解决方法很简单直接改名字就可以了]]></summary></entry><entry><title type="html">Welcome to Jekyll!</title><link href="http://localhost:4000/%E5%85%B6%E4%BB%96/2020/01/02/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to Jekyll!" /><published>2020-01-02T18:31:29+08:00</published><updated>2020-01-02T18:31:29+08:00</updated><id>http://localhost:4000/%E5%85%B6%E4%BB%96/2020/01/02/welcome-to-jekyll</id><content type="html" xml:base="http://localhost:4000/%E5%85%B6%E4%BB%96/2020/01/02/welcome-to-jekyll.html"><![CDATA[<p>You’ll find this post in your <code class="language-plaintext highlighter-rouge">_posts</code> directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run <code class="language-plaintext highlighter-rouge">jekyll serve</code>, which launches a web server and auto-regenerates your site when a file is updated.</p>
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306195416757.png" alt="image-20250306195416757" /></p>]]></content><author><name>David Lee</name></author><category term="其他" /><summary type="html"><![CDATA[Github Pages 建个人网站全程攻略 GitHub Pages 1.建立github.io仓(命名要注意!! 注意是个人站点还是项目站点!!，很坑，详见后面解释) 2.settings pages下进行设置 修改后还要注意到需要build Jekyll Jekyll 是一个静态网站生成器，用于创建个人博客、项目网站或公司主页。它通过将 Markdown 或 HTML 文件转换为静态网页，生成一个完整的网站。 jekyll安装教程 https://blog.csdn.net/qq_33919450/article/details/127859193 先安装ruby https://www.ruby-lang.org/zh_cn/ 安装了 Ruby 之后，可以通过 Gem 包管理器安装 Jekyll gem install jekyll bundler 创建一个新的 Jekyll 站点非常简单： jekyll new myblog之后生成的目录结构 重要的配置文件:_config.yml 其中destination:存放用来生成网页的根目录，exerpt_separator摘要分隔符 很重要的，还有用来解析公式的math_engine 编写内容： Markdown文件放到_posts 目录下。格式要求 YYYY-MM-DD-文章标题.md（例如 2023-10-05-我的博客.md）。 一般先用jekyll server 本地看下，然后再上传部署到git上。 注意文章还要加上 Matter Front（文章抬头) index.md 首页 layouts** 存放布局 。**__include 存放可重用的HTML片段 他们一般直接用主题提供的就可以了 _data存放结构化数据 Gemfile 定义Ruby依赖，比较重要 public放css等(一般用主题自带的) 部署站点 直接提交到 Git 库就可以，部署是自动的，就是这么简单！！ 一般不会马上就更新，需要3-5分钟部署。GitHub的Actions标签下查看部署进度 图床设置 图床用来存放图片等资源的，需要把图片放到云端这样网站页面才能索引到。 用Aliyun对象存储就可以 申请Aliyun对象存储的 AccesssKey和ID，如果是新的端需要新创建 Bucket 下载PicGo https://picgo.github.io/PicGo-Doc/zh/ PicGO设置 最后在Typora设置 Typora上传图片很简单，直接右键选择上传图片就可以。 主题 实际上主题就是一个基本搞好的静态网站项目，可以在别人基础上做出好看的网页效果。 使用的话就是简单的把文件拷到目录下就可以了。静态网站所以就是这么简单 网上很多主题资源，有jekyll官方的网站，github也有很多免费的，找一个适合自己的 FAQ Q:为什么会有无法自动路由到文件的情况？(后面会自动加上库的名称导致文件无法路由到) A:因为github pages站点的两种配置类型：1.站点类型 https://lixiongguo.github.io/ 2. 项目站点 https://lixiongguo.github.io/ geogo.github.io/ 解决方法很简单直接改名字就可以了]]></summary></entry><entry><title type="html">曲面展平与网格参数化算法</title><link href="http://localhost:4000/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/03/06/mesh-param-intro.html" rel="alternate" type="text/html" title="曲面展平与网格参数化算法" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/03/06/mesh-param-intro</id><content type="html" xml:base="http://localhost:4000/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/03/06/mesh-param-intro.html"><![CDATA[<p>本文主要介绍曲面展平与网格参数化算法
+<!--more--></p>
+<h4 id="曲面展平映射">曲面展平映射</h4>
+
+<p>如何将一个三维空间中的曲面摊平到二维的平面上？有时为了方便观察研究人们会将地球仪的表面展平。这在生活经验中看起来似乎不太起眼的问题，但是却蕴含着无限的几何与拓扑的奥秘。想象一下如果有一个曲面我们想要设计程序让计算机来做这个“展平”的话,似乎就不是一件容易的事了。</p>
+
+<p>比如通过CT扫描获取到腹部断层图像，然后用多视角几何的方法重建三维直肠曲面后，为了方便医生的观察，最后将这个直肠曲面平展到平面上。（使用这种方法，设备和病患没有接触，不需要麻醉，不会诱导并发症）</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227101914414.png" alt="image-20250227101914414" /></p>
+
+<p>为了解决这个问题我们要从数学上找到一个<strong>展平映射</strong>$f:R^3\rightarrow R^{2}$，使得三维空间中曲面的点与二维空间中的点是相对应。</p>
+
+<p>为了先对这个问题有一个初步的了解，先考虑下最简单的情况，即最简单的三维曲面—球面。如下图所示这种绘制世界地图的“墨卡托投影法”。基本方法是假想在球面内部有一个光源，而球面外部包围着一个圆柱面,光线将球面的点投射到圆柱面上,再将圆柱面展开。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/%E5%9B%BE%E7%89%874.png" alt="图片4" /></p>
+
+<p><strong>映射是不完美的是有扭曲的</strong>,可以看到图中格陵兰岛面积跟非洲差不多大，但是真实相差很远。这种方法牺牲面积大小，保留角度和形状(也称为共形映射)沿着赤道不会发生扭曲，越靠近极点的地方面积扭曲就越大。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250228102623615.png" alt="image-20250228102623615" style="zoom:67%;" /></p>
+
+<p><strong>尽可能减小扭曲</strong>是要达成的重要目标，我们要尽可能保证三维曲面展平到平面上后其细节信息不会造成太大的失真。想象下如果CT扫描后的直肠曲面展平后观察到的病灶变形严重的话(肿瘤块被放大或缩小)那这样的映射是不可用的。</p>
+
+<p>球面有很好的解析表达式$x^2+y^2+z^2 = 4\pi R^2$，所以是容易处理的。但是对于更加复杂的曲面，又该如何计算呢？那就要借助计算机的力量了。</p>
+
+<p>功能点1粉色先</p>
+
+<p>功能2蓝色线</p>
+
+<h4 id="三角网格参数化">三角网格参数化</h4>
+
+<table>
+  <tbody>
+    <tr>
+      <td>比如下图所示的大卫头像，计算机中的曲面是由许多小三角形构成的网格来表示的，这样的三角形组成的网格称为<strong>三角网格(Mesh)</strong> 记作$M={V,E,F</td>
+      <td>V,E,F为网格的顶点,边,面}$</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250311193102749.png" alt="image-20250311193102749" /></p>
+
+<p>为了简化处理我们下面用这个简化版(“抽象”)的头像来做实验</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306112054639.png" alt="image-20250306112054639" /></p>
+
+<p>在三角网格的设定下，那么我们要求的映射$f$又可以写成这样$f:M \rightarrow R^{2},\text M{是R^{3}中的三角网格}$ ,而将网格进行展平的算法称为”<strong>网格参数化算法</strong>“(Mesh Parameterization)，而要构造这样映射$f$只要对顶点集$V$找到一组$R^2$的坐标(一般称为”<strong>UV坐标</strong>“如下图所示）即可。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306113753650.png" alt="image-20250306113753650" style="zoom: 80%;" /></p>
+
+<p>注意到要使我们的映射的效果比较好的话，有一些约束条件是需要满足的</p>
+
+<p>1.映射之后内部的三角形的边是不能相交的</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227112126656.png" alt="image-20250227112126656" style="zoom:50%;" /></p>
+
+<p>2.映射后三角形的定向是不能翻转的，否则也会有错乱的情况</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227120632868.png" alt="image-20250227120632868" style="zoom: 50%;" /></p>
+
+<p>3.映射后的边界也是不能相交的</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306151844519.png" alt="image-20250306151844519" style="zoom:50%;" /></p>
+
+<p><strong>半边结构</strong></p>
+
+<p>适用于三角网格(Mesh)的半边结构(half-edge)</p>
+
+<h4 id="一个简单的算法">一个简单的算法</h4>
+
+<p>类似上面的”墨卡托投影“的过程，我们可以先进行直觉性的假想实验。假设三角网格M是有弹性的即每一条边都视为是一个弹簧的话，那么我们可以在外部施加力将边界固定下来, 由于三角网格的边会对力进行传导，那内部的点也会跟着改变。</p>
+
+<p>![image-20250311194844722<em>副本](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250311194844722</em>%E5%89%AF%E6%9C%AC.png)</p>
+
+<p>假设我们把三角网格的边界固定到一个圆周上</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250311194454982.png" alt="image-20250311194454982" /></p>
+
+<p>为了简化处理，假设对于内部某个顶点$v \in V_{int}$作用在它身上的力是均衡的，那它将会位于其邻居顶点所构成区域的质心位置，这样自然就形成了一个方程了。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306105030177.png" alt="image-20250306105030177" /></p>
+
+<ol>
+  <li>将$M$中的顶点集$V$进行编号(用数字代表顶点) $V={1,2,3,…n}$,并划分为内点集和边界点集即 $V = V_{int} \cup V_{bnd}$</li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>对内部顶点$v \in V_{int}$,设$N_v$为其邻居顶点集，则由于$v$位于质心位置则有$x_v = \frac 1 {</td>
+          <td>N_v</td>
+          <td>} \Sigma_{u \in N_v}x_u$</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>对边界顶点$v \in V_{bnd}$,将边界点也进行排序并且$v$的序号$i_v$，由于边界点定在圆周上那么$x_{i_v}=(rcos({\theta_{i_v}}),rsin({\theta_{i_v}}))\$</li>
+</ol>
+
+<p>上面的式子实际上可以表示成两个实稀疏线性方程$Ax=b,A={a_{ij}}_{n*n}\$(u,v两个坐标)</p>
+
+<ol>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>对任意的$v \in V_{int}$ , $A(v,u) = \begin{cases}  1 &amp;，  u=v \ -\frac 1 {</td>
+          <td>N_v</td>
+          <td>}&amp;， u \in N_v \ 0 &amp;，其它\end{cases} $</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>对任意的$v \in V_{bnd}$, $A(v,u) = \begin{cases}  1 &amp;，  u=v \  0 &amp;，其它\end{cases} $，其边界序号为$i_v$ ,则$b_{i_v} = (rcos({\theta_{i_v}})，rsin({\theta_{i_v}}) )$</li>
+</ol>
+
+<p>使用C++的话可以通过Eigen库来解这个稀疏线性方程组，最后可以得到如下图的展平结果</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306143314990.png" alt="image-20250306143314990" style="zoom:67%;" /></p>
+
+<p>如果在表面贴上一层棋盘格，可以直观地观察到扭曲的大小。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306144819046.png" alt="image-20250306144819046" style="zoom:67%;" /></p>
+
+<p>事实上，虽然上面的算法我们做了一系列的假设，但是算法的正确性还是有严格的数学保证(解是存在的，并且符合约束条件)。这个正确性保证来自于图论(Graph Theory)中的<strong>Tutte嵌入定理</strong>。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/202312142106590.png" alt="img" /></p>
+
+<p>将三角网格(Mesh)看成是一个图(graph)的话，定理说明只要将边界点固定在一个凸多边形上，并且内部的点是其邻居的凸组合(上面算法设置内点位于邻居质心)就能形成一个合法的参数化。</p>
+
+<p><strong>精彩才刚刚开始</strong></p>
+
+<p>上面的算法虽然正确性是有保证的，但是缺陷也是很明显的。首先是我们需要先来指定一个凸多边形边界。那么如果原来的3D模型边界与我们所指定边界如果差别比较大的话，那就不可避免的会有比较大的扭曲变形。</p>]]></content><author><name>David Lee</name></author><category term="几何与拓扑" /><summary type="html"><![CDATA[本文主要介绍曲面展平与网格参数化算法]]></summary></entry><entry><title type="html">Welcome to Jekyll!</title><link href="http://localhost:4000/%E5%85%B6%E4%BB%96/2020/01/02/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to Jekyll!" /><published>2020-01-02T18:31:29+08:00</published><updated>2020-01-02T18:31:29+08:00</updated><id>http://localhost:4000/%E5%85%B6%E4%BB%96/2020/01/02/welcome-to-jekyll</id><content type="html" xml:base="http://localhost:4000/%E5%85%B6%E4%BB%96/2020/01/02/welcome-to-jekyll.html"><![CDATA[<p>You’ll find this post in your <code class="language-plaintext highlighter-rouge">_posts</code> directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run <code class="language-plaintext highlighter-rouge">jekyll serve</code>, which launches a web server and auto-regenerates your site when a file is updated.</p>
 
 <p>Jekyll requires blog post files to be named according to the following format:</p>
 

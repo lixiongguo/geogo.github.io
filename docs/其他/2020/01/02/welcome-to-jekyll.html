@@ -3,7 +3,7 @@
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" /></head>
-<style>@import url(/public/css/syntax/.css);</style>
+<style>@import url(/public/css/syntax/emacs.css);</style>
   <title></title>
   <!-- <link href="/public/css/bootstrap.min.css" rel="stylesheet"> -->
 
@@ -50,7 +50,7 @@
 	    <li>
 	    	<a class="nav-item" href="/#几何与拓扑">
 				<span class="name">几何与拓扑</span>
-				<span class="badge">1</span>
+				<span class="badge">2</span>
 	    	</a>
  		</li>
 	    
@@ -64,7 +64,11 @@
 	  </nav>
 	</ul>
 </div>
-
+<ul class="nav">
+    <!-- ... 现有导航项 ... -->
+    <li><a href="/about">About me</a></li>
+    <!-- ... 现有导航项 ... -->
+</ul>
 <div class="sidebar-item sidebar-footer">
 	<p>Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a></p>
 </div>
@@ -103,5 +107,69 @@
 </article>
 		</div>
 	</div>
-  </body>
-</html>
+	<script>
+		MathJax = {
+			tex: {
+				inlineMath: [['$', '$'], ['\\(', '\\)']], // 同时支持 $ 和 \( \)
+				displayMath: [['$$', '$$'], ['\\[', '\\]']]
+			  }
+		};
+      // 打字机动画
+  function typeWriter(text, elementId, speed) {
+    let i = 0;
+    const element = document.getElementById(elementId);
+    element.innerHTML = "";
+    
+    function type() {
+      if (i < text.length) {
+        element.innerHTML += text.charAt(i);
+        i++;
+        setTimeout(type, speed);
+      }
+    }
+    
+    type();
+  }
+  
+  // 页面加载完成后执行打字机效果
+  window.addEventListener('load', function() {
+    typeWriter("Articles", "typewriter", 100);
+  });
+	  </script>
+	  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+</html><!-- 在<head>中添加 -->
+<article class="post">
+	<header class="post-header">
+		<div class="post-title"> 
+			Welcome to Jekyll!
+		</div>
+		<time class="post-date dt-published" datetime="2020-01-02T18:31:29+08:00" itemprop="datePublished">2020/01/02
+		</time>		
+	</header>
+
+	<div class="post-content">
+		<p>You’ll find this post in your <code class="language-plaintext highlighter-rouge">_posts</code> directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run <code class="language-plaintext highlighter-rouge">jekyll serve</code>, which launches a web server and auto-regenerates your site when a file is updated.</p>
+
+<p>Jekyll requires blog post files to be named according to the following format:</p>
+
+<p><code class="language-plaintext highlighter-rouge">YEAR-MONTH-DAY-title.MARKUP</code></p>
+
+<p>Where <code class="language-plaintext highlighter-rouge">YEAR</code> is a four-digit number, <code class="language-plaintext highlighter-rouge">MONTH</code> and <code class="language-plaintext highlighter-rouge">DAY</code> are both two-digit numbers, and <code class="language-plaintext highlighter-rouge">MARKUP</code> is the file extension representing the format used in the file. After that, include the necessary front matter. Take a look at the source for this post to get an idea about how it works.</p>
+
+<p>Jekyll also offers powerful support for code snippets:</p>
+
+<figure class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="k">def</span> <span class="nf">print_hi</span><span class="p">(</span><span class="nb">name</span><span class="p">)</span>
+  <span class="nb">puts</span> <span class="s2">"Hi, </span><span class="si">#{</span><span class="nb">name</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">end</span>
+<span class="n">print_hi</span><span class="p">(</span><span class="s1">'Tom'</span><span class="p">)</span>
+<span class="c1">#=&gt; prints 'Hi, Tom' to STDOUT.</span></code></pre></figure>
+
+<p>Check out the <a href="https://jekyllrb.com/docs/home">Jekyll docs</a> for more info on how to get the most out of Jekyll. File all bugs/feature requests at <a href="https://github.com/jekyll/jekyll">Jekyll’s GitHub repo</a>. If you have questions, you can ask them on <a href="https://talk.jekyllrb.com/">Jekyll Talk</a>.</p>
+
+
+	</div>
+</article>
+<!-- 在<body结束前添加 -->
+<canvas id="particle-canvas" style="position:fixed; top:0; left:0; z-index:-1;"></canvas>
+<script src="/assets/js/particles.js"></script>

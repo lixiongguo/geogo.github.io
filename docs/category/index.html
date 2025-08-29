@@ -3,7 +3,7 @@
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" /></head>
-<style>@import url(/public/css/syntax/.css);</style>
+<style>@import url(/public/css/syntax/emacs.css);</style>
   <title></title>
   <!-- <link href="/public/css/bootstrap.min.css" rel="stylesheet"> -->
 
@@ -50,7 +50,7 @@
 	    <li>
 	    	<a class="nav-item" href="/#几何与拓扑">
 				<span class="name">几何与拓扑</span>
-				<span class="badge">1</span>
+				<span class="badge">2</span>
 	    	</a>
  		</li>
 	    
@@ -64,7 +64,11 @@
 	  </nav>
 	</ul>
 </div>
-
+<ul class="nav">
+    <!-- ... 现有导航项 ... -->
+    <li><a href="/about">About me</a></li>
+    <!-- ... 现有导航项 ... -->
+</ul>
 <div class="sidebar-item sidebar-footer">
 	<p>Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a></p>
 </div>
@@ -75,7 +79,11 @@
 		<div class="post-title">Category - <span id='category-name'></span></div>
 	</header>
 
-	<div class="post-content"><ul class="post-list"><li class="post-list-item post-category-AI">
+	<div class="post-content"><ul class="post-list"><li class="post-list-item post-category-几何与拓扑">
+				<!----><span class="post-date">2025/07/20</span>
+				<a class="post-link" href="/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/07/20/mesh-param-differential.html">
+					离散曲面的微分算子
+				</a></li><li class="post-list-item post-category-AI">
 				<!----><span class="post-date">2025/03/06</span>
 				<a class="post-link" href="/ai/2025/03/06/rl-intro1-dqn.html">
 					从零到DQN算法
@@ -121,5 +129,91 @@
 
 		</div>
 	</div>
-  </body>
-</html>
+	<script>
+		MathJax = {
+			tex: {
+				inlineMath: [['$', '$'], ['\\(', '\\)']], // 同时支持 $ 和 \( \)
+				displayMath: [['$$', '$$'], ['\\[', '\\]']]
+			  }
+		};
+      // 打字机动画
+  function typeWriter(text, elementId, speed) {
+    let i = 0;
+    const element = document.getElementById(elementId);
+    element.innerHTML = "";
+    
+    function type() {
+      if (i < text.length) {
+        element.innerHTML += text.charAt(i);
+        i++;
+        setTimeout(type, speed);
+      }
+    }
+    
+    type();
+  }
+  
+  // 页面加载完成后执行打字机效果
+  window.addEventListener('load', function() {
+    typeWriter("Articles", "typewriter", 100);
+  });
+	  </script>
+	  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+</html><!-- 在<head>中添加 -->
+<article class="post">
+	<header class="post-header home">
+		<div class="post-title">Category - <span id='category-name'></span></div>
+	</header>
+
+	<div class="post-content"><ul class="post-list"><li class="post-list-item post-category-几何与拓扑">
+				<!----><span class="post-date">2025/07/20</span>
+				<a class="post-link" href="/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/07/20/mesh-param-differential.html">
+					离散曲面的微分算子
+				</a></li><li class="post-list-item post-category-AI">
+				<!----><span class="post-date">2025/03/06</span>
+				<a class="post-link" href="/ai/2025/03/06/rl-intro1-dqn.html">
+					从零到DQN算法
+				</a></li><li class="post-list-item post-category-几何与拓扑">
+				<!----><span class="post-date">2025/03/06</span>
+				<a class="post-link" href="/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/03/06/mesh-param-intro.html">
+					曲面展平与网格参数化算法
+				</a></li><li class="post-list-item post-category-其他">
+				<!----><span class="post-date">2025/03/06</span>
+				<a class="post-link" href="/%E5%85%B6%E4%BB%96/2025/03/06/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97.html">
+					Github Pages 建个人网站全程攻略
+				</a></li><li class="post-list-item post-category-其他">
+				<!----><span class="post-date">2020/01/02</span>
+				<a class="post-link" href="/%E5%85%B6%E4%BB%96/2020/01/02/welcome-to-jekyll.html">
+					Welcome to Jekyll!
+				</a></li></ul></div>
+</article>
+
+<script src="/public/js/jquery-3.4.1.slim.min.js"></script>
+<script>
+	function removeCategory() {
+		if (window.location.hash) {
+			let hash = window.location.hash.substring(1);
+			$('#category-name').text(hash.substring(0, 1).toUpperCase() + hash.substring(1));
+			let category_class = '.post-category-' + hash;
+			let items = $('.post-list-item').each((i, e) => {
+				if (!$(e).hasClass('post-category-' + hash)) {
+					$(e).hide();
+				} else {
+					$(e).show();
+				}
+			});
+		}
+	}
+	$(window).on('hashchange', () => {
+		removeCategory();
+	});
+	$(document).ready(() => {
+		removeCategory();	
+	})
+	
+</script>
+
+<!-- 在<body结束前添加 -->
+<canvas id="particle-canvas" style="position:fixed; top:0; left:0; z-index:-1;"></canvas>
+<script src="/assets/js/particles.js"></script>
