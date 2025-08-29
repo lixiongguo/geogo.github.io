@@ -337,3 +337,23 @@ footer {
 		display: none;
 	}
 }
+
+.post-list-item {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.post-list-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  background-color: #f8f9fa;
+}
+
+.post-link {
+  transition: color 0.3s ease;
+}
+
+.post-list-item:hover .post-link {
+  color: #007bff;
+}
