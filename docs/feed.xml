@@ -1,0 +1,715 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-08-29T22:12:14+08:00</updated><id>http://localhost:4000/feed.xml</id><entry><title type="html">离散曲面的微分算子</title><link href="http://localhost:4000/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/07/20/mesh-param-differential.html" rel="alternate" type="text/html" title="离散曲面的微分算子" /><published>2025-07-20T00:00:00+08:00</published><updated>2025-07-20T00:00:00+08:00</updated><id>http://localhost:4000/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/07/20/mesh-param-differential</id><content type="html" xml:base="http://localhost:4000/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/07/20/mesh-param-differential.html"><![CDATA[<p>本文主要介绍离散曲面的微分算子
+<!--more--></p>
+
+<h3 id="保角映射">保角映射</h3>
+
+<p>前面的文章中我们已经看到了求解映射的一个可行的方法。但是其有很大扭曲效果不好，所以要想办法看下能否尽可能减少扭曲。那我们看下什么样的映射扭曲是小的呢？</p>
+
+<p>我们再回头看下墨卡托映射，它虽然会使得不同国家的面积发生变形，但是形状一定是没有发生变化的(否则就要引起国家之间的边界冲突了)。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/%E5%9B%BE%E7%89%874.png" alt="图片4" /></p>
+
+<p>再看另外一个示例，如图这一映射将一个三维人脸曲面映射到平面圆盘上。我们在人脸曲面任意画两条相交曲线，这两条曲面上的曲线被映射到平面上的两条曲线，空间曲线的交点被映成平面曲线的交点，在交点处，空间曲线的夹角等于平面曲线的夹角。这两条空间曲线任意选取，其夹角都被映射完美保持。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250312183649382.png" alt="image-20250312183649382" /></p>
+
+<p>这种能保持角度的映射可以很好的保持图像不失真，我们称之为保角映射(Angle Preserving)，这种类型的映射我们可以认为至少是不错的所以是值得研究的。</p>
+
+<p>另外再回想一下大家初中学习过的相似三角形的概念也能印证这个，如果一个三角形与另一个三角形的角度都相同的话，那么它们就是
+“相似的”看起来是比较“像”的。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250318092257455.png" alt="image-20250318092257455" style="zoom:50%;" /></p>
+
+<h3 id="一种求解保角映射的方法">一种求解保角映射的方法</h3>
+
+<p>三角网格是由成千上万的三角形组合而成的，那么如果两个三角网格的每对三角形都尽可能相似的话，那么两个三角网格也可以认为是“相似”的，所以我们尝试着让每个小三角形都尽可能保持相似的从而保持整体的形状 ，这种从三角形角度考虑出发的方法称为<strong>ABF（Angle Based Flattening）</strong>算法</p>
+
+<p>设$\alpha_i^0$，$\alpha_i$分别为三角网格展开前后的某个内角值，那它们的映射前后的差值就是$(\alpha_i - \alpha_i^0)^2$，对所有的角度累加，从而得到一个能量值$E=min\Sigma(\alpha_i - \alpha_i^0)^2$，而我们要让这个能量值尽可能小。</p>
+
+<p>由于角度发生改变了，所以对于每个三角形我们要让内角和保持为$\pi$, 即$\Sigma_{\alpha_i\in t}{\alpha_i}=\pi$</p>
+
+<p>另外由于是展平到了平面上，所以对于内部每个顶点v，与它连接角度的角度和为$2\pi$,即$\Sigma_{\alpha_i\in v}=2\pi$</p>
+
+<p>(3)对于每个顶点v,其1-邻域两个对角$\beta_i与\gamma_i$满足如下关系$\prod \frac {sin_{\beta_i}} {sin\gamma_i}=1$、</p>
+
+<p>上面约束优化问题虽然可以通过Lagrange乘子法转化为无约束优化问题进行求解，但是由于约束(3)中含有非线性条件所以是不容易求解的，一种思路是将约束(3)进行线性化后再求解。</p>
+
+<h4 id="共形映射">共形映射</h4>
+
+<p>在传统的数学理论中称这类保持角度的映射为<strong>共形映射(Conformal Mapping)</strong>，对于这类映射的研究是卷帙浩繁的</p>
+
+<p>根据<strong>Riemman映照</strong>定理：</p>
+
+<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250712105434715.png" alt="image-20250712105434715" /></p>
+
+<p>清华笔记：计算共形几何讲义 （11）黎曼映照（Riemann Mapping）的存在性 https://blog.sciencenet.cn/blog-2472277-1180640.html</p>]]></content><author><name>David Lee</name></author><category term="几何与拓扑" /><summary type="html"><![CDATA[本文主要介绍离散曲面的微分算子]]></summary></entry><entry><title type="html">从零到DQN算法</title><link href="http://localhost:4000/ai/2025/03/06/rl-intro1-dqn.html" rel="alternate" type="text/html" title="从零到DQN算法" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/ai/2025/03/06/rl-intro1-dqn</id><content type="html" xml:base="http://localhost:4000/ai/2025/03/06/rl-intro1-dqn.html"><![CDATA[<p>本文主要介绍强化学习基础从零到DQN算法
+<!--more--></p>
+<h4 id="强化学习介绍">强化学习介绍</h4>
+
+<p>强化学习(Reinforcement Learning)是当前AI技术中一项重要的基础技术，无论是在今年(2025年)年初大火DeepSeek R1推理大模型,还是击败围棋世界冠军的AlphaGo都有强化学习技术在背后起到关键的作用。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250226192534530.png" alt="image-20250226192534530" /></p>
+
+<p>本轮AI技术浪潮在很大程度上滥觞于2016年的AlphaGo与李世石的三番棋对决，这次对决一方面证明了计算机工程技术已经攻克了围棋这项人类智力运动的“皇冠”，另一方面也向人们展示了结合了神经网络的强化学习技术具有巨大的潜力，而如今的DeepSeek R1推理大模型所展示的强大推理能力也是来源于此。</p>
+
+<p>在AlphaGo与李世石对战的前一年也就是2015年，其开发团队DeepMind发表了一篇刊登在《Nature》上的革命性文章。该文主要介绍了一个叫做DQN(Deep Q-Learning Network)的基于人工神经网络技术构建的强化学习智能体，可以像人类一样在仅有图像输入的情况下<strong>自主学习</strong>掌握如何玩(控制)Atari游戏，并且智能体不需要针对某个特定的游戏来设计特定的算法,展示了极强的通用智能。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305191908845.png" alt="image-20250305191908845" /></p>
+
+<p>本文从最基础的概念直到介绍DQN,鉴于<strong>“简单,直接”</strong>的原则以及我个人理解的不透彻,全文做了很多取舍,中间绕过了很多重要的概念和理论(如贝尔曼方程，动态规划，策略/值迭代等)，并且很多地方的处理也不够严谨(如马尔可夫决策过程，TD估计等)，如想进一步了解相关理论还请参考更加专业的书籍和课程。</p>
+
+<h4 id="强化学习的基本概念与定义">强化学习的基本概念与定义</h4>
+
+<p>强化学习的主要思路就是让机器通过从大量数据中<strong>“试错”</strong>（Trial and Error）的方式进行学习,不再需要人类手工设计算法，<strong>自主</strong>学习知识与技巧，对于一些人类自己也难以清晰描述，总结规律的复杂问题有很非常好的效果。</p>
+
+<p>如图所示强化学习的过程就是智能体与环境之间不断交互的过程。智能体在得到环境的状态的观测后会采取动作,并把这个采取的动作作用到环境上。环境得到智能体的动作后，它会进入下一个状态,并把奖励或处罚(有的话)和下一个状态的观测传给智能体,并进入下一轮的过程。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250228195426366.png" alt="image-20250228195426366" /></p>
+
+<p>强化学习中智能体与环境的交互过程要是<strong>马尔科夫决策过程MDP</strong>(Markov Decision Process)，要讲清楚这个概念需要不少的篇幅，我们可以先简单的理解就是交互过程是”无记忆“的</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>即环境(environment)之后的状态(next state)$s_{t+1}$只取决于当前的状态(state) $s_t$ 和智能体的动作(action)  $a_t$与之前的状态和动作无关即$P(s_{t+1}</td>
+      <td>s_t,a_t,s_{t-1},a_{t-1},…) = P(s_{t+1}</td>
+      <td>s_t,a_t) $。</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>另外环境会对智能体所做的动作反馈奖励信号(reward),所以一般会将问题表述(formulate)为（”状态空间“，”动作空间“，”奖励机制“）三元组</p>
+
+<p>另外考虑<strong>$\gamma$折扣因子</strong>（discount factor）取值范围为[0,1)，定义为奖励的衰减，比如下一个时间步$t+1$的奖励$r_{t+1}$折算到当前时间是$\gamma r_{t+1}$,引入折扣因子是因为远期利益具有 一定的不确定性，有时我们更希望能够尽快获得一些奖励，所以需要对远期利益打一些折扣。接近1更关注长期的累积奖励，接近0更考虑短期奖励。</p>
+
+<p><strong>轨迹</strong>：智能体与环境做一轮交互形成的“状态,动作,奖励”序列$Episode=[(s_0,a_0,r_0),(s_1,a_1,r_1),….,(s_T,a_T,r_T)]$一般训练需要智能体与环境进行多轮交互,会形成多轮轨迹。有时也称一轮轨迹为一个<strong>回合</strong></p>
+
+<p><strong>回报</strong>：对于某轮交互从$t$时刻状态$S_t$开始，直到终止状态时，所有奖励的衰减之和$G_t = R_t+\gamma R_{t+1} +{\gamma}^2 R_{t+2}+… = \Sigma_{k=0}{\gamma}^kR_{t+k}$</p>
+
+<p>强化学习属于机器学习范畴，对于机器学习来说，“学习”本质上就是函数的拟合，那强化学习中又是拟合什么函数呢？</p>
+
+<p>“策略”是智能体根据当前状态该采取什么样的动作</p>
+
+<ul>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td><strong>随机性策略</strong>函数记作$\pi(a</td>
+          <td>s)$,它被定义为当处于状态$s$时,遵循策略$\pi$采取动作$a$的概率,动作空间是离散向量的环境采用随机性策略</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li><strong>确定性策略</strong>函数记作$\mu(s)$,随机策略是当某个状态下智能体遵循某种概率分布来决定采用哪个动作,而确定性策略是对状态$s$和动作$a$的一个映射。动作空间是连续向量的环境采用确定性策略</li>
+</ul>
+
+<p>“价值”是对未来奖励的预测用它来评估状态的好坏</p>
+
+<ul>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td><strong>状态价值</strong>函数记作$V^{\pi}(s)$,它被定义为从状态$s$出发,遵循策略$\pi$能获得的期望回报,数学表达式为:$V^{\pi}(s)=E_{\pi}[G_t</td>
+          <td>S_t =s] $</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td><strong>动作价值</strong>函数记作$Q^{\pi}(s,a)$,遵循策略$\pi$,状态s时采取动作a所能获取到的奖励期望,数学表达式为$Q^\pi (s,a) = E_\pi[G_t</td>
+          <td>S_t = s,A_t = a]$</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+</ul>
+
+<table>
+  <tbody>
+    <tr>
+      <td>通过动作价值函数我们可以对策略进行优化，对于原策略$\pi(a</td>
+      <td>s)$我们在s时贪心地选择最优的动作$argmax_a Q(s,a)$将策略更新为$\pi’(a</td>
+      <td>s)$可以证明$\pi’(a</td>
+      <td>s)$比$\pi(a</td>
+      <td>s)$更好（<strong>策略提升</strong>）</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>如下图策略是每个状态采取的动作，价值每个状态下预期的回报</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306091930065.png" alt="image-20250306091930065" /></p>
+
+<p>如果要用强化学习方法实现最优控制,也就是找到某个策略使得对应的回报最大，那么根据所学习的函数不同,强化学习方法可以分为两类</p>
+
+<ul>
+  <li>对动作价值函数Q进行估算,然后通过策略提升的方法,优化策略函数的“<strong>值函数估计</strong>”方法</li>
+  <li>对策略函数直接求梯度,然后通过梯度下降等优化方法,优化策略函数的“<strong>策略梯度</strong>”方法</li>
+</ul>
+
+<p>DQN是一种“值函数估计”方法，也是本文后面将要介绍的重点。AlphaGo用的方法(也是当前主流的方法)是同时进行值函数估计和策略函数的优化，两者相辅相成，一方面用值函数估计来对策略进行评估，另一方面根据值函数评估给出的梯度来优化策略函数。AlphaGo中用价值网络评估棋盘上当前和推演棋局的价值，同时用策略网络寻找下一个着子点。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305192419094.png" alt="image-20250305192419094" /></p>
+
+<h4 id="最基础的强化学习过程">最基础的强化学习过程</h4>
+
+<p>对于一些简单的状态动作空间问题，可以通过列出表格(称为Q-table)来表示整个状态动作空间，从而做出决策。</p>
+
+<p>考虑如下的“冰湖迷宫”问题，想象一个被困在 4×4冰冻湖面的智能体，试图从起点安全地到达对岸的目标，智能体可以选择”上、下、左、右”方向移动一个格子，另外注意到湖面布满冰洞，智能体要避免掉进这些冰洞中。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250226195909215.png" alt="image-20250226195909215" /></p>
+
+<p>对于“冰湖迷宫”问题,我们的MDP建模如下：</p>
+
+<ul>
+  <li>状态空间：地图以网格形式呈现，每个格子代表一个状态，共有 16 个状态，结束状态是智能体到达目标或掉进冰</li>
+  <li>动作空间：有”上、下、左、右“ 4 个可能的动作</li>
+  <li>奖励机制：到达目标+1</li>
+</ul>
+
+<p>这个问题的Q-table如下图，图中每个格子四个值代表Q该值，灰度代表该格子的状态价值,而问题就是该如何填充这个<strong>Q-table</strong></p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250228200354910.png" alt="image-20250228200354910" style="zoom:50%;" /></p>
+
+<h5 id="蒙特卡洛monte-carlo方法">蒙特卡洛(Monte Carlo)方法</h5>
+
+<p>通过大量采样，然后用概率统计方法来从采样结果中归纳出我们想得到目标函数的数值估计方法称为”蒙特卡洛“方法，比如通过随机地撒上把豆子(采样)通过计数落在圆内外的豆子数可以估算出圆的面积(概率估计)。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227093707927.png" alt="image-20250227093707927" /></p>
+
+<p>智能体与环境进行交互后,我们会有一些轨迹的实际回报数据，如何根据这些数据来计算价值函数呢？根据大数定律采样的平均最后会趋近于期望而价值又是通过数学期望来定义的。那么比如我们计算$s$的期望，通过采样生成很多轨迹，把这些轨迹的回报都计算出来，再计算平均值作为$s$价值的估计。</p>
+
+<p>将这个思路用在评估状态函数$V_\pi(s)$ ，智能体与环境的交互采样大量的轨迹对并对每个轨迹进行如下计算</p>
+
+<p>遍历轨迹中每一个状态，如果在时间步$t$状态$s$被访问到了，那么</p>
+
+<ol>
+  <li>
+    <p>状态$s$的总访问数$N(s)$增加1,$N(s) = N(s) + 1$</p>
+  </li>
+  <li>
+    <p>状态$s$的总回报$S(s)$增加增加本回合该状态的真实回报$G_t$，$S(s) = S(s) +G_t$</p>
+  </li>
+</ol>
+
+<p>最后状态s的价值可以通过回报的平均来估计即$V(s) = S(s)/N(s)$，根据大数定律只要采集足够多的估计就有$V(s) \to V_{\pi}(s)$</p>
+
+<p><strong>转换为增量更新</strong>：我们要将所有的回合数都走完,才能计算平均值进行估算，而只要通过如下的数学处理技巧，就可以在每个回合结束后估计价值函数
+$$
+假设现有样本x_1,x_2,…x_t,均值为\mu_t =\frac 1 t \Sigma^{t}_{j=1}x_j\</p>
+
+<p>那么，\mu_t = \frac 1 t \Sigma^{t}<em>{j=1}x_j = \frac 1 t(x_t + \Sigma^{t-1}</em>{j=1}x_j)=\frac 1 t(x_t + (t-1)\mu_{t-1})= \mu_{t-1} + \frac 1 t(x_t -\mu_{t-1})<br />
+，其中x_t - \mu_{t-1}是残差
+\frac 1 t类似于学习率，那么就可以用上一时刻的值来更新现在的值。
+$$
+利用这个技巧评估状态函数可以改为如下方式，对于每个轨迹不用计算总回报$S(s)$直接进行状态函数估计$V(s) = S(s)/N(s) = V(s)+ \frac 1 {N(s)}(G_t - V(s))$,更一般地我们可以把$\frac 1 {N(s)}$替代为某个学习率$\alpha$ ,即可用$V(s) = V(s)+ \alpha (G_t - V(s))$进行更新,这是一个迭代计算过程,根据<strong>贝尔曼方程</strong>(Bellman Equation)可以确保其收敛性。</p>
+
+<p>将上面的状态函数$V(s)$替换为动作价值函数$Q(s,a)$,即可估计出动作价值函数并通过策略提升对策略进行优化,</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#代码片段1 Monte Carlo算法
+</span><span class="k">for</span> <span class="n">episode_idx</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="n">num_episodes</span><span class="p">):</span>
+    <span class="n">episode</span> <span class="o">=</span> <span class="nf">generate_episode</span><span class="p">(</span><span class="n">policy</span><span class="p">)</span><span class="c1">#采样一条轨迹
+</span>    <span class="n">G</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">visited</span> <span class="o">=</span> <span class="nf">set</span><span class="p">()</span> 
+    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nf">reversed</span><span class="p">(</span><span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">episode</span><span class="p">))):</span>
+        <span class="n">state</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">reward</span> <span class="o">=</span> <span class="n">episode</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">reward</span> <span class="o">+</span> <span class="n">gamma</span> <span class="o">*</span> <span class="n">G</span> <span class="c1">#计算回报
+</span>        <span class="nf">if </span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">action</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">visited</span><span class="p">:</span>
+            <span class="n">visited</span><span class="p">.</span><span class="nf">add</span><span class="p">((</span><span class="n">state</span><span class="p">,</span> <span class="n">action</span><span class="p">))</span>
+            <span class="c1">#增量更新
+</span>            <span class="n">Q_table</span><span class="p">[</span><span class="n">state</span><span class="p">,</span> <span class="n">action</span><span class="p">]</span> <span class="o">=</span> <span class="n">Q_table</span><span class="p">[</span><span class="n">state</span><span class="p">,</span> <span class="n">action</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">G</span> <span class="o">-</span> <span class="n">Q_table</span><span class="p">[</span><span class="n">state</span><span class="p">,</span> <span class="n">action</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="n">episode_idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="c1"># 策略提升
+</span>            <span class="n">policy</span><span class="p">[</span><span class="n">state</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">eye</span><span class="p">(</span><span class="n">num_actions</span><span class="p">)[</span><span class="n">np</span><span class="p">.</span><span class="nf">argmax</span><span class="p">(</span><span class="n">Q_table</span><span class="p">[</span><span class="n">state</span><span class="p">])]</span>
+</code></pre></div></div>
+
+<h5 id="时间差分time-differnce估计">时间差分(Time Differnce)估计</h5>
+
+<p>估计上面的增量式蒙特卡罗方法必须每一次都完成一个回合才能够估计值函数，而对于许多问题需要走很多步才会结束，这样一方面会造成更新缓慢，另外由于是采集整个回合后进行估计的所以估计的方差也会比较大，所以我们想能否每走一步都进行一次估计。</p>
+
+<p>考虑增量蒙特卡洛公式$V(s_t) = V(s_t) + \alpha(G_t -V(s_t))$，其中$G_t$是真实的轨迹回报，而它的值可以用下一时刻的价值和奖励$r_{t+1} + \gamma V(s_{t+1})$进行估计，那么综合起来就有$V(s_t) = V(s_t) + \alpha(r_{t+1} + \gamma V(s_{t+1}) -V(s_t))$这种对状态函数的估计方法称为时间差分(Time Difference)估计,一般简称为<strong>TD估计</strong>。时序差分方法能够在知道结果之前就开始学习，相比蒙特卡洛方法更快速、灵活。</p>
+
+<p>同样对于动作函数Q可以如下方式更新$Q(s_t,a_t) = Q(s_t,a_t)+\alpha(r_{t+1}+\gamma Q(s_{t+1},a_{t+1})-Q(s_t,a_t)) $</p>
+
+<p>因为上面估计Q函数的方法每一次估计都要用到五元组${S_t,A_t,R_{t+1},S_{t+1},A_{t+1}}$所以称为<strong>SARSA</strong>(取五个首字母)算法</p>
+
+<p>$Q(s_t,a_t) = Q(s_t,a_t)+\alpha(r_{t+1}+\gamma max_{a} Q(s_{t+1},a)-Q(s_t,a_t))$这种估计Q函数的方法只用到了四元组${S_t,A_t,R_{t+1},S_{t+1}}$,解耦了单次动作与轨迹间的关联，所以可以用离线采集的数据更新Q函数，称为<strong>Q-Learning</strong>算法</p>
+
+<p>另外策略提升每次都是选取当前价值最大的动作$argmax_aQ(s,a)$，但是这样很有可能因为我们没有足够的采样经验导致我们选择的不是最优策略即”短视“的问题，因此我们需要不时地尝试新的行为去挖掘更多的信息，这就是探索(Exploration),下面采用的一种$\epsilon-探索$的随机机制来保证探索，以$\epsilon$概率从所有动作中均匀的选择一个动作，以$1-\epsilon$概率选择当前价值最大的动作。</p>
+
+<pre><code class="language-Python">#代码片段2 Q-learning 算法
+def take_action(state)
+	# ε-greedy 策略选择动作
+    if random.uniform(0, 1) &lt; epsilon:
+        action = env.action_space.sample()  # 随机选择动作
+    else:
+        action = np.argmax(Q_table[state])  # 选择最优动作
+    return action
+
+for episode in range(num_episodes):
+    state = env.reset()
+    done = False
+    total_reward = 0
+    while not done:
+        action = take_action(state)
+        # 执行动作并观察结果
+        next_state, reward, done,_, info = env.step(action)
+        #Q-learning选择最优的动作
+        best_next_action = np.argmax(Q_table[next_state])
+        #SARSA 继续按照当前策略选择下一个动作，next_action = take_action(next_state)
+        #TD估计更新Q-table
+        td_target = reward + gamma * Q_table[next_state, best_next_action]
+        td_error = td_target - Q_table[state, action]
+        Q_table[state, action] += alpha * td_error
+        # 更新状态和奖励
+        state = next_state
+        total_reward += reward
+    # 衰减探索率
+    epsilon = max(epsilon_min, epsilon * epsilon_decay)
+</code></pre>
+
+<p>Q-learning算法是非常激进的，它一直选择当前价值最大的动作而不管该动作是否有较大的危险性。而Sarsa算法则相对来说因为探索的更充分显得会更加保守些。</p>
+
+<h4 id="神经网络助力的强化学习">神经网络助力的强化学习</h4>
+
+<p>强化学习本身是一个很早就有的技术,但是之所以近年来能有如此巨大的影响主要是因为与深度神经网络的紧密结合,利用人工神经网络对于非线性函数的强大的拟合能力，极大地拓宽了强化学习的使用范围。</p>
+
+<p>考虑下面的<strong>倒立摆</strong>问题(Cartpole)，场景模拟了一个小车和一根竖直的杆子，小车可以在水平轨道上左右移动，目标是通过控制小车的移动来保持杆子的竖直</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/%E5%9B%BE%E7%89%872.gif" alt="图片2" /></p>
+
+<p>首先对问题进行MDP建模</p>
+
+<ul>
+  <li><strong>状态空间</strong>：状态是一个包含4个连续值的向量，包括：
+    <ul>
+      <li>小车位置（Cart Position）：范围为 [-4.8, 4.8]</li>
+      <li>小车速度（Cart Velocity）：范围为 [-Inf, Inf]</li>
+      <li>杆子角度（Pole Angle）：范围为 [-24°, 24°]</li>
+      <li>杆子角速度（Pole Angular Velocity）：范围为 [-Inf, Inf]</li>
+    </ul>
+  </li>
+  <li><strong>动作空间</strong>：动作是离散的，只有两个选项：
+    <ul>
+      <li>0：向左移动小车</li>
+      <li>1：向右移动小车</li>
+    </ul>
+  </li>
+  <li><strong>奖励机制</strong>：每保持杆子竖直一帧，奖励值为1</li>
+</ul>
+
+<p><strong>DQN(Deep Q-learning Network)算法</strong></p>
+
+<p>在人工神经网络的数学理论中，<strong>通用近似定理</strong>（或称<strong>万能近似定理</strong>）指出人工神经网络近似任意函数的能力[1]。附录A是”倒立摆“问题的动力学方程,学习的过程实际上就是用神经网络(<strong>Q网络</strong>)来对这个动力学方程进行拟合,这个过程用数学表示如下</p>
+
+<p>$Q^a_\theta(s) \to \hat Q(s,a),其中\theta是可学习的网络参数,\hat Q(s,a)是真值,a \in { 0,1}$，那么就可以构建如下神经网络</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250228194900867.png" alt="image-20250228194900867" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#代码片段3 简单Q网络(配图中展示的是4个隐藏层的网络,实际上针对倒立摆问题只要1个隐藏层就够了)
+</span><span class="k">class</span> <span class="nc">Qnet</span><span class="p">(</span><span class="n">torch</span><span class="p">.</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="sh">'''</span><span class="s"> 只有一层隐藏层的Q网络 </span><span class="sh">'''</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">state_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">,</span> <span class="n">action_dim</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">(</span><span class="n">Qnet</span><span class="p">,</span> <span class="n">self</span><span class="p">).</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">fc1</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="n">state_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">fc2</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">action_dim</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">F</span><span class="p">.</span><span class="nf">relu</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="nf">fc1</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>  <span class="c1"># 隐藏层使用ReLU激活函数
+</span>        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">fc2</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>可以用Q-Learning算出来的Q值$r_{t+1}+\gamma max_aQ_\theta^a(s_{t+1})$作为真值$\hat Q(s_t,a_t)$,另外由于是连续型向量损失函数可以设为MSE均方误差</p>
+
+<p>即 $Loss = (Q^a <em>\theta(s_t) - (r + \gamma max_aQ</em>\theta^a(s_{t+1}))^2$ ,这样理论上就将Q-Learning拓展到了连续空间。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#代码片段4 通过梯度反向传播更新网络参数
+</span><span class="n">q_values</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">q_net</span><span class="p">(</span><span class="n">states</span><span class="p">).</span><span class="nf">gather</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">actions</span><span class="p">)</span>  <span class="c1"># Q值
+</span><span class="n">max_next_q_values</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">target_q_net</span><span class="p">(</span><span class="n">next_states</span><span class="p">).</span><span class="nf">max</span><span class="p">(</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">].</span><span class="nf">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="c1"># 下个状态的最大Q值
+</span><span class="n">q_targets</span> <span class="o">=</span> <span class="n">rewards</span> <span class="o">+</span> <span class="n">self</span><span class="p">.</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">max_next_q_values</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">dones</span><span class="p">)</span>  <span class="c1"># TD误差目标
+</span><span class="n">dqn_loss</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">F</span><span class="p">.</span><span class="nf">mse_loss</span><span class="p">(</span><span class="n">q_values</span><span class="p">,</span> <span class="n">q_targets</span><span class="p">))</span>  <span class="c1"># 均方误差损失函数
+</span><span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>  <span class="c1"># PyTorch中默认梯度会累积,这里需要显式将梯度置为0
+</span><span class="n">dqn_loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>  <span class="c1"># 反向传播更新参数
+</span><span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>不过上面的思路原理上是很简单,但是工程实现上并没有那么理想,如果直接单纯地进行监督学习训练，神经网络训练是无法收敛的。</p>
+
+<p>第一个问题是因为监督学习要求的训练数据满足独立同分布($i.i.d$)条件，而智能体采样的数据是有时间上的顺序关系，如果按着自然的顺利丢给网络进行训练的话，会造成网络的训练极其不稳定。</p>
+
+<p>第二个问题是因为原来真值是由Q网络产生的$\hat Q(s,a)=r + \gamma max_aQ_\theta^a(s_{t+1})$,这样随着训练的进行，真值本身也在发生变化(注意到如果是表格的话就没有这个问题了),训练对象在动训练目标也同步在动，这样会使得训练的优化轨迹非常的不稳定(可见下图解释)。</p>
+
+<p>DeepMind的工程师们使用了两个关键的工程技巧来解决这两个问题:回放缓存与目标网络。</p>
+
+<p>第一个技巧是<strong>回放缓存(replay buffer)</strong>。主要是先将智能体获得的经验$(S_t,A_t,R_{t+1})$存入回放缓存中，然后从该缓存中均匀采样小批量样本用于Q函数更新。这样一方面使得数据满足独立同分布，另外一方面同一个样本$(S_t,A_t,R_{t+1})$可以复用提高了样本效率(sample efficiency,这是强化学习中一个永恒的主题)</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#代码片段5 回放缓存
+</span><span class="k">while</span> <span class="ow">not</span> <span class="n">done</span><span class="p">:</span>
+    <span class="n">action</span> <span class="o">=</span> <span class="n">agent</span><span class="p">.</span><span class="nf">take_action</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+    <span class="n">next_state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">truncated</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="p">.</span><span class="nf">step</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+    <span class="c1">#将经验保存到回放缓存中
+</span>    <span class="n">replay_buffer</span><span class="p">.</span><span class="nf">add</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">next_state</span><span class="p">,</span> <span class="n">done</span><span class="p">)</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="n">next_state</span>
+    <span class="n">episode_return</span> <span class="o">+=</span> <span class="n">reward</span>
+    <span class="c1"># 当回放缓存中数据的数量超过一定值后,才进行Q网络训练
+</span>    <span class="k">if</span> <span class="n">replay_buffer</span><span class="p">.</span><span class="nf">size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">minimal_size</span><span class="p">:</span>
+        <span class="n">b_s</span><span class="p">,</span> <span class="n">b_a</span><span class="p">,</span> <span class="n">b_r</span><span class="p">,</span> <span class="n">b_ns</span><span class="p">,</span> <span class="n">b_d</span> <span class="o">=</span> <span class="n">replay_buffer</span><span class="p">.</span><span class="nf">sample</span><span class="p">(</span><span class="n">batch_size</span><span class="p">)</span>
+        <span class="n">transition_dict</span> <span class="o">=</span> <span class="p">{</span><span class="sh">'</span><span class="s">states</span><span class="sh">'</span><span class="p">:</span> <span class="n">b_s</span><span class="p">,</span><span class="sh">'</span><span class="s">actions</span><span class="sh">'</span><span class="p">:</span> <span class="n">b_a</span><span class="p">,</span><span class="sh">'</span><span class="s">next_states</span><span class="sh">'</span><span class="p">:</span> <span class="n">b_ns</span><span class="p">,</span><span class="sh">'</span><span class="s">rewards</span><span class="sh">'</span><span class="p">:</span> <span class="n">b_r</span><span class="p">,</span><span class="sh">'</span><span class="s">dones</span><span class="sh">'</span><span class="p">:</span> <span class="n">b_d</span><span class="p">}</span>
+        <span class="n">agent</span><span class="p">.</span><span class="nf">update</span><span class="p">(</span><span class="n">transition_dict</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>第二个技巧是<strong>目标网络(target network)</strong>。主要是独立一个与主网络$Q^a_\theta(s)$不一样的目标Q网络$Q^a_\mu(s)$来生成真值即令$\hat Q(s,a)=r + \gamma max_aQ_\mu^a(s_{t+1})$，这样误差就变成了 $Loss = (Q^a <em>\theta(s) - (r + \gamma max_aQ</em>\mu^a(s_{t+1}))^2$。目标网络每几步后与主Q网络进行同步。目标网络通过使用旧参数生成真值，使真值不受最新参数的影响，从而大大减少发散和震荡的情况。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#代码片段6 目标网络更新(前面一段是代码片段4梯度反向传播)
+</span><span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">transition_dict</span><span class="p">):</span>
+    <span class="n">states</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">transition_dict</span><span class="p">[</span><span class="sh">'</span><span class="s">states</span><span class="sh">'</span><span class="p">],</span><span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="nb">float</span><span class="p">).</span><span class="nf">to</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">actions</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">transition_dict</span><span class="p">[</span><span class="sh">'</span><span class="s">actions</span><span class="sh">'</span><span class="p">]).</span><span class="nf">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">).</span><span class="nf">to</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">rewards</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">transition_dict</span><span class="p">[</span><span class="sh">'</span><span class="s">rewards</span><span class="sh">'</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="nb">float</span><span class="p">).</span><span class="nf">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">).</span><span class="nf">to</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">next_states</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">transition_dict</span><span class="p">[</span><span class="sh">'</span><span class="s">next_states</span><span class="sh">'</span><span class="p">],</span><span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="nb">float</span><span class="p">).</span><span class="nf">to</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">dones</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">tensor</span><span class="p">(</span><span class="n">transition_dict</span><span class="p">[</span><span class="sh">'</span><span class="s">dones</span><span class="sh">'</span><span class="p">],</span><span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="nb">float</span><span class="p">).</span><span class="nf">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">).</span><span class="nf">to</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="n">q_values</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">q_net</span><span class="p">(</span><span class="n">states</span><span class="p">).</span><span class="nf">gather</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">actions</span><span class="p">)</span>  <span class="c1"># Q值
+</span>    <span class="n">max_next_q_values</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="nf">target_q_net</span><span class="p">(</span><span class="n">next_states</span><span class="p">).</span><span class="nf">max</span><span class="p">(</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">].</span><span class="nf">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="c1"># 下个状态的最大Q值
+</span>    <span class="n">q_targets</span> <span class="o">=</span> <span class="n">rewards</span> <span class="o">+</span> <span class="n">self</span><span class="p">.</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">max_next_q_values</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">dones</span><span class="p">)</span>  <span class="c1"># TD误差目标
+</span>    <span class="n">dqn_loss</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">F</span><span class="p">.</span><span class="nf">mse_loss</span><span class="p">(</span><span class="n">q_values</span><span class="p">,</span> <span class="n">q_targets</span><span class="p">))</span>  <span class="c1"># 均方误差损失函数
+</span>    <span class="n">self</span><span class="p">.</span><span class="n">optimizer</span><span class="p">.</span><span class="nf">zero_grad</span><span class="p">()</span>  <span class="c1"># PyTorch中默认梯度会累积,这里需要显式将梯度置为0
+</span>    <span class="n">dqn_loss</span><span class="p">.</span><span class="nf">backward</span><span class="p">()</span>  <span class="c1"># 反向传播更新参数
+</span>    <span class="n">self</span><span class="p">.</span><span class="n">optimizer</span><span class="p">.</span><span class="nf">step</span><span class="p">()</span>
+	<span class="c1"># 多步后再更新目标网络
+</span>    <span class="k">if</span> <span class="n">self</span><span class="p">.</span><span class="n">count</span> <span class="o">%</span> <span class="n">self</span><span class="p">.</span><span class="n">target_update</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">target_q_net</span><span class="p">.</span><span class="nf">load_state_dict</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">q_net</span><span class="p">.</span><span class="nf">state_dict</span><span class="p">())</span>  
+    <span class="n">self</span><span class="p">.</span><span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+</code></pre></div></div>
+
+<p>可以通过猫追老鼠的例子来直观地理解这个过程。猫是Q主网络，老鼠是Q目标网络。如果两者用同一个网络，就导致网络更新后猫和老鼠都在动，就会产生非常奇怪的优化轨迹。所以固定Q目标网络，让老鼠动得不那么频繁，可能让它每5步动一次，猫则是每一步都在动。如果老鼠每5次动一步，猫就有足够的时间来接近老鼠，它们之间的距离会随着优化过程越来越小，最后它们的轨迹就会收敛</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250301173432052.png" alt="image-20250301173432052" style="zoom:67%;" /></p>
+
+<h4 id="ai时代的强化学习">AI时代的强化学习</h4>
+
+<p>上面无论是”迷宫“问题还是”倒立摆“问题都是人们将问题关键状态特征总结好了的。相当于是我们对原始的图像等数据进行了”精加工“，但是现实世界的很多问题是很难进行这种”精加工“的，对于有些问题我们是没有办法总结出几个关键特征的。所以需要智能体自己从原始数据中提取特征智然后再根据这些特征做决策(强化学习)。</p>
+
+<p>比如下面这样的Atari视频游戏,需要智能体自己通过输入原始图像数据来学习</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305201842196.png" alt="image-20250305201842196" /></p>
+
+<p>一般通过卷积神经网络(CNN)来对图像数据进行特征提取</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#代码片段6 带卷积层的Q网络(对于Atari游戏等简单低分辨率图像，仅在代码片段3中简单Q网络前加上几层卷积层即可)
+</span><span class="k">class</span> <span class="nc">ConvolutionalQnet</span><span class="p">(</span><span class="n">torch</span><span class="p">.</span><span class="n">nn</span><span class="p">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="sh">'''</span><span class="s"> 加入卷积层的Q网络 </span><span class="sh">'''</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">action_dim</span><span class="p">,</span> <span class="n">in_channels</span><span class="o">=</span><span class="mi">4</span><span class="p">):</span>
+        <span class="nf">super</span><span class="p">(</span><span class="n">ConvolutionalQnet</span><span class="p">,</span> <span class="n">self</span><span class="p">).</span><span class="nf">__init__</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">conv1</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="n">in_channels</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">conv2</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">conv3</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">nn</span><span class="p">.</span><span class="nc">Conv2d</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">fc4</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">7</span> <span class="o">*</span> <span class="mi">7</span> <span class="o">*</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">512</span><span class="p">)</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">head</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">nn</span><span class="p">.</span><span class="nc">Linear</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="n">action_dim</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">/</span> <span class="mi">255</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">F</span><span class="p">.</span><span class="nf">relu</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="nf">conv1</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">F</span><span class="p">.</span><span class="nf">relu</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="nf">conv2</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">F</span><span class="p">.</span><span class="nf">relu</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="nf">conv3</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">F</span><span class="p">.</span><span class="nf">relu</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="nf">fc4</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">head</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>对于一些比较复杂的游戏来说，只有一帧图像的信息是不足以支撑决策的,同时时序信息也很关键，这就需要用到循环神经网络(RNN)来提取时序信息的特征。</p>
+
+<p>不完整信息的挑战。对于一些复杂的问题，智能体它所观测到的数据是无论是用CNN提取视觉特征还是用RNN提取时序特征，总很难确保学到的观测状态$o_t$能描述真实的环境状态$s_t$，所以并不是说用了神经网络和强化学习就一劳永逸地解决了所有问题，对于具体的现实工程问题还是需要工程师们抽象出问题具体的特征,尽可能捕获环境的状态规避掉难以处理的环境噪声确保环境的马尔可夫性。</p>
+
+<p>下图是DeepMind于2015年发表在《Nature》上发表的介绍DQN那篇文章[1]的配图</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305141113541.png" alt="image-20250305141113541" /></p>
+
+<p>图中点的颜色代表的是策略的状态价值函数$V_\pi(s)$，其值意义是”游戏结束的时候预期获得多大的奖励“。如下图中间这个游戏画面$V_\pi(s)$也许会很大，因为这时还有很多的怪兽可以击杀，所以我们会得到很高的分数。下图右边这个画面的情况我们得到的 $V_\pi(s)$可能就很小，因为剩下的怪兽也不多，并且红色的防护罩已经消失了，所以我们可能很快就会“死 掉”。因此接下来得到预期的奖励，就不会太大。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305175820904.png" alt="image-20250305175820904" /></p>
+
+<p>上图中展示的Landscape可以认为是一个图像数据生成的高维度的Q-table,Q网络前面架上卷积层可以将图像等高维数据映射到低维空间中。通过将这些低维空间状态可视化,我们可以直观地看到对于强化学习来说视频游戏的控制问题也就等价于高维数据空间中的”走迷宫“问题,所以近些年兴起AI技术即深度学习方法实际上就是高等数学理论中对高维空间数据的处理方法的应用。</p>
+
+<p>[1] Mnih, V., Kavukcuoglu, K., Silver, D. <em>et al.</em> Human-level control through deep reinforcement learning. <em>Nature</em> <strong>518</strong>, 529–533 (2015).</p>
+
+<p>[2] Nielsen, Michael. <a href="http://neuralnetworksanddeeplearning.com/chap4.html">4</a>. <a href="http://neuralnetworksanddeeplearning.com/">Neural Networks and Deep Learning</a>. Determination Press. 2015 [2020-08-27].</p>
+
+<p><strong>附录：</strong></p>
+
+<p><strong>A.</strong>倒立摆的动力学方程</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>]]></content><author><name>David Lee</name></author><category term="AI" /><summary type="html"><![CDATA[本文主要介绍强化学习基础从零到DQN算法]]></summary></entry><entry><title type="html">Github Pages 建个人网站全程攻略</title><link href="http://localhost:4000/%E5%85%B6%E4%BB%96/2025/03/06/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97.html" rel="alternate" type="text/html" title="Github Pages 建个人网站全程攻略" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/%E5%85%B6%E4%BB%96/2025/03/06/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97</id><content type="html" xml:base="http://localhost:4000/%E5%85%B6%E4%BB%96/2025/03/06/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97.html"><![CDATA[<h2 id="github-pages-建个人网站全程攻略">Github Pages 建个人网站全程攻略</h2>
+
+<h4 id="github-pages">GitHub Pages</h4>
+
+<p>1.建立github.io仓(命名要注意!! 注意是<strong>个人站点还是项目站点</strong>!!，很坑，详见后面解释)</p>
+
+<p>2.settings pages下进行设置</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20240911150939286.png" alt="image-20240911150939286" /></p>
+
+<p>修改后还要注意到需要build</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20240911151316835.png" alt="image-20240911151316835" /></p>
+
+<h3 id="jekyll">Jekyll</h3>
+
+<hr />
+
+<p><strong>Jekyll</strong> 是一个静态网站生成器，用于创建个人博客、项目网站或公司主页。它通过将 Markdown 或 HTML 文件转换为静态网页，生成一个完整的网站。</p>
+
+<p>jekyll安装教程 https://blog.csdn.net/qq_33919450/article/details/127859193</p>
+
+<p>先安装ruby https://www.ruby-lang.org/zh_cn/</p>
+
+<p>安装了 Ruby 之后，可以通过 Gem 包管理器安装 Jekyll
+gem install jekyll bundler</p>
+
+<p>创建一个新的 Jekyll 站点非常简单：</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20240911143228623.png" alt="image-20240911143228623" /></p>
+
+<p><strong>jekyll new myblog</strong>之后生成的目录结构</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306200049709.png" alt="image-20250306200049709" /></p>
+
+<p>重要的配置文件:_<strong>config.yml</strong> 其中destination:存放用来生成网页的根目录，exerpt_separator摘要分隔符</p>
+
+<p>很重要的，还有用来<strong>解析公式的math_engine</strong></p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306200749263.png" alt="image-20250306200749263" /></p>
+
+<p><strong>编写内容</strong>： Markdown文件放到<strong>_posts</strong> 目录下。格式要求 <code class="language-plaintext highlighter-rouge">YYYY-MM-DD-文章标题.md</code>（例如 <code class="language-plaintext highlighter-rouge">2023-10-05-我的博客.md</code>）。</p>
+
+<p>一般先用<strong>jekyll server</strong> 本地看下，然后再上传部署到git上。</p>
+
+<p>注意文章还要加上 <strong>Matter Front</strong>（<strong>文章抬头</strong>)</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306203729007.png" alt="image-20250306203729007" /></p>
+
+<p><strong>index.md</strong> 首页</p>
+
+<p><strong><em>layouts** 存放布局 。**</em>__include</strong> 存放可重用的HTML片段 他们一般直接用主题提供的就可以了</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306201002065.png" alt="image-20250306201002065" /></p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306201312027.png" alt="image-20250306201312027" /></p>
+
+<p><strong>_data</strong>存放结构化数据<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306201709498.png" alt="image-20250306201709498" /></p>
+
+<p><strong>Gemfile</strong> 定义Ruby依赖，比较重要</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306201521016.png" alt="image-20250306201521016" /></p>
+
+<p><strong>public</strong>放css等(一般用主题自带的)</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306201830950.png" alt="image-20250306201830950" /></p>
+
+<h4 id="部署站点"><strong>部署站点</strong></h4>
+
+<hr />
+
+<p>直接提交到 Git 库就可以，部署是自动的，就是这么简单！！</p>
+
+<p>一般不会马上就更新，需要3-5分钟部署。GitHub的<strong>Actions</strong>标签下查看部署进度</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306202145353.png" alt="image-20250306202145353" /></p>
+
+<h2 id="图床设置">图床设置</h2>
+
+<p>图床用来存放图片等资源的，需要把图片放到云端这样网站页面才能索引到。</p>
+
+<p>用<strong>Aliyun对象存储</strong>就可以</p>
+
+<p>申请Aliyun对象存储的 AccesssKey和ID，如果是新的端需要新创建</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20240911202439315.png" alt="image-20240911202439315" /></p>
+
+<p>Bucket</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20240911202551996.png" alt="image-20240911202551996" /></p>
+
+<p>下载<strong>PicGo</strong> https://picgo.github.io/PicGo-Doc/zh/</p>
+
+<p>PicGO设置</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20240911202628238.png" alt="image-20240911202628238" /></p>
+
+<p>最后<strong>在Typora设置</strong></p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20240911203150784.png" alt="image-20240911203150784" /></p>
+
+<p>Typora上传图片很简单，直接右键选择上传图片就可以。</p>
+
+<h3 id="主题">主题</h3>
+
+<hr />
+
+<p>实际上主题就是一个基本搞好的静态网站项目，可以在别人基础上做出好看的网页效果。</p>
+
+<p>使用的话就是简单的把文件拷到目录下就可以了。静态网站所以就是这么简单</p>
+
+<p>网上很多主题资源，有jekyll官方的网站，github也有很多免费的，找一个适合自己的</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306202405122.png" alt="image-20250306202405122" /></p>
+
+<p><strong>FAQ</strong></p>
+
+<p>Q:为什么会有无法自动路由到文件的情况？(后面会自动加上库的名称导致文件无法路由到)</p>
+
+<p>A:因为github pages站点的两种配置类型：1.站点类型 https://lixiongguo.github.io/  2. 项目站点 https://lixiongguo.github.io/ geogo.github.io/</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306195030026.png" alt="image-20250306195030026" /></p>
+
+<p>解决方法很简单直接改名字就可以了</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306195416757.png" alt="image-20250306195416757" /></p>]]></content><author><name>David Lee</name></author><category term="其他" /><summary type="html"><![CDATA[Github Pages 建个人网站全程攻略 GitHub Pages 1.建立github.io仓(命名要注意!! 注意是个人站点还是项目站点!!，很坑，详见后面解释) 2.settings pages下进行设置 修改后还要注意到需要build Jekyll Jekyll 是一个静态网站生成器，用于创建个人博客、项目网站或公司主页。它通过将 Markdown 或 HTML 文件转换为静态网页，生成一个完整的网站。 jekyll安装教程 https://blog.csdn.net/qq_33919450/article/details/127859193 先安装ruby https://www.ruby-lang.org/zh_cn/ 安装了 Ruby 之后，可以通过 Gem 包管理器安装 Jekyll gem install jekyll bundler 创建一个新的 Jekyll 站点非常简单： jekyll new myblog之后生成的目录结构 重要的配置文件:_config.yml 其中destination:存放用来生成网页的根目录，exerpt_separator摘要分隔符 很重要的，还有用来解析公式的math_engine 编写内容： Markdown文件放到_posts 目录下。格式要求 YYYY-MM-DD-文章标题.md（例如 2023-10-05-我的博客.md）。 一般先用jekyll server 本地看下，然后再上传部署到git上。 注意文章还要加上 Matter Front（文章抬头) index.md 首页 layouts** 存放布局 。**__include 存放可重用的HTML片段 他们一般直接用主题提供的就可以了 _data存放结构化数据 Gemfile 定义Ruby依赖，比较重要 public放css等(一般用主题自带的) 部署站点 直接提交到 Git 库就可以，部署是自动的，就是这么简单！！ 一般不会马上就更新，需要3-5分钟部署。GitHub的Actions标签下查看部署进度 图床设置 图床用来存放图片等资源的，需要把图片放到云端这样网站页面才能索引到。 用Aliyun对象存储就可以 申请Aliyun对象存储的 AccesssKey和ID，如果是新的端需要新创建 Bucket 下载PicGo https://picgo.github.io/PicGo-Doc/zh/ PicGO设置 最后在Typora设置 Typora上传图片很简单，直接右键选择上传图片就可以。 主题 实际上主题就是一个基本搞好的静态网站项目，可以在别人基础上做出好看的网页效果。 使用的话就是简单的把文件拷到目录下就可以了。静态网站所以就是这么简单 网上很多主题资源，有jekyll官方的网站，github也有很多免费的，找一个适合自己的 FAQ Q:为什么会有无法自动路由到文件的情况？(后面会自动加上库的名称导致文件无法路由到) A:因为github pages站点的两种配置类型：1.站点类型 https://lixiongguo.github.io/ 2. 项目站点 https://lixiongguo.github.io/ geogo.github.io/ 解决方法很简单直接改名字就可以了]]></summary></entry><entry><title type="html">曲面展平与网格参数化算法</title><link href="http://localhost:4000/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/03/06/mesh-param-intro.html" rel="alternate" type="text/html" title="曲面展平与网格参数化算法" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/03/06/mesh-param-intro</id><content type="html" xml:base="http://localhost:4000/%E5%87%A0%E4%BD%95%E4%B8%8E%E6%8B%93%E6%89%91/2025/03/06/mesh-param-intro.html"><![CDATA[<p>本文主要介绍曲面展平与网格参数化算法
+<!--more--></p>
+<h4 id="曲面展平映射">曲面展平映射</h4>
+
+<p>如何将一个三维空间中的曲面摊平到二维的平面上？有时为了方便观察研究人们会将地球仪的表面展平。这在生活经验中看起来似乎不太起眼的问题，但是却蕴含着无限的几何与拓扑的奥秘。想象一下如果有一个曲面我们想要设计程序让计算机来做这个“展平”的话,似乎就不是一件容易的事了。</p>
+
+<p>比如通过CT扫描获取到腹部断层图像，然后用多视角几何的方法重建三维直肠曲面后，为了方便医生的观察，最后将这个直肠曲面平展到平面上。（使用这种方法，设备和病患没有接触，不需要麻醉，不会诱导并发症）</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227101914414.png" alt="image-20250227101914414" /></p>
+
+<p>为了解决这个问题我们要从数学上找到一个<strong>展平映射</strong>$f:R^3\rightarrow R^{2}$，使得三维空间中曲面的点与二维空间中的点是相对应。</p>
+
+<p>为了先对这个问题有一个初步的了解，先考虑下最简单的情况，即最简单的三维曲面—球面。如下图所示这种绘制世界地图的“墨卡托投影法”。基本方法是假想在球面内部有一个光源，而球面外部包围着一个圆柱面,光线将球面的点投射到圆柱面上,再将圆柱面展开。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/%E5%9B%BE%E7%89%874.png" alt="图片4" /></p>
+
+<p><strong>映射是不完美的是有扭曲的</strong>,可以看到图中格陵兰岛面积跟非洲差不多大，但是真实相差很远。这种方法牺牲面积大小，保留角度和形状(也称为共形映射)沿着赤道不会发生扭曲，越靠近极点的地方面积扭曲就越大。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250228102623615.png" alt="image-20250228102623615" style="zoom:67%;" /></p>
+
+<p><strong>尽可能减小扭曲</strong>是要达成的重要目标，我们要尽可能保证三维曲面展平到平面上后其细节信息不会造成太大的失真。想象下如果CT扫描后的直肠曲面展平后观察到的病灶变形严重的话(肿瘤块被放大或缩小)那这样的映射是不可用的。</p>
+
+<p>球面有很好的解析表达式$x^2+y^2+z^2 = 4\pi R^2$，所以是容易处理的。但是对于更加复杂的曲面，又该如何计算呢？那就要借助计算机的力量了。</p>
+
+<p>功能点1粉色先</p>
+
+<p>功能2蓝色线</p>
+
+<h4 id="三角网格参数化">三角网格参数化</h4>
+
+<table>
+  <tbody>
+    <tr>
+      <td>比如下图所示的大卫头像，计算机中的曲面是由许多小三角形构成的网格来表示的，这样的三角形组成的网格称为<strong>三角网格(Mesh)</strong> 记作$M={V,E,F</td>
+      <td>V,E,F为网格的顶点,边,面}$</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250311193102749.png" alt="image-20250311193102749" /></p>
+
+<p>为了简化处理我们下面用这个简化版(“抽象”)的头像来做实验</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306112054639.png" alt="image-20250306112054639" /></p>
+
+<p>在三角网格的设定下，那么我们要求的映射$f$又可以写成这样$f:M \rightarrow R^{2},\text M{是R^{3}中的三角网格}$ ,而将网格进行展平的算法称为”<strong>网格参数化算法</strong>“(Mesh Parameterization)，而要构造这样映射$f$只要对顶点集$V$找到一组$R^2$的坐标(一般称为”<strong>UV坐标</strong>“如下图所示）即可。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306113753650.png" alt="image-20250306113753650" style="zoom: 80%;" /></p>
+
+<p>注意到要使我们的映射的效果比较好的话，有一些约束条件是需要满足的</p>
+
+<p>1.映射之后内部的三角形的边是不能相交的</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227112126656.png" alt="image-20250227112126656" style="zoom:50%;" /></p>
+
+<p>2.映射后三角形的定向是不能翻转的，否则也会有错乱的情况</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227120632868.png" alt="image-20250227120632868" style="zoom: 50%;" /></p>
+
+<p>3.映射后的边界也是不能相交的</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306151844519.png" alt="image-20250306151844519" style="zoom:50%;" /></p>
+
+<p><strong>半边结构</strong></p>
+
+<p>适用于三角网格(Mesh)的半边结构(half-edge)</p>
+
+<h4 id="一个简单的算法">一个简单的算法</h4>
+
+<p>类似上面的”墨卡托投影“的过程，我们可以先进行直觉性的假想实验。假设三角网格M是有弹性的即每一条边都视为是一个弹簧的话，那么我们可以在外部施加力将边界固定下来, 由于三角网格的边会对力进行传导，那内部的点也会跟着改变。</p>
+
+<p>![image-20250311194844722<em>副本](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250311194844722</em>%E5%89%AF%E6%9C%AC.png)</p>
+
+<p>假设我们把三角网格的边界固定到一个圆周上</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250311194454982.png" alt="image-20250311194454982" /></p>
+
+<p>为了简化处理，假设对于内部某个顶点$v \in V_{int}$作用在它身上的力是均衡的，那它将会位于其邻居顶点所构成区域的质心位置，这样自然就形成了一个方程了。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306105030177.png" alt="image-20250306105030177" /></p>
+
+<ol>
+  <li>将$M$中的顶点集$V$进行编号(用数字代表顶点) $V={1,2,3,…n}$,并划分为内点集和边界点集即 $V = V_{int} \cup V_{bnd}$</li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>对内部顶点$v \in V_{int}$,设$N_v$为其邻居顶点集，则由于$v$位于质心位置则有$x_v = \frac 1 {</td>
+          <td>N_v</td>
+          <td>} \Sigma_{u \in N_v}x_u$</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>对边界顶点$v \in V_{bnd}$,将边界点也进行排序并且$v$的序号$i_v$，由于边界点定在圆周上那么$x_{i_v}=(rcos({\theta_{i_v}}),rsin({\theta_{i_v}}))\$</li>
+</ol>
+
+<p>上面的式子实际上可以表示成两个实稀疏线性方程$Ax=b,A={a_{ij}}_{n*n}\$(u,v两个坐标)</p>
+
+<ol>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>对任意的$v \in V_{int}$ , $A(v,u) = \begin{cases}  1 &amp;，  u=v \ -\frac 1 {</td>
+          <td>N_v</td>
+          <td>}&amp;， u \in N_v \ 0 &amp;，其它\end{cases} $</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>对任意的$v \in V_{bnd}$, $A(v,u) = \begin{cases}  1 &amp;，  u=v \  0 &amp;，其它\end{cases} $，其边界序号为$i_v$ ,则$b_{i_v} = (rcos({\theta_{i_v}})，rsin({\theta_{i_v}}) )$</li>
+</ol>
+
+<p>使用C++的话可以通过Eigen库来解这个稀疏线性方程组，最后可以得到如下图的展平结果</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306143314990.png" alt="image-20250306143314990" style="zoom:67%;" /></p>
+
+<p>如果在表面贴上一层棋盘格，可以直观地观察到扭曲的大小。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306144819046.png" alt="image-20250306144819046" style="zoom:67%;" /></p>
+
+<p>事实上，虽然上面的算法我们做了一系列的假设，但是算法的正确性还是有严格的数学保证(解是存在的，并且符合约束条件)。这个正确性保证来自于图论(Graph Theory)中的<strong>Tutte嵌入定理</strong>。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/202312142106590.png" alt="img" /></p>
+
+<p>将三角网格(Mesh)看成是一个图(graph)的话，定理说明只要将边界点固定在一个凸多边形上，并且内部的点是其邻居的凸组合(上面算法设置内点位于邻居质心)就能形成一个合法的参数化。</p>
+
+<p><strong>精彩才刚刚开始</strong></p>
+
+<p>上面的算法虽然正确性是有保证的，但是缺陷也是很明显的。首先是我们需要先来指定一个凸多边形边界。那么如果原来的3D模型边界与我们所指定边界如果差别比较大的话，那就不可避免的会有比较大的扭曲变形。</p>]]></content><author><name>David Lee</name></author><category term="几何与拓扑" /><summary type="html"><![CDATA[本文主要介绍曲面展平与网格参数化算法]]></summary></entry><entry><title type="html">Welcome to Jekyll!</title><link href="http://localhost:4000/%E5%85%B6%E4%BB%96/2020/01/02/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to Jekyll!" /><published>2020-01-02T18:31:29+08:00</published><updated>2020-01-02T18:31:29+08:00</updated><id>http://localhost:4000/%E5%85%B6%E4%BB%96/2020/01/02/welcome-to-jekyll</id><content type="html" xml:base="http://localhost:4000/%E5%85%B6%E4%BB%96/2020/01/02/welcome-to-jekyll.html"><![CDATA[<p>You’ll find this post in your <code class="language-plaintext highlighter-rouge">_posts</code> directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run <code class="language-plaintext highlighter-rouge">jekyll serve</code>, which launches a web server and auto-regenerates your site when a file is updated.</p>
+
+<p>Jekyll requires blog post files to be named according to the following format:</p>
+
+<p><code class="language-plaintext highlighter-rouge">YEAR-MONTH-DAY-title.MARKUP</code></p>
+
+<p>Where <code class="language-plaintext highlighter-rouge">YEAR</code> is a four-digit number, <code class="language-plaintext highlighter-rouge">MONTH</code> and <code class="language-plaintext highlighter-rouge">DAY</code> are both two-digit numbers, and <code class="language-plaintext highlighter-rouge">MARKUP</code> is the file extension representing the format used in the file. After that, include the necessary front matter. Take a look at the source for this post to get an idea about how it works.</p>
+
+<p>Jekyll also offers powerful support for code snippets:</p>
+
+<figure class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="k">def</span> <span class="nf">print_hi</span><span class="p">(</span><span class="nb">name</span><span class="p">)</span>
+  <span class="nb">puts</span> <span class="s2">"Hi, </span><span class="si">#{</span><span class="nb">name</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">end</span>
+<span class="n">print_hi</span><span class="p">(</span><span class="s1">'Tom'</span><span class="p">)</span>
+<span class="c1">#=&gt; prints 'Hi, Tom' to STDOUT.</span></code></pre></figure>
+
+<p>Check out the <a href="https://jekyllrb.com/docs/home">Jekyll docs</a> for more info on how to get the most out of Jekyll. File all bugs/feature requests at <a href="https://github.com/jekyll/jekyll">Jekyll’s GitHub repo</a>. If you have questions, you can ask them on <a href="https://talk.jekyllrb.com/">Jekyll Talk</a>.</p>]]></content><author><name></name></author><category term="其他" /><summary type="html"><![CDATA[You’ll find this post in your _posts directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run jekyll serve, which launches a web server and auto-regenerates your site when a file is updated. Jekyll requires blog post files to be named according to the following format: YEAR-MONTH-DAY-title.MARKUP Where YEAR is a four-digit number, MONTH and DAY are both two-digit numbers, and MARKUP is the file extension representing the format used in the file. After that, include the necessary front matter. Take a look at the source for this post to get an idea about how it works. Jekyll also offers powerful support for code snippets: def print_hi(name) puts "Hi, #{name}" end print_hi('Tom') #=&gt; prints 'Hi, Tom' to STDOUT. Check out the Jekyll docs for more info on how to get the most out of Jekyll. File all bugs/feature requests at Jekyll’s GitHub repo. If you have questions, you can ask them on Jekyll Talk.]]></summary></entry></feed>
