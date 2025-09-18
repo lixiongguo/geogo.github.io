@@ -1,5 +1,5 @@
 <div class="sidebar-item sidebar-header">
-	<div class='sidebar-brand'>
+	<!-- <div class='sidebar-brand'>
 		<a href="/about/">{{ site.title }}</a>
 	</div>
 	<p class="lead">{{ site.description }}</p>
@@ -8,9 +8,16 @@
 			<svg class="svg-icon grey">
 				<use xlink:href="{{ '/assets/minima-social-icons.svg#github' | relative_url }}" />
 			</svg></a></li>
-	{%- endif -%}
+	{%- endif -%} -->
+	<div class='circular-image'>
+		<img src="/assets/image/Koushiro.png" alt="Circular Image">
+	</div>
 </div>
-
+<ul class="nav">
+    <!-- ... 现有导航项 ... -->
+    <li><a href="/about">About me</a></li>
+    <!-- ... 现有导航项 ... -->
+</ul>
 <div class="sidebar-item sidebar-nav">
 	<ul class="nav">
       <li class="nav-title">Pages</li>
@@ -46,11 +53,7 @@
 	  </nav>
 	</ul>
 </div>
-<ul class="nav">
-    <!-- ... 现有导航项 ... -->
-    <li><a href="/about">About me</a></li>
-    <!-- ... 现有导航项 ... -->
-</ul>
+
 <div class="sidebar-item sidebar-footer">
 	<p>Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a></p>
 </div>
