@@ -357,3 +357,16 @@ footer {
 .post-list-item:hover .post-link {
   color: #007bff;
 }
+
+.circular-image {
+  width: 160px; /* 调整为您想要的尺寸 */
+  height: 160px; /* 调整为您想要的尺寸 */
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.circular-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
