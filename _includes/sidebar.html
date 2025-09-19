@@ -13,36 +13,21 @@
 		<img src="/assets/image/Koushiro.png" alt="Circular Image">
 	</div>
 </div>
-<ul class="nav">
-    <!-- ... 现有导航项 ... -->
-    <li><a href="/about">About me</a></li>
-    <!-- ... 现有导航项 ... -->
-</ul>
-<ul class="nav">
-    <!-- ... 现有导航项 ... -->
-    <li><a href="/caustics">美丽的焦散</a></li>
-    <!-- ... 现有导航项 ... -->
-</ul>
-<div class="sidebar-item sidebar-nav">
-	<ul class="nav">
-      <li class="nav-title">Pages</li>
-	  <li>
-	  	<a class="nav-item" href="/">Articles</a>
-	  </li>
-	  {% assign pages_list = site.pages %}
-	  {% for node in pages_list %}
-	    {% if node.title != null %}
-	      {% if node.layout == "page" %}
-	        <li>
-	        	<a class="nav-item" href="{{ node.url }}">
-	            	{{ node.title }}
-	            </a>
-	        </li>
-	      {% endif %}
-	    {% endif %}
-	  {% endfor %}
-	</ul>
+
+<div >
+	<p>学与玩</p>
 </div>
+<ul class="nav">
+    <!-- ... 现有导航项 ... -->
+    <li><a href="/about" class="rainbow-shine">About me</a></li>
+    <!-- ... 现有导航项 ... -->
+</ul>
+<ul class="nav">
+    <!-- ... 现有导航项 ... -->
+    <li><a href="/caustics" class="rainbow-shine">Gallery</a></li>
+    <!-- ... 现有导航项 ... -->
+</ul>
+
 
 <div class="sidebar-item sidebar-nav">
   	<ul class="nav">
@@ -58,7 +43,10 @@
 	  </nav>
 	</ul>
 </div>
-
+<div >
+	<p>人生箴言:</p>
+	<p>“成功的秘诀在于，你必须先知道失败的原因。”</p>
+</div>
 <div class="sidebar-item sidebar-footer">
 	<p>Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a></p>
 </div>
