@@ -3,7 +3,7 @@ layout: post
 title: "基于Poisson方程的焦散计算"
 author: David Lee
 date: 2025-03-06
-category: 焦散透镜
+categories: [Caustics]
 ---
 
 

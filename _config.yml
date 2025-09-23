@@ -7,6 +7,7 @@ excerpt_separator: <!--more-->
 # highlighter-theme:autumn
 highlighter-theme : emacs
 # highlighter-theme : rouge
+category_dir: category
 plugins:
   - jekyll-feed
 github_username: David Lee

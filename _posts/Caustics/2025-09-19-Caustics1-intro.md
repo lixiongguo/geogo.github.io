@@ -3,7 +3,7 @@ layout: post
 title: "什么是焦散(Caustic)"
 author: David Lee
 date: 2025-03-06
-category: 焦散透镜
+categories: [Caustics]
 ---
 
 
