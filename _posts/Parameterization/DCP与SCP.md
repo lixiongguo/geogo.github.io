@@ -2,6 +2,8 @@
 
 ![image-20250721150036762](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250721150036762.png)
 
+变形能量需要符合的约束条件
+
 DCP与LSCM方法的等价性
 
 Dirichlet能量
