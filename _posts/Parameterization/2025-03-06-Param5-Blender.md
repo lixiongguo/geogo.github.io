@@ -5,5 +5,4 @@ author: David Lee
 date: 2025-03-06
 category: 曲面参数化算法
 ---
-
-j将足球展平
+将足球展平
