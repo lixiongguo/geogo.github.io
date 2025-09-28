@@ -6,4 +6,32 @@ date: 2025-03-06
 categories: [Diffusion]
 ---
 
-FlowMatching
+先说明下什么是标准化流(Normalizing Flow)。“流”的意思就是从一点沿着一定路径变换到另外一点的动态过程。而标准化流变换的对象就是概率分布，通过标准化流将一个简单概率分布(如高斯分布)通过一系列动态变换到目标概率分布(需要建模的分布)。
+
+我们知道生成模型实际上就是求概率分布之间的变换T，而不同于GAN模型的“一步到位”的生成，标准化流是通过一系列变换来实现的。
+
+![image-20250928085554970](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250928085554970.png)
+
+下面要做的是用神经网络来拟合这一系列变换的过程
+
+将目标分数参数化为p1(x,theta),求其到
+
+![image-20250928084055471](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250928084055471.png)
+
+这种离散的组合一系列变换的方式需要每个组合函数都满足可逆，可微分的性质，要构造这样条件的神经网络需要很高的技巧。
+
+在连续标准化流(CNF)中，我们规避了求解单个映射的复杂条件，转而用一个常微分方程（ODE）
+
+来描述流的变换过程
+
+![image-20250928085821137](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250928085821137.png)
+
+![image-20250928085916614](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250928085916614.png)
+
+从连续性方程出发
+
+![image-20250928090654212](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250928090654212.png)
+
+得到如下公式
+
+![image-20250928090710933](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250928090710933.png)
