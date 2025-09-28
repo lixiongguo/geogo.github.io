@@ -3,7 +3,7 @@ layout: post
 title: "强化学习介绍"
 author: David Lee
 date: 2025-03-06
-category: 强化学习
+category: RL
 ---
 本文主要介绍强化学习基础从零到DQN算法
 <!--more-->
