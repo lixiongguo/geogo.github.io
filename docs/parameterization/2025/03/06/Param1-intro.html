@@ -91,35 +91,36 @@
 			<article class="post">
 	<header class="post-header">
 		<div class="post-title"> 
-			基于Poisson方程的焦散计算
+			曲面展平与网格参数化算法
 		</div>
 		<time class="post-date dt-published" datetime="2025-03-06T00:00:00+08:00" itemprop="datePublished">2025/03/06
 		</time>		
 	</header>
 
 	<div class="post-content">
-		<p>焦散(‘caustic’)是光线经过经过表面的散射和折射作用后形成的现象。</p>
+		<p>本文主要介绍曲面展平与网格参数化算法
+<!--more--></p>
+<h4 id="曲面展平映射">曲面展平映射</h4>
 
-<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801140209582.png" alt="image-20250801140209582" /></p>
+<p>如何将一个三维空间中的曲面摊平到二维的平面上？有时为了方便观察研究人们会将地球仪的表面展平。这在生活经验中看起来似乎不太起眼的问题，但是却蕴含着无限的几何与拓扑的奥秘。想象一下如果有一个曲面我们想要设计程序让计算机来做这个“展平”的话,似乎就不是一件容易的事了。</p>
 
-<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250724090825649.png" alt="image-20250724090825649" /></p>
+<p>比如通过CT扫描获取到腹部断层图像，然后用多视角几何的方法重建三维直肠曲面后，为了方便医生的观察，最后将这个直肠曲面平展到平面上。（使用这种方法，设备和病患没有接触，不需要麻醉，不会诱导并发症）</p>
 
-<p>水面由于有水波(wave)的存在，使其构成了多个凹面镜与凸面镜</p>
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227101914414.png" alt="image-20250227101914414" /></p>
 
-<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250724091317364.png" alt="image-20250724091317364" /></p>
+<p>为了解决这个问题我们要从数学上找到一个<strong>展平映射</strong>$f:R^3\rightarrow R^{2}$，使得三维空间中曲面的点与二维空间中的点是相对应。</p>
 
-<p>最简单的焦散效果—透镜聚焦</p>
+<p>为了先对这个问题有一个初步的了解，先考虑下最简单的情况，即最简单的三维曲面—球面。如下图所示这种绘制世界地图的“墨卡托投影法”。基本方法是假想在球面内部有一个光源，而球面外部包围着一个圆柱面,光线将球面的点投射到圆柱面上,再将圆柱面展开。</p>
 
-<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801132821417.png" alt="image-20250801132821417" /></p>
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/%E5%9B%BE%E7%89%874.png" alt="图片4" /></p>
 
-<p>通过模拟光线的运动可以实现效果，但是需要消耗太多运算资源</p>
+<p><strong>映射是不完美的是有扭曲的</strong>,可以看到图中格陵兰岛面积跟非洲差不多大，但是真实相差很远。这种方法牺牲面积大小，保留角度和形状(也称为共形映射)沿着赤道不会发生扭曲，越靠近极点的地方面积扭曲就越大。</p>
 
-<p>直接用一个triangle mesh来做为光源波面</p>
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250228102623615.png" alt="image-20250228102623615" style="zoom:67%;" /></p>
 
-<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801134149935.png" alt="image-20250801134149935" /></p>
+<p><strong>尽可能减小扭曲</strong>是要达成的重要目标，我们要尽可能保证三维曲面展平到平面上后其细节信息不会造成太大的失真。想象下如果CT扫描后的直肠曲面展平后观察到的病灶变形严重的话(肿瘤块被放大或缩小)那这样的映射是不可用的。</p>
 
-<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801160146361.png" alt="image-20250801160146361" /></p>
-
+<p>球面有很好的解析表达式$x^2+y^2+z^2 = 4\pi R^2$，所以是容易处理的。但是对于更加复杂的曲面，又该如何计算呢？那就要借助计算机的力量了。</p>
 
 	</div>
 </article>

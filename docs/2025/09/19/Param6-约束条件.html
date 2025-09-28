@@ -1,0 +1,21 @@
+<p>1.分段线性映射表述(PieceWise Linear Mapping)</p>
+
+<p>在三角网格的设定下，那么我们要求的映射$f$又可以写成这样$f:M \rightarrow R^{2},\text M{是R^{3}中的三角网格}$ ,而将网格进行展平的算法称为”<strong>网格参数化算法</strong>“(Mesh Parameterization)，而要构造这样映射$f$只要对顶点集$V$找到一组$R^2$的坐标(一般称为”<strong>UV坐标</strong>“如下图所示）即可。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306113753650.png" alt="image-20250306113753650" style="zoom: 80%;" /></p>
+
+<p>2.约束条件</p>
+
+<p>注意到要使我们的映射的效果比较好的话，有一些约束条件是需要满足的</p>
+
+<p>1.映射之后内部的三角形的边是不能相交的</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227112126656.png" alt="image-20250227112126656" style="zoom:50%;" /></p>
+
+<p>2.映射后三角形的定向是不能翻转的，否则也会有错乱的情况</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227120632868.png" alt="image-20250227120632868" style="zoom: 50%;" /></p>
+
+<p>3.映射后的边界也是不能相交的</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306151844519.png" alt="image-20250306151844519" style="zoom:50%;" /></p>

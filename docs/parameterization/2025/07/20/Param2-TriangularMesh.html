@@ -91,34 +91,33 @@
 			<article class="post">
 	<header class="post-header">
 		<div class="post-title"> 
-			基于Poisson方程的焦散计算
+			三角网格
 		</div>
-		<time class="post-date dt-published" datetime="2025-03-06T00:00:00+08:00" itemprop="datePublished">2025/03/06
+		<time class="post-date dt-published" datetime="2025-07-20T00:00:00+08:00" itemprop="datePublished">2025/07/20
 		</time>		
 	</header>
 
 	<div class="post-content">
-		<p>焦散(‘caustic’)是光线经过经过表面的散射和折射作用后形成的现象。</p>
+		<h4 id="三角网格参数化">三角网格参数化</h4>
 
-<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801140209582.png" alt="image-20250801140209582" /></p>
+<table>
+  <tbody>
+    <tr>
+      <td>比如下图所示的大卫头像，计算机中的曲面是由许多小三角形构成的网格来表示的，这样的三角形组成的网格称为<strong>三角网格(Mesh)</strong> 记作$M={V,E,F</td>
+      <td>V,E,F为网格的顶点,边,面}$</td>
+    </tr>
+  </tbody>
+</table>
 
-<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250724090825649.png" alt="image-20250724090825649" /></p>
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250311193102749.png" alt="image-20250311193102749" /></p>
 
-<p>水面由于有水波(wave)的存在，使其构成了多个凹面镜与凸面镜</p>
+<p>为了简化处理我们下面用这个简化版(“抽象”)的头像来做实验</p>
 
-<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250724091317364.png" alt="image-20250724091317364" /></p>
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306112054639.png" alt="image-20250306112054639" /></p>
 
-<p>最简单的焦散效果—透镜聚焦</p>
+<p><strong>半边结构</strong></p>
 
-<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801132821417.png" alt="image-20250801132821417" /></p>
-
-<p>通过模拟光线的运动可以实现效果，但是需要消耗太多运算资源</p>
-
-<p>直接用一个triangle mesh来做为光源波面</p>
-
-<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801134149935.png" alt="image-20250801134149935" /></p>
-
-<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801160146361.png" alt="image-20250801160146361" /></p>
+<p>适用于三角网格(Mesh)的半边结构(half-edge)</p>
 
 
 	</div>
