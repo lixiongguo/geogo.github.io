@@ -6,6 +6,14 @@ date: 2025-03-06
 categories: [Caustics]
 ---
 
+代价变换支撑
+
+支撑包络势能
+
+势能微分映射
+
+映射对偶凸形
+
 
 焦散('caustic')是光线经过经过表面的散射和折射作用后形成的现象。
 
@@ -28,4 +36,5 @@ categories: [Caustics]
 ![image-20250801134149935](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801134149935.png)
 
 ![image-20250801160146361](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801160146361.png)
+
 

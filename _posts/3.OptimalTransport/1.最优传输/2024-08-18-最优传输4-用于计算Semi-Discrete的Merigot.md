@@ -1,3 +1,11 @@
+---
+layout: post
+title: "最优传输4-计算Semi-Discrete的Merigot算法"
+categories  : OptimalTransport
+---
+
+
+
 本文是对Semi-Discrete类型最优传输的一种求解
 
 ![image-20250927091641814](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927091641814.png)

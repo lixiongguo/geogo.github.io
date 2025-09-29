@@ -16,9 +16,6 @@ Mergiot的算法（MongeAmpere库）
 
 基础焦散的实现
 
-Blender的仿真实现
-
-1.LuxCoreRender
 
 抛物面镜的实现，球面透镜的效果，色散的效果
 
