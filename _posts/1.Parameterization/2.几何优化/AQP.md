@@ -1,4 +1,4 @@
-
+![image-20251015101857395](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251015101857395.png)
 
 ![image-20250205111544090](C:\Users\LGX_MATE_BOOK\Desktop\我的文档\GeoNotes\imgs\image-20250205111544090.png)
 

@@ -1,3 +1,5 @@
+Ricci流的介绍
+
 也可以通过**Ricci流**的方式来求解Yamabe方程
 
 ![image-20250108211403025](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250108211403025.png)）

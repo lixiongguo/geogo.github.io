@@ -5,10 +5,15 @@ title: "最优传输1-Monge问题与Kantorivch问题"
 categories  : OptimalTransport
 ---
 
+y引子：
+
+保面积映射与最优传输映射
+
+
 
 Monge问题
 
-![image-20250928203504345](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250928203504345.png)Kantorvich问题
+![](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250928203504345.png)Kantorvich问题
 
 ![image-20250928203252541](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250928203252541.png)
 
