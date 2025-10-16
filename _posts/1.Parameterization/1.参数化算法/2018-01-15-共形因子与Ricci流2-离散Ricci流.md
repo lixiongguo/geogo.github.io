@@ -6,7 +6,7 @@ Ricci流的介绍
 
 ![image-20250715105853550](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250715105853550.png)
 
-球面空间/欧式空间/双曲空间三种ricci流
+将球面空间/欧式空间/双曲三种空间的ricci流可以进行统一表达
 
 ricci流是用来对Riemann度量进行共形变换
 
