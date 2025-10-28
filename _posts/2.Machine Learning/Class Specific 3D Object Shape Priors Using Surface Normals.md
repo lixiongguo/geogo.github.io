@@ -1,0 +1,54 @@
+输入：rgb图像，深度图。输出mesh
+
+![image-20250722194836154](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250722194836154.png)
+
+这篇文章的分割考虑到了地面
+
+这里的是volumetric 3d reconstruction
+
+重要的一步volumetric depth map fusion
+
+![image-20250722200533096](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250722200533096.png)![image-20250722200638036](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250722200638036.png)
+
+
+
+核心就是求解这样一个凸优化问题
+
+Multi-label segmentation
+
+![image-20250722175719758](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250722175719758.png)
+
+边缘化分布
+
+![image-20250722182007285](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250722182007285.png)
+
+![image-20250722195539332](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250722195539332.png)
+
+数据项的赋值
+
+![image-20250722195008834](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250722195008834.png)
+
+![image-20250722195026155](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250722195026155.png)
+
+平滑项由原先求函数转化为求形状(Wulff形状)
+
+![image-20250722183236848](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250722183236848.png)
+
+一系列半平面构成Wulff形状
+
+![image-20250722183610586](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250722183610586.png)
+
+![image-20250722195756746](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250722195756746.png)
+
+最终的优化式
+
+![image-20250722200333178](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250722200333178.png)
+
+通过训练数据从而确定Wulff Shapes参数
+
+![image-20250722184105580](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250722184105580.png)
+
+即训练目标是求dns
+
+![image-20250722195623875](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250722195623875.png)
+
