@@ -1,44 +1,80 @@
-
-
-本文要解决的问题是，对于任意genus并且包含边界的曲面的全局共形参数化 
-
-即用单纯上同调来计算 De Rham 上同调
+#### 全局参数化
 
 
 
-用同调群(homology group)来表征曲面的拓扑性质。同调群的基底是曲面上一组闭曲线(loop)，可以变形为曲面上任意的其他闭曲线。我们可以沿着同调群割开曲面后，可以将其展开为一个拓扑圆盘，这个拓扑圆盘也叫做这个曲面的基本域(Foundamental Domain)。曲面的亏格为g，则这组基底的个数为2g,我们设为$\{e_1,e_2,...e_{2g}\}$。
+![image-20251015173125209](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251015173125209.png)
 
-**Riemann-Roch定理**
+![image-20251113110131000](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251113110131000.png)
 
-曲面的全纯1形式(holomorphic one form)构成一个线性空间，其结构由曲面拓扑决定，其维数为$2g$。
+将参数化问题视为计算曲面的共形结构
 
-下面看如何求解这个空间
+对于任意genus并且包含边界的曲面的全局共形参数化 
 
-全纯1形式由以下形式表示 $\omega +\sqrt{-1}{}^*{\omega}$
+![image-20251026205018590](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251026205018590.png)
 
-$\omega$与${}^*{\omega}$是实向量场(real gradient field)
+### Insight
 
-其中$\omega$与${}^*{\omega}$共轭,即有${}^*{\omega} = \vec{n} \times \omega$
+
+
+
+
+注意到:曲面上的标量场的梯度是可以认为是一个向量场并且是一个无旋场，其局部最小或最大对应的就是向量场的奇异点
+
+什么是全纯1-形式？
+
+1-形式是向量场，有如下形式$f(z)dz$,全纯1-形式就是其中$f(z)$是全纯(holomorphic)函数。
+
+与参数化的关系？
+
+通过对这个全纯1-形式进行积分得到的0-形式（标量场）就是一个共形的参数化。
+
+
+
+全纯1-形式由以下形式表示 $\omega +\sqrt{-1}{}^*{\omega}$ ，$\omega$与${}^*{\omega}$是实梯度场（无旋可积的），并且$\omega$与${}^*{\omega}$共轭,即有${}^*{\omega} = \vec{n} \times \omega$
 
  其中$\omega,{}^*{\omega} $是闭的，他们的旋度为0，即有$d\omega = 0$
 
 全纯1形式的实部和虚部 $\omega,{}^*{\omega} $是调和的,$\Delta\omega = 0$
 
-由Hodge定理，曲面的上同调类可以由其在homology基上的积分决定，所以给定$2g$个实数$c1,c2...c2g$，$\int_{e_i} \omega = c_i,i=1,2,...,2g$
-
-所以综上可以列出如下的方程组
-
-![image-20251026210412838](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251026210412838.png)
-
-![image-20251026205018590](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251026205018590.png)
 
 
+### Riemann-Roch定理
+
+曲面的全纯1-形式构成一个线性空间，其维数为$2g$。
+
+设$e_i$是曲面的同调群基底，设全纯1-形式的基底$\{w1,w2...w2g\}$,使得$\int_{e_{i}} w_j = \delta_i^j$，其中$\delta_i^j$为Kronecker符号
 
 
 
 
 
-**数值计算**
+
+
+### Hodge理论
+
+在紧致无边黎曼流形上，每个de Rham上同调类中存在唯一的调和1-形式
+
+
+
+给定$2g$个实数$c1,c2...c2g$，存在1-形式$w$使得$\int_{e_i} \omega = c_i,i=1,2,...,2g$，
+
+其中w可以由基底线性表出，$w = \Sigma^{2g}_{j=1}c_iw_i$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### 离散化与数值计算
 
 0.首先要求**homology基底**，计算曲面的handle和tunnel
 
@@ -64,11 +100,11 @@ $\omega$与${}^*{\omega}$是实向量场(real gradient field)
 
 ![image-20251026214217172](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251026214217172.png)
 
-直接设$c_i$为krnonecker积
+
 
 可以证明这个线性系统是满秩的。
 
-虚部的计算
+**虚部的计算**
 
 有了实部后，可以通过Hodge star得到虚部
 
@@ -98,4 +134,3 @@ $\omega$与${}^*{\omega}$是实向量场(real gradient field)
 
 最终转化为一个**稀疏线性系统**进行求解
 
-顾老师的GCP是否属于edge-based向量场？

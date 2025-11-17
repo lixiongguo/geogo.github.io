@@ -46,7 +46,7 @@ Period jumps定义
 
 ### 算法：
 
-zipper 算法，
+**Zipper算法**
 
 解决如下问题
 

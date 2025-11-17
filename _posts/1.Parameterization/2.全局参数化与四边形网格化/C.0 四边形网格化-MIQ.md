@@ -1,8 +1,18 @@
-生成四边形网格分为两个步骤：
+## 四边形网格
 
-（1）确定一系列的方向，以及一些奇异点生成一个符合该方向指定的cross-field
+相比三角形网格，四边形网格的张量积结构可以用于高阶表面建模，如用于CAD/CAM中的NURBS样条以及动画电影中的网格细分。并且四边形网格能更好地捕捉到物体的几何特征。
 
-（2）根据前一步生成的cross-field生成四边形网格
+![image-20251016192108923](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251016192108923.png)
+
+**如何生成四边形网格:**
+
+最淳朴的方法自然是将三角网格中两个三角形拼在一起形成一个四边形。
+
+**基于全局参数化的方法：**先把曲面展平到平面上，然后在平面上铺上四边形网格。全局映射化映射要满足网格自同构(grid automorphism)
+
+![image-20251113110736577](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251113110736577.png)
+
+**基于标架场(cross field)诱导的四边形网格化**：让四边形网格的边与方向场中的向量相贴合，从而用户通过设计向量场从而让四边形网格的边贴合曲面的表面特征。
 
 ![image-20251109163355504](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251109163355504.png)
 

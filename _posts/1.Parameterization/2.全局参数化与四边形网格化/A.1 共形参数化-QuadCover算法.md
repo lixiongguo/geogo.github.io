@@ -1,6 +1,6 @@
 **匹配(matching)**
 
-全局参数化的匹配(matching):设光滑的2维流形$M$,有图集(charts,或者atlas)$\phi_i:U_i \sub M \to \Omega_i \sub \mathbb{R}^2$,$M$的参数化栅格定义单位栅格线$\mathbb{Z} \times \mathbb{R}$以及$\mathbb{R} \times \mathbb{X}$在$\phi_i$作用下的原像。
+设光滑的2维流形$M$,有图集(charts,或者atlas)$\phi_i:U_i \sub M \to \Omega_i \sub \mathbb{R}^2$,$M$的参数化栅格定义单位栅格线$\mathbb{Z} \times \mathbb{R}$以及$\mathbb{R} \times \mathbb{X}$在$\phi_i$作用下的原像。
 
 在单个图卡下(chart)容易定义局部的参数化，但是如何将不同图卡下的参数曲线保持全局连续性不容易。
 

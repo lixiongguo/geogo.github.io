@@ -1,3 +1,13 @@
+
+
+**主曲率场(Principal Curvature Directions)**
+
+曲面主曲率构成一个向量场，主曲率向量场的脐点(umbilic)区域没有主曲率
+
+
+
+
+
 Riemann流形定义与global parameterization
 
 ![image-20251111171425686](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251111171425686.png)
