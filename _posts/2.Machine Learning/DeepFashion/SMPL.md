@@ -10,5 +10,5 @@
 
 给SMPL的顶点添加偏移(SMPL+Displacement， SMPL+D) 来表示穿衣人体， 是一种广泛使用的简单模型，且容易被参数化。如图3所示，通过在SMPL标准姿态下添加顶点的偏移，然后再使用蒙皮变形得到目标姿态的穿衣人体几何。
 
-![image-20251022100726900](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251022100726900.png)
+![image-20251022100726900](..\..\..\imgs\image-20251022100726900.png)
 

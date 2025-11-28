@@ -1,22 +1,22 @@
 属于Derivative-free方法，鉴于f的复杂性
 
-![image-20250801114506623](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801114506623.png)
+![image-20250801114506623](..\..\..\imgs\image-20250801114506623.png)
 
 用gauss随机过程作为基础
 
-![image-20250801115341134](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801115341134.png)
+![image-20250801115341134](..\..\..\imgs\image-20250801115341134.png)
 
 Kernel如何设计
 
-![image-20250801115428442](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801115428442.png)
+![image-20250801115428442](..\..\..\imgs\image-20250801115428442.png)
 
 迭代计算过程
 
-![image-20250801115748175](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801115748175.png)
+![image-20250801115748175](..\..\..\imgs\image-20250801115748175.png)
 
 acquisition function是用来做采样选择的
 
-![image-20250801114659228](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801114659228.png)
+![image-20250801114659228](..\..\..\imgs\image-20250801114659228.png)
 
 几种选择方案的图示
 

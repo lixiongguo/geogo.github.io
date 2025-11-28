@@ -1,4 +1,4 @@
-![image-20250728155137835](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250728155137835.png)
+![image-20250728155137835](..\..\..\imgs\image-20250728155137835.png)
 
 本文主要提出了一个创新的网络结构，可以很好地预测图像中人体关键点的像素位置
 
@@ -6,7 +6,7 @@
 
 可以用CNN+Graph Model的方式来做，本文更进一步提出端到端的网络结构
 
-![image-20250728153000570](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250728153000570.png)
+![image-20250728153000570](..\..\..\imgs\image-20250728153000570.png)
 
 姿态检测不是一个对图像的局部检测问题，需要对人体有一个整体的理解，以及朝向和腿部姿态。所以系统需要能有效处理不同尺度的特征
 

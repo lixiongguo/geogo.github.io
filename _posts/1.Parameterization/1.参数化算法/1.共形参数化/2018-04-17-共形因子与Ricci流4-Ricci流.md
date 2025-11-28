@@ -10,20 +10,18 @@ Discrete Ricci flow这篇工作将将球面空间/欧式空间/双曲三种空�
 
 共形变换与circle packing
 
-![image-20250715110559164](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250715110559164.png)
+![image-20250715110559164](..\..\..\..\imgs\image-20250715110559164.png)
 
-单值化定理
 
-![image-20250715111204759](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250715111204759.png)
 
 任意二维流形都可以归结为几个共形类中，而Ricci流解决了"How to"的问题，所有Riemann曲面都可以通过ricci流收敛到到常曲率
 
 在平滑曲面上的ricci流
 
-![image-20250715111424484](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250715111424484.png)
+![image-20250715111424484](..\..\..\..\imgs\image-20250715111424484.png)
 
 对于离散化需要借助circle packing来定义度量
 
-![image-20250715111712897](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250715111712897.png)
+![image-20250715111712897](..\..\..\..\imgs\image-20250715111712897.png)
 
-![image-20250715111740842](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250715111740842.png)
+![image-20250715111740842](..\..\..\..\imgs\image-20250715111740842.png)

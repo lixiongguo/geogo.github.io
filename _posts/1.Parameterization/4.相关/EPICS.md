@@ -14,7 +14,7 @@
 
 **现代化模式**（图1b）：通过分布式网络化控制系统实现设备间自动通信，人类仅负责高阶决策。
 
-![image-20251014160419995](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251014160419995.png)
+![image-20251014160419995](..\..\..\imgs\image-20251014160419995.png)
 
 DRACO 激光装置的案例：
 
@@ -92,7 +92,7 @@ EPICS的典型应用是 Gemini激光控制系统
 
     
 
-![image-20251014140507961](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251014140507961.png)
+![image-20251014140507961](..\..\..\imgs\image-20251014140507961.png)
 
 EPICS包含两个主要部分IOC以及OPI
 
@@ -111,7 +111,7 @@ EPICS包含两个主要部分IOC以及OPI
 
 
 
-![image-20251014193018582](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251014193018582.png)
+![image-20251014193018582](..\..\..\imgs\image-20251014193018582.png)
 
 ### **Kafka 在 EPICS 中的核心作用**
 
@@ -150,7 +150,7 @@ NTP（Network Time Protocol）在EPICS（Experimental Physics and Industrial Con
 
  它通过 **Ophyd 与 EPICS 深度集成**，将 EPICS 强大的设备控制能力与 Python 的灵活性、可编程性结合起来，正在成为新一代大科学装置（尤其是光源、中子源）的标准实验平台。
 
-![image-20251014104426948](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251014104426948.png)
+![image-20251014104426948](..\..\..\imgs\image-20251014104426948.png)
 
 **BlueSky** 是一个开源项目，由**美国能源部（DOE）下属多个国家实验室的科学家和软件工程师共同开发和维护**，并非由单一公司或个人主导。以下是其主要开发者和贡献机构的概况：
 
@@ -165,7 +165,7 @@ NTP（Network Time Protocol）在EPICS（Experimental Physics and Industrial Con
 
 **许可证**：BSD 3-Clause（宽松开源，允许商业使用）
 
-![image-20251014105159285](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251014105159285.png)
+![image-20251014105159285](..\..\..\imgs\image-20251014105159285.png)
 
 ## 核心问题自检清单
 
@@ -180,7 +180,7 @@ NTP（Network Time Protocol）在EPICS（Experimental Physics and Industrial Con
 
 
 
-## 基于BlueSky套件的数据采集![image-20251014172340627](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251014172340627.png)
+## 基于BlueSky套件的数据采集![image-20251014172340627](..\..\..\imgs\image-20251014172340627.png)
 
 **上海光源 BL07U** 是**上海同步辐射光源**（SSRF）的一条专用光束线站，全称为 **“纳米自旋与磁学光束线站”**（**Nanoscale Spin and Magnetism Beamline**）。它是**上海光源线站工程**（即“光源二期”）中首批建成并成功调试的重要线站之一，专注于**磁性材料、自旋电子学和纳米磁结构**的前沿研究。
 
@@ -194,7 +194,7 @@ Bluesky suite contains three main parts:
 
 数据量级：10纳米 100皮秒。所以传统的方式需要进行革新
 
-![image-20251014173512038](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251014173512038.png)
+![image-20251014173512038](..\..\..\imgs\image-20251014173512038.png)
 
 与其他几个工具的对比
 
@@ -221,7 +221,7 @@ Bluesky suite contains three main parts:
 
 硬件层设计
 
-![image-20251014175650759](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251014175650759.png)
+![image-20251014175650759](..\..\..\imgs\image-20251014175650759.png)
 
 ### **一、硬件层设计：多通道同步采集架构**
 
@@ -260,7 +260,7 @@ Bluesky suite contains three main parts:
 
 **Control System Studio**（简称 **CS-Studio**）是一个**开源的、基于 Eclipse 平台的控制与监控系统开发环境**，专为**大型科学设施**（如粒子加速器、同步辐射光源、激光装置、核聚变装置等）设计。
 
-![image-20251014175603041](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251014175603041.png)
+![image-20251014175603041](..\..\..\imgs\image-20251014175603041.png)
 
 ### 核心定位
 

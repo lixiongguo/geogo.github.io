@@ -4,17 +4,17 @@ title: "最优传输4-计算Semi-Discrete的Merigot算法"
 categories  : OptimalTransport
 ---
 
-
+**直接计算连续（continuous）OT 映射在一般情况下是解析不可行、数值不稳定且计算复杂度极高的；而 Semi-discrete OT（一端离散、一端连续）将问题转化为一个凸优化问题（通常是对偶势函数的优化），具有良好的数学结构、高效算法和数值稳定性，因此成为实际计算 OT 映射的主流方法**
 
 本文是对Semi-Discrete类型最优传输的一种求解
 
-![image-20250927091641814](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927091641814.png)
+![image-20250927091641814](..\..\..\imgs\image-20250927091641814.png)
 
 1.什么是Semi-Discrete的OT？
 
 1/测度的定义，对于在定义域Omega中的任意子集B，测度是一个从B到R+的一个映射
 
-![image-20250927092322299](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927092322299.png)
+![image-20250927092322299](..\..\..\imgs\image-20250927092322299.png)
 
 1.5 图像的测度
 
@@ -30,31 +30,31 @@ categories  : OptimalTransport
 
 2/mu是连续测度，nu是离散的Dirac测度
 
-![image-20250927092120045](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927092120045.png)
+![image-20250927092120045](..\..\..\imgs\image-20250927092120045.png)
 
 \rho是密度
 
-![image-20250927092217926](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927092217926.png)
+![image-20250927092217926](..\..\..\imgs\image-20250927092217926.png)
 
 3/测度的推前(Push Forward)映射：
 
 将一个测度映射mu到另外一个测度T#mu
 
-![image-20250927102553894](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927102553894.png)
+![image-20250927102553894](..\..\..\imgs\image-20250927102553894.png)
 
 从而得到lambda的准确表达
 
-![image-20250927102629482](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927102629482.png)
+![image-20250927102629482](..\..\..\imgs\image-20250927102629482.png)
 
 4/最优传输映射
 
 映射的传输代价
 
-![image-20250927102817963](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927102817963.png)
+![image-20250927102817963](..\..\..\imgs\image-20250927102817963.png)
 
 而最优传输就是找到这样一个使得传输代价最小的映射
 
-![image-20250927102825151](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927102825151.png)
+![image-20250927102825151](..\..\..\imgs\image-20250927102825151.png)
 
 5/power diagram
 
@@ -66,33 +66,33 @@ categories  : OptimalTransport
 
 power diagram是对voronoi图的推广，对每个site规定了权重
 
-![image-20250927103409819](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927103409819.png)
+![image-20250927103409819](..\..\..\imgs\image-20250927103409819.png)
 
 Aurenhammeret al.[1998]有如下结果
 
-![image-20250927103223060](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927103223060.png)
+![image-20250927103223060](..\..\..\imgs\image-20250927103223060.png)
 
 Wasserstein距离用来度量两个测度之间差异（与KL散度之间的对比），又称为推土机距离（EMD,Earth Moving Distance）
 
-![image-20250927113043423](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927113043423.png)
+![image-20250927113043423](..\..\..\imgs\image-20250927113043423.png)
 
 通过Power Diagram对空间的划分，可以得到一个semi-discrete映射
 
-![image-20250927113226638](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927113226638.png)
+![image-20250927113226638](..\..\..\imgs\image-20250927113226638.png)
 
 并且原始测度与此测度的推前的Wasserstein距离
 
-![image-20250927113328912](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927113328912.png)
+![image-20250927113328912](..\..\..\imgs\image-20250927113328912.png)
 
 w是是对于测度对(mu,nu)是adapted是如下
 
-![image-20250927113528269](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927113528269.png)
+![image-20250927113528269](..\..\..\imgs\image-20250927113528269.png)
 
 最优传输映射即是如下能量的无约束优化
 
 
 
-![image-20250927115405342](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927115405342.png)
+![image-20250927115405342](..\..\..\imgs\image-20250927115405342.png)
 
 
 
@@ -102,33 +102,33 @@ w是是对于测度对(mu,nu)是adapted是如下
 
 收敛性有如下保证
 
-![image-20250927115720001](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927115720001.png)
+![image-20250927115720001](..\..\..\imgs\image-20250927115720001.png)
 
 递进方式$\lambda_p$的计算
 
-![image-20250927120712503](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927120712503.png)
+![image-20250927120712503](..\..\..\imgs\image-20250927120712503.png)
 
 最终算法：
 
-![image-20250927120936722](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927120936722.png)
+![image-20250927120936722](..\..\..\imgs\image-20250927120936722.png)
 
 4.实现细节
 
 测度序列的构造：
 
-![image-20250927120011943](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927120011943.png)
+![image-20250927120011943](..\..\..\imgs\image-20250927120011943.png)
 
 逐步递进的方式，$v_{l+1}$包含n(l+1)个点
 
-![image-20250927120305958](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927120305958.png)
+![image-20250927120305958](..\..\..\imgs\image-20250927120305958.png)
 
 难以求解这个优化，通过Lloyd sample进行数值逼近
 
-![image-20250927120600253](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927120600253.png)
+![image-20250927120600253](..\..\..\imgs\image-20250927120600253.png)
 
 通过Lloyd sample将图像转化为离散测度 
 
-![image-20250927115022999](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250927115022999.png)
+![image-20250927115022999](..\..\..\imgs\image-20250927115022999.png)
 
 **问题：**
 

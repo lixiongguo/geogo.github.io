@@ -1,4 +1,4 @@
-·![image-20241201144912787](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20241201144912787.png)
+·![image-20241201144912787](..\..\..\imgs\image-20241201144912787.png)
 
 
 
@@ -8,10 +8,10 @@
 
 Killing Energy
 
-![image-20251022171426875](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251022171426875.png)
+![image-20251022171426875](..\..\..\imgs\image-20251022171426875.png)
 
 结合点约束
 
-![image-20251022171455827](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251022171455827.png)
+![image-20251022171455827](..\..\..\imgs\image-20251022171455827.png)
 
 

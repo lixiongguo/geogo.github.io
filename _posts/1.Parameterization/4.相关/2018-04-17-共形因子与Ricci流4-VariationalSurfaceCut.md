@@ -1,39 +1,39 @@
 展UV是一件非常耗时而且需要专业技巧及经验的工作。为了让即使很弯曲的表面信息也能在平面上被精准的存放下来，我们在展UV时所指定的切割线（seam）就尤为重要了。好的切割线能将弯曲的3D表面划分为几乎平坦的多个区域，不好的切割线，可能又长（将3D表面不必要地分割成了太多块）又无法保证弯曲部分在平面上不被扭曲（distortion）。（世界地图也是一个生动的例子，如果把地球只沿一条经线切割后展开，俄罗斯、加拿大以及南北极就会看起来巨大无比，但其实他们只是被拉伸了，实际面积并没有比中国大那么多。）
 
-![image-20251010142551440](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251010142551440.png)
+![image-20251010142551440](..\..\..\imgs\image-20251010142551440.png)
 
 可以得到很好的分割效果
 
-![image-20251010192434507](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251010192434507.png)
+![image-20251010192434507](..\..\..\imgs\image-20251010192434507.png)
 
 用变分法的方式求解析优化的方式，而不再用传统的组合优化方式
 
-![image-20251010174554855](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251010174554855.png)
+![image-20251010174554855](..\..\..\imgs\image-20251010174554855.png)
 
 定义一个依赖于切割路径的能量函数，然后通过连续变形（演化）切割路径不断降低这个能量值
 
 变形过程中需要共形因子时刻满足如下Yamabe方程
 
-![image-20251010183229321](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251010183229321.png)
+![image-20251010183229321](..\..\..\imgs\image-20251010183229321.png)
 
 
 
-![image-20251010142836409](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251010142836409.png)
+![image-20251010142836409](..\..\..\imgs\image-20251010142836409.png)
 
 通过连续变形一条曲线$\gamma$,使得一方面distortion尽可能小，另外长度尽可能小
 
 用Dirichlet能量来度量distortion
 
-![image-20251010143206213](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251010143206213.png)
+![image-20251010143206213](..\..\..\imgs\image-20251010143206213.png)
 
 仅要求distortion尽可能小，那么问题就是ill-posed，由于可以通过不断延展$\gamma$的长度来减小distortion，所以需要对curve长度进行约束
 
-![image-20251010143507440](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251010143507440.png)
+![image-20251010143507440](..\..\..\imgs\image-20251010143507440.png)
 
 Cea方法
 
-![image-20251010145117349](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251010145117349.png)
+![image-20251010145117349](..\..\..\imgs\image-20251010145117349.png)
 
 构造Lagrangian函数
 
-![image-20251010192645924](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251010192645924.png)
+![image-20251010192645924](..\..\..\imgs\image-20251010192645924.png)

@@ -14,11 +14,11 @@ Git的概念比较抽象，另外操作命令也不没有很直观，需要多�
 
 用Word写长篇大论，想修改一个段落，又怕将来想恢复找不回来怎么办？有办法，先把当前文件备份为一个新的文件，再接着改，改到一定程度，再备份，这样一直改下去，最后就会有很多的文件难以管理：
 
-![lots-of-docs](https://liaoxuefeng.com/books/git/what-is-git/docs.jpg)
+![lots-of-docs](..\..\imgs\docs.jpg)
 
 如果有其他人一起协作那这样的话版本会越来越多，靠个人记忆和手写记录就不可行了。所以希望有一个能自动帮你记录下修改内容的工具。
 
-![image-20250422101539282](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422101539282.png)
+![image-20250422101539282](..\..\imgs\image-20250422101539282.png)
 
 1.1 **中心与分布**
 
@@ -61,15 +61,15 @@ MacOS与Linux类似，用Homebrew等包管理工具安装
 
 Windows从官方网下载安装[Git - Downloading Package](https://git-scm.com/downloads/win)，安装就是一直下一步就可以
 
-![image-20250422095712019](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422095712019.png)
+![image-20250422095712019](..\..\imgs\image-20250422095712019.png)
 
 安装好后点击右键会有如下两个选项，一个是Git Bash命令行工具，一个是Git GUI工具方便可视化查看
 
-![image-20250422103040969](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422103040969.png)
+![image-20250422103040969](..\..\imgs\image-20250422103040969.png)
 
 Git Bash命令行，这个是用来输入git命令用的，现在的很多代码编辑器(VS Code/IDEA)都有可视化的分支管理功能，可以不用这种命令行的方式操作。
 
-![image-20250422103102453](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422103102453.png)
+![image-20250422103102453](..\..\imgs\image-20250422103102453.png)
 
 需要先用git config命令配置好自己的用户名（让Git知道你是谁,输入的是gitee账户的用户名和邮箱）
 
@@ -82,13 +82,13 @@ $ git config --global user.email ***
 
 直接在Gitee网站上登陆之后就能新建仓库
 
-![image-20250422104705881](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422104705881.png)
+![image-20250422104705881](..\..\imgs\image-20250422104705881.png)
 
-![image-20250422103411724](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422103411724.png)
+![image-20250422103411724](..\..\imgs\image-20250422103411724.png)
 
 有两种通讯协议HTTPS或是SSH拉取代码，新手选择HTTPS更为简单(SSH需要配置SSH key,一般企业自己部署的GitLab用)
 
-![image-20250422104305338](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422104305338.png)
+![image-20250422104305338](..\..\imgs\image-20250422104305338.png)
 
 输入git clone 命令就能来取代码
 
@@ -96,7 +96,7 @@ $ git config --global user.email ***
 $ git clone https://gitee.com/lixiongguo/test1.git
 ```
 
-![image-20250422105133884](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422105133884.png)
+![image-20250422105133884](..\..\imgs\image-20250422105133884.png)
 
 **实操：**Gitee[工作台 - Gitee.com](https://gitee.com/)e新建代码仓
 
@@ -104,7 +104,7 @@ $ git clone https://gitee.com/lixiongguo/test1.git
 
 **3.1 工作区/版本库的介绍与提交文件**
 
-![image-20250422110224795](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422110224795.png)
+![image-20250422110224795](..\..\imgs\image-20250422110224795.png)
 
 工作区（Working Directory）
 就是你在电脑里能看到的目录，包含了所有的项目文件，在工作区中进行文件的编辑、创建和删除等操作。
@@ -113,7 +113,7 @@ $ git clone https://gitee.com/lixiongguo/test1.git
 
 工作区有一个隐藏目录`.git`，这个不算工作区，而是Git的版本库。Git的版本库里存了很多东西，其中最重要的就是称为stage（或者叫index）的暂存区
 
-![image-20250422110729547](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422110729547.png)
+![image-20250422110729547](..\..\imgs\image-20250422110729547.png)
 
 git的提交分两步
 
@@ -121,15 +121,15 @@ git的提交分两步
 
 第二步是用`git commit`提交更改，实际上就是把暂存区的所有内容提交到当前分支
 
-![image-20250422110353103](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422110353103.png)
+![image-20250422110353103](..\..\imgs\image-20250422110353103.png)
 
 实际操作如下所示（一般会先用git status查看哪些文件有修改）
 
-![image-20250422110846880](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422110846880.png)
+![image-20250422110846880](..\..\imgs\image-20250422110846880.png)
 
 利用git gui工具可以看到这次提交
 
-![image-20250422111159409](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422111159409.png)
+![image-20250422111159409](..\..\imgs\image-20250422111159409.png)
 
 **3.2 上传/下载到远程仓库**
 
@@ -139,7 +139,7 @@ git的提交分两步
 
 **实操：**在master分支下新建test.txt文件并提交上传
 
-![image-20250422115205831](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422115205831.png)
+![image-20250422115205831](..\..\imgs\image-20250422115205831.png)
 
 **实操：**提交test1.txt文件，上传到远端仓库
 
@@ -163,7 +163,7 @@ git branch 显示当前分支
 $ git branch -a
 ```
 
-![image-20250422112547835](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422112547835.png)
+![image-20250422112547835](..\..\imgs\image-20250422112547835.png)
 
 经过修改文件和提交文件后，需要上传(push)修改到远端develop分支，需要先建立关联
 
@@ -173,7 +173,7 @@ $ git push --set-upstream origin devleop
 
 **实操：**在develop分支下新建test_dev.txt文件并提交上传
 
-![image-20250422114852169](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422114852169.png)
+![image-20250422114852169](..\..\imgs\image-20250422114852169.png)
 
 
 
@@ -189,7 +189,7 @@ git branch --set-upstream-to=<远程仓库名>/<远程分支名> <本地分支�
 
 **实操：**test1.txt文件第二行冲突的解决
 
-![image-20250422114634542](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422114634542.png)
+![image-20250422114634542](..\..\imgs\image-20250422114634542.png)
 
 
 
@@ -200,31 +200,31 @@ $git checkout master #先切换到要被合并的master分支上
 $git merge develop
 ```
 
-![image-20250422115535335](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422115535335.png)
+![image-20250422115535335](..\..\imgs\image-20250422115535335.png)
 
 针对有冲突的地方git会进行标识
 
-![image-20250422115823807](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422115823807.png)
+![image-20250422115823807](..\..\imgs\image-20250422115823807.png)
 
 针对这个情况我们选择用develop分支下的
 
-![image-20250422115952704](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422115952704.png)
+![image-20250422115952704](..\..\imgs\image-20250422115952704.png)
 
 处理好冲突后需要重新将合并的文件进行提交
 
-![image-20250422120205154](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422120205154.png)
+![image-20250422120205154](..\..\imgs\image-20250422120205154.png)
 
 通过git gui工具可以直观看到合并情况
 
-![image-20250422120455538](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422120455538.png)
+![image-20250422120455538](..\..\imgs\image-20250422120455538.png)
 
 从图中我们也可以看到merge操作会多增加一次提交(例子中的"dev merged")这个提交本质上是没有任何信息量的，如果项目比较复杂将会增加很多的复杂度，并且出现bug了，难以定位是哪次提交造成的问题。
 
-![image-20250422121635180](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422121635180.png)
+![image-20250422121635180](..\..\imgs\image-20250422121635180.png)
 
 一般会用git rebase代替git merge来进行合并，git rebase会将两个要合并的分支的基准进行对齐
 
-![image-20250422122539848](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422122539848.png)
+![image-20250422122539848](..\..\imgs\image-20250422122539848.png)
 
 **4.3 版本回退**
 
@@ -234,11 +234,11 @@ $git merge develop
 
 git log查看本分支的提交历史
 
-![image-20250422122836922](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422122836922.png)
+![image-20250422122836922](..\..\imgs\image-20250422122836922.png)
 
 git reflog查看所有分支的操作历史(更加紧凑)
 
-![image-20250422122855208](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422122855208.png)
+![image-20250422122855208](..\..\imgs\image-20250422122855208.png)
 
 可以看到每一个提交都会生成一个**commit hash**，这个是作为本次提交的唯一id，也是回退版本的标识
 
@@ -246,7 +246,7 @@ git reflog查看所有分支的操作历史(更加紧凑)
 
 git reset命令总共有三个模式 --hard --mixed(默认) --soft
 
-![img](https://pic2.zhimg.com/v2-8232f29a8c165e2e495688d60401f267_r.jpg)
+![img](..\..\imgs\v2-8232f29a8c165e2e495688d60401f267_r.jpg)
 
 --hard 清空工作目录，清空暂存区，当前的工作会丢失
 
@@ -256,7 +256,7 @@ git reset命令总共有三个模式 --hard --mixed(默认) --soft
 
 **实操：**回退到没合并前的版本(“master 1”的那次提交）
 
-![image-20250422123617622](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422123617622.png)
+![image-20250422123617622](..\..\imgs\image-20250422123617622.png)
 
 HEAD代表此分支下的当前的提交指针，HEAD^代表上一个提交指针， HEAD^^代表上上次提交指针，同理以此类推....
 
@@ -276,13 +276,13 @@ HEAD代表此分支下的当前的提交指针，HEAD^代表上一个提交指�
 $ git cherry-pick <commitHash>
 ```
 
-![image-20250422154654177](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422154654177.png)
+![image-20250422154654177](..\..\imgs\image-20250422154654177.png)
 
 **5.不同的分支模型**
 
 适配不同的开发规模（个人开发，小型团队开发，大型团队）和模式(成熟团队，临时团队)等
 
-![image-20250422123346594](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422123346594.png)
+![image-20250422123346594](..\..\imgs\image-20250422123346594.png)
 
 ### 参考资料
 
@@ -290,5 +290,5 @@ $ git cherry-pick <commitHash>
 
 2.利用TotoiseGit可以很直观看到当前修改的内容
 
-![image-20250422133415237](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250422133415237.png)
+![image-20250422133415237](..\..\imgs\image-20250422133415237.png)
 

@@ -4,37 +4,37 @@
 
 马尔可夫性体现在条件独立性上
 
-![image-20250801111213913](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801111213913.png)
+![image-20250801111213913](..\..\..\imgs\image-20250801111213913.png)
 
-![image-20250801111258772](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801111258772.png)
+![image-20250801111258772](..\..\..\imgs\image-20250801111258772.png)
 
 
 
-![image-20250801111043685](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801111043685.png)
+![image-20250801111043685](..\..\..\imgs\image-20250801111043685.png)
 
 三种条件独立性是等价的
 
-![image-20250801111554628](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801111554628.png)
+![image-20250801111554628](..\..\..\imgs\image-20250801111554628.png)
 
 只有在满足以上条件独立性的无向图模型才是马尔可夫随机场模型
 
-![image-20250801111922624](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801111922624.png)
+![image-20250801111922624](..\..\..\imgs\image-20250801111922624.png)
 
 MRF的因子分解
 
-![image-20250801111713427](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801111713427.png)
+![image-20250801111713427](..\..\..\imgs\image-20250801111713427.png)
 
-![image-20250801111759891](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801111759891.png)
+![image-20250801111759891](..\..\..\imgs\image-20250801111759891.png)
 
 CRF是给定条件下的MRF
 
-![image-20250801112115740](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801112115740.png)
+![image-20250801112115740](..\..\..\imgs\image-20250801112115740.png)
 
 
 
 因子图(Factor Graph)是什么，为什么MRF和Bayesian网络都能表示成因子图，而建立因子图又对建BP算法模型有什么帮助？
 
-![image-20250801112740571](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801112740571.png)
+![image-20250801112740571](..\..\..\imgs\image-20250801112740571.png)
 
 有向图和无向图都可以使得，若干个变量的⼀个联合概率函数（或全局函数）能够表示成，这些变量的⼦集上的因⼦的乘积。
 
@@ -44,8 +44,8 @@ CRF是给定条件下的MRF
 
 基本计算思想
 
-![image-20250801110721239](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801110721239.png)
+![image-20250801110721239](..\..\..\imgs\image-20250801110721239.png)
 
-![image-20250801110520428](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20250801110520428.png)
+![image-20250801110520428](..\..\..\imgs\image-20250801110520428.png)
 
 如何进行变量消元(Variable Elemination)，但是BP算法又是如何对计算过程进行优化的？
