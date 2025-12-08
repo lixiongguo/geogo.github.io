@@ -1,3 +1,7 @@
+这是其核心优势，算法本身**不依赖任何顶点位置约束**即可自动生成参数化，从而避免了因固定顶点造成的扭曲。
+
+![image-20251203151719056](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251203151719056.png)
+
 ### SCP
 
 

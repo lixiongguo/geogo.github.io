@@ -1,3 +1,9 @@
+思考：
+
+为什么要引入branch-cover?
+
+![image-20251204205913223](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204205913223.png)
+
 **匹配(matching)**
 
 设光滑的2维流形$M$,有图集(charts,或者atlas)$\phi_i:U_i \sub M \to \Omega_i \sub \mathbb{R}^2$,$M$的参数化栅格定义单位栅格线$\mathbb{Z} \times \mathbb{R}$以及$\mathbb{R} \times \mathbb{X}$在$\phi_i$作用下的原像。
@@ -72,7 +78,7 @@
 
 ![image-20250708192932179](..\..\..\imgs\image-20250708192932179.png)
 
-
+![image-20251204210109696](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204210109696.png)
 
 **Frame Field**
 
@@ -100,7 +106,13 @@ Frame filed可以在covering space中为vector field，称为曲面的covering f
 
 ![image-20250708201420247](..\..\..\imgs\image-20250708201420247.png)
 
+
+
+![image-20251204210126045](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204210126045.png)
+
 在covering spaces中的标量函数空间
+
+
 
 nabla Sr(M')是无璇的，为什么这个性质这么重要
 
@@ -164,11 +176,17 @@ $r_{ij}$是如何给定的？
 
 $K = P_K + C_K+ H_K$
 
-由于$\nabla \phi$是标量场的梯度，所以一定是无璇的，所以$\hat X = P_K + H_K$是（9）式积分的最小化
+Curl导致不可积,为使得K可积，所以K要无璇，所以$\hat X = P_K + H_K$是（9）式积分的最小化
 
 
+
+![image-20251204204651381](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204204651381.png)
 
 2.全局连续性处理
+
+![image-20251204204913972](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204204913972.png)
+
+![image-20251204204942930](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204204942930.png)
 
 ![image-20251027142441224](..\..\..\imgs\image-20251027142441224.png)
 
@@ -179,3 +197,9 @@ $K = P_K + C_K+ H_K$
 为什么是2Z?
 
 ![image-20251027210706934](..\..\..\imgs\image-20251027210706934.png)
+
+![image-20251204210206173](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204210206173.png)
+
+加入了Branch后
+
+![image-20251204205509479](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204205509479.png)
