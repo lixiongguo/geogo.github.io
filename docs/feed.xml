@@ -1,1 +1,594 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-09-28T15:37:49+08:00</updated><id>http://localhost:4000/feed.xml</id></feed>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-12-08T21:54:40+08:00</updated><id>http://localhost:4000/feed.xml</id><entry><title type="html">最优传输介绍</title><link href="http://localhost:4000/caustics/2025/03/06/%E5%85%89%E7%9A%84%E8%88%9E%E8%B9%88-%E7%84%A6%E6%95%A3.html" rel="alternate" type="text/html" title="最优传输介绍" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/caustics/2025/03/06/%E5%85%89%E7%9A%84%E8%88%9E%E8%B9%88-%E7%84%A6%E6%95%A3</id><content type="html" xml:base="http://localhost:4000/caustics/2025/03/06/%E5%85%89%E7%9A%84%E8%88%9E%E8%B9%88-%E7%84%A6%E6%95%A3.html"><![CDATA[<p>焦散(‘caustic’)是光线经过经过表面的散射和折射作用后形成的现象。</p>
+
+<p><img src="..\..\..\imgs\image-20250801140209582.png" alt="image-20250801140209582" /></p>
+
+<p><img src="..\..\..\imgs\image-20250724090825649.png" alt="image-20250724090825649" /></p>
+
+<p>水面由于有水波(wave)的存在，使其构成了多个凹面镜与凸面镜</p>
+
+<p><img src="..\..\..\imgs\image-20250724091317364.png" alt="image-20250724091317364" /></p>
+
+<p>最简单的焦散效果—透镜聚焦</p>
+
+<p>仿真（离线渲染）:</p>
+
+<p>实时渲染：</p>
+
+<p>通过模拟光线的运动可以实现效果，但是需要消耗太多运算资源</p>
+
+<p>直接用一个triangle mesh来做为光源波面</p>
+
+<p><img src="..\..\..\imgs\image-20250801134149935.png" alt="image-20250801134149935" /></p>
+
+<p><img src="..\..\..\imgs\image-20250801160146361.png" alt="image-20250801160146361" /></p>
+
+<p>下面我们看一个用Poisson方程来求解焦散的方法</p>]]></content><author><name>David Lee</name></author><category term="Caustics" /><summary type="html"><![CDATA[焦散(‘caustic’)是光线经过经过表面的散射和折射作用后形成的现象。 水面由于有水波(wave)的存在，使其构成了多个凹面镜与凸面镜 最简单的焦散效果—透镜聚焦 仿真（离线渲染）: 实时渲染： 通过模拟光线的运动可以实现效果，但是需要消耗太多运算资源 直接用一个triangle mesh来做为光源波面 下面我们看一个用Poisson方程来求解焦散的方法]]></summary></entry><entry><title type="html">最优传输6 最优传输计算焦散透镜</title><link href="http://localhost:4000/2024/12/13/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%936-%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%93%E8%AE%A1%E7%AE%97%E7%84%A6%E6%95%A3%E9%80%8F%E9%95%9C.html" rel="alternate" type="text/html" title="最优传输6 最优传输计算焦散透镜" /><published>2024-12-13T00:00:00+08:00</published><updated>2024-12-13T00:00:00+08:00</updated><id>http://localhost:4000/2024/12/13/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%936-%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%93%E8%AE%A1%E7%AE%97%E7%84%A6%E6%95%A3%E9%80%8F%E9%95%9C</id><content type="html" xml:base="http://localhost:4000/2024/12/13/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%936-%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%93%E8%AE%A1%E7%AE%97%E7%84%A6%E6%95%A3%E9%80%8F%E9%95%9C.html"><![CDATA[<h2 id="gmm方法">GMM方法</h2>
+
+<p>利用GMM拟合来实现的焦散透镜效果</p>
+
+<p><img src="..\..\..\imgs\image-20250731165939731.png" alt="image-20250731165939731" /></p>
+
+<p>本文相比于其他关于实现Caustic的文章主要有两点：1.首次用最优传输的思路来求解Caustic Mapping 2.可以实现很清晰的焦散效果，并且能实现很高的对比度（High-Contrast）</p>
+
+<p>1/图像测度对于奇点的补充：</p>
+
+<p>对于聚集度很高的点或者线，称为Singular Point 或是Singular Curve</p>
+
+<p><img src="..\..\..\imgs\image-20250927104450683.png" alt="image-20250927104450683" />将这些奇点集成到测度中</p>
+
+<p><img src="..\..\..\imgs\image-20250927104139824.png" alt="image-20250927104139824" /></p>
+
+<p>转化到标准测度中</p>
+
+<p><img src="..\..\..\imgs\image-20250927104423465.png" alt="image-20250927104423465" /></p>
+
+<p>source distribution可以认为是一个高斯，一束平行光经过球面透镜聚集成一个高斯？所以Es是一个高斯？</p>
+
+<p><img src="..\..\..\imgs\image-20250927121735289.png" alt="image-20250927121735289" /></p>
+
+<p>问题：</p>
+
+<p>为什么可以将焦散计算问题抽象为一个semi-discrete OT问题？</p>
+
+<p><img src="..\..\..\imgs\image-20250927104844646.png" alt="image-20250927104844646" /></p>
+
+<p>初始采用Lloyd均匀采样，通过求Power图的权重</p>
+
+<p><img src="..\..\..\imgs\image-20250927153454201.png" alt="image-20250927153454201" /></p>
+
+<p>如上图左1是原始的Voronoi图，网格大小不一。 处理的思路：</p>
+
+<ol>
+  <li>生成Voronoi图</li>
+  <li>计算每个网格的中心</li>
+  <li>将每个点移到该网格的中心</li>
+  <li>重复上面步骤，直至收敛</li>
+</ol>
+
+<p><img src="..\..\..\imgs\image-20250927153557034.png" alt="image-20250927153557034" /></p>
+
+<p><img src="..\..\..\imgs\image-20250927104353271.png" alt="image-20250927104353271" /></p>
+
+<p><img src="..\..\..\imgs\image-20250927122652367.png" alt="image-20250927122652367" /></p>
+
+<p>求最优传输的过程采用Merigot的算法</p>
+
+<p><img src="..\..\..\imgs\image-20250927121212759.png" alt="image-20250927121212759" /></p>
+
+<p><img src="..\..\..\imgs\image-20250927125407680.png" alt="image-20250927125407680" /></p>
+
+<p>注意到$\lambda_p$等于初始CVT的权重分布</p>
+
+<p>后续步骤：</p>
+
+<p>natural neighbor interpolation</p>
+
+<p>3D优化</p>
+
+<p>计算步骤</p>
+
+<ul>
+  <li>input source distribution</li>
+  <li>predict receiver distribution for an unmodified slab</li>
+  <li>resample distributions -&gt; lloyd, eg</li>
+  <li>power diagrams (cgal recommended)</li>
+  <li>solve optimal transport mapping</li>
+  <li>triangular map of slab vertices</li>
+  <li>natural neighbor interpolation of vertices onto target for x_r positions</li>
+  <li>solve for surface (ceres recommended)</li>
+  <li>iterate</li>
+  <li>generate stl</li>
+  <li>prototype</li>
+</ul>]]></content><author><name></name></author><summary type="html"><![CDATA[GMM方法 利用GMM拟合来实现的焦散透镜效果 本文相比于其他关于实现Caustic的文章主要有两点：1.首次用最优传输的思路来求解Caustic Mapping 2.可以实现很清晰的焦散效果，并且能实现很高的对比度（High-Contrast） 1/图像测度对于奇点的补充： 对于聚集度很高的点或者线，称为Singular Point 或是Singular Curve 将这些奇点集成到测度中 转化到标准测度中 source distribution可以认为是一个高斯，一束平行光经过球面透镜聚集成一个高斯？所以Es是一个高斯？ 问题： 为什么可以将焦散计算问题抽象为一个semi-discrete OT问题？ 初始采用Lloyd均匀采样，通过求Power图的权重 如上图左1是原始的Voronoi图，网格大小不一。 处理的思路： 生成Voronoi图 计算每个网格的中心 将每个点移到该网格的中心 重复上面步骤，直至收敛 求最优传输的过程采用Merigot的算法 注意到$\lambda_p$等于初始CVT的权重分布 后续步骤： natural neighbor interpolation 3D优化 计算步骤 input source distribution predict receiver distribution for an unmodified slab resample distributions -&gt; lloyd, eg power diagrams (cgal recommended) solve optimal transport mapping triangular map of slab vertices natural neighbor interpolation of vertices onto target for x_r positions solve for surface (ceres recommended) iterate generate stl prototype]]></summary></entry><entry><title type="html">最优传输5 针对网格的ma方程求解instantot</title><link href="http://localhost:4000/2024/09/18/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%935-%E9%92%88%E5%AF%B9%E7%BD%91%E6%A0%BC%E7%9A%84MA%E6%96%B9%E7%A8%8B%E6%B1%82%E8%A7%A3InstantOT.html" rel="alternate" type="text/html" title="最优传输5 针对网格的ma方程求解instantot" /><published>2024-09-18T00:00:00+08:00</published><updated>2024-09-18T00:00:00+08:00</updated><id>http://localhost:4000/2024/09/18/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%935-%E9%92%88%E5%AF%B9%E7%BD%91%E6%A0%BC%E7%9A%84MA%E6%96%B9%E7%A8%8B%E6%B1%82%E8%A7%A3InstantOT</id><content type="html" xml:base="http://localhost:4000/2024/09/18/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%935-%E9%92%88%E5%AF%B9%E7%BD%91%E6%A0%BC%E7%9A%84MA%E6%96%B9%E7%A8%8B%E6%B1%82%E8%A7%A3InstantOT.html"><![CDATA[<p>论文笔记 Instant Transport Maps on 2D Grids</p>
+
+<p><img src="..\..\..\imgs\image-20250914152526557.png" alt="image-20250914152526557" /></p>
+
+<p>本文针对2D平整网格(2D uniform grid)域上计算$L^2$最优传输,提出了一个高效算法，不用计算导数(derivative-free)求最优化</p>
+
+<p>一般来说一个最优传输问题如下表达</p>
+
+<p><img src="..\..\..\imgs\image-20250914153534040.png" alt="image-20250914153534040" /></p>
+
+<p>如果直接按照上式进行计算是难以进行计算的。（主要来自于三处的非线性，det，u/v, v与未知h函数T的复合）</p>
+
+<p>下面来看采取什么方法来求解这个高度非线性</p>
+
+<p>首先对于焦散设计问题，不失一般地，v可以是一个均匀分布设v=1，那么</p>
+
+<p><img src="..\..\..\imgs\image-20250914160945809.png" alt="image-20250914160945809" /></p>
+
+<p>给定密度u是一个分段常数u=(u1,u2,…,un)T, n=hxh, 对<img src="..\..\..\imgs\image-20250914161616434.png" alt="image-20250914161616434" /></p>
+
+<p>进行积分</p>
+
+<p><img src="..\..\..\imgs\image-20250914160703954.png" alt="image-20250914160703954" /></p>
+
+<p><img src="..\..\..\imgs\image-20250914161806028.png" alt="image-20250914161806028" /></p>
+
+<p>psi称为Kantorvich势能，与初始的凸势能的关系，并且他们的Hessian有如下关系</p>
+
+<p><img src="..\..\..\imgs\image-20250914175927631.png" alt="image-20250914175927631" /></p>
+
+<p>从而得到下式</p>
+
+<p><img src="..\..\..\imgs\image-20250914180428065.png" alt="image-20250914180428065" /></p>
+
+<p>一个insight是delta phsi比detHpsi要大很多</p>
+
+<p><img src="..\..\..\imgs\image-20250914180450797.png" alt="image-20250914180450797" /></p>
+
+<p>结合（11）和（13）得到离散化后</p>
+
+<p><img src="..\..\..\imgs\image-20250914180739920.png" alt="image-20250914180739920" /></p>
+
+<p>对(15)式求解可以通过Newton法进行求解。</p>
+
+<p>进一步整理也即</p>
+
+<p><img src="..\..\..\imgs\image-20250914181006163.png" alt="image-20250914181006163" /></p>
+
+<p>其中q的定义</p>
+
+<p><img src="..\..\..\imgs\image-20250914180920174.png" alt="image-20250914180920174" /></p>]]></content><author><name></name></author><summary type="html"><![CDATA[论文笔记 Instant Transport Maps on 2D Grids 本文针对2D平整网格(2D uniform grid)域上计算$L^2$最优传输,提出了一个高效算法，不用计算导数(derivative-free)求最优化 一般来说一个最优传输问题如下表达 如果直接按照上式进行计算是难以进行计算的。（主要来自于三处的非线性，det，u/v, v与未知h函数T的复合） 下面来看采取什么方法来求解这个高度非线性 首先对于焦散设计问题，不失一般地，v可以是一个均匀分布设v=1，那么 给定密度u是一个分段常数u=(u1,u2,…,un)T, n=hxh, 对 进行积分 psi称为Kantorvich势能，与初始的凸势能的关系，并且他们的Hessian有如下关系 从而得到下式 一个insight是delta phsi比detHpsi要大很多 结合（11）和（13）得到离散化后 对(15)式求解可以通过Newton法进行求解。 进一步整理也即 其中q的定义]]></summary></entry><entry><title type="html">最优传输4-计算Semi-Discrete的Merigot算法</title><link href="http://localhost:4000/optimaltransport/2024/08/18/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%934-%E7%94%A8%E4%BA%8E%E8%AE%A1%E7%AE%97Semi-Discrete%E7%9A%84Merigot.html" rel="alternate" type="text/html" title="最优传输4-计算Semi-Discrete的Merigot算法" /><published>2024-08-18T00:00:00+08:00</published><updated>2024-08-18T00:00:00+08:00</updated><id>http://localhost:4000/optimaltransport/2024/08/18/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%934-%E7%94%A8%E4%BA%8E%E8%AE%A1%E7%AE%97Semi-Discrete%E7%9A%84Merigot</id><content type="html" xml:base="http://localhost:4000/optimaltransport/2024/08/18/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%934-%E7%94%A8%E4%BA%8E%E8%AE%A1%E7%AE%97Semi-Discrete%E7%9A%84Merigot.html"><![CDATA[<p><strong>直接计算连续（continuous）OT 映射在一般情况下是解析不可行、数值不稳定且计算复杂度极高的；而 Semi-discrete OT（一端离散、一端连续）将问题转化为一个凸优化问题（通常是对偶势函数的优化），具有良好的数学结构、高效算法和数值稳定性，因此成为实际计算 OT 映射的主流方法</strong></p>
+
+<p>本文是对Semi-Discrete类型最优传输的一种求解</p>
+
+<p><img src="..\..\..\imgs\image-20250927091641814.png" alt="image-20250927091641814" /></p>
+
+<p>1.什么是Semi-Discrete的OT？</p>
+
+<p>1/测度的定义，对于在定义域Omega中的任意子集B，测度是一个从B到R+的一个映射</p>
+
+<p><img src="..\..\..\imgs\image-20250927092322299.png" alt="image-20250927092322299" /></p>
+
+<p>1.5 图像的测度</p>
+
+<p>天然的连续测度</p>
+
+<p>1/灰度值矩阵[WxH] 2/灰度归一化 3/进行插值（对于网格是PL(PieceWise Linear)）</p>
+
+<p><strong>问题：对于图像是如何转化为离散测度的？</strong></p>
+
+<p>2/mu是连续测度，nu是离散的Dirac测度</p>
+
+<p><img src="..\..\..\imgs\image-20250927092120045.png" alt="image-20250927092120045" /></p>
+
+<p>\rho是密度</p>
+
+<p><img src="..\..\..\imgs\image-20250927092217926.png" alt="image-20250927092217926" /></p>
+
+<p>3/测度的推前(Push Forward)映射：</p>
+
+<p>将一个测度映射mu到另外一个测度T#mu</p>
+
+<p><img src="..\..\..\imgs\image-20250927102553894.png" alt="image-20250927102553894" /></p>
+
+<p>从而得到lambda的准确表达</p>
+
+<p><img src="..\..\..\imgs\image-20250927102629482.png" alt="image-20250927102629482" /></p>
+
+<p>4/最优传输映射</p>
+
+<p>映射的传输代价</p>
+
+<p><img src="..\..\..\imgs\image-20250927102817963.png" alt="image-20250927102817963" /></p>
+
+<p>而最优传输就是找到这样一个使得传输代价最小的映射</p>
+
+<p><img src="..\..\..\imgs\image-20250927102825151.png" alt="image-20250927102825151" /></p>
+
+<p>5/power diagram</p>
+
+<p>是研究semi-discrete传输的重要工具</p>
+
+<p>在最优传输问题中，Power 图/Laguerre 图用于表示目标测度的离散划分。每个加权点代表一个目标质量点，权重用于调整 Voronoi 单元的大小，使得每个单元的质量与目标质量相匹配。</p>
+
+<p>通过调整权重，可以控制每个 Power 单元的面积，从而实现质量的重新分配。这就是 Monge-Ampère 方程数值求解中的关键思想：通过优化权重来实现源测度到目标测度的最优传输。</p>
+
+<p>power diagram是对voronoi图的推广，对每个site规定了权重</p>
+
+<p><img src="..\..\..\imgs\image-20250927103409819.png" alt="image-20250927103409819" /></p>
+
+<p>Aurenhammeret al.[1998]有如下结果</p>
+
+<p><img src="..\..\..\imgs\image-20250927103223060.png" alt="image-20250927103223060" /></p>
+
+<p>Wasserstein距离用来度量两个测度之间差异（与KL散度之间的对比），又称为推土机距离（EMD,Earth Moving Distance）</p>
+
+<p><img src="..\..\..\imgs\image-20250927113043423.png" alt="image-20250927113043423" /></p>
+
+<p>通过Power Diagram对空间的划分，可以得到一个semi-discrete映射</p>
+
+<p><img src="..\..\..\imgs\image-20250927113226638.png" alt="image-20250927113226638" /></p>
+
+<p>并且原始测度与此测度的推前的Wasserstein距离</p>
+
+<p><img src="..\..\..\imgs\image-20250927113328912.png" alt="image-20250927113328912" /></p>
+
+<p>w是是对于测度对(mu,nu)是adapted是如下</p>
+
+<p><img src="..\..\..\imgs\image-20250927113528269.png" alt="image-20250927113528269" /></p>
+
+<p>最优传输映射即是如下能量的无约束优化</p>
+
+<p><img src="..\..\..\imgs\image-20250927115405342.png" alt="image-20250927115405342" /></p>
+
+<p>3.多尺度(Multiscale)方式对此能量进行最优化</p>
+
+<p>一种Coarse to fine的方式，前一次的计算作为后一次计算的初始化</p>
+
+<p>收敛性有如下保证</p>
+
+<p><img src="..\..\..\imgs\image-20250927115720001.png" alt="image-20250927115720001" /></p>
+
+<p>递进方式$\lambda_p$的计算</p>
+
+<p><img src="..\..\..\imgs\image-20250927120712503.png" alt="image-20250927120712503" /></p>
+
+<p>最终算法：</p>
+
+<p><img src="..\..\..\imgs\image-20250927120936722.png" alt="image-20250927120936722" /></p>
+
+<p>4.实现细节</p>
+
+<p>测度序列的构造：</p>
+
+<p><img src="..\..\..\imgs\image-20250927120011943.png" alt="image-20250927120011943" /></p>
+
+<p>逐步递进的方式，$v_{l+1}$包含n(l+1)个点</p>
+
+<p><img src="..\..\..\imgs\image-20250927120305958.png" alt="image-20250927120305958" /></p>
+
+<p>难以求解这个优化，通过Lloyd sample进行数值逼近</p>
+
+<p><img src="..\..\..\imgs\image-20250927120600253.png" alt="image-20250927120600253" /></p>
+
+<p>通过Lloyd sample将图像转化为离散测度</p>
+
+<p><img src="..\..\..\imgs\image-20250927115022999.png" alt="image-20250927115022999" /></p>
+
+<p><strong>问题：</strong></p>
+
+<p>两个权重 $\lambda_p$与$w_p$是如何确定的？</p>
+
+<p>为什么初始化需要用到Lloyd sample？</p>
+
+<p>对于图像是如何转化为离散测度的？</p>]]></content><author><name></name></author><category term="OptimalTransport" /><summary type="html"><![CDATA[直接计算连续（continuous）OT 映射在一般情况下是解析不可行、数值不稳定且计算复杂度极高的；而 Semi-discrete OT（一端离散、一端连续）将问题转化为一个凸优化问题（通常是对偶势函数的优化），具有良好的数学结构、高效算法和数值稳定性，因此成为实际计算 OT 映射的主流方法 本文是对Semi-Discrete类型最优传输的一种求解 1.什么是Semi-Discrete的OT？ 1/测度的定义，对于在定义域Omega中的任意子集B，测度是一个从B到R+的一个映射 1.5 图像的测度 天然的连续测度 1/灰度值矩阵[WxH] 2/灰度归一化 3/进行插值（对于网格是PL(PieceWise Linear)） 问题：对于图像是如何转化为离散测度的？ 2/mu是连续测度，nu是离散的Dirac测度 \rho是密度 3/测度的推前(Push Forward)映射： 将一个测度映射mu到另外一个测度T#mu 从而得到lambda的准确表达 4/最优传输映射 映射的传输代价 而最优传输就是找到这样一个使得传输代价最小的映射 5/power diagram 是研究semi-discrete传输的重要工具 在最优传输问题中，Power 图/Laguerre 图用于表示目标测度的离散划分。每个加权点代表一个目标质量点，权重用于调整 Voronoi 单元的大小，使得每个单元的质量与目标质量相匹配。 通过调整权重，可以控制每个 Power 单元的面积，从而实现质量的重新分配。这就是 Monge-Ampère 方程数值求解中的关键思想：通过优化权重来实现源测度到目标测度的最优传输。 power diagram是对voronoi图的推广，对每个site规定了权重 Aurenhammeret al.[1998]有如下结果 Wasserstein距离用来度量两个测度之间差异（与KL散度之间的对比），又称为推土机距离（EMD,Earth Moving Distance） 通过Power Diagram对空间的划分，可以得到一个semi-discrete映射 并且原始测度与此测度的推前的Wasserstein距离 w是是对于测度对(mu,nu)是adapted是如下 最优传输映射即是如下能量的无约束优化 3.多尺度(Multiscale)方式对此能量进行最优化 一种Coarse to fine的方式，前一次的计算作为后一次计算的初始化 收敛性有如下保证 递进方式$\lambda_p$的计算 最终算法： 4.实现细节 测度序列的构造： 逐步递进的方式，$v_{l+1}$包含n(l+1)个点 难以求解这个优化，通过Lloyd sample进行数值逼近 通过Lloyd sample将图像转化为离散测度 问题： 两个权重 $\lambda_p$与$w_p$是如何确定的？ 为什么初始化需要用到Lloyd sample？ 对于图像是如何转化为离散测度的？]]></summary></entry><entry><title type="html">最优传输3-顾老师的Semi-Discrete解法</title><link href="http://localhost:4000/optimaltransport/2024/07/31/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%933-%E9%A1%BE%E8%80%81%E5%B8%88%E7%9A%84Semi-Discrete%E8%A7%A3%E6%B3%95.html" rel="alternate" type="text/html" title="最优传输3-顾老师的Semi-Discrete解法" /><published>2024-07-31T00:00:00+08:00</published><updated>2024-07-31T00:00:00+08:00</updated><id>http://localhost:4000/optimaltransport/2024/07/31/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%933-%E9%A1%BE%E8%80%81%E5%B8%88%E7%9A%84Semi-Discrete%E8%A7%A3%E6%B3%95</id><content type="html" xml:base="http://localhost:4000/optimaltransport/2024/07/31/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%933-%E9%A1%BE%E8%80%81%E5%B8%88%E7%9A%84Semi-Discrete%E8%A7%A3%E6%B3%95.html"><![CDATA[<p>半离散最优传输的变分原理</p>
+
+<p>顾老师的算法思路发轫于凸几何</p>
+
+<p>经典的Minkowski问题</p>
+
+<p><img src="..\..\..\imgs\image-20250928211208672.png" alt="image-20250928211208672" /></p>
+
+<p>Minkowski的学生Alexanderov对上面的问题进行拓展</p>
+
+<p><img src="..\..\..\imgs\image-20250928200336960.png" alt="image-20250928200336960" /></p>
+
+<h3 id="中心定理">中心定理</h3>
+
+<p><img src="..\..\..\imgs\image-20250928200412933.png" alt="image-20250928200412933" /></p>
+
+<p>Legendre-Fenchel对偶</p>
+
+<p><img src="..\..\..\imgs\image-20250928214054586.png" alt="image-20250928214054586" /></p>
+
+<p>Alexandrov变分证明 ：求解能量E是凸的，hessian对角占优</p>
+
+<p><img src="..\..\..\imgs\image-20250928214253775.png" alt="image-20250928214253775" /></p>
+
+<p>示意图</p>
+
+<p><img src="..\..\..\imgs\image-20250928214324614.png" alt="image-20250928214324614" /></p>]]></content><author><name></name></author><category term="OptimalTransport" /><summary type="html"><![CDATA[半离散最优传输的变分原理 顾老师的算法思路发轫于凸几何 经典的Minkowski问题 Minkowski的学生Alexanderov对上面的问题进行拓展 中心定理 Legendre-Fenchel对偶 Alexandrov变分证明 ：求解能量E是凸的，hessian对角占优 示意图]]></summary></entry><entry><title type="html">最优传输2-一些简单情况的最优传输</title><link href="http://localhost:4000/optimaltransport/2024/07/15/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%932-%E4%B8%80%E4%BA%9B%E7%AE%80%E5%8D%95%E6%83%85%E5%86%B5%E7%9A%84%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%93.html" rel="alternate" type="text/html" title="最优传输2-一些简单情况的最优传输" /><published>2024-07-15T00:00:00+08:00</published><updated>2024-07-15T00:00:00+08:00</updated><id>http://localhost:4000/optimaltransport/2024/07/15/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%932-%E4%B8%80%E4%BA%9B%E7%AE%80%E5%8D%95%E6%83%85%E5%86%B5%E7%9A%84%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%93</id><content type="html" xml:base="http://localhost:4000/optimaltransport/2024/07/15/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%932-%E4%B8%80%E4%BA%9B%E7%AE%80%E5%8D%95%E6%83%85%E5%86%B5%E7%9A%84%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%93.html"><![CDATA[<p>本节介绍一些简单情况的最优传输</p>
+
+<p>​	一维情况下</p>
+
+<p><img src="..\..\..\imgs\image-20250928213145043.png" alt="image-20250928213145043" /></p>
+
+<p>​	Gauss</p>
+
+<p><img src="..\..\..\imgs\image-20250928213206746.png" alt="image-20250928213206746" /></p>
+
+<p>对于两个都是离散分布，则是一个线性规划</p>
+
+<p><img src="..\..\..\imgs\image-20250928213629121.png" alt="image-20250928213629121" /></p>
+
+<p>semi-discrete</p>
+
+<p>面包房案例</p>
+
+<p><img src="..\..\..\imgs\image-20250928213528176.png" alt="image-20250928213528176" /></p>
+
+<p>​	GMM</p>
+
+<p><img src="..\..\..\imgs\image-20250928213828770.png" alt="image-20250928213828770" /></p>]]></content><author><name></name></author><category term="OptimalTransport" /><summary type="html"><![CDATA[本节介绍一些简单情况的最优传输 ​ 一维情况下 ​ Gauss 对于两个都是离散分布，则是一个线性规划 semi-discrete 面包房案例 ​ GMM]]></summary></entry><entry><title type="html">最优传输1-Monge问题与Kantorivch问题</title><link href="http://localhost:4000/optimaltransport/2024/07/12/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%931-Monge%E9%97%AE%E9%A2%98%E4%B8%8EKantorivch%E9%97%AE%E9%A2%98.html" rel="alternate" type="text/html" title="最优传输1-Monge问题与Kantorivch问题" /><published>2024-07-12T00:00:00+08:00</published><updated>2024-07-12T00:00:00+08:00</updated><id>http://localhost:4000/optimaltransport/2024/07/12/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%931-Monge%E9%97%AE%E9%A2%98%E4%B8%8EKantorivch%E9%97%AE%E9%A2%98</id><content type="html" xml:base="http://localhost:4000/optimaltransport/2024/07/12/%E6%9C%80%E4%BC%98%E4%BC%A0%E8%BE%931-Monge%E9%97%AE%E9%A2%98%E4%B8%8EKantorivch%E9%97%AE%E9%A2%98.html"><![CDATA[<p>引子：</p>
+
+<p>保面积映射与最优传输映射</p>
+
+<p><img src="D:\MyDocs\geogo.github.io\imgs\弥勒佛_保面积最优传输.png" alt="image-20251114192612155" /></p>
+
+<p>Monge问题</p>
+
+<p><img src="..\..\..\imgs\image-20250928203504345.png" alt="" />Kantorvich问题</p>
+
+<p><img src="..\..\..\imgs\image-20250928203252541.png" alt="image-20250928203252541" /></p>
+
+<p>Kantorvich对偶</p>
+
+<p>对偶问题等价性 min(KP) = max(DP)</p>
+
+<p><img src="..\..\..\imgs\image-20250928203211180.png" alt="image-20250928203211180" /></p>
+
+<p>其中满足等式约束的函数对$(\phi,\psi)$称为Kantorvich Potential，其中$\psi$是$\phi$的凸共轭。凸共轭用如下$c$变换进行定义。</p>
+
+<p><img src="..\..\..\imgs\image-20250928210211753.png" alt="image-20250928210211753" /></p>
+
+<p>当代价函数是内积形式时$c(x,y)=&lt;x,y&gt;$</p>
+
+<p><img src="..\..\..\imgs\image-20250928201458627.png" alt="image-20250928201458627" /></p>
+
+<p><img src="..\..\..\imgs\image-20250928213017899.png" alt="image-20250928213017899" /></p>
+
+<p>Brenier Potential</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>针对二次代价$c(x,y) = \frac{1}{2}</td>
+      <td> </td>
+      <td>x-y</td>
+      <td> </td>
+      <td>^2$，则存在唯一的最优传输映射$T$，且$T$是某个凸函数$\phi$的梯度$T = \nabla \phi$,这个凸函数$\phi$称为是Brenier Potential</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><img src="..\..\..\imgs\image-20250928210635343.png" alt="image-20250928210635343" /></p>
+
+<p><img src="..\..\..\imgs\image-20250928212234034.png" alt="image-20250928212234034" /></p>
+
+<p>所以</p>
+
+<p><img src="..\..\..\imgs\image-20250928212316955.png" alt="image-20250928212316955" /></p>
+
+<p><img src="..\..\..\imgs\image-20250928212149743.png" alt="image-20250928212149743" /></p>
+
+<p><img src="..\..\..\imgs\image-20250928212412091.png" alt="image-20250928212412091" /></p>
+
+<p>如果代价c满足扭曲条件(twist condition)</p>
+
+<p><img src="..\..\..\imgs\image-20250928212430066.png" alt="image-20250928212430066" /></p>
+
+<p><img src="..\..\..\imgs\image-20250928212605275.png" alt="image-20250928212605275" /></p>
+
+<p>​	其中$\phi$是Kantorvich potential</p>
+
+<p><img src="..\..\..\imgs\image-20250928212705825.png" alt="image-20250928212705825" /></p>
+
+<p>Kantorvich potential是“价格函数”</p>
+
+<p><img src="..\..\..\imgs\image-20250928211016803.png" alt="image-20250928211016803" /></p>
+
+<p><strong>传输方向由势函数的梯度（或广义梯度）决定</strong> —— 类似于物理中的“力是势能的负梯度</p>
+
+<p><strong>WGAN的原理</strong></p>
+
+<p>WGAN直接求解EMD距离不可行，EMD距离是Kantorvich问题，改为求解其对偶问题</p>]]></content><author><name></name></author><category term="OptimalTransport" /><summary type="html"><![CDATA[引子： 保面积映射与最优传输映射 Monge问题 Kantorvich问题 Kantorvich对偶 对偶问题等价性 min(KP) = max(DP) 其中满足等式约束的函数对$(\phi,\psi)$称为Kantorvich Potential，其中$\psi$是$\phi$的凸共轭。凸共轭用如下$c$变换进行定义。 当代价函数是内积形式时$c(x,y)=&lt;x,y&gt;$ Brenier Potential 针对二次代价$c(x,y) = \frac{1}{2}   x-y   ^2$，则存在唯一的最优传输映射$T$，且$T$是某个凸函数$\phi$的梯度$T = \nabla \phi$,这个凸函数$\phi$称为是Brenier Potential 所以 如果代价c满足扭曲条件(twist condition) ​ 其中$\phi$是Kantorvich potential Kantorvich potential是“价格函数” 传输方向由势函数的梯度（或广义梯度）决定 —— 类似于物理中的“力是势能的负梯度 WGAN的原理 WGAN直接求解EMD距离不可行，EMD距离是Kantorvich问题，改为求解其对偶问题]]></summary></entry><entry><title type="html">几何优化1 1阶算法_slim算法</title><link href="http://localhost:4000/2020/09/09/%E5%87%A0%E4%BD%95%E4%BC%98%E5%8C%961-1%E9%98%B6%E7%AE%97%E6%B3%95_SLIM%E7%AE%97%E6%B3%95.html" rel="alternate" type="text/html" title="几何优化1 1阶算法_slim算法" /><published>2020-09-09T00:00:00+08:00</published><updated>2020-09-09T00:00:00+08:00</updated><id>http://localhost:4000/2020/09/09/%E5%87%A0%E4%BD%95%E4%BC%98%E5%8C%961-1%E9%98%B6%E7%AE%97%E6%B3%95_SLIM%E7%AE%97%E6%B3%95</id><content type="html" xml:base="http://localhost:4000/2020/09/09/%E5%87%A0%E4%BD%95%E4%BC%98%E5%8C%961-1%E9%98%B6%E7%AE%97%E6%B3%95_SLIM%E7%AE%97%E6%B3%95.html"><![CDATA[<p>ARAP是有翻转的</p>
+
+<p><strong>SLIM 的最大优势：统一框架 + 可调畸变 + 强单射性保证</strong></p>
+
+<p><img src="..\..\..\..\imgs\image-20251028114334565.png" alt="image-20251028114334565" /></p>
+
+<p><img src="..\..\..\..\imgs\image-20251028114350216.png" alt="image-20251028114350216" /></p>
+
+<p>主要特点是针对大型网格，对非线性能量进行最优化</p>
+
+<p><img src="..\..\..\..\imgs\image-20250728135630935.png" alt="image-20250728135630935" /></p>
+
+<p>也是用local/Global的思路</p>
+
+<p><img src="..\..\..\..\imgs\image-20250728135738550.png" alt="image-20250728135738550" /></p>
+
+<p>我们构建无翻转(Non-flipping)</p>
+
+<p><img src="..\..\..\..\imgs\image-20250728135909520.png" alt="image-20250728135909520" /></p>
+
+<p>ARAP</p>
+
+<p><img src="..\..\..\..\imgs\image-20250728140522030.png" alt="image-20250728140522030" /></p>
+
+<p>Dirichlet能量</p>
+
+<p><img src="..\..\..\..\imgs\image-20250728140511001.png" alt="image-20250728140511001" /></p>
+
+<p>建立Convex Proxy</p>
+
+<p><img src="..\..\..\..\imgs\image-20250728103724379.png" alt="image-20250728103724379" /></p>]]></content><author><name></name></author><summary type="html"><![CDATA[ARAP是有翻转的 SLIM 的最大优势：统一框架 + 可调畸变 + 强单射性保证 主要特点是针对大型网格，对非线性能量进行最优化 也是用local/Global的思路 我们构建无翻转(Non-flipping) ARAP Dirichlet能量 建立Convex Proxy]]></summary></entry><entry><title type="html">曲面参数化4-LSCM算法</title><link href="http://localhost:4000/parameterization/2018/10/01/%E5%87%A0%E4%BD%95%E4%BC%98%E5%8C%962-Lipman.html" rel="alternate" type="text/html" title="曲面参数化4-LSCM算法" /><published>2018-10-01T00:00:00+08:00</published><updated>2018-10-01T00:00:00+08:00</updated><id>http://localhost:4000/parameterization/2018/10/01/%E5%87%A0%E4%BD%95%E4%BC%98%E5%8C%962-Lipman</id><content type="html" xml:base="http://localhost:4000/parameterization/2018/10/01/%E5%87%A0%E4%BD%95%E4%BC%98%E5%8C%962-Lipman.html"><![CDATA[<p>本文主要讲解的是如何控制三角网格(Mesh)上的分片线性映射$f$的共形扭曲(记为$\sigma$),并且同时确保$f$的局部单射性质，这个方法本身不是参数化方法而是对一般参数化方法(LSCM,ARAP等)进行加强。</p>
+
+<p>三角网格上$M = (V,F,E)$定义的映射可以认为是分片连续线性的（CPL continous Piecewise Linear ，每个三角面线性的同时，相邻两个三角面在边界保持连续）将所有这样的映射的空间定义为$F^M$ ,而我们需要的是$\sigma$有限的子空间</p>
+
+<h3 id="对函数空间进行凸化">对函数空间进行凸化</h3>
+
+<p>我们这样定义空间$F^M_C \subset F^M,常数C &gt;=1,\sigma&lt;=C$，不过麻烦的是$F^M_C $是<strong>非凸的</strong>，而我们要做的就是找一个比较好的凸的空间作为近似替代。</p>
+
+<p>我们通过在每个面上定义一个坐标加$\oplus$，从而可以简易表达出的映射空间$F^{M,\oplus}_C \subset F^M_C$</p>
+
+<p>具体做法如下</p>
+
+<p>1）研究使仿射变换无翻转的并且其$\sigma$不大于一个常数C(C&gt;=1)的空间$\mathcal A_C(f_j) $</p>
+
+<p>2）对其中最大凸子空间的描述 $\mathcal A^{\oplus_j}_C(f_j) \subset \mathcal A_C(f_j)$ ，其是由在每个面$f_j$上定义一个坐标架$\oplus_j$</p>
+
+<p>3）对所有面$f_j \in F$ 考虑$\mathcal A^{\oplus_j}_C(f_j)$并且考虑边上的连续性的约束,从而得到映射空间$F^{M,\oplus}_C \subset F^M_C$</p>
+
+<p>4）对得到的映射空间$F^{M,\oplus}_C$进行优化</p>
+
+<p>对每个三角面定义$f_j \in F $定义其上的一个局部坐标系 $\oplus_j := [0_j,e_1^j,e_2^j]$</p>
+
+<p>那么对于$f_j$上的任意一点p,可以表示成 p = 0j+e1p+e2p</p>
+
+<p><img src="..\..\..\..\imgs\image-20251016061313250.png" alt="image-20251016061313250" /></p>
+
+<p>,们可以定义在f_j上的仿射映射A_j:f_j -&gt;R2  A_j(p) =(abcd)(p)+t = A[p] +T</p>
+
+<p><img src="..\..\..\..\imgs\image-20251016061255492.png" alt="image-20251016061255492" /></p>
+
+<p>其中</p>
+
+<p><img src="..\..\..\..\imgs\image-20251016062307282.png" alt="image-20251016062307282" /></p>
+
+<p>从而就可以表达为如下的限制条件</p>
+
+<p><img src="..\..\..\..\imgs\image-20251016062408865.png" alt="image-20251016062408865" /></p>
+
+<p><strong>注意到</strong>我们可以写成如下的矩阵形式，从而更方便后续的处理</p>
+
+<p><img src="..\..\..\..\imgs\image-20240912195652261.png" alt="image-20240912195652261" /></p>
+
+<p>那样映射就可以表达成如下</p>
+
+<p><img src="..\..\..\..\imgs\image-20240912205200380.png" alt="image-20240912205200380" /></p>
+
+<p>在复数域上表达更为简洁</p>
+
+<p><img src="..\..\..\..\imgs\image-20251016094836797.png" alt="image-20251016094836797" /></p>
+
+<p><img src="..\..\..\..\imgs\image-20251016094847914.png" alt="image-20251016094847914" /></p>
+
+<p><img src="..\..\..\..\imgs\image-20251016094853613.png" alt="image-20251016094853613" /></p>
+
+<p>可以求得矩阵A_j(p)的奇异值</p>
+
+<p><img src="..\..\..\..\imgs\image-20251016062833737.png" alt="image-20251016062833737" /></p>
+
+<p>我们知道分片线性映射的扭曲 $\sigma$可以用其矩阵的奇异值表达</p>
+
+<p><img src="..\..\..\..\imgs\image-20251016062847174.png" alt="image-20251016062847174" /></p>
+
+<p>那么受限条件(4.2)-(4.3)就可以转化为如下形式</p>
+
+<p><img src="..\..\..\..\imgs\image-20251016062528823.png" alt="image-20251016062528823" /></p>
+
+<p>引入一个中间变量$r_j \in \mathbb{R}$ ,那么上式转为</p>
+
+<p><img src="..\..\..\..\imgs\image-20251016062721441.png" alt="image-20251016062721441" /></p>
+
+<p>满足上面条件的三元组$（\alpha,\beta,r）\in \mathbb{C} \times \mathbb{C} \times \mathbb{R}$构成的空间即为$\mathcal{A}_C(f_j)$，并注意到其最大凸子空间 $\mathcal A^{\oplus_j}_C(f_j) \subset \mathcal A_C(f_j)$</p>
+
+<p><img src="..\..\..\..\imgs\image-20251016094749664.png" alt="image-20251016094749664" /></p>
+
+<p>也就是如下图所示的（蓝色内圆与灰色半平面是凸的，但是黄色锥的补区域却是非凸的，我们就是用灰色区域代替黄色锥的补区域的）</p>
+
+<p><img src="..\..\..\..\imgs\image-20251107101000576.png" alt="image-20251107101000576" /></p>
+
+<p>$\mathcal A_C^{\oplus_j}$是$A_C$的子空间，下面来看下具体$A_C^{\oplus_j}$包含什么样的元素</p>
+
+<p><img src="..\..\..\..\imgs\image-20240912192008382.png" alt="image-20240912192008382" /></p>
+
+<p>通过在所有面上取Union从而构造出$\mathcal F^{M,\oplus}_C \subset \mathcal F^M$</p>
+
+<p><img src="..\..\..\..\imgs\image-20240912193217416.png" alt="image-20240912193217416" /></p>
+
+<p><strong>双射性</strong></p>
+
+<p>可以定义C&gt;=1的保向空间FM+</p>
+
+<p><img src="..\..\..\..\imgs\image-20251107112805188.png" alt="image-20251107112805188" /></p>
+
+<p>可以证明在保向空间中映射是双射的</p>
+
+<p><img src="..\..\..\..\imgs\image-20251107112556622.png" alt="image-20251107112556622" /></p>
+
+<p>同时可以对上面的结论推广到多联通区域中</p>
+
+<p><img src="..\..\..\..\imgs\image-20251107112401804.png" alt="image-20251107112401804" /></p>
+
+<h3 id="算法流程">算法流程</h3>
+
+<p><img src="..\..\..\..\imgs\image-20251107112032660.png" alt="image-20251107112032660" /></p>
+
+<p>可以用于优化平面变形(planar Morphing)和网格参数化(Parameterization)</p>
+
+<p>根据不同能量构造不同的优化式</p>
+
+<p>LSCM能量</p>
+
+<p><img src="..\..\..\..\imgs\image-20251107112108353.png" alt="image-20251107112108353" /></p>
+
+<p><img src="..\..\..\..\imgs\image-20251107112137480.png" alt="image-20251107112137480" /></p>
+
+<p>ARAP能量</p>
+
+<p><img src="..\..\..\..\imgs\image-20251107112331905.png" alt="image-20251107112331905" /></p>
+
+<p><img src="..\..\..\..\imgs\image-20251107112315320.png" alt="image-20251107112315320" /></p>
+
+<p>对于曲面展平</p>
+
+<p><img src="..\..\..\..\imgs\image-20251107112927267.png" alt="image-20251107112927267" /></p>]]></content><author><name></name></author><category term="Parameterization" /><summary type="html"><![CDATA[本文主要讲解的是如何控制三角网格(Mesh)上的分片线性映射$f$的共形扭曲(记为$\sigma$),并且同时确保$f$的局部单射性质，这个方法本身不是参数化方法而是对一般参数化方法(LSCM,ARAP等)进行加强。 三角网格上$M = (V,F,E)$定义的映射可以认为是分片连续线性的（CPL continous Piecewise Linear ，每个三角面线性的同时，相邻两个三角面在边界保持连续）将所有这样的映射的空间定义为$F^M$ ,而我们需要的是$\sigma$有限的子空间 对函数空间进行凸化 我们这样定义空间$F^M_C \subset F^M,常数C &gt;=1,\sigma&lt;=C$，不过麻烦的是$F^M_C $是非凸的，而我们要做的就是找一个比较好的凸的空间作为近似替代。 我们通过在每个面上定义一个坐标加$\oplus$，从而可以简易表达出的映射空间$F^{M,\oplus}_C \subset F^M_C$ 具体做法如下 1）研究使仿射变换无翻转的并且其$\sigma$不大于一个常数C(C&gt;=1)的空间$\mathcal A_C(f_j) $ 2）对其中最大凸子空间的描述 $\mathcal A^{\oplus_j}_C(f_j) \subset \mathcal A_C(f_j)$ ，其是由在每个面$f_j$上定义一个坐标架$\oplus_j$ 3）对所有面$f_j \in F$ 考虑$\mathcal A^{\oplus_j}_C(f_j)$并且考虑边上的连续性的约束,从而得到映射空间$F^{M,\oplus}_C \subset F^M_C$ 4）对得到的映射空间$F^{M,\oplus}_C$进行优化 对每个三角面定义$f_j \in F $定义其上的一个局部坐标系 $\oplus_j := [0_j,e_1^j,e_2^j]$ 那么对于$f_j$上的任意一点p,可以表示成 p = 0j+e1p+e2p ,们可以定义在f_j上的仿射映射A_j:f_j -&gt;R2 A_j(p) =(abcd)(p)+t = A[p] +T 其中 从而就可以表达为如下的限制条件 注意到我们可以写成如下的矩阵形式，从而更方便后续的处理 那样映射就可以表达成如下 在复数域上表达更为简洁 可以求得矩阵A_j(p)的奇异值 我们知道分片线性映射的扭曲 $\sigma$可以用其矩阵的奇异值表达 那么受限条件(4.2)-(4.3)就可以转化为如下形式 引入一个中间变量$r_j \in \mathbb{R}$ ,那么上式转为 满足上面条件的三元组$（\alpha,\beta,r）\in \mathbb{C} \times \mathbb{C} \times \mathbb{R}$构成的空间即为$\mathcal{A}_C(f_j)$，并注意到其最大凸子空间 $\mathcal A^{\oplus_j}_C(f_j) \subset \mathcal A_C(f_j)$ 也就是如下图所示的（蓝色内圆与灰色半平面是凸的，但是黄色锥的补区域却是非凸的，我们就是用灰色区域代替黄色锥的补区域的） $\mathcal A_C^{\oplus_j}$是$A_C$的子空间，下面来看下具体$A_C^{\oplus_j}$包含什么样的元素 通过在所有面上取Union从而构造出$\mathcal F^{M,\oplus}_C \subset \mathcal F^M$ 双射性 可以定义C&gt;=1的保向空间FM+ 可以证明在保向空间中映射是双射的 同时可以对上面的结论推广到多联通区域中 算法流程 可以用于优化平面变形(planar Morphing)和网格参数化(Parameterization) 根据不同能量构造不同的优化式 LSCM能量 ARAP能量 对于曲面展平]]></summary></entry><entry><title type="html">几何优化2 2阶算法_analyticaleigen算法</title><link href="http://localhost:4000/2018/09/10/%E5%87%A0%E4%BD%95%E4%BC%98%E5%8C%962-2%E9%98%B6%E7%AE%97%E6%B3%95_AnalyticalEigen%E7%AE%97%E6%B3%95.html" rel="alternate" type="text/html" title="几何优化2 2阶算法_analyticaleigen算法" /><published>2018-09-10T00:00:00+08:00</published><updated>2018-09-10T00:00:00+08:00</updated><id>http://localhost:4000/2018/09/10/%E5%87%A0%E4%BD%95%E4%BC%98%E5%8C%962-2%E9%98%B6%E7%AE%97%E6%B3%95_AnalyticalEigen%E7%AE%97%E6%B3%95</id><content type="html" xml:base="http://localhost:4000/2018/09/10/%E5%87%A0%E4%BD%95%E4%BC%98%E5%8C%962-2%E9%98%B6%E7%AE%97%E6%B3%95_AnalyticalEigen%E7%AE%97%E6%B3%95.html"><![CDATA[<p>现有许多的方法都是优化各向同性扭曲能量，但是要实现牛顿方法(二阶)的收敛速度还是比较困难的。</p>
+
+<p>这篇文章介绍的方法就是通过对变化的EIgen System进行解析从而使得Hess可以投影到正的(BA优化也有这样的一个步骤)，从而实现牛顿方法的迭代优化。对于一些复杂的网格(如Beetle.obj)用ARAP等一阶方法，收敛速度速度是比较慢的，所以探索能否使用二阶的牛顿方法来求最优化。</p>
+
+<p>主要是将各向同性扭曲能量（<strong>isotropic distortion energies</strong>）的Hess投影到半正定空间中，从而可以用牛顿方法来进行求解</p>
+
+<p>三角网格整体的扭曲能量等于组成三角面扭曲能量的聚合</p>
+
+<p><img src="..\..\..\..\imgs\image-20250110130415509.png" alt="image-20250110130415509" /></p>
+
+<h3 id="变形梯度deformation-gradient">变形梯度(deformation gradient)</h3>
+
+<p>F =RS 由于R是一个旋转矩阵，所以F的扭曲都是由S产生的</p>
+
+<p>主要是通过极分解F=RS 变形梯度(deformation gradient)得到stretch tensor的不变量并将eigenvalues 与eigenVectors表示为这些不变量</p>
+
+<p>从而求解出各向同性能量的eigen structure</p>
+
+<p>为方便表达采用的Tensor表示法</p>
+
+<p>对每个quadrature point的能量进行累加得到总体能量</p>
+
+<p>利用链式求导法对上式能量求导后</p>
+
+<p>定义不变量</p>
+
+<p>从而能量可以表达成如下形式，不变量I1,I2,I3可以用于解析Hessian的eigen stucture</p>
+
+<p>先对I1的Eigen Stucture进行分析</p>
+
+<p>I2的Stucture</p>
+
+<p>I3的Structure</p>
+
+<p>有了特征值后我们来求解特征向量</p>
+
+<p>对于2d的情况</p>
+
+<p><strong>接下来对不同能量进行解析</strong></p>
+
+<p>ARAP能量</p>
+
+<p><img src="..\..\..\..\imgs\image-20250111134212121.png" alt="image-20250111134212121" /></p>
+
+<p>MIPS能量</p>
+
+<h3 id="算法流程">算法流程</h3>]]></content><author><name></name></author><summary type="html"><![CDATA[现有许多的方法都是优化各向同性扭曲能量，但是要实现牛顿方法(二阶)的收敛速度还是比较困难的。 这篇文章介绍的方法就是通过对变化的EIgen System进行解析从而使得Hess可以投影到正的(BA优化也有这样的一个步骤)，从而实现牛顿方法的迭代优化。对于一些复杂的网格(如Beetle.obj)用ARAP等一阶方法，收敛速度速度是比较慢的，所以探索能否使用二阶的牛顿方法来求最优化。 主要是将各向同性扭曲能量（isotropic distortion energies）的Hess投影到半正定空间中，从而可以用牛顿方法来进行求解 三角网格整体的扭曲能量等于组成三角面扭曲能量的聚合 变形梯度(deformation gradient) F =RS 由于R是一个旋转矩阵，所以F的扭曲都是由S产生的 主要是通过极分解F=RS 变形梯度(deformation gradient)得到stretch tensor的不变量并将eigenvalues 与eigenVectors表示为这些不变量 从而求解出各向同性能量的eigen structure 为方便表达采用的Tensor表示法 对每个quadrature point的能量进行累加得到总体能量 利用链式求导法对上式能量求导后 定义不变量 从而能量可以表达成如下形式，不变量I1,I2,I3可以用于解析Hessian的eigen stucture 先对I1的Eigen Stucture进行分析 I2的Stucture I3的Structure 有了特征值后我们来求解特征向量 对于2d的情况 接下来对不同能量进行解析 ARAP能量 MIPS能量 算法流程]]></summary></entry></feed>
