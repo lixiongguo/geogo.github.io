@@ -54,7 +54,9 @@ Neumann to Dirichlet
 
 对于调和函数，边界延拓到内部
 
-![image-20251026182551767](D:\MyDocs\geogo.github.io\imgs\image-20251026182551767.png)
+![image-20251026182551767](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20251026182551767.png)
+
+
 
 算法流程
 
