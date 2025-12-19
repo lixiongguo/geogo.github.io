@@ -14,7 +14,7 @@
 
 
 
-**利用微分形式对连续性分类**
+### **利用微分形式对连续性分类**
 
 
 
@@ -28,9 +28,29 @@
 
 其他三种形式的图示
 
+
+
 ![image-20251107193033679](..\..\..\imgs\image-20251107193033679.png)
 
+**Regular Singular Line**
+
+u and v are smooth across the patch boundary mod-ulo a constant offset. 
+
+![image-20251219133058539](..\..\..\imgs\image-20251219133058539.png)
+
+进一步简化有
+
+![image-20251219133349473](/Users/lgxgeogo/Library/Application Support/typora-user-images/image-20251219133349473.png)
+
+**Vertices with Reverse Continuity** 
+
+we want the 0-forms u and v to change orientation when crossing the patch
+
 ![image-20251107192923699](..\..\..\imgs\image-20251107192923699.png)
+
+**Vertices with Switch Continuity** Finally, for vertices on a singularity line on which we want u and v to switch，we sim-
+
+ply enforce that du+ = dv− and dv+ =−du−.
 
 ![image-20251107193020341](..\..\..\imgs\image-20251107193020341.png)
 
@@ -44,10 +64,14 @@
 
 ### Singularity Graph
 
+Singularity Graph 可以认为是Meta Mesh
+
 ![image-20251107193309335](..\..\..\imgs\image-20251107193309335.png)
 
 如何确定Singularity形式
 
 ![image-20251107193344626](..\..\..\imgs\image-20251107193344626.png)
 
-![image-20251107193405440](..\..\..\imgs\image-20251107193405440.png)
+算法
+
+![image-20251219134909610](..\..\..\imgs\image-20251219134909610.png)

@@ -50,6 +50,8 @@
 
 **分支覆盖(branch cover)**
 
+![image-20251218151727881](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20251218151727881.png)
+
 设$M$是一个Riemann曲面(一维复流形),我们定义$M$的一个**分支覆盖(branch cover)$M'$**是一个这样的黎曼面:
 
 其与$M$存在局部存在同胚映射$\pi:M' \to M$，对任意一个$M'$上的点$p' \in M'$,存在一个$p'$的领域$U'$,在其上可以定义局部坐标$z':U' \to \mathbb{C}$,并且以点$p'$为坐标架的中心,即$z'(p') = 0$。同样也可以在像点的领域$U(\pi(p') \in U)$,定义局部坐标$z: U \to \mathbb{C},z(\pi(p'))=0$,存在一个整数$n_p > 0$,在$p$的局部有如下坐标变换关系成立$z = (z')^{n_p}$，如果$n_p > 1$,那么$p$点即为$M$的一个分支点。
