@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" /></head>
+<style>@import url(/public/css/syntax/emacs.css);</style>
+  <title></title>
+  <!-- <link href="/public/css/bootstrap.min.css" rel="stylesheet"> -->
+
+  <link href="/public/css/style.css" rel="stylesheet">
+  <body>
+  	<div class="container"> 
+		<div class="sidebar">
+			<div class="sidebar-item sidebar-header">
+	<!-- <div class='sidebar-brand'>
+		<a href="/about/"></a>
+	</div>
+	<p class="lead"></p>-->
+	<div class='circular-image'>
+		<img src="/assets/image/Koushiro.png" alt="Circular Image">
+	</div>
+</div>
+
+<div >
+	<p>学与玩</p>
+</div>
+<ul class="nav">
+    <!-- ... 现有导航项 ... -->
+    <li><a href="/about" class="rainbow-shine">About me</a></li>
+    <!-- ... 现有导航项 ... -->
+</ul>
+<ul class="nav">
+    <!-- ... 现有导航项 ... -->
+    <li><a href="/caustics" class="rainbow-shine">Gallery</a></li>
+    <!-- ... 现有导航项 ... -->
+</ul>
+
+
+<div class="sidebar-item sidebar-nav">
+  	<ul class="nav">
+			<li class="nav-title">Categories</li>
+	    
+	    <li>
+	    	<a class="nav-item" href="/category#Parameterization">
+				<span class="name">Parameterization</span>
+				<span class="badge">5</span>
+	    	</a>
+ 		</li>
+	    
+	  </nav>
+	</ul>
+</div>
+<div >
+	<p>人生箴言:</p>
+	<p>“成功的秘诀在于，你必须先知道失败的原因。”</p>
+</div>
+<div class="sidebar-item sidebar-footer">
+	<p>Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a></p>
+</div>
+		</div>
+		<div class="content">
+      <!-- <canvas id="particle-canvas"></canvas> -->
+			<article class="post">
+	<header class="post-header">
+		<div class="post-title"> 
+			曲面参数化4-LSCM算法
+		</div>
+		<time class="post-date dt-published" datetime="2016-11-03T00:00:00+08:00" itemprop="datePublished">2016/11/03
+		</time>		
+	</header>
+
+	<div class="post-content">
+		<p>g共形映射是什么</p>
+
+<p>另外如图，将一个三维人脸曲面映射到平面圆盘上。我们在人脸曲面任意画两条相交曲线，这两条曲面上的曲线被映射到平面上的两条曲线，空间曲线的交点被映成平面曲线的交点，在交点处，空间曲线的夹角等于平面曲线的夹角。这两条空间曲线任意选取，其夹角都被映射完美保持。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250312183649382.png" alt="image-20250312183649382" /></p>
+
+<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251203151355902.png" alt="image-20251203151355902" /></p>
+
+<p>平面上的共形映射，以及复分析的理论</p>
+
+<p>Cauchy-Riemann定理</p>
+
+<p><strong>LSCM算法</strong></p>
+
+<p>本文算法来自[1],通过高等数学中复变函数的理论来构造一个能量$E$,并求解其最优化。</p>
+
+<p>$w = e^z$的图像</p>
+
+<p><img src="/Users/lgxgeogo/Library/Application Support/typora-user-images/image-20251218150233947.png" alt="image-20251218150233947" /></p>
+
+<p>令复数$U=u+iv,X=x+iy$，那么显然$U(X)$就是一个复函数，复函数是共形的当且仅当其满足的<strong>Cauchy-Riemann方程</strong>
+\({\partial u}/{\partial x} = {\partial v}/{\partial y} \\ {\partial u}/{\partial y} = -{\partial v}/{\partial x}
+\tag{CR}\)</p>
+
+<p>并结合前面推导的(2)式可得如下(3)式</p>
+
+\[{\partial U}/{\partial x} + i{\partial U}/{\partial y} = \frac{i}{2A_t}(W_{t_i},W_{t_j},W_{t_k}){\begin{pmatrix}u_i\\u_j\\u_k\end{pmatrix}}, \quad
+其中\begin{cases}W_{t_i} = (x_k - x_j)+i(y_k-y_j)\\
+W_{t_j} = (x_i - x_k)+i(y_i-y_k)\\
+W_{t_k} = (x_j - x_i)+i(y_j-y_i)\\
+\end{cases}
+\tag{3}\]
+
+<p>那么对于每个三角形$T_i$可以通过如下方法定义一个能量来衡量其不满足共形性的程度</p>
+
+\[C(T_i) = {||{{\partial U}/{\partial x}}+i{{\partial U}/{\partial y}}||}^2 A_{T_j}=\frac {1} {4A_T}{|(W_{j1},W_{j2},W_{j3})(U_{j1},U_{j2},U_{j3})|}^2\]
+
+<table>
+  <tbody>
+    <tr>
+      <td>将所有三角形能量进行累加$E_{lscm} = \Sigma_{i=1}^{n} C(T_i)$，可以认为是关于复数$U=(U_1,U_2,…,U_n)^T$的二次型$E_{lscm} = C(U=(U_1,U_2,…,U_n)^T)=U^*CU =</td>
+      <td> </td>
+      <td>MU</td>
+      <td> </td>
+      <td>^2$</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>\(M=(m_{ij})是|F|\times|V|稀疏矩阵，
+m_{ij} = \begin{cases}W_{j,T_i},如果v_j属于三角形T_i \\ 0\end{cases}
+\tag{4}\)
+如果不加限制那么会得到平凡解(trivial),即$U=0$的常映射。</p>
+
+<p>要想得到非平凡解需要固定一部分点(pin点)，即固定某些$U$的值，所以可以将$U$分块为$(U_f^T,U_p^T)^T$其中$U_f$是自由的点，$U_p$是固定</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>同样的将$M$分解$M =(M_f \ M_p)$,其中$M_f$的形状是$</td>
+      <td>F</td>
+      <td>*(</td>
+      <td>V</td>
+      <td>-p)$</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>\(||MU||^2=||MfUf+MpUp||^2\)
+复矩阵$M$的实部与虚部进行分解$M=M^{re}+iM^{im}$,那么可以将上式转为求解如下的<strong>实最小二乘</strong>
+\(\begin{aligned}
+C(x) = ||Ax-b||^2,
+A={\begin{pmatrix}{M_f^{Re}}&amp;{-M_f^{Im}}\\{M_f^{Im}}&amp;{M_f^{Re}}\end{pmatrix} },
+b=-{\begin{pmatrix}{M_p^{Re}}&amp;{-M_p^{Im}}\\{M_p^{Im}}&amp;{M_p^{Re}}\end{pmatrix} }{\begin{pmatrix}U_p^{Re}\\U_p^{Im}\end{pmatrix}}
+\end{aligned}\tag{5}\)
+其中矩阵A的大小为$2|F|\times 2(|V| -p)$，并且$b\in R^{2|F|},x\in R^{2|V|-p}$</p>
+
+<p>原始文章附录中证明了,当固定点个数大于等于2时($p\geq2$)，矩阵A满秩，方程有唯一解</p>
+
+<p>（问题：在什么条件下，可以数值求解$x=(A^TA)^{-1}A^Tb$来获得解？）</p>
+
+<p>与DCP算法算法的等价性</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>实际上LSCM能量，可以表达为映射对于Cauchy-Riemann公式的残差值，即$E_{lscm} = \int_X</td>
+      <td>{\nabla u}^ \perp  - \nabla v</td>
+      <td>^2 dA$</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>将上式展开，那么LSCM所计算的能量极小等价于Dirichlet能量极小</p>
+
+<p><img src="..\..\..\..\imgs\image-20250318151749582.png" alt="image-20250318151749582" /></p>
+
+<p><img src="..\..\..\..\imgs\image-20251120204714410.png" alt="image-20251120204714410" /></p>
+
+<p><strong>参考文献</strong></p>
+
+<p>[1] B. Lévy, S. Petitjean, N. Ray, and J. Maillot, “Least Squares Conformal Maps for Automatic Texture Atlas Generation,” <em>ACM Trans. Graph.</em>, vol. 21, no. 3, pp. 362–371, Jul. 2002, doi: 10.1145/566654.566590.</p>
+
+	</div>
+</article>
+		</div>
+	</div>
+	<script>
+		MathJax = {
+			tex: {
+				inlineMath: [['$', '$'], ['\\(', '\\)']], // 同时支持 $ 和 \( \)
+				displayMath: [['$$', '$$'], ['\\[', '\\]']]
+			  }
+		};
+  function typeWriter(text, elementId, speed) {
+    let i = 0;
+    const element = document.getElementById(elementId);
+    element.innerHTML = "";
+    
+    function type() {
+      if (i < text.length) {
+        element.innerHTML += text.charAt(i);
+        i++;
+        setTimeout(type, speed);
+      }
+    }
+    
+    type();
+  }
+  
+  // 页面加载完成后执行打字机效果
+  window.addEventListener('load', function() {
+    typeWriter("学与玩", "typewriter", 100);
+  });
+	  </script>
+    <script src="/assets/js/particles.js"></script>
+	  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+</html><canvas id="particle-canvas" style="position:fixed; top:0; left:0; z-index:-1;"></canvas>

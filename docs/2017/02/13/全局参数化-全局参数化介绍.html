@@ -8,6 +8,32 @@
 
 <p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251015173125209.png" alt="image-20251015173125209" /></p>
 
+<h3 id="全局参数化与锥奇异点">全局参数化与锥奇异点</h3>
+
+<p>上面方法仅适用于拓扑圆盘，但是对于拓扑更加复杂的模型来说需要通过分割线将网格切开，需要找到合适的割线。而有了锥奇异点，这个过程能自动的进行。</p>
+
+<p>对于一个球状模型需要先切割成若干个分片(拓扑圆盘)，然后对每个分片分别进行平后的网格填充到一个图卡(Atlas)中</p>
+
+<p><img src="D:/MyDocs/geogo.github.io/imgs/image-20250927205710412.png" alt="image-20250927205710412" /></p>
+
+<p>而全局参数化的方法就是算法自动找到割线将整个网格模型展开，不再通过分割进行展开</p>
+
+<p>锥奇异点，展平后曲面上点的高斯曲率几乎处处为0，而锥奇异点的高斯曲率为给定数值不为0的点</p>
+
+<p><img src="D:/MyDocs/geogo.github.io/imgs/image-20250924183558400.png" alt="image-20250924183558400" /></p>
+
+<p>通过引入锥奇异点可以极大地减少扭曲</p>
+
+<p><img src="D:/MyDocs/geogo.github.io/imgs/image-20251112194941344.png" alt="image-20251112194941344" /></p>
+
+<p><img src="C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204201953020.png" alt="image-20251204201953020" /></p>
+
+<p>高斯博内定理</p>
+
+<p>在算法中加入锥奇异点</p>
+
+<p><img src="D:/MyDocs/geogo.github.io/imgs/image-20251113091148098.png" alt="image-20251113091148098" /></p>
+
 <h4 id="单值化定理">单值化定理</h4>
 
 <p>单值化定理Riemmann定理的进一步推广，我们可以看到对于十分复杂的曲面也是能够共形映射到一个简单域上的</p>
