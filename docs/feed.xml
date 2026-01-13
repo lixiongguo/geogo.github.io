@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2026-01-13T18:29:59+08:00</updated><id>/feed.xml</id><entry><title type="html">与scorematching</title><link href="/2025/06/20/%E4%B8%8EScoreMatching.html" rel="alternate" type="text/html" title="与scorematching" /><published>2025-06-20T00:00:00+08:00</published><updated>2025-06-20T00:00:00+08:00</updated><id>/2025/06/20/%E4%B8%8EScoreMatching</id><content type="html" xml:base="/2025/06/20/%E4%B8%8EScoreMatching.html"><![CDATA[<p>Liklihood-based类型生成模型包括自回归(autoregressive model)和正规流(Normalize flow)</p>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-01-13T18:48:52+08:00</updated><id>http://localhost:4000/feed.xml</id><entry><title type="html">与scorematching</title><link href="http://localhost:4000/2025/06/20/%E4%B8%8EScoreMatching.html" rel="alternate" type="text/html" title="与scorematching" /><published>2025-06-20T00:00:00+08:00</published><updated>2025-06-20T00:00:00+08:00</updated><id>http://localhost:4000/2025/06/20/%E4%B8%8EScoreMatching</id><content type="html" xml:base="http://localhost:4000/2025/06/20/%E4%B8%8EScoreMatching.html"><![CDATA[<p>Liklihood-based类型生成模型包括自回归(autoregressive model)和正规流(Normalize flow)</p>
 
 <p>他们有良好的生成效果，但还是具有一些内在的缺陷</p>
 
@@ -34,7 +34,7 @@
 
 <p><img src="..\..\..\imgs\image-20250727162645168.png" alt="image-20250727162645168" /></p>
 
-<p>一个分布的score可以通过神经网络进行估计</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Liklihood-based类型生成模型包括自回归(autoregressive model)和正规流(Normalize flow) 他们有良好的生成效果，但还是具有一些内在的缺陷 GAN避免了一些限制，但是GAN的对抗训练过程还是不稳定的，并且有模式坍塌等问题的存在 本文通过对Stein分数的研究探讨一种新的生成模型，Stein分数是对数概率密度值的梯度，所以是一个向量场，指向对数概率密度增长最快的方向。通过神经网络对数据训练从而回归出向量场 要实现这样的想法需要攻克两个难题 第一，根据数据流形假设，数据是嵌入在高维空间中的低维流形，那么在其他广大的数据空间中，分数是无法定义的，所以无法有效的进行score计算与匹配。 其次，对于某些低概率密度的数据空间缺少有效的训练数据使得score估计的准确度大大降低。Langevein动力学从低密度区域进行初始化，不准确的分数估计也将对采样过程造成不好的影响。 为解决上面说的两个问题，我们提出可以对数据施加不同量级的随机高斯噪声，通过增加噪声从而确保获得的分布避免塌陷到(collapse)低维数据流形中。大噪声可以使低密度数据区域增加数据量，从而有效提高分数估计。 我们使用基于模拟退火方式的Langevein 动力学，渐进地减小噪声级别。 DDPM方程 如图，一滴液体在水中扩散，就像在一张干净的图上不断加噪 而上面一张图不断加噪的扩散过程可以看做是一个如下伊藤(Ito)随机偏微分方程(SDE)的解 w是一个标准维纳过程(Wiener Process)，f是一个向量函数，称为漂移系数。g是一个标量函数称为扩散系数。 Anderson于1982年给出了以上过程的逆过程，这里w_bar也是一个标准的维纳过程 一个分布的score可以通过神经网络进行估计]]></summary></entry><entry><title type="html">强化学习介绍</title><link href="/rl/2025/03/06/rl7-atari.html" rel="alternate" type="text/html" title="强化学习介绍" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>/rl/2025/03/06/rl7-atari</id><content type="html" xml:base="/rl/2025/03/06/rl7-atari.html"><![CDATA[<p>本文主要介绍强化学习基础从零到DQN算法
+<p>一个分布的score可以通过神经网络进行估计</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Liklihood-based类型生成模型包括自回归(autoregressive model)和正规流(Normalize flow) 他们有良好的生成效果，但还是具有一些内在的缺陷 GAN避免了一些限制，但是GAN的对抗训练过程还是不稳定的，并且有模式坍塌等问题的存在 本文通过对Stein分数的研究探讨一种新的生成模型，Stein分数是对数概率密度值的梯度，所以是一个向量场，指向对数概率密度增长最快的方向。通过神经网络对数据训练从而回归出向量场 要实现这样的想法需要攻克两个难题 第一，根据数据流形假设，数据是嵌入在高维空间中的低维流形，那么在其他广大的数据空间中，分数是无法定义的，所以无法有效的进行score计算与匹配。 其次，对于某些低概率密度的数据空间缺少有效的训练数据使得score估计的准确度大大降低。Langevein动力学从低密度区域进行初始化，不准确的分数估计也将对采样过程造成不好的影响。 为解决上面说的两个问题，我们提出可以对数据施加不同量级的随机高斯噪声，通过增加噪声从而确保获得的分布避免塌陷到(collapse)低维数据流形中。大噪声可以使低密度数据区域增加数据量，从而有效提高分数估计。 我们使用基于模拟退火方式的Langevein 动力学，渐进地减小噪声级别。 DDPM方程 如图，一滴液体在水中扩散，就像在一张干净的图上不断加噪 而上面一张图不断加噪的扩散过程可以看做是一个如下伊藤(Ito)随机偏微分方程(SDE)的解 w是一个标准维纳过程(Wiener Process)，f是一个向量函数，称为漂移系数。g是一个标量函数称为扩散系数。 Anderson于1982年给出了以上过程的逆过程，这里w_bar也是一个标准的维纳过程 一个分布的score可以通过神经网络进行估计]]></summary></entry><entry><title type="html">强化学习介绍</title><link href="http://localhost:4000/rl/2025/03/06/rl7-atari.html" rel="alternate" type="text/html" title="强化学习介绍" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/rl/2025/03/06/rl7-atari</id><content type="html" xml:base="http://localhost:4000/rl/2025/03/06/rl7-atari.html"><![CDATA[<p>本文主要介绍强化学习基础从零到DQN算法
 <!--more--></p>
 <h4 id="强化学习介绍">强化学习介绍</h4>
 
@@ -335,7 +335,7 @@
 
 <p><strong>A.</strong>倒立摆的动力学方程</p>
 
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>]]></content><author><name>David Lee</name></author><category term="RL" /><summary type="html"><![CDATA[本文主要介绍强化学习基础从零到DQN算法]]></summary></entry><entry><title type="html">强化学习介绍</title><link href="/rl/2025/03/06/rl6-robocup.html" rel="alternate" type="text/html" title="强化学习介绍" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>/rl/2025/03/06/rl6-robocup</id><content type="html" xml:base="/rl/2025/03/06/rl6-robocup.html"><![CDATA[<p>本文主要介绍强化学习基础从零到DQN算法
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>]]></content><author><name>David Lee</name></author><category term="RL" /><summary type="html"><![CDATA[本文主要介绍强化学习基础从零到DQN算法]]></summary></entry><entry><title type="html">强化学习介绍</title><link href="http://localhost:4000/rl/2025/03/06/rl6-robocup.html" rel="alternate" type="text/html" title="强化学习介绍" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/rl/2025/03/06/rl6-robocup</id><content type="html" xml:base="http://localhost:4000/rl/2025/03/06/rl6-robocup.html"><![CDATA[<p>本文主要介绍强化学习基础从零到DQN算法
 <!--more--></p>
 <h4 id="强化学习介绍">强化学习介绍</h4>
 
@@ -636,7 +636,7 @@
 
 <p><strong>A.</strong>倒立摆的动力学方程</p>
 
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>]]></content><author><name>David Lee</name></author><category term="RL" /><summary type="html"><![CDATA[本文主要介绍强化学习基础从零到DQN算法]]></summary></entry><entry><title type="html">强化学习介绍</title><link href="/rl/2025/03/06/rl5-alphaGo.html" rel="alternate" type="text/html" title="强化学习介绍" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>/rl/2025/03/06/rl5-alphaGo</id><content type="html" xml:base="/rl/2025/03/06/rl5-alphaGo.html"><![CDATA[<p>本文主要介绍强化学习基础从零到DQN算法
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>]]></content><author><name>David Lee</name></author><category term="RL" /><summary type="html"><![CDATA[本文主要介绍强化学习基础从零到DQN算法]]></summary></entry><entry><title type="html">强化学习介绍</title><link href="http://localhost:4000/rl/2025/03/06/rl5-alphaGo.html" rel="alternate" type="text/html" title="强化学习介绍" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/rl/2025/03/06/rl5-alphaGo</id><content type="html" xml:base="http://localhost:4000/rl/2025/03/06/rl5-alphaGo.html"><![CDATA[<p>本文主要介绍强化学习基础从零到DQN算法
 <!--more--></p>
 <h4 id="强化学习介绍">强化学习介绍</h4>
 
@@ -937,7 +937,7 @@
 
 <p><strong>A.</strong>倒立摆的动力学方程</p>
 
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>]]></content><author><name>David Lee</name></author><category term="RL" /><summary type="html"><![CDATA[本文主要介绍强化学习基础从零到DQN算法]]></summary></entry><entry><title type="html">强化学习介绍</title><link href="/rl/2025/03/06/rl4-%E4%BA%94%E5%AD%90%E6%A3%8B.html" rel="alternate" type="text/html" title="强化学习介绍" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>/rl/2025/03/06/rl4-%E4%BA%94%E5%AD%90%E6%A3%8B</id><content type="html" xml:base="/rl/2025/03/06/rl4-%E4%BA%94%E5%AD%90%E6%A3%8B.html"><![CDATA[<p>本文主要介绍强化学习基础从零到DQN算法
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>]]></content><author><name>David Lee</name></author><category term="RL" /><summary type="html"><![CDATA[本文主要介绍强化学习基础从零到DQN算法]]></summary></entry><entry><title type="html">强化学习介绍</title><link href="http://localhost:4000/rl/2025/03/06/rl4-%E4%BA%94%E5%AD%90%E6%A3%8B.html" rel="alternate" type="text/html" title="强化学习介绍" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/rl/2025/03/06/rl4-%E4%BA%94%E5%AD%90%E6%A3%8B</id><content type="html" xml:base="http://localhost:4000/rl/2025/03/06/rl4-%E4%BA%94%E5%AD%90%E6%A3%8B.html"><![CDATA[<p>本文主要介绍强化学习基础从零到DQN算法
 <!--more--></p>
 <h4 id="强化学习介绍">强化学习介绍</h4>
 
@@ -1238,7 +1238,7 @@
 
 <p><strong>A.</strong>倒立摆的动力学方程</p>
 
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>]]></content><author><name>David Lee</name></author><category term="RL" /><summary type="html"><![CDATA[本文主要介绍强化学习基础从零到DQN算法]]></summary></entry><entry><title type="html">强化学习介绍</title><link href="/rl/2025/03/06/rl3-%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C%E7%9A%84%E5%8A%A9%E5%8A%9B.html" rel="alternate" type="text/html" title="强化学习介绍" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>/rl/2025/03/06/rl3-%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C%E7%9A%84%E5%8A%A9%E5%8A%9B</id><content type="html" xml:base="/rl/2025/03/06/rl3-%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C%E7%9A%84%E5%8A%A9%E5%8A%9B.html"><![CDATA[<p>本文主要介绍强化学习基础从零到DQN算法
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>]]></content><author><name>David Lee</name></author><category term="RL" /><summary type="html"><![CDATA[本文主要介绍强化学习基础从零到DQN算法]]></summary></entry><entry><title type="html">强化学习介绍</title><link href="http://localhost:4000/rl/2025/03/06/rl3-%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C%E7%9A%84%E5%8A%A9%E5%8A%9B.html" rel="alternate" type="text/html" title="强化学习介绍" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/rl/2025/03/06/rl3-%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C%E7%9A%84%E5%8A%A9%E5%8A%9B</id><content type="html" xml:base="http://localhost:4000/rl/2025/03/06/rl3-%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C%E7%9A%84%E5%8A%A9%E5%8A%9B.html"><![CDATA[<p>本文主要介绍强化学习基础从零到DQN算法
 <!--more--></p>
 <h4 id="强化学习介绍">强化学习介绍</h4>
 
@@ -1539,7 +1539,7 @@
 
 <p><strong>A.</strong>倒立摆的动力学方程</p>
 
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>]]></content><author><name>David Lee</name></author><category term="RL" /><summary type="html"><![CDATA[本文主要介绍强化学习基础从零到DQN算法]]></summary></entry><entry><title type="html">强化学习介绍</title><link href="/rl/2025/03/06/rl2-%E8%92%99%E7%89%B9%E5%8D%A1%E6%B4%9B%E6%96%B9%E6%B3%95.html" rel="alternate" type="text/html" title="强化学习介绍" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>/rl/2025/03/06/rl2-%E8%92%99%E7%89%B9%E5%8D%A1%E6%B4%9B%E6%96%B9%E6%B3%95</id><content type="html" xml:base="/rl/2025/03/06/rl2-%E8%92%99%E7%89%B9%E5%8D%A1%E6%B4%9B%E6%96%B9%E6%B3%95.html"><![CDATA[<p>本文主要介绍蒙特卡洛方法
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>]]></content><author><name>David Lee</name></author><category term="RL" /><summary type="html"><![CDATA[本文主要介绍强化学习基础从零到DQN算法]]></summary></entry><entry><title type="html">强化学习介绍</title><link href="http://localhost:4000/rl/2025/03/06/rl2-%E8%92%99%E7%89%B9%E5%8D%A1%E6%B4%9B%E6%96%B9%E6%B3%95.html" rel="alternate" type="text/html" title="强化学习介绍" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/rl/2025/03/06/rl2-%E8%92%99%E7%89%B9%E5%8D%A1%E6%B4%9B%E6%96%B9%E6%B3%95</id><content type="html" xml:base="http://localhost:4000/rl/2025/03/06/rl2-%E8%92%99%E7%89%B9%E5%8D%A1%E6%B4%9B%E6%96%B9%E6%B3%95.html"><![CDATA[<p>本文主要介绍蒙特卡洛方法
 <!--more--></p>
 
 <h5 id="蒙特卡洛monte-carlo方法">蒙特卡洛(Monte Carlo)方法</h5>
@@ -1638,7 +1638,7 @@ for episode in range(num_episodes):
     epsilon = max(epsilon_min, epsilon * epsilon_decay)
 </code></pre>
 
-<p>Q-learning算法是非常激进的，它一直选择当前价值最大的动作而不管该动作是否有较大的危险性。而Sarsa算法则相对来说因为探索的更充分显得会更加保守些。</p>]]></content><author><name>David Lee</name></author><category term="RL" /><summary type="html"><![CDATA[本文主要介绍蒙特卡洛方法]]></summary></entry><entry><title type="html">强化学习介绍</title><link href="/rl/2025/03/06/rl1-intro.html" rel="alternate" type="text/html" title="强化学习介绍" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>/rl/2025/03/06/rl1-intro</id><content type="html" xml:base="/rl/2025/03/06/rl1-intro.html"><![CDATA[<p>本文主要介绍强化学习基础从零到DQN算法
+<p>Q-learning算法是非常激进的，它一直选择当前价值最大的动作而不管该动作是否有较大的危险性。而Sarsa算法则相对来说因为探索的更充分显得会更加保守些。</p>]]></content><author><name>David Lee</name></author><category term="RL" /><summary type="html"><![CDATA[本文主要介绍蒙特卡洛方法]]></summary></entry><entry><title type="html">强化学习介绍</title><link href="http://localhost:4000/rl/2025/03/06/rl1-intro.html" rel="alternate" type="text/html" title="强化学习介绍" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/rl/2025/03/06/rl1-intro</id><content type="html" xml:base="http://localhost:4000/rl/2025/03/06/rl1-intro.html"><![CDATA[<p>本文主要介绍强化学习基础从零到DQN算法
 <!--more--></p>
 <h4 id="强化学习介绍">强化学习介绍</h4>
 
@@ -1939,7 +1939,7 @@ for episode in range(num_episodes):
 
 <p><strong>A.</strong>倒立摆的动力学方程</p>
 
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>]]></content><author><name>David Lee</name></author><category term="RL" /><summary type="html"><![CDATA[本文主要介绍强化学习基础从零到DQN算法]]></summary></entry><entry><title type="html">A Diffusion Model</title><link href="/diffusion/2025/03/06/Diffsion.html" rel="alternate" type="text/html" title="A Diffusion Model" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>/diffusion/2025/03/06/Diffsion</id><content type="html" xml:base="/diffusion/2025/03/06/Diffsion.html"><![CDATA[<table>
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>]]></content><author><name>David Lee</name></author><category term="RL" /><summary type="html"><![CDATA[本文主要介绍强化学习基础从零到DQN算法]]></summary></entry><entry><title type="html">A Diffusion Model</title><link href="http://localhost:4000/diffusion/2025/03/06/Diffsion.html" rel="alternate" type="text/html" title="A Diffusion Model" /><published>2025-03-06T00:00:00+08:00</published><updated>2025-03-06T00:00:00+08:00</updated><id>http://localhost:4000/diffusion/2025/03/06/Diffsion</id><content type="html" xml:base="http://localhost:4000/diffusion/2025/03/06/Diffsion.html"><![CDATA[<table>
   <tbody>
     <tr>
       <td>生成模型就是求高维边缘概率分布P(x)更进一步的条件生成就是高维条件概率分布P(X</td>
@@ -1950,7 +1950,7 @@ for episode in range(num_episodes):
 
 <p>HVAE</p>
 
-<p>DDPM是一个马尔可夫链，</p>]]></content><author><name>David Lee</name></author><category term="Diffusion" /><summary type="html"><![CDATA[生成模型就是求高维边缘概率分布P(x)更进一步的条件生成就是高维条件概率分布P(X Y) HVAE DDPM是一个马尔可夫链，]]></summary></entry><entry><title type="html">Github Pages 建个人网站全程攻略</title><link href="/computergraphics/2023/07/01/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97.html" rel="alternate" type="text/html" title="Github Pages 建个人网站全程攻略" /><published>2023-07-01T00:00:00+08:00</published><updated>2023-07-01T00:00:00+08:00</updated><id>/computergraphics/2023/07/01/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97</id><content type="html" xml:base="/computergraphics/2023/07/01/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97.html"><![CDATA[<h2 id="github-pages-建个人网站全程攻略">Github Pages 建个人网站全程攻略</h2>
+<p>DDPM是一个马尔可夫链，</p>]]></content><author><name>David Lee</name></author><category term="Diffusion" /><summary type="html"><![CDATA[生成模型就是求高维边缘概率分布P(x)更进一步的条件生成就是高维条件概率分布P(X Y) HVAE DDPM是一个马尔可夫链，]]></summary></entry><entry><title type="html">Github Pages 建个人网站全程攻略</title><link href="http://localhost:4000/computergraphics/2023/07/01/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97.html" rel="alternate" type="text/html" title="Github Pages 建个人网站全程攻略" /><published>2023-07-01T00:00:00+08:00</published><updated>2023-07-01T00:00:00+08:00</updated><id>http://localhost:4000/computergraphics/2023/07/01/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97</id><content type="html" xml:base="http://localhost:4000/computergraphics/2023/07/01/Github_Pages%E5%BB%BA%E7%AB%99%E6%8C%87%E5%8D%97.html"><![CDATA[<h2 id="github-pages-建个人网站全程攻略">Github Pages 建个人网站全程攻略</h2>
 
 <h4 id="github-pages">GitHub Pages</h4>
 
