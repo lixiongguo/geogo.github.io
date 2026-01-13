@@ -2,7 +2,7 @@
 <html lang="en"><head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<meta name="viewport" content="width=device-width, initial-scale=1"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" /></head>
+	<meta name="viewport" content="width=device-width, initial-scale=1"><link type="application/atom+xml" rel="alternate" href="/feed.xml" /></head>
 <style>@import url(/public/css/syntax/emacs.css);</style>
   <title></title>
   <!-- <link href="/public/css/bootstrap.min.css" rel="stylesheet"> -->
@@ -107,15 +107,15 @@
 
 <p>为了先对这个问题有一个初步的了解，先考虑下最简单的情况，即最简单的三维曲面—球面。如下图所示这种绘制世界地图的“墨卡托投影法”。基本方法是假想在球面内部有一个光源，而球面外部包围着一个圆柱面,光线将球面的点投射到圆柱面上,再将圆柱面展开。</p>
 
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/%E5%9B%BE%E7%89%874.png" alt="图片4" /></p>
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/%E5%9B%BE%E7%89%874.png" alt="图片4" style="zoom:67%;" /></p>
 
-<p><strong>映射是不完美的是有扭曲的</strong>,比如我们看地图会发现俄罗斯比非洲面积还要大</p>
+<p><strong>“墨卡托投影“映射是有扭曲的</strong>,比如我们看地图会发现俄罗斯比非洲面积还要大</p>
 
-<p><img src="D:\MyDocs\geogo.github.io\imgs\641.png" alt="641" /></p>
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/641.png" alt="641" style="zoom:50%;" /></p>
 
 <p>但是实际上俄罗斯面积只有非洲大陆面积的一半左右</p>
 
-<p><img src="D:\MyDocs\geogo.github.io\imgs\640.png" alt="640" /></p>
+<p><img src="D:\MyDocs\geogo.github.io\imgs\640.png" alt="640" style="zoom:50%;" /></p>
 
 <p>这种方法牺牲面积大小，保留角度和形状(也称为共形映射)沿着赤道不会发生扭曲，越靠近极点的地方面积扭曲就越大。</p>
 
@@ -125,22 +125,27 @@
 
 <h3 id="保角映射共形映射">保角映射(共形映射)</h3>
 
-<p>我们可以回头再看下墨卡托映射，它虽然会使得不同国家的面积发生变形，但是形状一定是没有发生变化的</p>
+<p>我们可以回头再看下墨卡托映射，它虽然会使得不同国家的面积发生变形，但是形状一定是没有发生变化的，这对于制作地图来说，保持角度是很重要的，否则根据地图导航将会南辕北辙。</p>
 
-<p>对于制作地图来说，保持角度是很重要的。否则根据地图导航将会南辕北辙</p>
-
-<p><img src="..\..\..\..\imgs\image-20251013174637718.png" alt="image-20251013174637718" /></p>
+<p><img src="..\..\..\..\imgs\image-20251013174637718.png" alt="image-20251013174637718" style="zoom:50%;" /></p>
 
 <p>这种能保持角度的映射可以很好的保持图像不失真，我们称之为保角映射(Angle Preserving)，这种类型的映射我们可以认为至少是不错的所以是值得研究的。</p>
 
-<p>另外再回想一下大家初中学习过的相似三角形的概念也能印证这个，如果一个三角形与另一个三角形的角度都相同的话，那么它们就是
-“相似的”看起来是比较“像”的。</p>
+<p>在高等数学理论中称这类保持角度的映射为<strong>共形映射(Conformal Mapping)</strong>，有如下<strong>黎曼映照定理</strong>保证了这种映射是一定存在的，所以接下来我们是有信心去找这样的映射的。</p>
 
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250318092257455.png" alt="image-20250318092257455" style="zoom:50%;" /></p>
+<h3 id="黎曼映照定理">黎曼映照定理</h3>
 
-<p>在高等数学理论中称这类保持角度的映射为<strong>共形映射(Conformal Mapping)</strong>，另外有如下<strong>Riemman映照</strong>定理保证了这种映射是一定存在的，所以接下来我们是有信心去找这样的映射的。</p>
+<p>设 $\Omega \subset \mathbb{C}$ 是单连通开集，$\Omega \neq \mathbb{C}$。对任意 $z_0 \in \Omega$，存在唯一全纯双射 $f : \Omega \to \mathbb{D}$ 满足：</p>
 
-<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250712105434715.png" alt="image-20250712105434715" /></p>
+<table>
+  <tbody>
+    <tr>
+      <td>$f(z_0) = 0$ - $f’(z_0) &gt; 0$ 其中 $\mathbb{D} = { z \in \mathbb{C} \mid</td>
+      <td>z</td>
+      <td>&lt; 1 }$。</td>
+    </tr>
+  </tbody>
+</table>
 
 <p>根据Riemann映照定理，保角映射的存在性是有保障的，在后面的文章中我们将借助计算机来求这个问题的解。</p>
 
