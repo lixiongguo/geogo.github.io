@@ -1,14 +1,14 @@
 metric与curvature的变化规律就是Ricci flow
 
-![image-20251204203055326](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204203055326.png)
+![image-20251204203055326](..\..\..\..\imgs\image-20251204203055326.png)
 
 曲面的Ricci flow是设计Riemann度量的重要工具
 
-![image-20251204202547110](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204202547110.png)
+![image-20251204202547110](..\..\..\..\imgs\image-20251204202547110.png)
 
 
 
-![image-20251204200311747](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204200311747.png)
+![image-20251204200311747](..\..\..\..\imgs\image-20251204200311747.png)
 
 在二维黎曼流形，Yamabe flow等价于Ricci flow
 
@@ -16,7 +16,7 @@ metric与curvature的变化规律就是Ricci flow
 
 归一化定理
 
-![image-20251205113449792](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251205113449792.png)
+![image-20251205113449792](..\..\..\..\imgs\image-20251205113449792.png)
 
 #### Ricci流
 
@@ -40,13 +40,13 @@ Discrete Ricci flow这篇工作将将球面空间/欧式空间/双曲三种空�
 
 - Ricci flow收敛性：**陈-罗定理**（Chow-Luo Theorem）为离散曲面上的Ricci流提供了关键的理论保证：在离散Ricci流下，曲率演化是收敛的，并且能实现任意给定的目标曲率（只要满足高斯-博内定理约束）。
 
-![image-20251205113525973](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251205113525973.png)
+![image-20251205113525973](..\..\..\..\imgs\image-20251205113525973.png)
 
-![image-20251205112847586](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251205112847586.png)
+![image-20251205112847586](..\..\..\..\imgs\image-20251205112847586.png)
 
 对于离散化需要借助circle packing来定义度量
 
-![image-20251205113735180](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251205113735180.png)
+![image-20251205113735180](..\..\..\..\imgs\image-20251205113735180.png)
 
 ![image-20250715111712897](..\..\..\..\imgs\image-20250715111712897.png)
 
@@ -54,20 +54,20 @@ Discrete Ricci flow这篇工作将将球面空间/欧式空间/双曲三种空�
 
 
 
-![image-20251205113651201](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251205113651201.png)
+![image-20251205113651201](..\..\..\..\imgs\image-20251205113651201.png)
 
 为什么用不直接用边长来刻画
 
-![image-20251205113941036](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251205113941036.png)
+![image-20251205113941036](..\..\..\..\imgs\image-20251205113941036.png)
 
-![image-20251205114006968](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251205114006968.png)
+![image-20251205114006968](..\..\..\..\imgs\image-20251205114006968.png)
 
 所以，回到你的核心疑问：**之所以不直接用三角网格的边长作为度量来实现Ricci流，是因为边长是一个“刚性”的参数，它无法自然地参数化共形结构，且会导致数值实现上不可行的带约束优化问题。而圆填充的半径，是一个“柔性”的参数，它完美地捕捉了离散共形类，并将离散Ricci流转化为一个优雅、无约束、理论完备的凸优化过程。**
 
 算法迭代过程
 
-![image-20251204211431171](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204211431171.png)
+![image-20251204211431171](..\..\..\..\imgs\image-20251204211431171.png)
 
 在双曲空间下展开要比在欧式空间下展开效果更好
 
-![image-20251205094459137](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251205094459137.png)
+![image-20251205094459137](..\..\..\..\imgs\image-20251205094459137.png)

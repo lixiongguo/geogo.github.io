@@ -9,37 +9,37 @@ categories: [Diffusion]
 
 传统的标准化流是由一系列离散的变换组成，下面我们将流这个概念像连续上拓展，即连续正则化流
 
-![image-20251217103053246](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251217103053246.png)
+![image-20251217103053246](..\..\..\imgs\image-20251217103053246.png)
 
 FlowMatching也有更好的生成路径
 
-![image-20251217103251574](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251217103251574.png)
+![image-20251217103251574](..\..\..\imgs\image-20251217103251574.png)
 
 一个流将Rn上的一个分布进行变换，如图圆环的分布转化为一个螺线的分布
 
-![image-20251217102452763](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251217102452763.png)
+![image-20251217102452763](..\..\..\imgs\image-20251217102452763.png)
 
 流的更加准确的表述实际上就是一个随时间变换的向量场(Rn上的)
 
-![image-20251217100141128](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251217100141128.png)
+![image-20251217100141128](..\..\..\imgs\image-20251217100141128.png)
 
 
 
 而连续变换的过程可以用如下的ODE来描述
 
-![image-20251217102139890](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251217102139890.png)
+![image-20251217102139890](..\..\..\imgs\image-20251217102139890.png)
 
-初始条件(边界条件)![image-20251217102207190](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251217102207190.png)
+初始条件(边界条件)![image-20251217102207190](..\..\..\imgs\image-20251217102207190.png)
 
 从离散的视角看就是
 
-![image-20251217102523027](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251217102523027.png)
+![image-20251217102523027](..\..\..\imgs\image-20251217102523027.png)
 
 用如下方式表达
 
-![image-20251217102248048](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251217102248048.png)
+![image-20251217102248048](..\..\..\imgs\image-20251217102248048.png)
 
-![image-20251217104100624](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251217104100624.png)
+![image-20251217104100624](..\..\..\imgs\image-20251217104100624.png)
 
 下面要做的是用神经网络来拟合这一系列变换的过程
 

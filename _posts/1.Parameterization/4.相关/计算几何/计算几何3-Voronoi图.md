@@ -4,7 +4,7 @@ Voronoi图介绍
 
 
 
-![image-20251226202236218](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251226202236218.png)
+![image-20251226202236218](..\..\..\..\imgs\image-20251226202236218.png)
 
 该算法基于以下聪明的想法：我们不考虑各个站点之间的距离，而是引入一条在平面中移动的线，并使用该线促成更高效的距离比较。 我们称这条线为*扫掠线，*并试图通过其平面扫掠来拆分Voronoi图。
 

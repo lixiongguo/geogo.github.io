@@ -6,33 +6,33 @@
 
 利用移动最小二乘来做网格的变形
 
-![image-20251218190043391](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251218190043391.png)
+![image-20251218190043391](..\..\..\..\imgs\image-20251218190043391.png)
 
 **移动最小二乘（Moving Least Squares, MLS）** 和 **As-Rigid-As-Possible (ARAP)** 确实**思路高度相近**，甚至可以说 ARAP 是 MLS 思想在**几何形变（deformation）领域**的一种具体化、优化和推广。使用MLS不需要先进行三角化。
 
-![image-20251218192214246](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251218192214246.png)
+![image-20251218192214246](..\..\..\..\imgs\image-20251218192214246.png)
 
 
 
 "移动"指的是基准点的变化，比如任意一点v，我们求一个最贴合控制点的仿射变换lv(x)
 
-![image-20251218190621665](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251218190621665.png)
+![image-20251218190621665](..\..\..\..\imgs\image-20251218190621665.png)
 
 lv(x)是一个仿射变换（affine transformation），那可以做如下分解
 
-![image-20251218191702180](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251218191702180.png)
+![image-20251218191702180](..\..\..\..\imgs\image-20251218191702180.png)
 
 取重心坐标
 
-![image-20251218192400112](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251218192400112.png)
+![image-20251218192400112](..\..\..\..\imgs\image-20251218192400112.png)
 
-![image-20251218192658581](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251218192658581.png)
+![image-20251218192658581](..\..\..\..\imgs\image-20251218192658581.png)
 
 
 
 与ARAP的对比
 
-![image-20251218194058586](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251218194058586.png)
+![image-20251218194058586](..\..\..\..\imgs\image-20251218194058586.png)
 
 
 
@@ -40,10 +40,10 @@ lv(x)是一个仿射变换（affine transformation），那可以做如下分解
 
 下面举一个局部线性多项式的例子
 
-![image-20251218185633705](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251218185633705.png)
+![image-20251218185633705](..\..\..\..\imgs\image-20251218185633705.png)
 
-![image-20251218185711314](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251218185711314.png)
+![image-20251218185711314](..\..\..\..\imgs\image-20251218185711314.png)
 
-![image-20251218185735355](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251218185735355.png)
+![image-20251218185735355](..\..\..\..\imgs\image-20251218185735355.png)
 
-![image-20251218185753670](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251218185753670.png)
+![image-20251218185753670](..\..\..\..\imgs\image-20251218185753670.png)

@@ -2,7 +2,7 @@
 
 为什么要引入branch-cover?
 
-![image-20251204205913223](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204205913223.png)
+![image-20251204205913223](..\..\..\imgs\image-20251204205913223.png)
 
 **匹配(matching)**
 
@@ -80,7 +80,7 @@
 
 ![image-20250708192932179](..\..\..\imgs\image-20250708192932179.png)
 
-![image-20251204210109696](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204210109696.png)
+![image-20251204210109696](..\..\..\imgs\image-20251204210109696.png)
 
 **Frame Field**
 
@@ -110,7 +110,7 @@ Frame filed可以在covering space中为vector field，称为曲面的covering f
 
 
 
-![image-20251204210126045](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204210126045.png)
+![image-20251204210126045](..\..\..\imgs\image-20251204210126045.png)
 
 在covering spaces中的标量函数空间
 
@@ -182,13 +182,13 @@ Curl导致不可积,为使得K可积，所以K要无璇，所以$\hat X = P_K + 
 
 
 
-![image-20251204204651381](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204204651381.png)
+![image-20251204204651381](..\..\..\imgs\image-20251204204651381.png)
 
 2.全局连续性处理
 
-![image-20251204204913972](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204204913972.png)
+![image-20251204204913972](..\..\..\imgs\image-20251204204913972.png)
 
-![image-20251204204942930](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204204942930.png)
+![image-20251204204942930](..\..\..\imgs\image-20251204204942930.png)
 
 ![image-20251027142441224](..\..\..\imgs\image-20251027142441224.png)
 
@@ -200,8 +200,8 @@ Curl导致不可积,为使得K可积，所以K要无璇，所以$\hat X = P_K + 
 
 ![image-20251027210706934](..\..\..\imgs\image-20251027210706934.png)
 
-![image-20251204210206173](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204210206173.png)
+![image-20251204210206173](..\..\..\imgs\image-20251204210206173.png)
 
 加入了Branch后
 
-![image-20251204205509479](C:\Users\LGX_MATE_BOOK\AppData\Roaming\Typora\typora-user-images\image-20251204205509479.png)
+![image-20251204205509479](..\..\..\imgs\image-20251204205509479.png)
