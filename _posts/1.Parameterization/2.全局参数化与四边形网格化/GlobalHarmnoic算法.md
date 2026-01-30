@@ -2,7 +2,11 @@
 
  这篇文章出了一个对**任意亏格(arbitrary genus)**曲面进行参数化的方法, 并且这一方法可以保证是**局部单射（local injectivity）**且**无缝(seamless)**，并且速度上是比较好的。
 
-定义了**q-CCM(q-convex combinatorial map)**凸组合映射,是**对Tutte和Gortler方法的泛化![image-20260129091732646](C:\Users\lixio\OneDrive\Desktop\MyDoc\lixiongguo.github.io\imgs\image-20260129091732646.png)**
+定义了**q-CCM(q-convex combinatorial map)**凸组合映射,是**对Tutte和Gortler方法的泛化**
+
+q 是用于约束角度为2pi/q,是holonomy条件
+
+**![image-20260129091732646](C:\Users\lixio\OneDrive\Desktop\MyDoc\lixiongguo.github.io\imgs\image-20260129091732646.png)**
 
 q可以是4或者6，比如q=6对应的六边形参数化形的参数化
 
@@ -84,9 +88,19 @@ Gauss-Bonet定理证明如下引理
 
 算法综合了上述的条件
 
-![image-20250924183742615](..\..\..\imgs\image-20250924183742615.png)**求解这个最优化问题也要用到Lippman的凸化方法**
+![image-20250924183742615](..\..\..\imgs\image-20250924183742615.png)**(13)这个条件用到Lippman的凸化方法**
 
+#### 关键点
 
+1. 复导数表示：用$f_z$ 和$f_{\bar{z}} $描述参数化的局部性质
+
+1. 调和能量：最小化使参数化平滑
+
+1. 局部单射性：Lipman 12 约束防止折叠
+
+1. 全局一致性：旋转约束保证接缝处连续
+
+这段代码通过凸优化求解一个带复杂约束的全局
 
 
 
