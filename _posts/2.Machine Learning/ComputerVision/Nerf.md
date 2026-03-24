@@ -4,4 +4,4 @@
 
 2. RayMarching体渲染
 
-3.分层采样Stratefied Sampling
+ 3.分层采样Stratefied Sampling
