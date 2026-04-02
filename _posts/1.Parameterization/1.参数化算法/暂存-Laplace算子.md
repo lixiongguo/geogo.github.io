@@ -14,7 +14,90 @@ category: Parameterization
 
 分段线性映射的梯度是定义在三角面片上的向量场
 
-![image-20251204203902498](..\..\..\..\imgs\image-20251204203902498.png)
+
+
+
+
+
+
+
+
+
+## Dirichlet能量
+
+对于一个**实映射**,定义其Dirichlet能量为其梯度的$L2$范数
+
+$$
+E_D = \frac{1}{2}\int_X|\nabla u|^2dA 
+$$
+
+
+一个映射是调和的 ux2 + uy2=0，则其Dirichlet能量$E_D = 0$,可以用来衡量映射的平滑性
+
+**Dirichlet能量的离散化**
+
+在三角网格定义域上，该能量的**离散化**为下式
+
+$$
+E_D = \Sigma_{he_{ij}} cot(\alpha_{ij})(u_i - u_j)^2
+$$
+
+
+
+
+
+经典微分几何理论是建立在对曲面的局部性质的研究基础上的，而如果研究曲面的局部性质的那就需要定义“局部”的概念
+
+
+
+**顶点的领域(Local Averaging Region)**
+
+![image-20250318143818609](D:\MyDocs\geogo.github.io\imgs\image-20250318143818609.png)
+
+重心单元将三角形的重心与边的中点连接起来。或者，我们可以通过将三角形的重心替换为外心来定义一个局部的Voronoi单元。Voronoi单元的紧凑性可以得到离散算子的紧密误差界限，如[Meyer等人，2003]中所示。然而，正如图中所展示的，外心可能在三角形的外部。尽管这并不会使下面介绍的离散化方法失效，但通过确保局部平均区域完美地铺满网格表面，可以获得略微更好的近似特性。这可以通过将钝角三角形的外心替换为与中心顶点相对的边的中点来实现。由此产生的平均区域被称为混合Voronoi单元。
+
+离散 Laplace 矩阵 $(a_{i,j})$ 常用系数为
+
+$$a_{i,j} = \frac{1}{2A_i}\bigl(\cot \alpha_{ij} + \cot \beta_{ij}\bigr),\qquad a_{i,i} = -\sum_{j \neq i} a_{i,j}$$
+
+其中 $A_i$ 为顶点 $v_i$ 的 Voronoi（或混合 Voronoi）面积，$\alpha_{ij},\beta_{ij}$ 为与边 $(v_i,v_j)$ 相对的两角。下图示意这些角与区域。
+
+![image-20251120211506829](D:\MyDocs\geogo.github.io\imgs\image-20251120211506829.png)
+
+
+
+**求解**
+
+类似于前面对ARAP能量的计算，对$u$求偏导，然后求其极值点
+$$
+\frac{\partial E_D}{\partial u_i} = \sum_{j \in N(i)}(\cot\alpha_{ij} + \cot\beta_{ij})(u_i - u_j) = 0
+$$
+
+
+
+所以可以建立一个线性方程组来求上面的值
+
+
+
+前面我们从Dirichlet能量引出Laplace算子。事实上Laplace算子应用广泛
+
+
+
+
+
+
+
+DCP算法形式上看起来和前面介绍的Tutte算法类似，仅在于两者选择权重的不同，DCP算法选择的权重是余切权重(Cotan weights)
+
+$cotan: \frac{ {cot\alpha_{ij}}+ {{cot\beta_{ij}}} } {2}$ $uniform: w_{ij} = \frac {1} {deg(i)}$更加符合曲面的几何
+
+
+
+
+
+
+
+
 
 
 
