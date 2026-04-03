@@ -123,7 +123,6 @@ category: Parameterization
 高斯博内定理
 
 
-
 在算法中加入锥奇异点
 
 ![image-20251113091148098](D:/MyDocs/geogo.github.io/imgs/image-20251113091148098.png)
