@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#1a1a2e"/>
+  <text x="400" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#eee">TetGen：三维四面体网格生成</text>
+  
+  <!-- 3D domain outline (stylized bunny-like shape) -->
+  <path d="M200,350 Q150,300 180,240 Q160,200 200,180 Q180,140 220,120 Q250,100 280,120 Q310,100 340,110 Q370,90 390,120 Q420,100 440,130 Q470,120 480,160 Q510,170 500,210 Q530,240 510,280 Q530,310 490,340 Q500,370 460,380 Q460,410 420,400 Q390,430 350,410 Q310,430 290,400 Q250,420 230,390 Q190,400 200,350Z" fill="rgba(100,150,255,0.1)" stroke="#6496ff" stroke-width="2"/>
+  
+  <!-- Tetrahedral elements visible through semi-transparent surface -->
+  <!-- Tet 1 -->
+  <polygon points="250,200 300,180 280,250 320,230" fill="rgba(34,197,94,0.25)" stroke="#22c55e" stroke-width="1"/>
+  <!-- Tet 2 -->
+  <polygon points="300,180 350,160 340,220 320,230" fill="rgba(34,197,94,0.3)" stroke="#22c55e" stroke-width="1"/>
+  <!-- Tet 3 -->
+  <polygon points="350,160 400,170 380,230 340,220" fill="rgba(34,197,94,0.2)" stroke="#22c55e" stroke-width="1"/>
+  <!-- Tet 4 -->
+  <polygon points="280,250 320,230 310,300 260,290" fill="rgba(234,179,8,0.25)" stroke="#eab308" stroke-width="1"/>
+  <!-- Tet 5 -->
+  <polygon points="320,230 340,220 350,280 310,300" fill="rgba(234,179,8,0.3)" stroke="#eab308" stroke-width="1"/>
+  <!-- Tet 6 -->
+  <polygon points="340,220 380,230 370,290 350,280" fill="rgba(34,197,94,0.25)" stroke="#22c55e" stroke-width="1"/>
+  <!-- Tet 7 -->
+  <polygon points="380,230 420,220 410,280 370,290" fill="rgba(34,197,94,0.2)" stroke="#22c55e" stroke-width="1"/>
+  <!-- Tet 8 -->
+  <polygon points="310,300 350,280 340,350 290,340" fill="rgba(34,197,94,0.3)" stroke="#22c55e" stroke-width="1"/>
+  <!-- Tet 9 -->
+  <polygon points="350,280 370,290 360,350 340,350" fill="rgba(34,197,94,0.25)" stroke="#22c55e" stroke-width="1"/>
+  <!-- Tet 10 (sliver - poor quality) -->
+  <polygon points="370,290 410,280 400,330 390,300" fill="rgba(239,68,68,0.3)" stroke="#ef4444" stroke-width="1.5"/>
+  <!-- Tet 11 -->
+  <polygon points="260,290 310,300 290,340 240,330" fill="rgba(234,179,8,0.25)" stroke="#eab308" stroke-width="1"/>
+  <!-- Tet 12 -->
+  <polygon points="340,350 360,350 350,390 320,380" fill="rgba(34,197,94,0.2)" stroke="#22c55e" stroke-width="1"/>
+  
+  <!-- Internal edges (wireframe feel) -->
+  <line x1="250" y1="200" x2="280" y2="250" stroke="#22c55e" stroke-width="0.5" opacity="0.5"/>
+  <line x1="300" y1="180" x2="320" y2="230" stroke="#22c55e" stroke-width="0.5" opacity="0.5"/>
+  <line x1="350" y1="160" x2="340" y2="220" stroke="#22c55e" stroke-width="0.5" opacity="0.5"/>
+  <line x1="380" y1="230" x2="370" y2="290" stroke="#22c55e" stroke-width="0.5" opacity="0.5"/>
+  <line x1="320" y1="230" x2="310" y2="300" stroke="#22c55e" stroke-width="0.5" opacity="0.5"/>
+  <line x1="350" y1="280" x2="340" y2="350" stroke="#22c55e" stroke-width="0.5" opacity="0.5"/>
+  
+  <!-- Radius-edge ratio visualization -->
+  <text x="620" y="80" font-size="14" font-weight="bold" fill="#eee">质量度量：半径-边比</text>
+  <text x="620" y="105" font-size="13" fill="#aaa">ρ = R / l_min</text>
+  
+  <!-- Quality scale -->
+  <rect x="620" y="130" width="40" height="16" fill="#22c55e" rx="3"/>
+  <text x="668" y="143" font-size="11" fill="#aaa">ρ &lt; 1.5 优质</text>
+  <rect x="620" y="155" width="40" height="16" fill="#eab308" rx="3"/>
+  <text x="668" y="168" font-size="11" fill="#aaa">1.5 &lt; ρ &lt; 2.0 中等</text>
+  <rect x="620" y="180" width="40" height="16" fill="#ef4444" rx="3"/>
+  <text x="668" y="193" font-size="11" fill="#aaa">ρ &gt; 2.0 Sliver</text>
+  
+  <!-- Steps -->
+  <text x="620" y="240" font-size="13" font-weight="bold" fill="#eee">算法流程</text>
+  <text x="620" y="265" font-size="12" fill="#6496ff">❶ 增量 Delaunay 四面体化</text>
+  <text x="620" y="288" font-size="12" fill="#6496ff">❷ 约束 Delaunay 四面体化</text>
+  <text x="620" y="311" font-size="12" fill="#6496ff">❸ Delaunay 细化</text>
+  <text x="620" y="334" font-size="12" fill="#6496ff">❹ Sliver 消除</text>
+  <text x="620" y="357" font-size="12" fill="#6496ff">❺ 网格优化</text>
+  
+  <text x="620" y="400" font-size="11" fill="#888">参考: Hang Si, "TetGen"</text>
+  <text x="620" y="418" font-size="11" fill="#888">WIAS, 2005</text>
+</svg>
