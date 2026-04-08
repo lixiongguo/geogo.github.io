@@ -69,6 +69,9 @@ Kantorvich potential是“价格函数”
 
 **传输方向由势函数的梯度（或广义梯度）决定** —— 类似于物理中的“力是势能的负梯度
 
-**WGAN的原理**
+## 参考文献
 
-WGAN直接求解EMD距离不可行，EMD距离是Kantorvich问题，改为求解其对偶问题
+- Monge, G. (1781). *Memoire sur la theorie des deblais et des remblais*.
+- Kantorovich, L. V. (1942). *On the translocation of masses*.
+- Brenier, Y. (1991). *Polar factorization and monotone rearrangement of vector-valued functions*.
+- Villani, C. (2009). *Optimal Transport: Old and New*. Springer.

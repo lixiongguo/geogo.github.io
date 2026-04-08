@@ -51,3 +51,11 @@ psi称为Kantorvich势能，与初始的凸势能的关系，并且他们的Hess
 其中q的定义
 
 ![image-20250914180920174](..\..\..\imgs\image-20250914180920174.png)
+
+## 参考文献
+
+- Villani, C. (2009). *Optimal Transport: Old and New*. Springer.
+- Peyre, G., & Cuturi, M. (2019). *Computational Optimal Transport*. Foundations and Trends in Machine Learning.
+- Brenier, Y. (1991). *Polar factorization and monotone rearrangement of vector-valued functions*.
+- Benamou, J.-D., & Brenier, Y. (2000). *A computational fluid mechanics solution to the Monge-Kantorovich mass transfer problem*.
+- Cuturi, M. (2013). *Sinkhorn distances: Lightspeed computation of optimal transport*.
