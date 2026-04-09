@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UV展开 - LSCM</title>
+  <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/numeric@1.2.6/numeric.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      overflow: hidden;
+      background: #070b14;
+      color: #d8def7;
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px;
+      background: rgba(9, 15, 28, 0.96);
+      border-bottom: 1px solid rgba(106, 132, 255, 0.18);
+    }
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .toolbar h1 {
+      margin: 0;
+      font-size: 20px;
+      color: #eef2ff;
+    }
+    .toolbar .desc {
+      color: #91a0c7;
+      font-size: 13px;
+    }
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    select, button {
+      border: 1px solid rgba(106, 132, 255, 0.25);
+      background: #121b31;
+      color: #eef2ff;
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-size: 14px;
+    }
+    button {
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    button:hover {
+      background: #172546;
+    }
+    .hidden-input {
+      display: none;
+    }
+    .drop-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(6, 11, 21, 0.78);
+      border: 2px dashed rgba(132, 175, 255, 0.55);
+      color: #dce7ff;
+      font-size: 24px;
+      letter-spacing: 1px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 20;
+    }
+    .drop-overlay.active {
+      opacity: 1;
+    }
+    .drop-overlay small {
+      display: block;
+      margin-top: 10px;
+      color: #9eb4df;
+      font-size: 14px;
+      text-align: center;
+    }
+    .status {
+      min-width: 240px;
+      color: #8cc4ff;
+      font-size: 13px;
+      text-align: right;
+    }
+    .main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      background: #11192b;
+      min-height: 0;
+    }
+    .panel {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      background: #0b1220;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(106, 132, 255, 0.16);
+      color: #c6d1f4;
+      font-size: 14px;
+    }
+    .panel-header span:last-child {
+      color: #8292bd;
+      font-size: 12px;
+    }
+    .canvas-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .footer-note {
+      padding: 10px 16px;
+      border-top: 1px solid rgba(106, 132, 255, 0.16);
+      color: #7e8db5;
+      font-size: 12px;
+    }
+    @media (max-width: 900px) {
+      .toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .status {
+        text-align: left;
+      }
+      .main {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div>
+          <h1>UV展开</h1>
+          <div class="desc">使用 LSCM 对现有 OBJ 模型做参数化展开</div>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <select id="model-select">
+          <option value="rock">Rock</option>
+          <option value="plant">Plant</option>
+          <option value="shark">White Shark</option>
+        </select>
+        <button id="upload-btn">上传OBJ</button>
+        <input id="obj-upload" class="hidden-input" type="file" accept=".obj,model/obj,text/plain">
+        <button id="reload-btn">重新展开</button>
+        <div class="status" id="status-text">正在加载模型...</div>
+      </div>
+    </div>
+
+    <div class="main">
+      <section class="panel">
+        <div class="panel-header">
+          <span>3D 模型</span>
+          <span>拖拽旋转 / 滚轮缩放</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="model-canvas"></canvas>
+        </div>
+        <div class="footer-note">左侧显示原始三角网格与自动选择的约束点。</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <span>LSCM UV 网格</span>
+          <span>边界归一化到 0..1</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="uv-canvas"></canvas>
+        </div>
+        <div class="footer-note">右侧展示展开后的线框结果，便于直接观察参数化畸变。</div>
+      </section>
+    </div>
+  </div>
+  <div id="drop-overlay" class="drop-overlay">
+    <div>
+      拖拽 OBJ 文件到这里
+      <small>松开鼠标后立即开始解析与 LSCM 展开</small>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const MODELS = {
+        rock: { label: "Rock", url: "assets/rock.obj" },
+        plant: { label: "Plant", url: "assets/plant.obj" },
+        shark: { label: "White Shark", url: "assets/WhiteShark.obj" }
+      };
+
+      const modelCanvas = document.getElementById("model-canvas");
+      const uvCanvas = document.getElementById("uv-canvas");
+      const modelSelect = document.getElementById("model-select");
+      const uploadBtn = document.getElementById("upload-btn");
+      const objUpload = document.getElementById("obj-upload");
+      const reloadBtn = document.getElementById("reload-btn");
+      const statusText = document.getElementById("status-text");
+      const dropOverlay = document.getElementById("drop-overlay");
+      const objLoader = new THREE.OBJLoader();
+
+      const modelRenderer = new THREE.WebGLRenderer({ canvas: modelCanvas, antialias: true, alpha: true });
+      const uvRenderer = new THREE.WebGLRenderer({ canvas: uvCanvas, antialias: true, alpha: true });
+      modelRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      uvRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      const modelScene = new THREE.Scene();
+      const uvScene = new THREE.Scene();
+      modelScene.background = new THREE.Color(0x08101d);
+      uvScene.background = new THREE.Color(0x091120);
+
+      const modelCamera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
+      modelCamera.position.set(1.8, 1.5, 1.8);
+      const uvCamera = new THREE.OrthographicCamera(-1.15, 1.15, 1.15, -1.15, 0.1, 10);
+      uvCamera.position.set(0, 0, 2);
+
+      const controls = new THREE.OrbitControls(modelCamera, modelCanvas);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+
+      const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+      dirLight.position.set(2, 3, 4);
+      modelScene.add(ambient);
+      modelScene.add(dirLight);
+
+      let currentModelGroup = null;
+      let currentPins = null;
+      let currentUvLines = null;
+      let currentUvPins = null;
+      let busy = false;
+      let customModelFile = null;
+      let dragDepth = 0;
+
+      function setStatus(message, color) {
+        statusText.textContent = message;
+        statusText.style.color = color || "#8cc4ff";
+      }
+
+      function setBusy(nextBusy) {
+        busy = nextBusy;
+        reloadBtn.disabled = nextBusy;
+        modelSelect.disabled = nextBusy;
+        uploadBtn.disabled = nextBusy;
+      }
+
+      function resize() {
+        const modelRect = modelCanvas.parentElement.getBoundingClientRect();
+        const uvRect = uvCanvas.parentElement.getBoundingClientRect();
+
+        modelRenderer.setSize(modelRect.width, modelRect.height, false);
+        uvRenderer.setSize(uvRect.width, uvRect.height, false);
+
+        modelCamera.aspect = modelRect.width / Math.max(modelRect.height, 1);
+        modelCamera.updateProjectionMatrix();
+
+        const aspect = uvRect.width / Math.max(uvRect.height, 1);
+        const scale = 1.15;
+        uvCamera.left = -scale * aspect;
+        uvCamera.right = scale * aspect;
+        uvCamera.top = scale;
+        uvCamera.bottom = -scale;
+        uvCamera.updateProjectionMatrix();
+      }
+
+      function normalizeObject(root) {
+        const box = new THREE.Box3().setFromObject(root);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z) || 1;
+        root.position.sub(center);
+        root.scale.setScalar(1 / maxDim);
+        root.updateMatrixWorld(true);
+      }
+
+      function loadOBJ(url) {
+        return new Promise(function (resolve, reject) {
+          objLoader.load(url, resolve, undefined, reject);
+        });
+      }
+
+      function loadOBJFromFile(file) {
+        return new Promise(function (resolve, reject) {
+          const reader = new FileReader();
+          reader.onload = function () {
+            try {
+              const text = typeof reader.result === "string" ? reader.result : "";
+              resolve(objLoader.parse(text));
+            } catch (error) {
+              reject(error);
+            }
+          };
+          reader.onerror = function () {
+            reject(new Error("读取本地 OBJ 文件失败"));
+          };
+          reader.readAsText(file);
+        });
+      }
+
+      function collectMeshData(root) {
+        root.updateMatrixWorld(true);
+        const positions = [];
+        const faces = [];
+        const vertexMap = new Map();
+        const temp = new THREE.Vector3();
+
+        function getVertexIndex(x, y, z) {
+          const key = [
+            Math.round(x * 100000),
+            Math.round(y * 100000),
+            Math.round(z * 100000)
+          ].join("_");
+          if (!vertexMap.has(key)) {
+            vertexMap.set(key, positions.length);
+            positions.push([x, y, z]);
+          }
+          return vertexMap.get(key);
+        }
+
+        root.traverse(function (child) {
+          if (!child.isMesh || !child.geometry || !child.geometry.attributes.position) {
+            return;
+          }
+
+          const geometry = child.geometry.clone();
+          const positionAttr = geometry.attributes.position;
+          const localToGlobal = new Array(positionAttr.count);
+
+          for (let i = 0; i < positionAttr.count; i++) {
+            temp.fromBufferAttribute(positionAttr, i).applyMatrix4(child.matrixWorld);
+            localToGlobal[i] = getVertexIndex(temp.x, temp.y, temp.z);
+          }
+
+          if (geometry.index) {
+            const index = geometry.index.array;
+            for (let i = 0; i < index.length; i += 3) {
+              faces.push([
+                localToGlobal[index[i]],
+                localToGlobal[index[i + 1]],
+                localToGlobal[index[i + 2]]
+              ]);
+            }
+          } else {
+            for (let i = 0; i < positionAttr.count; i += 3) {
+              faces.push([
+                localToGlobal[i],
+                localToGlobal[i + 1],
+                localToGlobal[i + 2]
+              ]);
+            }
+          }
+        });
+
+        return { positions: positions, faces: faces };
+      }
+
+      function chooseAnchorPair(vertices) {
+        let bestA = 0;
+        let bestB = 1;
+        let bestDist2 = -1;
+        for (let i = 0; i < vertices.length; i++) {
+          for (let j = i + 1; j < vertices.length; j++) {
+            const dx = vertices[i][0] - vertices[j][0];
+            const dy = vertices[i][1] - vertices[j][1];
+            const dz = vertices[i][2] - vertices[j][2];
+            const dist2 = dx * dx + dy * dy + dz * dz;
+            if (dist2 > bestDist2) {
+              bestDist2 = dist2;
+              bestA = i;
+              bestB = j;
+            }
+          }
+        }
+        return [bestA, bestB];
+      }
+
+      function buildLocalTriangle(p0, p1, p2) {
+        const a = new THREE.Vector3().fromArray(p0);
+        const b = new THREE.Vector3().fromArray(p1);
+        const c = new THREE.Vector3().fromArray(p2);
+        const e1 = new THREE.Vector3().subVectors(b, a);
+        const e2 = new THREE.Vector3().subVectors(c, a);
+        const area2 = new THREE.Vector3().crossVectors(e1, e2).length();
+        if (area2 < 1e-10) {
+          return null;
+        }
+
+        const xAxis = e1.clone().normalize();
+        const normal = new THREE.Vector3().crossVectors(e1, e2).normalize();
+        const yAxis = new THREE.Vector3().crossVectors(normal, xAxis).normalize();
+
+        const x0 = 0;
+        const y0 = 0;
+        const x1 = e1.length();
+        const y1 = 0;
+        const x2 = e2.dot(xAxis);
+        const y2 = e2.dot(yAxis);
+
+        const signedArea2 = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);
+        if (Math.abs(signedArea2) < 1e-10) {
+          return null;
+        }
+
+        return {
+          area: Math.abs(signedArea2) * 0.5,
+          grad: [
+            [(y1 - y2) / signedArea2, (x2 - x1) / signedArea2],
+            [(y2 - y0) / signedArea2, (x0 - x2) / signedArea2],
+            [(y0 - y1) / signedArea2, (x1 - x0) / signedArea2]
+          ]
+        };
+      }
+
+      function solveLSCM(meshData) {
+        const vertices = meshData.positions;
+        const faces = meshData.faces;
+        if (vertices.length < 3 || faces.length < 1) {
+          throw new Error("模型顶点或三角形数量不足");
+        }
+
+        const anchors = chooseAnchorPair(vertices);
+        const fixed = new Map();
+        fixed.set(anchors[0], [0, 0]);
+        fixed.set(anchors[1], [1, 0]);
+
+        const freeMap = new Map();
+        let freeCount = 0;
+        for (let i = 0; i < vertices.length; i++) {
+          if (!fixed.has(i)) {
+            freeMap.set(i, freeCount++);
+          }
+        }
+
+        const variableCount = freeCount * 2;
+        if (variableCount === 0) {
+          throw new Error("自由变量不足，无法求解");
+        }
+
+        const ata = [];
+        const atb = new Array(variableCount).fill(0);
+        for (let i = 0; i < variableCount; i++) {
+          ata.push(new Array(variableCount).fill(0));
+        }
+
+        function accumulate(rowEntries, rhs) {
+          for (let i = 0; i < rowEntries.length; i++) {
+            const a = rowEntries[i];
+            atb[a.index] += a.value * rhs;
+            for (let j = 0; j < rowEntries.length; j++) {
+              const b = rowEntries[j];
+              ata[a.index][b.index] += a.value * b.value;
+            }
+          }
+        }
+
+        function addCoefficient(entries, vertexIndex, component, value, known) {
+          if (fixed.has(vertexIndex)) {
+            const uv = fixed.get(vertexIndex);
+            known.value += value * uv[component];
+            return;
+          }
+          const id = freeMap.get(vertexIndex) * 2 + component;
+          entries.push({ index: id, value: value });
+        }
+
+        for (let f = 0; f < faces.length; f++) {
+          const tri = faces[f];
+          const local = buildLocalTriangle(vertices[tri[0]], vertices[tri[1]], vertices[tri[2]]);
+          if (!local) {
+            continue;
+          }
+
+          const weight = Math.sqrt(local.area);
+          const row1 = [];
+          const row2 = [];
+          const known1 = { value: 0 };
+          const known2 = { value: 0 };
+
+          for (let corner = 0; corner < 3; corner++) {
+            const dx = local.grad[corner][0] * weight;
+            const dy = local.grad[corner][1] * weight;
+            const vid = tri[corner];
+            addCoefficient(row1, vid, 0, dx, known1);
+            addCoefficient(row1, vid, 1, -dy, known1);
+            addCoefficient(row2, vid, 0, dy, known2);
+            addCoefficient(row2, vid, 1, dx, known2);
+          }
+
+          accumulate(row1, -known1.value);
+          accumulate(row2, -known2.value);
+        }
+
+        for (let i = 0; i < variableCount; i++) {
+          ata[i][i] += 1e-8;
+        }
+
+        const solution = numeric.solve(ata, atb);
+        const uv = new Array(vertices.length);
+        for (let i = 0; i < vertices.length; i++) {
+          if (fixed.has(i)) {
+            uv[i] = fixed.get(i).slice();
+          } else {
+            const base = freeMap.get(i) * 2;
+            uv[i] = [solution[base], solution[base + 1]];
+          }
+        }
+
+        let minU = Infinity;
+        let minV = Infinity;
+        let maxU = -Infinity;
+        let maxV = -Infinity;
+        for (let i = 0; i < uv.length; i++) {
+          minU = Math.min(minU, uv[i][0]);
+          minV = Math.min(minV, uv[i][1]);
+          maxU = Math.max(maxU, uv[i][0]);
+          maxV = Math.max(maxV, uv[i][1]);
+        }
+
+        const spanU = Math.max(maxU - minU, 1e-8);
+        const spanV = Math.max(maxV - minV, 1e-8);
+        const scale = 1 / Math.max(spanU, spanV);
+        for (let i = 0; i < uv.length; i++) {
+          uv[i][0] = (uv[i][0] - minU) * scale;
+          uv[i][1] = (uv[i][1] - minV) * scale;
+        }
+
+        return { uv: uv, anchors: anchors };
+      }
+
+      function buildModelGroup(root, anchors, positions) {
+        const group = new THREE.Group();
+        const meshMaterial = new THREE.MeshStandardMaterial({
+          color: 0x7fa7ff,
+          roughness: 0.55,
+          metalness: 0.05,
+          flatShading: false,
+          side: THREE.DoubleSide
+        });
+
+        root.traverse(function (child) {
+          if (!child.isMesh || !child.geometry) {
+            return;
+          }
+          const mesh = new THREE.Mesh(child.geometry, meshMaterial);
+          mesh.matrixAutoUpdate = false;
+          mesh.matrix.copy(child.matrixWorld);
+          group.add(mesh);
+
+          const wire = new THREE.LineSegments(
+            new THREE.WireframeGeometry(child.geometry),
+            new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent: true, opacity: 0.65 })
+          );
+          wire.matrixAutoUpdate = false;
+          wire.matrix.copy(child.matrixWorld);
+          group.add(wire);
+        });
+
+        const pinPositions = [];
+        for (let i = 0; i < anchors.length; i++) {
+          const p = positions[anchors[i]];
+          pinPositions.push(p[0], p[1], p[2]);
+        }
+
+        const points = new THREE.Points(
+          new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pinPositions, 3)),
+          new THREE.PointsMaterial({ color: 0xffb74d, size: 0.05, sizeAttenuation: true })
+        );
+        group.add(points);
+
+        return { group: group, pinPoints: points };
+      }
+
+      function buildUvMesh(uv, faces, anchors) {
+        const edgeSet = new Set();
+        const segments = [];
+
+        function toPlane(p) {
+          return [(p[0] - 0.5) * 1.8, (p[1] - 0.5) * 1.8, 0];
+        }
+
+        function addEdge(a, b) {
+          const key = a < b ? a + "_" + b : b + "_" + a;
+          if (edgeSet.has(key)) {
+            return;
+          }
+          edgeSet.add(key);
+          const pa = toPlane(uv[a]);
+          const pb = toPlane(uv[b]);
+          segments.push(pa[0], pa[1], pa[2], pb[0], pb[1], pb[2]);
+        }
+
+        for (let i = 0; i < faces.length; i++) {
+          addEdge(faces[i][0], faces[i][1]);
+          addEdge(faces[i][1], faces[i][2]);
+          addEdge(faces[i][2], faces[i][0]);
+        }
+
+        const lineGeom = new THREE.BufferGeometry();
+        lineGeom.setAttribute("position", new THREE.Float32BufferAttribute(segments, 3));
+        const lines = new THREE.LineSegments(
+          lineGeom,
+          new THREE.LineBasicMaterial({ color: 0x86b2ff, transparent: true, opacity: 0.95 })
+        );
+
+        const pinPositions = [];
+        for (let i = 0; i < anchors.length; i++) {
+          const p = toPlane(uv[anchors[i]]);
+          pinPositions.push(p[0], p[1], 0.01);
+        }
+        const pins = new THREE.Points(
+          new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pinPositions, 3)),
+          new THREE.PointsMaterial({ color: 0xffa94d, size: 0.06, sizeAttenuation: false })
+        );
+
+        return { lines: lines, pins: pins };
+      }
+
+      function rebuildUvGrid() {
+        const grid = new THREE.Group();
+        const gridMaterial = new THREE.LineBasicMaterial({ color: 0x1a2947, transparent: true, opacity: 0.85 });
+        const coords = [];
+        for (let i = -10; i <= 10; i++) {
+          const t = i / 10;
+          coords.push(-1, t, 0, 1, t, 0);
+          coords.push(t, -1, 0, t, 1, 0);
+        }
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.Float32BufferAttribute(coords, 3));
+        grid.add(new THREE.LineSegments(geom, gridMaterial));
+        uvScene.add(grid);
+      }
+
+      function clearGroup(scene, objectRef) {
+        if (objectRef && objectRef.parent) {
+          objectRef.parent.remove(objectRef);
+        }
+      }
+
+      function setDropOverlay(active) {
+        dropOverlay.classList.toggle("active", active);
+      }
+
+      function applyCustomFile(file) {
+        if (!file) {
+          return;
+        }
+        if (!/\.obj$/i.test(file.name)) {
+          setStatus("仅支持上传 .obj 文件", "#ff9d9d");
+          return;
+        }
+        customModelFile = file;
+        setStatus("已选择本地文件: " + file.name, "#ffd38a");
+        updateModel();
+      }
+
+      async function resolveSourceObject() {
+        if (customModelFile) {
+          return loadOBJFromFile(customModelFile);
+        }
+        return loadOBJ(MODELS[modelSelect.value].url);
+      }
+
+      function getCurrentSourceLabel() {
+        if (customModelFile) {
+          return customModelFile.name;
+        }
+        return MODELS[modelSelect.value].label;
+      }
+
+      async function updateModel() {
+        if (busy) {
+          return;
+        }
+
+        setBusy(true);
+        setStatus("正在加载 OBJ 模型: " + getCurrentSourceLabel() + " ...");
+
+        try {
+          const root = await resolveSourceObject();
+          normalizeObject(root);
+
+          setStatus("正在提取三角网格...");
+          const meshData = collectMeshData(root);
+
+          setStatus("正在执行 LSCM 求解...");
+          const unwrapResult = solveLSCM(meshData);
+
+          clearGroup(modelScene, currentModelGroup);
+          clearGroup(uvScene, currentUvLines);
+          clearGroup(uvScene, currentUvPins);
+
+          const modelVisual = buildModelGroup(root, unwrapResult.anchors, meshData.positions);
+          currentModelGroup = modelVisual.group;
+          currentPins = modelVisual.pinPoints;
+          modelScene.add(currentModelGroup);
+          controls.target.set(0, 0, 0);
+          controls.update();
+
+          const uvVisual = buildUvMesh(unwrapResult.uv, meshData.faces, unwrapResult.anchors);
+          currentUvLines = uvVisual.lines;
+          currentUvPins = uvVisual.pins;
+          uvScene.add(currentUvLines);
+          uvScene.add(currentUvPins);
+
+          setStatus(
+            "完成: " + getCurrentSourceLabel() + " / " + meshData.positions.length + " 顶点 / " + meshData.faces.length + " 三角形",
+            "#89f0b6"
+          );
+        } catch (error) {
+          console.error(error);
+          setStatus("展开失败: " + error.message, "#ff9d9d");
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        modelRenderer.render(modelScene, modelCamera);
+        uvRenderer.render(uvScene, uvCamera);
+      }
+
+      rebuildUvGrid();
+      resize();
+      window.addEventListener("resize", resize);
+      modelSelect.addEventListener("change", function () {
+        customModelFile = null;
+        objUpload.value = "";
+        updateModel();
+      });
+      uploadBtn.addEventListener("click", function () {
+        objUpload.click();
+      });
+      objUpload.addEventListener("change", function () {
+        const file = objUpload.files && objUpload.files[0];
+        applyCustomFile(file);
+        objUpload.value = "";
+      });
+      window.addEventListener("dragenter", function (event) {
+        event.preventDefault();
+        dragDepth += 1;
+        setDropOverlay(true);
+      });
+      window.addEventListener("dragover", function (event) {
+        event.preventDefault();
+        if (event.dataTransfer) {
+          event.dataTransfer.dropEffect = "copy";
+        }
+        setDropOverlay(true);
+      });
+      window.addEventListener("dragleave", function (event) {
+        event.preventDefault();
+        dragDepth = Math.max(0, dragDepth - 1);
+        if (dragDepth === 0) {
+          setDropOverlay(false);
+        }
+      });
+      window.addEventListener("drop", function (event) {
+        event.preventDefault();
+        dragDepth = 0;
+        setDropOverlay(false);
+        const files = event.dataTransfer && event.dataTransfer.files;
+        if (!files || !files.length) {
+          return;
+        }
+        applyCustomFile(files[0]);
+      });
+      reloadBtn.addEventListener("click", updateModel);
+      updateModel();
+      animate();
+    })();
+  </script>
+</body>
+</html>
