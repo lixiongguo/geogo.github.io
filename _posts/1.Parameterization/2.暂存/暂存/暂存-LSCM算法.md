@@ -1,3 +1,4 @@
+{% raw %}
 ---
 layout: post
 title: "曲面参数化4-LSCM算法"
@@ -93,3 +94,4 @@ $$
 **参考文献**
 
 [1] B. Lévy, S. Petitjean, N. Ray, and J. Maillot, "Least Squares Conformal Maps for Automatic Texture Atlas Generation," *ACM Trans. Graph.*, vol. 21, no. 3, pp. 362–371, Jul. 2002, doi: 10.1145/566654.566590.
+{% endraw %}

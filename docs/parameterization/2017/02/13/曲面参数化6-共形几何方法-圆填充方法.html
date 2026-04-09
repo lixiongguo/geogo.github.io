@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1"><link type="application/atom+xml" rel="alternate" href="http://localhost:5555/feed.xml" /></head>
+<style>@import url(/public/css/syntax/emacs.css);</style>
+  <title></title>
+  <!-- <link href="/public/css/bootstrap.min.css" rel="stylesheet"> -->
+
+  <link href="/public/css/style.css" rel="stylesheet">
+  <body>
+  	<div class="container"> 
+		<div class="sidebar">
+			<div class="sidebar-item sidebar-header">
+	<!-- <div class='sidebar-brand'>
+		<a href="/about/"></a>
+	</div>
+	<p class="lead"></p>-->
+	<div class='circular-image'>
+		<img src="/assets/image/Koushiro.png" alt="Circular Image">
+	</div>
+</div>
+
+<div >
+	<p>学与玩</p>
+</div>
+<ul class="nav">
+    <!-- ... 现有导航项 ... -->
+    <li><a href="/about" class="rainbow-shine">About me</a></li>
+    <!-- ... 现有导航项 ... -->
+</ul>
+<ul class="nav">
+    <!-- ... 现有导航项 ... -->
+    <li><a href="/caustics" class="rainbow-shine">Gallery</a></li>
+    <li><a href="/tsumego" class="rainbow-shine">围棋死活题</a></li>
+    <!-- ... 现有导航项 ... -->
+</ul>
+
+
+<div class="sidebar-item sidebar-nav">
+  	<ul class="nav">
+			<li class="nav-title">Categories</li>
+	    
+	    <li>
+	    	<a class="nav-item" href="/category#Parameterization">
+				<span class="name">Parameterization</span>
+				<span class="badge">9</span>
+	    	</a>
+ 		</li>
+	    
+	    <li>
+	    	<a class="nav-item" href="/category#ComputerGraphics">
+				<span class="name">ComputerGraphics</span>
+				<span class="badge">2</span>
+	    	</a>
+ 		</li>
+	    
+	    <li>
+	    	<a class="nav-item" href="/category#RL">
+				<span class="name">RL</span>
+				<span class="badge">2</span>
+	    	</a>
+ 		</li>
+	    
+	    <li>
+	    	<a class="nav-item" href="/category#1.Parameterization">
+				<span class="name">1.Parameterization</span>
+				<span class="badge">1</span>
+	    	</a>
+ 		</li>
+	    
+	    <li>
+	    	<a class="nav-item" href="/category#4.Reinforcement">
+				<span class="name">4.Reinforcement</span>
+				<span class="badge">1</span>
+	    	</a>
+ 		</li>
+	    
+	  </nav>
+	</ul>
+</div>
+<div >
+	<p>人生箴言:</p>
+	<p>“成功的秘诀在于，你必须先知道失败的原因。”</p>
+</div>
+<div class="sidebar-item sidebar-footer">
+	<p>Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a></p>
+</div>
+		</div>
+		<div class="content">
+      <!-- <canvas id="particle-canvas"></canvas> -->
+			<article class="post">
+	<header class="post-header">
+		<div class="post-title"> 
+			曲面参数化——Circle Packing 与 Circle Patterns 完整介绍
+		</div>
+		<time class="post-date dt-published" datetime="2017-02-13T00:00:00+08:00" itemprop="datePublished">2017/02/13
+		</time>		
+	</header>
+
+	<div class="post-content">
+		<h2 id="一从圆填充到共形几何基本思想">一、从圆填充到共形几何：基本思想</h2>
+
+<h3 id="11-圆是共形几何的基本构建单元">1.1 圆是共形几何的基本构建单元</h3>
+
+<p>在共形几何中，<strong>共形映射（conformal mapping）</strong> 保持两件事不变：角度和圆。具体来说：</p>
+
+<ul>
+  <li>共形映射将<strong>圆映射为圆</strong></li>
+  <li>保持两个圆之间的<strong>相交角度</strong>不变</li>
+</ul>
+
+<p>有了这样的认识，我们便可以构造对共形映射的数值逼近算法——用大量的圆对曲面进行填充，然后寻找一个映射，使这些圆在映射后仍然保持圆形。如果映射对所有圆都能做到这一点，它就具有很好的共形性。这便是 Circle Packing 与 Circle Patterns 两类算法的共同出发点。</p>
+
+<p><img src="../../../imgs/image-20251107104108134.png" alt="Circle Patterns基本思想" /></p>
+
+<hr />
+
+<h2 id="二circle-packing从组合到几何">二、Circle Packing：从组合到几何</h2>
+
+<h3 id="21-什么是-circle-packing">2.1 什么是 Circle Packing</h3>
+
+<p><strong>Circle Packing（圆填充）</strong> 是指在平面（或曲面）上排布一组圆，使得相邻的圆<strong>外切（相切不重叠）</strong>，并且它们的切点关系与给定的图的邻接关系完全一致。</p>
+
+<p>对于一个三角网格而言，每个顶点对应一个圆，若两顶点之间有边相连，则对应的两个圆相切。这样便建立了<strong>图的组合结构</strong>与<strong>平面几何配置</strong>之间的对应。</p>
+
+<h3 id="22-几何结构与组合结构的对应">2.2 几何结构与组合结构的对应</h3>
+
+<p>三角网格与圆填充的对应关系是离散几何中的核心联系之一：</p>
+
+<ul>
+  <li><strong>顶点</strong> → <strong>圆心</strong></li>
+  <li><strong>边</strong> → <strong>两圆相切（切点位于边上）</strong></li>
+  <li><strong>面（三角形）</strong> → <strong>三圆的公切三角形</strong></li>
+</ul>
+
+<p>由此可见，Circle Packing 实际上将一个抽象的图（组合结构）”实现”为一个具体的几何配置。</p>
+
+<p><img src="../../../imgs/image-20260116183606946.png" alt="几何结构与组合结构" /></p>
+
+<h3 id="23-koebeandreevthurston-定理">2.3 Koebe–Andreev–Thurston 定理</h3>
+
+<p><strong>Koebe–Andreev–Thurston（KAT）定理</strong> 是 Circle Packing 理论的核心，它给出了圆填充存在性与唯一性的保证：</p>
+
+<blockquote>
+  <p><strong>每一个有限的、简单连通的平面图</strong>（无重边、无自环的平面嵌入图）<strong>都存在唯一的（在Möbius变换意义下）对应圆填充</strong>。</p>
+</blockquote>
+
+<p>这一定理最早由 Koebe（1928）证明，后由 Thurston（1978）重新发现并推广。推广到三角面后，即为 Circle Patterns 的存在性基础。</p>
+
+<p><img src="../../../imgs/image-20251204102106513.png" alt="KAT定理示例" /></p>
+
+<p><strong>Koebe 定理</strong>（1936）的另一形式：任意有限连通平面图都存在一个圆填充表示，且其对偶图也存在圆填充。</p>
+
+<p><img src="../../../imgs/image-20260116184802576.png" alt="Koebe定理" /></p>
+
+<h3 id="24-thurston-的曲率流算法">2.4 Thurston 的曲率流算法</h3>
+
+<p>Thurston 提出了一种迭代算法来计算 Circle Packing：</p>
+
+<blockquote>
+  <p><strong>圆填充可以用来近似共形映射</strong></p>
+</blockquote>
+
+<p>其核心思路是通过调整每个圆的半径，使得每个内部顶点处的”角度亏量”（即围绕该顶点的圆的夹角之和与 $2\pi$ 的差，称为<strong>离散曲率</strong>）趋向于零。这一过程类似于曲率流，最终收敛到一个满足曲率平衡的圆填充配置。</p>
+
+<p><img src="../../../imgs/image-20260116183727732.png" alt="Thurston曲率流算法" /></p>
+
+<p>离散曲率定义为：</p>
+
+\[K_i = 2\pi - \sum_{j \in N(i)} \theta_j\]
+
+<p>其中 $\theta_j$ 是顶点 $i$ 周围第 $j$ 个三角形中该顶点的角度。</p>
+
+<h3 id="25-circle-packing-的局限性">2.5 Circle Packing 的局限性</h3>
+
+<p>Stephenson 等人实现了三角网格上的 Circle Packing 算法，但 Circle Packing 有一个本质局限：</p>
+
+<blockquote>
+  <p><strong>它只考虑了三角网格的连接性质，而没有充分考虑其几何性质（如原始三角形的角度信息）。</strong></p>
+</blockquote>
+
+<p>也就是说，Circle Packing 的参数化结果仅由图的拓扑结构决定，对原始几何的还原精度有限。Circle Patterns 算法正是为了克服这一局限而提出的。</p>
+
+<hr />
+
+<h2 id="三circle-patterns几何性质的精确保持">三、Circle Patterns：几何性质的精确保持</h2>
+
+<h3 id="31-从-circle-packing-到-circle-patterns">3.1 从 Circle Packing 到 Circle Patterns</h3>
+
+<p><strong>Circle Patterns</strong> 是 Circle Packing 的推广。与 Circle Packing 要求圆与圆<strong>相切</strong>不同，Circle Patterns 允许相邻圆以<strong>任意给定角度相交</strong>，从而将原始三角网格的几何信息（内角）编码进圆的配置中。</p>
+
+<p>Circle Patterns 算法将网格视为：</p>
+
+<ul>
+  <li><strong>顶点</strong> → <strong>圆心</strong></li>
+  <li><strong>边</strong> → <strong>两圆相交角度（边权值 $\theta_e$）</strong></li>
+</ul>
+
+<p>参数化过程就是寻找一组圆半径，使得这些圆的相交模式<strong>恰好满足每个面的闭合条件</strong>。这种方法在离散层面上更忠实于共形几何的连续理论。</p>
+
+<h3 id="32-delaunay-三角网格与圆填充">3.2 Delaunay 三角网格与圆填充</h3>
+
+<p>对于 Delaunay 三角网格，所有三角形的<strong>外接圆</strong>可以认为是对它的一个<strong>圆图案（Circle Pattern）</strong>：</p>
+
+<ul>
+  <li>每个三角形有一个外接圆</li>
+  <li>相邻三角形的外接圆以一定角度相交</li>
+  <li>相交角度 $\theta_e$ 称为<strong>边权值（edge weight）</strong></li>
+</ul>
+
+<p><img src="../../../imgs/image-20251107105925485.png" alt="Delaunay三角网格的外接圆" /></p>
+
+<p>Circle Patterns 算法的目标是求这组边权值以及对应的圆半径，从而得到完整的圆配置，即参数化结果。</p>
+
+<p>注意：Circle Patterns 要求满足 Delaunay 三角剖分的<strong>空圆条件</strong>。否则某个顶点可能位于另一个三角形外接圆内，与 Circle Patterns 的定义相违背。</p>
+
+<p><img src="../../../imgs/image-20251112191400533.png" alt="Circle Patterns与Delaunay条件" /></p>
+
+<h3 id="33-抽象三角网格与-coherent-angle-system">3.3 抽象三角网格与 Coherent Angle System</h3>
+
+<p><strong>抽象三角网格（Abstract Triangulation）</strong> 是只定义连接关系的纯组合对象，也称为<strong>单纯复形（Simplicial Complex）</strong>。它仅依赖顶点、边、面之间的关联关系，不依赖任何具体的几何嵌入（坐标、距离、角度等）。展平前后，三角网格的抽象三角网格是一致的。</p>
+
+<p><strong>Circle Patterns 问题的存在性定理</strong>：</p>
+
+<blockquote>
+  <p>对于给定边权值 $\theta_e$（共形变换下保持不变）和一个抽象三角网格，<strong>其 CirclePattern 存在当且仅当 Coherent Angle System 存在</strong>。</p>
+</blockquote>
+
+<p><strong>Coherent Angle System</strong> 是对抽象三角网格赋予一组角度值 $\hat{\alpha}_{ij}^k$，满足：</p>
+
+<p><strong>1. 正性约束</strong>：</p>
+
+\[\hat{\alpha}_{ij}^k &gt; 0\]
+
+<p><img src="../../../imgs/image-20251015085845727.png" alt="正性约束" /></p>
+
+<p><strong>2. 三角形内角和约束</strong>：对每个三角形 $t = (i,j,k)$，三个内角之和等于 $\pi$：</p>
+
+\[\hat{\alpha}_{ij}^k + \hat{\alpha}_{jk}^i + \hat{\alpha}_{ki}^j = \pi\]
+
+<p><img src="../../../imgs/image-20251015090132394.png" alt="三角形内角和约束" /></p>
+
+<p><strong>3. 边权值约束</strong>：对每条内部边 $e = (i,j)$，两侧三角形中的对应角满足：</p>
+
+\[\hat{\alpha}_{ij}^k + \hat{\alpha}_{ij}^l = \pi - \theta_e\]
+
+<p><img src="../../../imgs/image-20251112191400533.png" alt="边权值约束" /></p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>从而，求 Coherent Angle System 等价于求解一个具有 $3</td>
+      <td>F</td>
+      <td>$ 个变量、$</td>
+      <td>F</td>
+      <td>+</td>
+      <td>E</td>
+      <td>$ 个等式约束的线性可行域。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="34-变分法求圆半径">3.4 变分法求圆半径</h3>
+
+<p>在得到 Coherent Angle System 后，需要通过变分方法求解每个圆的半径，从而确定完整的圆配置。</p>
+
+<p>令 $\rho_{ijk} = \log r_{ijk}$（对圆半径取对数），其中 $r_{ijk}$ 是顶点 $i$ 在三角形 $(i,j,k)$ 中的对应圆半径。</p>
+
+<p>通过几何关系，角度可以表示为：</p>
+
+\[\alpha_{ij}^k = \alpha(\rho_i, \rho_j, \rho_k) = \arccos\left(\frac{r_i^2 + r_j^2 - r_k^2}{2r_i r_j}\right)\]
+
+<p>构造能量泛函：</p>
+
+\[E(\rho) = \sum_{t} \left(\mathcal{L}(\alpha_{ij}^k) + \mathcal{L}(\alpha_{jk}^i) + \mathcal{L}(\alpha_{ki}^j)\right) - \sum_e \theta_e \cdot \log r\]
+
+<p>其中 $\mathcal{L}(\cdot)$ 是 <strong>Lobachevsky 函数</strong>：</p>
+
+\[\mathcal{L}(x) = -\int_0^x \log|2\sin t| \, dt\]
+
+<p><img src="../../../imgs/image-20251107104253558.png" alt="变分法求半径" /></p>
+
+<p>能量泛函的梯度条件给出：</p>
+
+\[\frac{\partial E}{\partial \rho_i} = K_i = 0\]
+
+<p>即每个顶点的离散曲率为零（对于平坦参数化）。</p>
+
+<p><img src="../../../imgs/image-20251112193409629.png" alt="变分公式" /></p>
+
+<p>这一变分方法的理论基础来自 <strong>Bobenko</strong> 的变分原理（基于 Lobachevsky 函数）和 <strong>Colin de Verdière</strong> 的工作，并与 <strong>Rivin 定理</strong>（理想双曲四面体与圆图案的对偶性）有深刻联系：</p>
+
+<ul>
+  <li><strong>Rivin 定理</strong>：理想双曲四面体的二面角与 Circle Pattern 的边权值之间存在对偶关系</li>
+  <li><strong>Lobachevsky 函数</strong>：双曲几何中的体积计算工具，出现在变分公式中</li>
+  <li><strong>Bobenko 变分原理</strong>：将 Circle Pattern 的求解转化为一个凸优化问题，保证解的唯一性</li>
+</ul>
+
+<p><img src="../../../imgs/image-20251203151101148.png" alt="Lobachevsky函数" /></p>
+
+<hr />
+
+<h2 id="四空间三角网格上的-circlepatterns-算法">四、空间三角网格上的 CirclePatterns 算法</h2>
+
+<h3 id="41-原始网格-theta_e-的可行性问题">4.1 原始网格 $\theta_e$ 的可行性问题</h3>
+
+<p>对于空间中给定的三维三角网格，其原始的 $\theta_e$（由网格的实际几何决定）可能不满足 Coherent Angle System 的约束，即无法直接找到合适的圆填充。</p>
+
+<p>因此，需要在尽量接近原始角度值的前提下，寻找满足约束的可行 $\theta_e$，这导出如下<strong>二次优化问题</strong>：</p>
+
+\[\min_{\{\theta_e\}} \sum_e (\theta_e - \theta_e^{\text{orig}})^2\]
+
+<p><strong>约束条件</strong>：</p>
+
+<ol>
+  <li>每个三角形内角和等于 $\pi$</li>
+  <li>每个角度大于 0</li>
+  <li>每条边的角度满足边权值约束</li>
+</ol>
+
+<p><img src="../../../imgs/image-20251015090401255.png" alt="优化问题" /></p>
+
+<p><img src="../../../imgs/image-20251015090458352.png" alt="约束条件" /></p>
+
+<p>优化后得到的三角形配置，由于满足局部 Delaunay 条件（等价于空圆性质），自然构成 Delaunay 三角剖分。</p>
+
+<h3 id="42-局部-delaunay-条件">4.2 局部 Delaunay 条件</h3>
+
+<p>对每条内部边 $e$，需要满足<strong>局部 Delaunay（Local Delaunay）条件</strong>：</p>
+
+\[\alpha_{ij}^k + \alpha_{ij}^l \leq \pi\]
+
+<p><img src="../../../imgs/image-20251112180201085.png" alt="局部Delaunay条件" /></p>
+
+<p>局部 Delaunay 是 Delaunay 三角剖分空圆性质的等价条件，因此优化后得到的配置自然满足 Delaunay 性质。</p>
+
+<h3 id="43-边界条件">4.3 边界条件</h3>
+
+<p>算法支持两种边界条件：</p>
+
+<ul>
+  <li>
+    <p><strong>自由边界</strong>：边界圆的半径自由变化，参数化结果的边界形状由算法自动确定</p>
+
+    <p><img src="../../../imgs/image-20251112174426460.png" alt="自由边界" /></p>
+  </li>
+  <li>
+    <p><strong>指定边界</strong>：边界圆满足给定的形状约束（如映射到矩形或圆形边界）</p>
+
+    <p><img src="../../../imgs/image-20251112174435772.png" alt="指定边界" /></p>
+  </li>
+</ul>
+
+<p>对于边界顶点，曲率约束修改为：</p>
+
+\[K_i = 2\pi - \phi_i\]
+
+<p>其中 $\phi_i$ 是边界处的外角。</p>
+
+<p><img src="../../../imgs/image-20251107105336742.png" alt="边界条件公式" /></p>
+
+<h3 id="44-intrinsic-local-delaunay-预处理">4.4 Intrinsic Local Delaunay 预处理</h3>
+
+<p>在正式求解前，可以先对原始三维三角网格进行 <strong>Intrinsic Local Delaunay</strong> 预处理：</p>
+
+<blockquote>
+  <p>在不改变网格抽象三角网格结构的前提下，通过边翻转操作使网格在内蕴度量意义下满足 Delaunay 条件。</p>
+</blockquote>
+
+<p><img src="../../../imgs/image-20251112211124525.png" alt="Intrinsic Local Delaunay预处理" /></p>
+
+<p>这一预处理步骤能够显著减小参数化结果的扭曲。</p>
+
+<hr />
+
+<h2 id="五全局参数化与锥奇异点">五、全局参数化与锥奇异点</h2>
+
+<h3 id="51-从局部圆盘到全局参数化">5.1 从局部圆盘到全局参数化</h3>
+
+<p>上述方法仅适用于<strong>拓扑圆盘</strong>（即具有单连通域拓扑的网格片段）。对于拓扑更复杂的模型（如球状、亏格大于 0 的曲面），需要通过<strong>割线（cuts）</strong> 将网格切开为拓扑圆盘，然后对各片分别参数化并拼合到一个图卡（Atlas）中。</p>
+
+<p><img src="../../../imgs/image-20250927205710412.png" alt="球状模型的分割" /></p>
+
+<p>手动寻找合适割线往往繁琐，而<strong>锥奇异点</strong>的引入使这一过程可以自动化进行。</p>
+
+<h3 id="52-锥奇异点">5.2 锥奇异点</h3>
+
+<p>展平后，曲面上几乎处处的高斯曲率为 0（平坦），而<strong>锥奇异点</strong>是高斯曲率被集中赋予非零值的特殊点：</p>
+
+\[K_i = 2\pi - \sum_{\text{face } f \ni i} \alpha_i^f\]
+
+<p>其中 $\alpha_i^f$ 为顶点 $i$ 在面 $f$ 中的角度。</p>
+
+<p><img src="../../../imgs/image-20250924183558400.png" alt="锥奇异点示意" /></p>
+
+<p><strong>高斯–博内定理</strong>给出了整体曲率与拓扑之间的约束：</p>
+
+\[\sum_i K_i = 2\pi \chi\]
+
+<p>其中 $\chi$ 为曲面的欧拉示性数。这意味着锥奇异点的引入受到拓扑约束，不能任意设置。</p>
+
+<h3 id="53-锥奇异点的作用">5.3 锥奇异点的作用</h3>
+
+<p>通过引入锥奇异点，可以极大地减少参数化扭曲：</p>
+
+<ul>
+  <li>算法自动将高斯曲率集中到少数几个顶点（锥奇异点）</li>
+  <li>其余区域保持平坦（高斯曲率为 0）</li>
+  <li>从而在整体上最小化保角扭曲</li>
+</ul>
+
+<p><img src="../../../imgs/image-20251112194941344.png" alt="锥奇异点减少扭曲" /></p>
+
+<p>在 CirclePatterns 算法中，只需在变分能量中加入对锥奇异点处目标角度的额外约束：</p>
+
+\[\sum_{f \ni i} \alpha_i^f = 2\pi k_i\]
+
+<p>其中 $k_i$ 为目标角度亏量系数（通常 $k_i \in \mathbb{Z}^+$）。</p>
+
+<p><img src="../../../imgs/image-20251113091148098.png" alt="锥奇异点算法" /></p>
+
+<h3 id="54-与-abf-算法的对比">5.4 与 ABF 算法的对比</h3>
+
+<p>与 ABF（Angle Based Flattening）算法的对比实验（用 quasi-conformal 度量扭曲）表明，CirclePatterns 方法的扭曲明显更小：</p>
+
+<p><img src="../../../imgs/image-20251113091722848.png" alt="与ABF算法对比" /></p>
+
+<hr />
+
+<h2 id="六延伸极小曲面的-circle-patterns">六、延伸：极小曲面的 Circle Patterns</h2>
+
+<h3 id="61-极小曲面简介">6.1 极小曲面简介</h3>
+
+<p><strong>极小曲面</strong>是平均曲率处处为零（$H = 0$）的正则曲面，典型例子包括正螺面（Helicoid）和悬链面（Catenoid）——两者之间还存在等距变换。</p>
+
+<p><img src="../../../imgs/image-20260116173830137.png" alt="各种离散极小曲面" /></p>
+
+<p><strong>Plateau 问题</strong>：给定空间中一条封闭曲线，是否存在以它为边界的极小曲面？肥皂膜给出了直观的物理实现。</p>
+
+<p><img src="../../../imgs/image-20260116175051041.png" alt="Plateau问题与肥皂膜" /></p>
+
+<p><strong>极小曲面的微分几何定义</strong>：正则曲面，平均曲率 $H = 0$。</p>
+
+<p><strong>对于 $z = f(x,y)$，Lagrange 给出极小曲面方程</strong>：</p>
+
+\[(1 + f_y^2)f_{xx} - 2f_x f_y f_{xy} + (1 + f_x^2)f_{yy} = 0\]
+
+<p><img src="../../../imgs/image-20260116174834903.png" alt="Lagrange极小曲面方程" /></p>
+
+<h3 id="62-极小曲面的-weierstrassenneper-表示">6.2 极小曲面的 Weierstrass–Enneper 表示</h3>
+
+<p>极小曲面与复分析有深刻联系。在<strong>等温参数坐标（Isothermal Coordinates）</strong> 下，曲面的第一基本形式满足：</p>
+
+\[ds^2 = \lambda^2(du^2 + dv^2)\]
+
+<p>即 $E = G, F = 0$，这正是参数化为共形映射的条件。</p>
+
+<p><img src="../../../imgs/image-20260116175353721.png" alt="等温坐标" /></p>
+
+<p><strong>Weierstrass–Enneper 表示</strong>利用复变函数理论给出极小曲面的参数化公式：</p>
+
+\[X(u,v) = \text{Re}\int(1-g^2, i(1+g^2), 2g) \cdot f \, dz\]
+
+<p>其中 $f$ 是全纯函数，$g$ 是 meromorphic 函数。</p>
+
+<p><img src="../../../imgs/image-20260116175750932.png" alt="Weierstrass-Enneper表示" /></p>
+
+<p><strong>共形结构与极小曲面的关系</strong>：</p>
+
+<p><img src="../../../imgs/image-20260116175622889.png" alt="共形结构与极小曲面" /></p>
+
+<h3 id="63-离散极小曲面与-s-等温曲面">6.3 离散极小曲面与 S-等温曲面</h3>
+
+<p>在离散几何中：</p>
+
+<ul>
+  <li><strong>离散 S-等温曲面</strong>是由<strong>正交相交的圆（或球）</strong> 构成的曲面</li>
+  <li>极小曲面是等温曲面的一个子类</li>
+  <li><strong>Christoffel 变换</strong>给出离散等温曲面之间的对偶：极小曲面是其高斯映射的 Christoffel 对偶</li>
+</ul>
+
+<p><img src="../../../imgs/image-20260116175831462.png" alt="Christoffel变换与对偶" /></p>
+
+<p><strong>总体逻辑流程</strong>：</p>
+
+<p><img src="../../../imgs/image-20260116180605851.png" alt="总体逻辑流程" /></p>
+
+<h4 id="基本定义">基本定义</h4>
+
+<p><strong>等温曲面的定义</strong>：</p>
+
+<p><img src="../../../imgs/image-20260116180922644.png" alt="等温曲面定义" /></p>
+
+<p><strong>离散等温曲面</strong>：</p>
+
+<p><img src="../../../imgs/image-20260116181204177.png" alt="离散等温曲面" /></p>
+
+<p><strong>Christoffel 变换</strong>：</p>
+
+<p><img src="../../../imgs/image-20260116181236475.png" alt="Christoffel变换定义" /></p>
+
+<p>基本构型 <strong>S-quad-graph</strong>：</p>
+
+<p><img src="../../../imgs/image-20260116181312578.png" alt="S-quad-graph" /></p>
+
+<p><strong>离散 S-等温曲面</strong>：</p>
+
+<p><img src="../../../imgs/image-20260116181402429.png" alt="离散S-等温曲面" /></p>
+
+<p>所以几何结构（曲面）就变成了组合结构（图）：</p>
+
+<p><img src="../../../imgs/image-20260116181345119.png" alt="几何结构到组合结构" /></p>
+
+<p>关键结论：<strong>4 个空间中的圆相切，则存在一个球面将它们”串”起来</strong>（即 4 圆共球面）：</p>
+
+<p><img src="../../../imgs/image-20260116181655217.png" alt="四圆共球面" /></p>
+
+<p><strong>推论</strong>：</p>
+
+<p><img src="../../../imgs/image-20260116181832872.png" alt="推论" /></p>
+
+<p>圆填充与三角化的对应：</p>
+
+<p><img src="../../../imgs/image-20260116181918566.png" alt="圆填充与三角化" /></p>
+
+<h3 id="64-koebe-多边形">6.4 Koebe 多边形</h3>
+
+<p>圆填充的基本定理：<strong>Koebe 定理</strong>：</p>
+
+<p><img src="../../../imgs/image-20260116182007579.png" alt="Koebe定理基本形式" /></p>
+
+<p>Koebe 多边形与离散 S-等温曲面关系：</p>
+
+<p><img src="../../../imgs/image-20260116182048755.png" alt="Koebe多边形与S-等温曲面" /></p>
+
+<p><strong>定理 2</strong>：Koebe 定理限定在球面的推广：</p>
+
+<p><img src="../../../imgs/image-20260116182116501.png" alt="定理2" /></p>
+
+<p><strong>定理 3</strong>：在三维空间曲面的推广：</p>
+
+<p><img src="../../../imgs/image-20260116182255818.png" alt="定理3" /></p>
+
+<h3 id="65-离散最小曲面">6.5 离散最小曲面</h3>
+
+<p><strong>Christoffel 对偶定理</strong>：</p>
+
+<p><img src="../../../imgs/image-20260116182350323.png" alt="Christoffel对偶定理" /></p>
+
+<p>S-等温曲面与离散极小曲面的关系：</p>
+
+<p><img src="../../../imgs/image-20260116182613819.png" alt="S-等温曲面与离散极小曲面" /></p>
+
+<p><img src="../../../imgs/image-20260116182702084.png" alt="离散极小曲面构造" /></p>
+
+<h3 id="66-weierstrass-表示">6.6 Weierstrass 表示</h3>
+
+<p>离散 Weierstrass 表示：</p>
+
+<p><img src="../../../imgs/image-20260116182717713.png" alt="离散Weierstrass表示" /></p>
+
+<p>最后以此证明离散极小曲面的收敛性：</p>
+
+<p><img src="../../../imgs/image-20260116182828639.png" alt="收敛性证明" /></p>
+
+<p>Enneper 曲面的收敛序列：</p>
+
+<p><img src="../../../imgs/image-20260116182844571.png" alt="Enneper曲面收敛序列" /></p>
+
+<h3 id="67-推论">6.7 推论</h3>
+
+<p><img src="../../../imgs/image-20260116183007552.png" alt="极小曲面推论" /></p>
+
+<hr />
+
+<h2 id="七circle-packing-的其他应用">七、Circle Packing 的其他应用</h2>
+
+<h3 id="71-折纸设计中的-circle-packing">7.1 折纸设计中的 Circle Packing</h3>
+
+<p>Circle Packing 在折纸设计中有重要应用：</p>
+
+<p><img src="../../../imgs/image-20260116191240682.png" alt="折纸与Circle Packing" /></p>
+
+<p>折纸展开图（crease pattern）中，纸张折叠后形成的各个”树状构型（tree structure）”对应圆填充中的各个圆：</p>
+
+<p><img src="../../../imgs/image-20260116185723964.png" alt="Tree构型" /></p>
+
+<p><img src="../../../imgs/image-20260116190955972.png" alt="折纸展开图示例" /></p>
+
+<p>通过求解圆填充问题，可以自动生成折叠出给定形状所需的展开图。Robert Lang 的 TreeMaker 算法即基于此原理。</p>
+
+<p>相关理论还涉及 <strong>Circle-River 设计</strong>——Demaine 等人证明了这一设计问题是 <strong>NP-完全</strong>的：</p>
+
+<p><img src="../../../imgs/image-20260116185739131.png" alt="Circle-River设计" /></p>
+
+<p><img src="../../../imgs/image-20260116191154789.png" alt="NP完全证明" /></p>
+
+<p><img src="../../../imgs/image-20260116191207159.png" alt="折纸复杂性" /></p>
+
+<h3 id="72-组合几何中的最密填装">7.2 组合几何中的最密填装</h3>
+
+<p>Circle Packing 在组合几何中对应<strong>圆的最密填装问题</strong>：</p>
+
+<p><img src="../../../imgs/image-20260116184552019.png" alt="最密填装问题" /></p>
+
+<p>在平面上，正六边形排列（蜂窝结构）给出最密圆填装，填装密度为：</p>
+
+\[\rho = \frac{\pi}{2\sqrt{3}} \approx 90.7\%\]
+
+<p><img src="../../../imgs/image-20260116184620333.png" alt="最密填装示意" /></p>
+
+<p>在有界区域中，最密填装问题通常是 NP-难的：</p>
+
+<p><img src="../../../imgs/image-20260116184711615.png" alt="有界区域填装" /></p>
+
+<p>组合几何中的其他相关问题：</p>
+
+<p><img src="../../../imgs/image-20260116191838508.png" alt="组合几何其他问题" /></p>
+
+<hr />
+
+<h2 id="八circlepatterns-算法总结与评价">八、CirclePatterns 算法总结与评价</h2>
+
+<h3 id="81-算法流程概述">8.1 算法流程概述</h3>
+
+<ol>
+  <li><strong>输入</strong>：三维三角网格</li>
+  <li><strong>预处理</strong>（可选）：Intrinsic Local Delaunay 边翻转</li>
+  <li><strong>求可行边权值 $\theta_e$</strong>：二次优化，使 $\theta_e$ 接近原始几何值并满足 Coherent Angle System 约束</li>
+  <li><strong>变分求圆半径</strong>：对 $\rho_i = \log r_i$ 求解凸优化问题</li>
+  <li><strong>布局</strong>：根据圆半径和相交角度，在平面上重建圆配置，得到参数化坐标</li>
+  <li><strong>全局参数化</strong>（可选）：引入锥奇异点，处理拓扑复杂的网格</li>
+</ol>
+
+<h3 id="82-与其他参数化算法的对比">8.2 与其他参数化算法的对比</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center">算法</th>
+      <th style="text-align: left">核心方法</th>
+      <th style="text-align: left">特点</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center"><strong>LSCM</strong></td>
+      <td style="text-align: left">最小二乘共形映射（线性）</td>
+      <td style="text-align: left">快速，但有扭曲</td>
+    </tr>
+    <tr>
+      <td style="text-align: center"><strong>SCP</strong></td>
+      <td style="text-align: left">谱方法</td>
+      <td style="text-align: left">全局最优，但计算量大</td>
+    </tr>
+    <tr>
+      <td style="text-align: center"><strong>ABF/ABF++</strong></td>
+      <td style="text-align: left">角度优化（非线性）</td>
+      <td style="text-align: left">质量高，但需迭代</td>
+    </tr>
+    <tr>
+      <td style="text-align: center"><strong>Circle Patterns</strong></td>
+      <td style="text-align: left">离散共形几何（变分）</td>
+      <td style="text-align: left">理论最严谨，无翻转，质量最高</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>与 ABF 算法的对比实验（用 quasi-conformal 度量扭曲）表明，CirclePatterns 方法的扭曲明显更小。</p>
+
+<h3 id="83-circlepatterns-的优点">8.3 CirclePatterns 的优点</h3>
+
+<ol>
+  <li><strong>理论保证强</strong>：可证明避免翻转，得到全局唯一解（在变分框架下）</li>
+  <li><strong>质量极高</strong>：保角性极佳，且在二维可实现<strong>严格的可嵌入性</strong>（无自交）</li>
+  <li><strong>灵活性</strong>：通过调整目标角度，可实现从纯保角到保面积的连续过渡</li>
+  <li><strong>深刻的几何意义</strong>：与双曲几何、极小曲面、离散微分几何都有联系</li>
+</ol>
+
+<h3 id="84-一句话定位">8.4 一句话定位</h3>
+
+<blockquote>
+  <p>如果说 LSCM 是”用线性代数近似解决几何问题”，SCP 是”用谱方法寻找更好的全局解”，那么 <strong>Circle Patterns</strong> 则是”从离散几何的根源出发，精确重构几何属性”。它是一个更优雅、理论更坚实但实现也更复杂的工具，代表了高质量参数化算法的研究方向。</p>
+</blockquote>
+
+<hr />
+
+<h2 id="参考文献">参考文献</h2>
+
+<ul>
+  <li>Bobenko, A. I., &amp; Springborn, B. A. (2004). <em>Variational principles for circle patterns and Koebe’s theorem</em>. Transactions of the AMS.</li>
+  <li>Stephenson, K. (2005). <em>Introduction to Circle Packing</em>. Cambridge University Press.</li>
+  <li>Koebe, P. (1936). Kontaktprobleme der konformen Abbildung.</li>
+  <li>Thurston, W. P. (1978). <em>The geometry and topology of 3-manifolds</em>.</li>
+  <li>Bobenko, A. I., &amp; Pinkall, U. (1999). Discretization of surfaces and integrable systems.</li>
+  <li>Demaine, E. D., et al. (2000). <em>Folding a Better Checkerboard</em>.</li>
+  <li>Rivin, I. (1994). <em>Euclidean structures on simplicial surfaces and hyperbolic volume</em>.</li>
+  <li>Colin de Verdière, Y. (1991). <em>Un principe variationnel pour les empilements de cercles</em>.</li>
+</ul>
+
+	</div>
+</article>
+		</div>
+	</div>
+	<script>
+		MathJax = {
+			tex: {
+				inlineMath: [['$', '$'], ['\\(', '\\)']], // 同时支持 $ 和 \( \)
+				displayMath: [['$$', '$$'], ['\\[', '\\]']]
+			  }
+		};
+  function typeWriter(text, elementId, speed) {
+    let i = 0;
+    const element = document.getElementById(elementId);
+    element.innerHTML = "";
+    
+    function type() {
+      if (i < text.length) {
+        element.innerHTML += text.charAt(i);
+        i++;
+        setTimeout(type, speed);
+      }
+    }
+    
+    type();
+  }
+  
+  // 页面加载完成后执行打字机效果
+  window.addEventListener('load', function() {
+    typeWriter("学与玩", "typewriter", 100);
+  });
+	  </script>
+    <script src="/assets/js/particles.js"></script>
+	  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+</html><canvas id="particle-canvas" style="position:fixed; top:0; left:0; z-index:-1;"></canvas>

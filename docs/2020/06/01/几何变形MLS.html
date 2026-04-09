@@ -1,0 +1,334 @@
+<h2 id="利用-mls-做网格变形">利用 MLS 做网格变形</h2>
+
+<p><img src="..\..\..\imgs\image-20251218190043391.png" alt="image-20251218190043391" /></p>
+
+<p>移动最小二乘法是一种用于<strong>局部拟合数据点</strong>的方法，常用于曲线/曲面重建、散乱数据插值等。它的核心思想是：</p>
+
+<blockquote>
+  <p>在每个目标点附近，用加权最小二乘法拟合一个局部多项式（比如常数、线性函数），权重由目标点与邻近点的距离决定（越近权重越大）。</p>
+</blockquote>
+
+<p><strong>移动最小二乘（Moving Least Squares, MLS）</strong> 和 <strong>As-Rigid-As-Possible (ARAP)</strong> 确实<strong>思路高度相近</strong>，甚至可以说 ARAP 是 MLS 思想在<strong>几何形变（deformation）领域</strong>的一种具体化、优化和推广。使用 MLS 不需要先进行三角化。</p>
+
+<p><img src="..\..\..\imgs\image-20251218192214246.png" alt="image-20251218192214246" /></p>
+
+<hr />
+
+<h2 id="最简单的-mls一维线性例子">最简单的 MLS：一维线性例子</h2>
+
+<p><strong>目标</strong>：用<strong>线性 MLS</strong> 估计函数在 $x=1$ 处的值，基于三个散乱数据点：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center">$x_i$</th>
+      <th style="text-align: center">$y_i$</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center">0</td>
+      <td style="text-align: center">1</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">1</td>
+      <td style="text-align: center">2</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">2</td>
+      <td style="text-align: center">1</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>与常数阶类似，但用<strong>局部线性函数</strong>拟合：</p>
+
+\[p(x) = a_0 + a_1 x.\]
+
+<p><strong>步骤 1：基函数与系数</strong></p>
+
+\[\mathbf{p}(x) = \begin{bmatrix} 1 \\ x \end{bmatrix}, \qquad
+p(x) = \mathbf{a}^\top \mathbf{p}(x) = a_0 + a_1 x, \qquad
+\mathbf{a} = [a_0,\, a_1]^\top.\]
+
+<p><strong>步骤 2：高斯权重</strong>（平滑长度 $h=1$）</p>
+
+\[w_i(x) = \exp\left( -\frac{(x - x_i)^2}{h^2} \right).\]
+
+<p>在 $x=1$ 处：</p>
+
+\[w_1 = e^{-(1-0)^2} = e^{-1} \approx 0.3679,\quad
+w_2 = e^{-(1-1)^2} = 1,\quad
+w_3 = e^{-(1-2)^2} = e^{-1} \approx 0.3679.\]
+
+<p><strong>步骤 3：加权最小二乘</strong></p>
+
+<p>最小化</p>
+
+\[J(\mathbf{a}) = \sum_{i=1}^{3} w_i \,(a_0 + a_1 x_i - y_i)^2.\]
+
+<p>设计矩阵 $\mathbf{P} \in \mathbb{R}^{3\times 2}$：</p>
+
+\[\mathbf{P} =
+\begin{bmatrix}
+1 &amp; x_1 \\ 1 &amp; x_2 \\ 1 &amp; x_3
+\end{bmatrix}
+=
+\begin{bmatrix}
+1 &amp; 0 \\ 1 &amp; 1 \\ 1 &amp; 2
+\end{bmatrix}.\]
+
+<p>权重矩阵与数据向量：</p>
+
+\[\mathbf{W}(x) = \mathrm{diag}(w_1,w_2,w_3) \approx \mathrm{diag}(0.3679,\, 1,\, 0.3679), \qquad
+\mathbf{y} = [1,\, 2,\, 1]^\top.\]
+
+<p><strong>MLS 正规方程</strong>：</p>
+
+\[(\mathbf{P}^\top \mathbf{W} \mathbf{P})\,\mathbf{a} = \mathbf{P}^\top \mathbf{W} \mathbf{y}.\]
+
+<p>代入数值解出 $\mathbf{a}$ 后，即得 $p(1)=a_0+a_1$。</p>
+
+<h2 id="问题背景如何用少量控制点自然地变形图像">问题背景：如何用少量控制点自然地变形图像？</h2>
+
+<p>用户拖动几个控制点（如把眼睛拉大、把脸变瘦），希望：</p>
+
+<ul>
+  <li><strong>控制点精确移动到目标位置</strong></li>
+  <li><strong>周围区域平滑、自然地跟随变形</strong></li>
+  <li><strong>不产生撕裂、折叠或过度扭曲</strong></li>
+</ul>
+
+<p>传统方法（如仿射变换、TPS）要么太刚性，要么全局影响太大。MLS 提供了一种<strong>局部加权、能量最小化</strong>的解决方案。</p>
+
+<h3 id="核心思想局部拟合--全局协调">核心思想：局部拟合 + 全局协调</h3>
+
+<p>MLS 的核心是：对图像中每个像素，基于附近控制点的位移，计算一个<strong>局部最优</strong>的仿射（或相似、刚性）变换，然后加权融合。</p>
+
+<p><strong>步骤概览：</strong></p>
+
+<ol>
+  <li>用户指定一组源控制点 ${p_i}$ 和对应的目标位置 ${q_i}$</li>
+  <li>对图像中任意一点 $v$（如一个像素坐标）：
+    <ul>
+      <li>计算它到每个控制点 $p_i$ 的权重 $w_i(v)$（通常与距离成反比）</li>
+      <li>基于权重，拟合一个局部变换 $T_v(\cdot)$（如相似变换），使得 $T_v(p_i) \approx q_i$</li>
+      <li>将 $v$ 映射到新位置：$v’ = T_v(v)$</li>
+    </ul>
+  </li>
+  <li>所有像素按此规则变形，得到新图像</li>
+</ol>
+
+<blockquote>
+  <p><strong>关键链</strong>：每个点有自己的局部变换，但受全局控制点约束。</p>
+</blockquote>
+
+<hr />
+
+<h2 id="mls-形变控制点与仿射拟合">MLS 形变：控制点与仿射拟合</h2>
+
+<p>设控制点 $p_i$ 及其形变后位置 $q_i$（行向量）。对图像中一点 $v$，求仿射变换 $l_v(x)$，使加权平方误差最小：</p>
+
+\[\sum_i w_i \,\bigl\lVert l_v(p_i) - q_i \bigr\rVert^2.
+\qquad (1)\]
+
+<p>权重（距离越近越大，$\alpha$ 为参数）：</p>
+
+\[w_i = \frac{1}{\lVert p_i - v \rVert^{2\alpha}}.\]
+
+<p>因 $l_v(x)$ 为仿射变换，可写为线性部分与平移：</p>
+
+\[l_v(x) = x M + T.
+\qquad (2)\]
+
+<p>对式 (1) 关于 $T$ 求极小，可得</p>
+
+\[T = q_* - p_* M,\]
+
+<p>其中 $p_<em>$、$q_</em>$ 为加权重心：</p>
+
+\[p_* = \frac{\sum_i w_i p_i}{\sum_i w_i}, \qquad
+q_* = \frac{\sum_i w_i q_i}{\sum_i w_i}.\]
+
+<p>代入式 (2) 得</p>
+
+\[l_v(x) = (x - p_*) M + q_*.
+\qquad (3)\]
+
+<p>于是式 (1) 等价于只关于 $M$ 的最小二乘：</p>
+
+\[\sum_i w_i \,\bigl\lVert \hat{p}_i M - \hat{q}_i \bigr\rVert^2,
+\qquad (4)\]
+
+<p>其中</p>
+
+\[\hat{p}_i = p_i - p_*, \qquad \hat{q}_i = q_i - q_*.\]
+
+<p>$\hat{p}_i$、$\hat{q}_i$ 即相对加权重心的坐标。注意 $M$ 不必是一般仿射矩阵；论文中进一步限制为<strong>相似变换</strong>、<strong>刚性变换</strong>等以控制局部剪切与缩放。</p>
+
+<hr />
+
+<h2 id="数学细节以相似变换为例">数学细节：以”相似变换”为例</h2>
+
+<p>直接优化旋转/缩放较复杂。MLS 的巧妙之处在于<strong>重写目标函数</strong>，得到闭式解。</p>
+
+<h3 id="1-定义加权质心">1. 定义加权质心</h3>
+
+\[p_* = \frac{\sum w_i p_i}{\sum w_i}, \qquad q_* = \frac{\sum w_i q_i}{\sum w_i}\]
+
+<h3 id="2-构造协方差矩阵">2. 构造协方差矩阵</h3>
+
+\[M_{\text{cov}} = \sum w_i \, (\hat{p}_i)^\top \hat{q}_i, \quad \text{其中 } \hat{p}_i = p_i - p_*,\; \hat{q}_i = q_i - q_*\]
+
+<h3 id="3-最优变形公式相似变换版本">3. 最优变形公式（相似变换版本）</h3>
+
+\[v' = T_v(v) = q_* + \frac{1}{\sigma_v} R_v (v - p_*)\]
+
+<p>其中：</p>
+
+\[\sigma_v = \sqrt{\frac{\sum w_i \lVert \hat{q}_i \rVert^2}{\sum w_i \lVert \hat{p}_i \rVert^2}}\]
+
+<p>$R_v$ 从 SVD 分解 $M_{\text{cov}} = U \Sigma V^\top$ 中得到的最优旋转：</p>
+
+\[R_v = V \begin{bmatrix} 1 &amp; 0 \\ 0 &amp; \det(VU^\top) \end{bmatrix} U^\top\]
+
+<p>这个公式保证了<strong>局部相似性</strong>（保角、无剪切），视觉效果自然。</p>
+
+<blockquote>
+  <p><strong>直觉</strong>：MLS 不直接迭代优化旋转矩阵，而是通过 SVD 分解一步到位——将协方差矩阵分解为”缩放 × 旋转”，直接提取出最优旋转 $R_v$。</p>
+</blockquote>
+
+<hr />
+
+<h2 id="权重函数设计">权重函数设计</h2>
+
+<p>权重 $w_i(v)$ 决定了控制点的影响范围，常用：</p>
+
+\[w_i(v) = \frac{1}{\lVert v - p_i \rVert^{2\alpha}} \quad (\alpha &gt; 0)\]
+
+<ul>
+  <li>$\alpha$ 控制衰减速度（通常取 1 或 2）</li>
+  <li>距离越近，权重越大</li>
+  <li>可加极小值防止除零</li>
+</ul>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center">$\alpha$ 值</th>
+      <th style="text-align: left">效果</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center">$\alpha = 1$</td>
+      <td style="text-align: left">衰减适中，适合一般变形</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">$\alpha = 2$</td>
+      <td style="text-align: left">衰减快，变形更局部化</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">高斯核 $w = e^{-d^2/h^2}$</td>
+      <td style="text-align: left">平滑衰减，避免硬边界</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="与-araptps-的对比">与 ARAP、TPS 的对比</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>方法</th>
+      <th>核心目标</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>MLS（刚性/相似基函数版本）</strong></td>
+      <td>在每个查询点附近，用<strong>加权最小二乘</strong>拟合<strong>局部刚性变换</strong>（旋转+平移），使重建/插值尽可能保持局部形状。<strong>局部加权拟合</strong>，逐点独立计算，无需全局求解。</td>
+    </tr>
+    <tr>
+      <td><strong>ARAP</strong></td>
+      <td>在网格形变中对每个顶点或面片<strong>惩罚偏离刚性变换的程度</strong>，使局部形变”尽可能刚性”。</td>
+    </tr>
+    <tr>
+      <td><strong>TPS</strong></td>
+      <td>寻找一个<strong>全局光滑函数</strong>，使得控制点精确映射到目标位置，且弯曲能量最小；需解一个大型线性方程组。<strong>全局能量最小化</strong>。</td>
+    </tr>
+  </tbody>
+</table>
+
+<blockquote>
+  <p><strong>MLS 是”局部加权拟合”，TPS 是”全局能量最小化”，ARAP 是”网格上的局部刚性约束”。</strong></p>
+</blockquote>
+
+<hr />
+
+<h2 id="典型应用场景">典型应用场景</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">应用</th>
+      <th style="text-align: center">推荐方法</th>
+      <th style="text-align: left">原因</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">人脸美颜 / 表情编辑</td>
+      <td style="text-align: center">Image MLS</td>
+      <td style="text-align: left">局部控制、实时、自然</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">医学图像非刚性配准</td>
+      <td style="text-align: center">TPS（或其变种）</td>
+      <td style="text-align: left">全局光滑、理论成熟</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">卡通动画变形</td>
+      <td style="text-align: center">Image MLS</td>
+      <td style="text-align: left">交互友好，避免全局抖动</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">遥感图像校正</td>
+      <td style="text-align: center">TPS</td>
+      <td style="text-align: left">控制点少，需全局一致性</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">Photoshop 液化工具</td>
+      <td style="text-align: center">MLS 思想</td>
+      <td style="text-align: left">用户拖拽即时反馈</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="总结一句话概括">总结：一句话概括</h3>
+
+<blockquote>
+  <p><strong>Image MLS</strong> 是”<strong>局部、实时、交互友好</strong>“的变形工具，适合<strong>编辑</strong>；
+<strong>TPS</strong> 是”<strong>全局、光滑、理论严谨</strong>“的插值方法，适合<strong>配准</strong>。</p>
+</blockquote>
+
+<p><strong>选择建议：</strong></p>
+
+<ul>
+  <li>要实时拖拽、局部变形？→ 选 <strong>Image MLS</strong></li>
+  <li>要全局对齐、有少量控制点？→ 选 <strong>TPS</strong></li>
+  <li>要在网格上做形变、保持局部刚性？→ 选 <strong>ARAP</strong></li>
+</ul>
+
+<hr />
+
+<h2 id="参考资料">参考资料</h2>
+
+<ul>
+  <li>Schaefer S, McPhail T, Warren J. <strong>Image deformation using moving least squares</strong>. ACM Transactions on Graphics (TOG), 2006. <a href="https://dl.acm.org/doi/10.1145/1141911.1141919">原文</a></li>
+  <li>Botsch M, et al. <strong>Polygon Mesh Processing</strong>. Chapter on Deformation.</li>
+  <li>Bookstein F L. <strong>Principal warps: Thin-plate splines and the decomposition of deformations</strong>. IEEE TPAMI, 1989.</li>
+  <li>Igarashi T, Moscovich T, Hughes J F. <strong>As-rigid-as-possible shape manipulation</strong>. ACM SIGGRAPH, 2005.</li>
+</ul>

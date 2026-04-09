@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1"><link type="application/atom+xml" rel="alternate" href="http://localhost:5555/feed.xml" /></head>
+<style>@import url(/public/css/syntax/emacs.css);</style>
+  <title></title>
+  <!-- <link href="/public/css/bootstrap.min.css" rel="stylesheet"> -->
+
+  <link href="/public/css/style.css" rel="stylesheet">
+  <body>
+  	<div class="container"> 
+		<div class="sidebar">
+			<div class="sidebar-item sidebar-header">
+	<!-- <div class='sidebar-brand'>
+		<a href="/about/"></a>
+	</div>
+	<p class="lead"></p>-->
+	<div class='circular-image'>
+		<img src="/assets/image/Koushiro.png" alt="Circular Image">
+	</div>
+</div>
+
+<div >
+	<p>学与玩</p>
+</div>
+<ul class="nav">
+    <!-- ... 现有导航项 ... -->
+    <li><a href="/about" class="rainbow-shine">About me</a></li>
+    <!-- ... 现有导航项 ... -->
+</ul>
+<ul class="nav">
+    <!-- ... 现有导航项 ... -->
+    <li><a href="/caustics" class="rainbow-shine">Gallery</a></li>
+    <li><a href="/tsumego" class="rainbow-shine">围棋死活题</a></li>
+    <!-- ... 现有导航项 ... -->
+</ul>
+
+
+<div class="sidebar-item sidebar-nav">
+  	<ul class="nav">
+			<li class="nav-title">Categories</li>
+	    
+	    <li>
+	    	<a class="nav-item" href="/category#Parameterization">
+				<span class="name">Parameterization</span>
+				<span class="badge">9</span>
+	    	</a>
+ 		</li>
+	    
+	    <li>
+	    	<a class="nav-item" href="/category#ComputerGraphics">
+				<span class="name">ComputerGraphics</span>
+				<span class="badge">2</span>
+	    	</a>
+ 		</li>
+	    
+	    <li>
+	    	<a class="nav-item" href="/category#RL">
+				<span class="name">RL</span>
+				<span class="badge">2</span>
+	    	</a>
+ 		</li>
+	    
+	    <li>
+	    	<a class="nav-item" href="/category#1.Parameterization">
+				<span class="name">1.Parameterization</span>
+				<span class="badge">1</span>
+	    	</a>
+ 		</li>
+	    
+	    <li>
+	    	<a class="nav-item" href="/category#4.Reinforcement">
+				<span class="name">4.Reinforcement</span>
+				<span class="badge">1</span>
+	    	</a>
+ 		</li>
+	    
+	  </nav>
+	</ul>
+</div>
+<div >
+	<p>人生箴言:</p>
+	<p>“成功的秘诀在于，你必须先知道失败的原因。”</p>
+</div>
+<div class="sidebar-item sidebar-footer">
+	<p>Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a></p>
+</div>
+		</div>
+		<div class="content">
+      <!-- <canvas id="particle-canvas"></canvas> -->
+			<article class="post">
+	<header class="post-header">
+		<div class="post-title"> 
+			微分形式到全纯1形式：四篇整合（全量配图版）
+		</div>
+		<time class="post-date dt-published" datetime="2023-04-13T00:00:00+08:00" itemprop="datePublished">2023/04/13
+		</time>		
+	</header>
+
+	<div class="post-content">
+		<h2 id="微分形式">微分形式</h2>
+
+<blockquote>
+  <p><strong>重点主线</strong>：<br />
+<strong>外微分语言</strong> -&gt; <strong>离散 cochain 表达</strong> -&gt; <strong>同调/上同调拓扑约束</strong> -&gt; <strong>调和/全纯 1-形式</strong> -&gt; <strong>稀疏线性系统求解全局参数化</strong>。<br />
+本文尽可能保留原文配图，强调“图-公式-结论”的完整链路。</p>
+</blockquote>
+
+<h2 id="目录">目录</h2>
+
+<ul>
+  <li><a href="#1-微分形式介绍基础语言">1. 微分形式介绍（基础语言）</a></li>
+  <li><a href="#2-dkt05-微分形式链与上链框架">2. DKT05 微分形式（链与上链框架）</a></li>
+  <li><a href="#3-微分形式与网格参数化tutte-到全局拓扑">3. 微分形式与网格参数化（Tutte 到全局拓扑）</a></li>
+  <li><a href="#4-全纯微分-1-形式全局共形参数化核心">4. 全纯微分 1 形式（全局共形参数化核心）</a></li>
+  <li><a href="#5-重点总结复习版">5. 重点总结（复习版）</a></li>
+</ul>
+
+<hr />
+
+<h2 id="1-微分形式介绍基础语言">1. 微分形式介绍（基础语言）</h2>
+
+<p>微分形式要解释起来并不容易，我们先不管为什么，只要知道这是一种很有效的描述微分几何的语言，先囫囵吞枣地学习他的规则，相信数学家的洞察力，这个东西一定是很有用的。</p>
+
+<h3 id="11-外微分的介绍">1.1 外微分的介绍</h3>
+
+<p>exterior calculus 比 vector calculus：</p>
+
+<p><img src="..\..\..\imgs\image-20251028130351031.png" alt="image-20251028130351031" /></p>
+
+<p>与线性代数微积分的类比：</p>
+
+<p><img src="..\..\..\imgs\image-20251028130456487.png" alt="image-20251028130456487" /></p>
+
+<p>微积分依赖于坐标也就是依赖于嵌入，我们希望更加抽象，只依赖于流形内蕴性质。</p>
+
+<p>标量场是 0-形式，普通向量场可对应 1-形式；一般地，$k$-form 度量 $k$ 维空间上的可积信息。</p>
+
+<p><img src="..\..\..\imgs\image-20251028135938544.png" alt="image-20251028135938544" /></p>
+
+<h3 id="12-形式的计算">1.2 形式的计算</h3>
+
+<p>2-vector 用 wedge 运算构造：</p>
+
+<p><img src="..\..\..\imgs\image-20251028131456639.png" alt="image-20251028131456639" /></p>
+
+<p>wedge 运算可分配：</p>
+
+<p><img src="..\..\..\imgs\image-20251028131842575.png" alt="image-20251028131842575" /></p>
+
+<p><img src="..\..\..\imgs\image-20251028131807312.png" alt="image-20251028131807312" /></p>
+
+<p>2-vector 的方向：</p>
+
+<p><img src="..\..\..\imgs\image-20251028131534650.png" alt="image-20251028131534650" /></p>
+
+<p><img src="..\..\..\imgs\image-20251028131909748.png" alt="image-20251028131909748" /></p>
+
+<p>Hodge star 算子：</p>
+
+<p><img src="..\..\..\imgs\image-20251028131941908.png" alt="image-20251028131941908" /></p>
+
+<p>Hodge 算子在平面上相当于旋转 90 度：</p>
+
+<p><img src="..\..\..\imgs\image-20251028132025431.png" alt="image-20251028132025431" /></p>
+
+<h3 id="13-微分形式与核心定理">1.3 微分形式与核心定理</h3>
+
+<p>微分 $k$-形式就是可以在 $k$ 维域中积分的抽象对象。</p>
+
+<p><img src="..\..\..\imgs\image-20251104211756845.png" alt="image-20251104211756845" /></p>
+
+<p><img src="..\..\..\imgs\image-20251104211745123.png" alt="image-20251104211745123" /></p>
+
+<p><img src="..\..\..\imgs\image-20251028134023236.png" alt="image-20251028134023236" /></p>
+
+<p><strong>Stokes 定理</strong></p>
+
+<p><img src="..\..\..\imgs\image-20251028134211644.png" alt="image-20251028134211644" /></p>
+
+<p><strong>Laplace 算子</strong></p>
+
+<p><img src="..\..\..\imgs\image-20251104212250655.png" alt="image-20251104212250655" /></p>
+
+<p><img src="..\..\..\imgs\image-20251113101942451.png" alt="image-20251113101942451" /></p>
+
+<h3 id="14-离散微分形式从连续到网格">1.4 离散微分形式（从连续到网格）</h3>
+
+<p>离散微分形式可定义为：</p>
+
+<ul>
+  <li>0-形式是定义在 $V$ 上的函数 $\alpha(v_i)$</li>
+  <li>1-形式是定义在半边 $HE$ 上的函数 $\beta(e_{ij})$，并且有 $\beta(e_{ji})=-\beta(e_{ij})$</li>
+  <li>2-形式是定义在 $F$ 上的函数 $\gamma(f_{ijk})$</li>
+</ul>
+
+<p>离散外微分算子 $d$：</p>
+
+\[\begin{aligned}
+d\alpha &amp;= \beta(e_{ij}) = \alpha(v_j)-\alpha(v_i),\\
+d\beta &amp;= \gamma(f_{ijk}) = \beta(e_{ij})+\beta(e_{jk})+\beta(e_{ki}).
+\end{aligned}\]
+
+<p>1-形式 $\beta$ 称为 <strong>闭的（closed）</strong>，如果 $d\beta=0$。在三角网格上意味着每个三角形上三条边的 1-形式值之和为 0。<br />
+1-形式 $\beta$ 称为 <strong>恰当的（exact）</strong>，如果存在 0-形式 $\alpha$ 使得 $\beta=d\alpha$。</p>
+
+<blockquote>
+  <p><strong>重点结论</strong>：所有恰当 1-形式都是闭的，但并非所有闭 1-形式都是恰当的。</p>
+</blockquote>
+
+<p><strong>Hodge 算子</strong></p>
+
+<p>作用在 2-形式上，取其补空间，可配合定义余微分（codifferential）$\delta:=<em>d</em>$。</p>
+
+<p><img src="..\..\..\imgs\image-20251028134321414.png" alt="image-20251028134321414" /></p>
+
+<p>如果某个 1-形式 $\beta$ 既满足 $d\beta=0$ 也满足 $\delta\beta=0$，则 $\beta$ 为 <strong>调和 1-形式（harmonic 1-form）</strong>。</p>
+
+<hr />
+
+<h2 id="2-dkt05-微分形式链与上链框架">2. DKT05 微分形式（链与上链框架）</h2>
+
+<p>微分形式是微分几何中的核心工具，它将局部分析对象与整体几何结构自然统一。</p>
+
+<p><img src="..\..\..\imgs\image-20251217191954664.png" alt="image-20251217191954664" /></p>
+
+<p>微分形式是描述几何本质的有力工具：</p>
+
+<p><img src="..\..\..\imgs\image-20251217105100448.png" alt="image-20251217105100448" /></p>
+
+<p>Calculus ex Geometrica：</p>
+
+<ul>
+  <li>Calculus：演算、微积分</li>
+  <li>ex：从……中</li>
+  <li>Geometrica：几何学来源</li>
+</ul>
+
+<p><img src="..\..\..\imgs\image-20251217192010063.png" alt="image-20251217192010063" /></p>
+
+<p><img src="..\..\..\imgs\image-20251217192132474.png" alt="image-20251217192132474" /></p>
+
+<p>从积分来定义微分形式：可以进行积分的“形式”即为微分形式。</p>
+
+<p><img src="..\..\..\imgs\image-20251217110941418.png" alt="image-20251217110941418" /></p>
+
+<p>正式定义：</p>
+
+<p><img src="..\..\..\imgs\image-20251217111028736.png" alt="image-20251217111028736" /></p>
+
+<p>$\mathbb{R}^3$ 空间中的外微分：</p>
+
+<p><img src="..\..\..\imgs\image-20251217111123907.png" alt="image-20251217111123907" /></p>
+
+<h3 id="21-离散微分形式与单纯复形">2.1 离散微分形式与单纯复形</h3>
+
+<p>需要先定义单纯复形：</p>
+
+<p><img src="..\..\..\imgs\image-20251217111059738.png" alt="image-20251217111059738" /></p>
+
+<p><img src="..\..\..\imgs\image-20251217111208481.png" alt="image-20251217111208481" /></p>
+
+<p>单纯复形的 $k$-chain：</p>
+
+<p><img src="..\..\..\imgs\image-20251217191050995.png" alt="image-20251217191050995" /></p>
+
+<p>单纯复形的边界算子：</p>
+
+<p><img src="..\..\..\imgs\image-20251217111243116.png" alt="image-20251217111243116" /></p>
+
+<p>$k$-cochain 是 $k$-chain 的对偶：</p>
+
+<p><img src="..\..\..\imgs\image-20251217191155079.png" alt="image-20251217191155079" /></p>
+
+<p>将离散微分形式看作单纯复形的 co-chains：</p>
+
+<p><img src="..\..\..\imgs\image-20251217111321653.png" alt="image-20251217111321653" /></p>
+
+<p>对 chain 上形式的计算：</p>
+
+<p><img src="..\..\..\imgs\image-20251217191331172.png" alt="image-20251217191331172" /></p>
+
+<h3 id="22-广义-stokes同调与上同调">2.2 广义 Stokes、同调与上同调</h3>
+
+<p>广义 Stokes 定理：</p>
+
+<p><img src="..\..\..\imgs\image-20251217191426778.png" alt="image-20251217191426778" /></p>
+
+<p>同调 / 上同调（cohomology）：</p>
+
+<p><img src="..\..\..\imgs\image-20251217111530868.png" alt="image-20251217111530868" /></p>
+
+<p>计算上同调群：</p>
+
+<p><img src="..\..\..\imgs\image-20251217111449734.png" alt="image-20251217111449734" /></p>
+
+<blockquote>
+  <p><strong>重点</strong>：在参数化问题中，上同调空间刻画了“闭但非恰当”的全局自由度，这会直接进入后续周期约束与基底构造。</p>
+</blockquote>
+
+<hr />
+
+<h2 id="3-微分形式与网格参数化tutte-到全局拓扑">3. 微分形式与网格参数化（Tutte 到全局拓扑）</h2>
+
+<p>下面通过离散 1-形式（discrete one form）证明 Tutte 定理，并将基本结论推广到多边界网格情况。</p>
+
+<p>Tutte 算法仅适用于单连通凸边界；对于多连通非凸边界以及更复杂拓扑，需要 Gortler 等工作的拓展思路。</p>
+
+<p>通过简单计数运算，可推导出 Poincare-Hopf 指标定理框架下的结论：</p>
+
+<p><img src="..\..\..\imgs\image-20251027164104591.png" alt="image-20251027164104591" /></p>
+
+<p><img src="..\..\..\imgs\image-20251027164037105.png" alt="image-20251027164037105" /></p>
+
+<p><img src="C:\Users\LGX_MATE_BOOK\Desktop\我的文档\GeoNotes\imgs\image-20250121193359805.png" alt="image-20250121193359805" /></p>
+
+<p><img src="..\..\..\imgs\image-20250323162848284.png" alt="image-20250323162848284" /></p>
+
+<p><strong>Tutte 定理实际上是指标定理（Poincare-Hopf）的推论。</strong></p>
+
+<p>采用 index counting 方法可证明 Tutte 参数化局部单射性。<br />
+定理：由 harmonic one form 张成的线性空间是 $2g$ 维。<br />
+closedness 与 coclosedness 性质与 indices 相关。</p>
+
+<blockquote>
+  <p><strong>重点</strong>：<br />
+从“边界凸 + 单连通”的经典 Tutte 场景，过渡到“任意拓扑”的关键是：把几何约束写进同调/上同调与调和形式框架。</p>
+</blockquote>
+
+<hr />
+
+<h2 id="4-全纯微分-1-形式全局共形参数化核心">4. 全纯微分 1 形式（全局共形参数化核心）</h2>
+
+<p>将参数化问题视为计算曲面的共形结构。对于任意 genus 且包含边界的曲面，可以构建全局共形参数化：</p>
+
+<p><img src="..\..\..\imgs\image-20251026205018590.png" alt="image-20251026205018590" /></p>
+
+<h3 id="41-insight">4.1 Insight</h3>
+
+<p>注意：曲面上标量场的梯度可看作无旋向量场；局部极值对应向量场奇异点。</p>
+
+<p>什么是全纯 1-形式？<br />
+1-形式可写为 $f(z)\,dz$，当 $f(z)$ 为 holomorphic 函数时称为全纯 1-形式。</p>
+
+<p>与参数化的关系：<br />
+对全纯 1-形式积分得到 0-形式（标量场），即可构造共形参数化。</p>
+
+<p>全纯 1-形式可写为：</p>
+
+\[\omega + \sqrt{-1}\,{*}\omega\]
+
+<p>其中 $\omega$ 与 ${<em>}\omega$ 为实梯度场并互为共轭，可理解为 ${</em>}\omega=\vec{n}\times\omega$。<br />
+并且二者闭合（$d\omega=0$），其实部与虚部满足调和条件。</p>
+
+<h3 id="42-riemann-roch-与-hodge-理论">4.2 Riemann-Roch 与 Hodge 理论</h3>
+
+<p>曲面的全纯 1-形式构成线性空间，其维数与 genus 相关。<br />
+设 $e_i$ 为同调群基底，设全纯 1-形式基底 ${w_1,\dots,w_{2g}}$，可通过周期积分条件 $\int_{e_i}w_j=\delta_i^j$ 归一化。</p>
+
+<p>Hodge 理论给出：在紧致无边黎曼流形上，每个 de Rham 上同调类存在唯一调和代表。<br />
+给定 $2g$ 个实数常数，可由基底线性组合构造满足对应周期的 1-形式。</p>
+
+<h3 id="43-离散化与数值计算">4.3 离散化与数值计算</h3>
+
+<ol>
+  <li>
+    <p>先求 homology 基底，识别 handle 与 tunnel。</p>
+  </li>
+  <li>
+    <p><strong>closedness</strong><br />
+由 $d\omega=0$，对任意简单闭曲线积分为 0。对三角面 $[u,v,w]$ 有离散闭合约束：</p>
+  </li>
+</ol>
+
+<p><img src="..\..\..\imgs\image-20251021102650672.png" alt="image-20251021102650672" /></p>
+
+<ol>
+  <li><strong>harmonics</strong><br />
+调和约束通常采用 cotangent weight：</li>
+</ol>
+
+<p><img src="..\..\..\imgs\image-20251021103345735.png" alt="image-20251021103345735" /></p>
+
+<ol>
+  <li><strong>duality</strong></li>
+</ol>
+
+<p><img src="..\..\..\imgs\image-20250722150537575.png" alt="image-20250722150537575" /></p>
+
+<p>将计算整合可得：</p>
+
+<p><img src="..\..\..\imgs\image-20250722150837765.png" alt="image-20250722150837765" /></p>
+
+<p><img src="..\..\..\imgs\image-20251026214217172.png" alt="image-20251026214217172" /></p>
+
+<p>可以证明该线性系统满秩。</p>
+
+<p><strong>虚部的计算</strong></p>
+
+<p>有了实部后，可通过 Hodge star 得到虚部。根据楔积 $\wedge$ 的特点：</p>
+
+<p><img src="..\..\..\imgs\image-20250722150946308.png" alt="image-20250722150946308" /></p>
+
+<p>组合 <img src="..\..\..\imgs\image-20251026211215419.png" alt="image-20251026211215419" /> 定义运算 ${}^* \wedge$：</p>
+
+<p><img src="..\..\..\imgs\image-20250722151045786.png" alt="image-20250722151045786" /></p>
+
+<p>离散化：</p>
+
+<p><img src="..\..\..\imgs\image-20250722151122013.png" alt="image-20250722151122013" /></p>
+
+<p>最后得到线性方程组：</p>
+
+<p><img src="..\..\..\imgs\image-20250722151136337.png" alt="image-20250722151136337" /></p>
+
+<p>有了实部和虚部，就可以构建全纯 1-形式：</p>
+
+<p><img src="..\..\..\imgs\image-20250722151227485.png" alt="image-20250722151227485" /></p>
+
+<p><img src="..\..\..\imgs\image-20251026205306921.png" alt="image-20251026205306921" /></p>
+
+<p>最终转化为一个 <strong>稀疏线性系统</strong> 进行求解。</p>
+
+<hr />
+
+<h2 id="5-重点总结复习版">5. 重点总结（复习版）</h2>
+
+<ul>
+  <li><strong>语言统一</strong>：外微分把 grad/curl/div 与积分关系统一到 $d,\wedge,*$ 框架</li>
+  <li><strong>离散落地</strong>：cochain + 边界算子让连续理论可直接用于三角网格</li>
+  <li><strong>拓扑关键</strong>：上同调决定闭而非恰当的自由度，是全局参数化核心难点</li>
+  <li><strong>几何核心</strong>：调和/全纯 1-形式编码曲面共形结构</li>
+  <li><strong>计算出口</strong>：最终都归约为带拓扑约束的稀疏线性系统</li>
+</ul>
+
+<blockquote>
+  <p><strong>一句话版重点</strong>：<br />
+全局参数化的关键不是局部公式本身，而是把拓扑约束与几何约束一起离散化，并稳定地解出全纯 1-形式。</p>
+</blockquote>
+
+
+	</div>
+</article>
+		</div>
+	</div>
+	<script>
+		MathJax = {
+			tex: {
+				inlineMath: [['$', '$'], ['\\(', '\\)']], // 同时支持 $ 和 \( \)
+				displayMath: [['$$', '$$'], ['\\[', '\\]']]
+			  }
+		};
+  function typeWriter(text, elementId, speed) {
+    let i = 0;
+    const element = document.getElementById(elementId);
+    element.innerHTML = "";
+    
+    function type() {
+      if (i < text.length) {
+        element.innerHTML += text.charAt(i);
+        i++;
+        setTimeout(type, speed);
+      }
+    }
+    
+    type();
+  }
+  
+  // 页面加载完成后执行打字机效果
+  window.addEventListener('load', function() {
+    typeWriter("学与玩", "typewriter", 100);
+  });
+	  </script>
+    <script src="/assets/js/particles.js"></script>
+	  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+</html><canvas id="particle-canvas" style="position:fixed; top:0; left:0; z-index:-1;"></canvas>

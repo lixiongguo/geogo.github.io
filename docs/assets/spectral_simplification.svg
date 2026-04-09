@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#fff"/>
+  <text x="400" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#333">谱分解方法进行三角网格简化</text>
+  
+  <!-- Original mesh -->
+  <g transform="translate(30,60)">
+    <text x="100" y="0" text-anchor="middle" font-size="13" font-weight="bold" fill="#555">原始三角网格 M</text>
+    <!-- Mesh representation -->
+    <ellipse cx="100" cy="130" rx="90" ry="70" fill="rgba(37,99,235,0.08)" stroke="#2563eb" stroke-width="1.5"/>
+    <!-- Internal structure -->
+    <line x1="30" y1="100" x2="100" y2="70" stroke="#2563eb" stroke-width="0.8"/>
+    <line x1="100" y1="70" x2="170" y2="100" stroke="#2563eb" stroke-width="0.8"/>
+    <line x1="30" y1="100" x2="50" y2="160" stroke="#2563eb" stroke-width="0.8"/>
+    <line x1="170" y1="100" x2="150" y2="160" stroke="#2563eb" stroke-width="0.8"/>
+    <line x1="50" y1="160" x2="150" y2="160" stroke="#2563eb" stroke-width="0.8"/>
+    <line x1="100" y1="70" x2="50" y2="160" stroke="#2563eb" stroke-width="0.8"/>
+    <line x1="100" y1="70" x2="150" y2="160" stroke="#2563eb" stroke-width="0.8"/>
+    <line x1="30" y1="100" x2="100" y2="130" stroke="#2563eb" stroke-width="0.8"/>
+    <line x1="170" y1="100" x2="100" y2="130" stroke="#2563eb" stroke-width="0.8"/>
+    <line x1="50" y1="160" x2="100" y2="130" stroke="#2563eb" stroke-width="0.8"/>
+    <line x1="150" y1="160" x2="100" y2="130" stroke="#2563eb" stroke-width="0.8"/>
+    <polygon points="30,100 100,70 50,160" fill="rgba(37,99,235,0.05)" stroke="#2563eb" stroke-width="0.6"/>
+    <polygon points="100,70 170,100 150,160" fill="rgba(37,99,235,0.05)" stroke="#2563eb" stroke-width="0.6"/>
+  </g>
+  
+  <!-- Arrow 1 -->
+  <text x="250" y="175" font-size="24" fill="#6496ff">→</text>
+  <text x="250" y="195" text-anchor="middle" font-size="10" fill="#6496ff">构建 Laplacian</text>
+  
+  <!-- Eigenvalue problem -->
+  <g transform="translate(280,60)">
+    <text x="100" y="0" text-anchor="middle" font-size="13" font-weight="bold" fill="#555">特征值问题</text>
+    <rect x="10" y="15" width="180" height="130" fill="rgba(100,150,255,0.05)" stroke="#6496ff" stroke-width="1.5" rx="8"/>
+    
+    <text x="100" y="45" text-anchor="middle" font-size="16" font-weight="bold" fill="#6496ff">Lf = λf</text>
+    <text x="100" y="70" text-anchor="middle" font-size="11" fill="#666">L: 图 Laplacian 矩阵</text>
+    <text x="100" y="90" text-anchor="middle" font-size="11" fill="#666">f: 特征向量（信号）</text>
+    <text x="100" y="110" text-anchor="middle" font-size="11" fill="#666">λ: 特征值（频率）</text>
+    <text x="100" y="135" text-anchor="middle" font-size="11" fill="#888">低频 = 全局结构</text>
+  </g>
+  
+  <!-- Arrow 2 -->
+  <text x="500" y="175" font-size="24" fill="#16a34a">→</text>
+  <text x="500" y="195" text-anchor="middle" font-size="10" fill="#16a34a">频域处理</text>
+  
+  <!-- Frequency spectrum -->
+  <g transform="translate(530,60)">
+    <text x="100" y="0" text-anchor="middle" font-size="13" font-weight="bold" fill="#555">频谱与信号重建</text>
+    <rect x="10" y="15" width="180" height="130" fill="rgba(22,163,74,0.05)" stroke="#16a34a" stroke-width="1.5" rx="8"/>
+    
+    <!-- Spectrum bars -->
+    <rect x="30" y="110" width="12" height="25" fill="#ef4444" rx="2"/>
+    <text x="36" y="143" text-anchor="middle" font-size="8" fill="#888">λ₁</text>
+    <rect x="48" y="100" width="12" height="35" fill="#eab308" rx="2"/>
+    <text x="54" y="143" text-anchor="middle" font-size="8" fill="#888">λ₂</text>
+    <rect x="66" y="95" width="12" height="40" fill="#eab308" rx="2"/>
+    <text x="72" y="143" text-anchor="middle" font-size="8" fill="#888">λ₃</text>
+    <rect x="84" y="80" width="12" height="55" fill="#22c55e" rx="2"/>
+    <rect x="102" y="70" width="12" height="65" fill="#22c55e" rx="2"/>
+    <rect x="120" y="50" width="12" height="85" fill="#22c55e" rx="2"/>
+    <rect x="138" y="40" width="12" height="95" fill="#22c55e" rx="2"/>
+    <rect x="156" y="30" width="12" height="105" fill="#22c55e" rx="2"/>
+    
+    <!-- Cutoff line -->
+    <line x1="80" y1="25" x2="80" y2="140" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
+    <text x="80" y="20" text-anchor="middle" font-size="8" fill="#ef4444">截止频率</text>
+  </g>
+  
+  <!-- Eigenmodes visualization -->
+  <rect x="30" y="220" width="740" height="260" fill="rgba(234,179,8,0.03)" stroke="#eab308" stroke-width="1" rx="8"/>
+  <text x="400" y="245" text-anchor="middle" font-size="14" font-weight="bold" fill="#eab308">Laplacian 特征模式（Eigenmodes）— 网格上的"振动模式"</text>
+  
+  <!-- Mode 1 (constant) -->
+  <g transform="translate(50,270)">
+    <text x="60" y="0" text-anchor="middle" font-size="11" font-weight="bold" fill="#555">λ₁ ≈ 0（常量）</text>
+    <ellipse cx="60" cy="45" rx="50" ry="35" fill="#3b82f6" stroke="#2563eb" stroke-width="1"/>
+    <text x="60" y="50" text-anchor="middle" font-size="10" fill="#fff">全局一致</text>
+  </g>
+  
+  <!-- Mode 2 (Fiedler) -->
+  <g transform="translate(190,270)">
+    <text x="60" y="0" text-anchor="middle" font-size="11" font-weight="bold" fill="#555">λ₂（Fiedler）</text>
+    <!-- Left-right split -->
+    <path d="M10,45 A50,35 0 0,1 110,45" fill="#ef4444" stroke="none"/>
+    <path d="M10,45 A50,35 0 0,0 110,45" fill="#3b82f6" stroke="none"/>
+    <ellipse cx="60" cy="45" rx="50" ry="35" fill="none" stroke="#333" stroke-width="1"/>
+    <text x="35" y="50" text-anchor="middle" font-size="9" fill="#fff">−</text>
+    <text x="85" y="50" text-anchor="middle" font-size="9" fill="#fff">+</text>
+  </g>
+  
+  <!-- Mode 3 -->
+  <g transform="translate(330,270)">
+    <text x="60" y="0" text-anchor="middle" font-size="11" font-weight="bold" fill="#555">λ₃</text>
+    <ellipse cx="60" cy="45" rx="50" ry="35" fill="#fbbf24" stroke="#333" stroke-width="1"/>
+    <!-- Three regions -->
+    <line x1="60" y1="10" x2="60" y2="80" stroke="#92400e" stroke-width="0.5" opacity="0.5"/>
+    <line x1="15" y1="45" x2="105" y2="45" stroke="#92400e" stroke-width="0.5" opacity="0.5"/>
+    <circle cx="60" cy="25" r="8" fill="#ef4444" opacity="0.6"/>
+    <circle cx="35" cy="55" r="8" fill="#3b82f6" opacity="0.6"/>
+    <circle cx="85" cy="55" r="8" fill="#3b82f6" opacity="0.6"/>
+  </g>
+  
+  <!-- Mode k -->
+  <g transform="translate(470,270)">
+    <text x="60" y="0" text-anchor="middle" font-size="11" font-weight="bold" fill="#555">λₖ（高频细节）</text>
+    <ellipse cx="60" cy="45" rx="50" ry="35" fill="none" stroke="#333" stroke-width="1"/>
+    <!-- High frequency oscillation -->
+    <circle cx="30" cy="35" r="6" fill="#ef4444" opacity="0.5"/>
+    <circle cx="50" cy="60" r="6" fill="#3b82f6" opacity="0.5"/>
+    <circle cx="70" cy="30" r="6" fill="#ef4444" opacity="0.5"/>
+    <circle cx="90" cy="55" r="6" fill="#3b82f6" opacity="0.5"/>
+    <circle cx="40" cy="45" r="6" fill="#22c55e" opacity="0.5"/>
+    <circle cx="75" cy="50" r="6" fill="#eab308" opacity="0.5"/>
+    <circle cx="55" cy="35" r="6" fill="#a855f7" opacity="0.5"/>
+    <circle cx="85" cy="40" r="6" fill="#ec4899" opacity="0.5"/>
+  </g>
+  
+  <!-- Simplification result -->
+  <g transform="translate(620,270)">
+    <text x="60" y="0" text-anchor="middle" font-size="11" font-weight="bold" fill="#555">保留低频</text>
+    <text x="60" y="14" text-anchor="middle" font-size="10" fill="#888">→ 简化网格</text>
+    <ellipse cx="60" cy="50" rx="45" ry="30" fill="rgba(37,99,235,0.15)" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="60" y="45" text-anchor="middle" font-size="9" fill="#2563eb">平滑</text>
+    <text x="60" y="58" text-anchor="middle" font-size="9" fill="#2563eb">简化</text>
+  </g>
+  
+  <!-- Key insight -->
+  <text x="400" y="460" text-anchor="middle" font-size="12" fill="#666">核心思想：低频特征向量编码全局几何结构，高频特征向量编码局部细节 → 截断高频即可简化</text>
+</svg>
