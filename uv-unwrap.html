@@ -174,6 +174,7 @@
         <button id="upload-btn">上传OBJ</button>
         <input id="obj-upload" class="hidden-input" type="file" accept=".obj,model/obj,text/plain">
         <button id="reload-btn">开始展开</button>
+        <button id="texture-btn">纹理扭曲</button>
         <div class="status" id="status-text">正在加载模型...</div>
       </div>
     </div>
@@ -231,6 +232,7 @@
       const uploadBtn = document.getElementById("upload-btn");
       const objUpload = document.getElementById("obj-upload");
       const reloadBtn = document.getElementById("reload-btn");
+      const textureBtn = document.getElementById("texture-btn");
       const statusText = document.getElementById("status-text");
       const dropOverlay = document.getElementById("drop-overlay");
       const objLoader = new THREE.OBJLoader();
@@ -269,6 +271,10 @@
       let dragDepth = 0;
       let currentMeshData = null;
       let currentSourcePath = "";
+      let currentUnwrapUv = null;
+      let textureEnabled = false;
+      let currentTexturedMesh = null;
+      let checkerTexture = null;
 
       function setStatus(message, color) {
         statusText.textContent = message;
@@ -280,6 +286,7 @@
         reloadBtn.disabled = nextBusy;
         modelSelect.disabled = nextBusy;
         uploadBtn.disabled = nextBusy;
+        textureBtn.disabled = nextBusy;
       }
 
       function initModelOptions() {
@@ -764,6 +771,111 @@
         return { lines: lines, pins: pins };
       }
 
+      function createCheckerTexture() {
+        const texSize = 512;
+        const cells = 16;
+        const cellSize = texSize / cells;
+        const canvas = document.createElement("canvas");
+        canvas.width = texSize;
+        canvas.height = texSize;
+        const ctx = canvas.getContext("2d");
+
+        for (let y = 0; y < cells; y++) {
+          for (let x = 0; x < cells; x++) {
+            const dark = ((x + y) & 1) === 0;
+            ctx.fillStyle = dark ? "#1f2f54" : "#e9f0ff";
+            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+          }
+        }
+
+        ctx.strokeStyle = "rgba(120,150,210,0.4)";
+        for (let i = 0; i <= cells; i++) {
+          const p = i * cellSize;
+          ctx.beginPath();
+          ctx.moveTo(p, 0);
+          ctx.lineTo(p, texSize);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, p);
+          ctx.lineTo(texSize, p);
+          ctx.stroke();
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(1, 1);
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      function buildTexturedMesh(meshData, uv) {
+        const positions = [];
+        for (let i = 0; i < meshData.positions.length; i++) {
+          positions.push(meshData.positions[i][0], meshData.positions[i][1], meshData.positions[i][2]);
+        }
+        const indices = [];
+        for (let i = 0; i < meshData.faces.length; i++) {
+          indices.push(meshData.faces[i][0], meshData.faces[i][1], meshData.faces[i][2]);
+        }
+        const uvFlat = [];
+        for (let i = 0; i < uv.length; i++) {
+          uvFlat.push(uv[i][0], uv[i][1]);
+        }
+
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+        geom.setAttribute("uv", new THREE.Float32BufferAttribute(uvFlat, 2));
+        geom.setIndex(indices);
+        geom.computeVertexNormals();
+
+        if (!checkerTexture) {
+          checkerTexture = createCheckerTexture();
+        }
+
+        const material = new THREE.MeshStandardMaterial({
+          map: checkerTexture,
+          metalness: 0.05,
+          roughness: 0.75,
+          side: THREE.DoubleSide
+        });
+
+        return new THREE.Mesh(geom, material);
+      }
+
+      function clearTexturedMesh() {
+        if (currentTexturedMesh && currentTexturedMesh.parent) {
+          currentTexturedMesh.parent.remove(currentTexturedMesh);
+        }
+        currentTexturedMesh = null;
+      }
+
+      function setTextureDistortionEnabled(enabled) {
+        if (enabled && (!currentMeshData || !currentUnwrapUv)) {
+          setStatus("请先点击“开始展开”生成 UV，再开启纹理扭曲", "#ffd38a");
+          return;
+        }
+
+        textureEnabled = enabled;
+        if (textureEnabled) {
+          clearTexturedMesh();
+          currentTexturedMesh = buildTexturedMesh(currentMeshData, currentUnwrapUv);
+          modelScene.add(currentTexturedMesh);
+          if (currentModelGroup) {
+            currentModelGroup.visible = false;
+          }
+          textureBtn.textContent = "关闭纹理扭曲";
+          setStatus("已开启纹理扭曲（棋盘格贴图）", "#89f0b6");
+        } else {
+          clearTexturedMesh();
+          if (currentModelGroup) {
+            currentModelGroup.visible = true;
+          }
+          textureBtn.textContent = "纹理扭曲";
+          setStatus("已关闭纹理扭曲", "#8cc4ff");
+        }
+      }
+
       function rebuildUvGrid() {
         const grid = new THREE.Group();
         const gridMaterial = new THREE.LineBasicMaterial({ color: 0x1a2947, transparent: true, opacity: 0.85 });
@@ -833,8 +945,12 @@
           clearGroup(modelScene, currentModelGroup);
           clearGroup(uvScene, currentUvLines);
           clearGroup(uvScene, currentUvPins);
+          clearTexturedMesh();
           currentUvLines = null;
           currentUvPins = null;
+          currentUnwrapUv = null;
+          textureEnabled = false;
+          textureBtn.textContent = "纹理扭曲";
 
           setStatus("正在提取三角网格...");
           const meshData = collectMeshData(root);
@@ -843,6 +959,7 @@
           const modelVisual = buildModelGroup(root, anchors, meshData.positions);
           currentModelGroup = modelVisual.group;
           currentPins = modelVisual.pinPoints;
+          currentModelGroup.visible = true;
           modelScene.add(currentModelGroup);
           controls.target.set(0, 0, 0);
           controls.update();
@@ -879,6 +996,7 @@
 
         try {
           const unwrapResult = solveLSCM(currentMeshData);
+          currentUnwrapUv = unwrapResult.uv;
 
           clearGroup(uvScene, currentUvLines);
           clearGroup(uvScene, currentUvPins);
@@ -892,6 +1010,9 @@
             "完成: " + getCurrentSourceLabel() + " / " + currentMeshData.positions.length + " 顶点 / " + currentMeshData.faces.length + " 三角形 / 来源: " + currentSourcePath,
             "#89f0b6"
           );
+          if (textureEnabled) {
+            setTextureDistortionEnabled(true);
+          }
         } catch (error) {
           console.error(error);
           setStatus("展开失败: " + error.message, "#ff9d9d");
@@ -958,6 +1079,9 @@
         applyCustomFile(files[0]);
       });
       reloadBtn.addEventListener("click", updateModel);
+      textureBtn.addEventListener("click", function () {
+        setTextureDistortionEnabled(!textureEnabled);
+      });
       loadModelPreview();
       animate();
     })();
