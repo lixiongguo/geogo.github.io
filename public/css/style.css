@@ -284,6 +284,22 @@ a.nav-item {
 
 a.nav-item:hover { color: #777; }
 
+.algo-link-with-icon {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+}
+
+.algo-mini-icon {
+	display: inline-block;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: #8cc4ff;
+	box-shadow: 0 0 6px rgba(140, 196, 255, 0.65);
+	flex: 0 0 auto;
+}
+
 .badge { font-size: 70%; }
 .badge::before { content: "("; }
 .badge::after { content: ")"; }
