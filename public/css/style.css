@@ -355,6 +355,17 @@ footer {
 	color: #ccc;
 }
 
+#visitor-stats {
+	color: #888;
+	font-size: 1em;
+	margin-bottom: 4px;
+}
+
+.stats-sep {
+	margin: 0 4px;
+	opacity: 0.5;
+}
+
 
 @media (max-width: 576px) {
 	article {
