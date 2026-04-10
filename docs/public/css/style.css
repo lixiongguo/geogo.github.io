@@ -150,6 +150,86 @@ code {
 	letter-spacing: 2px;
 }
 
+.tsumego-link {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 8px;
+	margin-top: 32px;
+	color: #999;
+	text-decoration: none;
+	transition: color 0.3s;
+}
+
+.tsumego-info {
+	display: flex;
+	flex-direction: column;
+}
+
+.tsumego-title {
+	font-family: 'Ma Shan Zheng', cursive;
+	font-size: 1.1em;
+	letter-spacing: 2px;
+}
+
+.tsumego-subtitle {
+	font-size: 0.75em;
+	color: #6a6a8a;
+	font-style: italic;
+	margin-top: 1px;
+}
+
+.tsumego-link:hover {
+	color: #c0c0e0;
+}
+
+.go-logo {
+	width: 48px;
+	height: 48px;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+.tsumego-label {
+	font-size: 0.9em;
+}
+
+.gallery-nav {
+	display: flex;
+	justify-content: flex-start;
+	margin-top: -30px;
+}
+
+.gallery-link {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	text-decoration: none;
+	font-size: 1em;
+	font-weight: 600;
+	background: linear-gradient(90deg, #f39c12, #e74c3c, #9b59b6, #3498db, #2ecc71);
+	background-size: 200% auto;
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+	animation: galleryShine 4s linear infinite;
+}
+
+@keyframes galleryShine {
+	0% { background-position: 0% center; }
+	100% { background-position: 200% center; }
+}
+
+.gallery-link:hover {
+	color: #c0c0e0;
+}
+
+.gallery-logo {
+	width: 30px;
+	height: 30px;
+	vertical-align: middle;
+}
+
 .quote-section {
 	margin-top: 20px;
 }
