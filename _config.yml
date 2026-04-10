@@ -10,4 +10,11 @@ highlighter-theme : emacs
 category_dir: category
 plugins:
   - jekyll-feed
+  - jekyll-paginate-v2
+
+pagination:
+  enabled: true
+  per_page: 15
+  permalink: "/page/:num/"
+  sort_reverse: true
 github_username: David Lee
