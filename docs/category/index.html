@@ -1,14 +1,15 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en"><head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<meta name="viewport" content="width=device-width, initial-scale=1"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" /></head>
+	<meta name="viewport" content="width=device-width, initial-scale=1"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" /><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet"></head>
 <style>@import url(/public/css/syntax/emacs.css);</style>
   <title></title>
   <!-- <link href="/public/css/bootstrap.min.css" rel="stylesheet"> -->
 
   <link href="/public/css/style.css" rel="stylesheet">
   <body>
+  	<canvas id="particle-canvas"></canvas>
   	<div class="container"> 
 		<div class="sidebar">
 			<div class="sidebar-item sidebar-header">
@@ -19,16 +20,8 @@
 	<div class='circular-image'>
 		<img src="/assets/image/Koushiro.png" alt="Circular Image">
 	</div>
+	<a href="/about" class="signature-link">About me</a>
 </div>
-
-<div >
-	<p>学与玩</p>
-</div>
-<ul class="nav">
-    <!-- ... 现有导航项 ... -->
-    <li><a href="/about" class="rainbow-shine">About me</a></li>
-    <!-- ... 现有导航项 ... -->
-</ul>
 <ul class="nav">
     <!-- ... 现有导航项 ... -->
     <li><a href="/gallery" class="rainbow-shine">Gallery</a></li>
@@ -40,51 +33,63 @@
 
 <div class="sidebar-item sidebar-nav">
   	<ul class="nav">
-			<li class="nav-title">Categories</li>
+			<li class="nav-title">文章分类</li>
+	    
+	    
 	    
 	    <li>
 	    	<a class="nav-item" href="/category#Parameterization">
 				<span class="name">Parameterization</span>
-				<span class="badge">9</span>
 	    	</a>
  		</li>
+	    
+	    
 	    
 	    <li>
 	    	<a class="nav-item" href="/category#ComputerGraphics">
 				<span class="name">ComputerGraphics</span>
-				<span class="badge">2</span>
 	    	</a>
  		</li>
+	    
+	    
 	    
 	    <li>
 	    	<a class="nav-item" href="/category#RL">
 				<span class="name">RL</span>
-				<span class="badge">2</span>
 	    	</a>
  		</li>
+	    
+	    
 	    
 	    <li>
 	    	<a class="nav-item" href="/category#1.Parameterization">
-				<span class="name">1.Parameterization</span>
-				<span class="badge">1</span>
+				<span class="name">参数化</span>
 	    	</a>
  		</li>
 	    
+	    
+	    
 	    <li>
 	    	<a class="nav-item" href="/category#4.Reinforcement">
-				<span class="name">4.Reinforcement</span>
-				<span class="badge">1</span>
+				<span class="name">强化学习</span>
 	    	</a>
  		</li>
 	    
 	  </nav>
 	</ul>
 </div>
-<div >
-	<p>人生箴言:</p>
-	<p>“成功的秘诀在于，你必须先知道失败的原因。”</p>
+<div class="quote-section">
+	<p>人生箴言</p>
+	<hr class="quote-divider">
+	<p class="quote-text">"志不强者智不达，言不信者行不果。"</p>
+	<p class="quote-source">——《墨子·修身》</p>
 </div>
 <div class="sidebar-item sidebar-footer">
+	<p id="visitor-stats">
+		<span>访客 <span id="busuanzi_value_site_uv"></span></span>
+		<span class="stats-sep">·</span>
+		<span>访问 <span id="busuanzi_value_site_pv"></span></span>
+	</p>
 	<p>Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a></p>
 </div>
 		</div>
@@ -335,7 +340,7 @@
   });
 	  </script>
     <script src="/assets/js/particles.js"></script>
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 	  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 
-</html><canvas id="particle-canvas" style="position:fixed; top:0; left:0; z-index:-1;"></canvas>
-
+</html>
