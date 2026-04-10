@@ -124,10 +124,67 @@ code {
 
 .sidebar-header {
 	margin-bottom: 50px;
+	text-align: center;
 }
 
 .sidebar-nav {
 	margin-top: 20px;
+}
+
+.quote-divider {
+	border: none;
+	border-bottom: 1px solid rgba(255,255,255,0.15);
+	margin: 6px 0;
+}
+
+.quote-source {
+	font-size: 0.85em;
+	color: #888;
+	margin-top: 2px;
+}
+
+.quote-text {
+	font-family: 'Ma Shan Zheng', cursive;
+	font-size: 1.05em;
+	color: #b0b0c8;
+	letter-spacing: 2px;
+}
+
+.quote-section {
+	margin-top: 20px;
+}
+
+/* 背景多边形画布 */
+#particle-canvas {
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: -1;
+	pointer-events: none;
+}
+
+.about-link {
+	display: block;
+	text-align: center;
+	margin-top: 10px;
+}
+
+.signature-link {
+	display: block;
+	text-align: center;
+	margin-top: 12px;
+	font-family: 'Dancing Script', cursive;
+	font-size: 1.6em;
+	color: #c8b88a;
+	text-decoration: none;
+	letter-spacing: 1px;
+	transition: color 0.3s, text-shadow 0.3s;
+}
+
+.signature-link:hover {
+	color: #f0dca0;
+	text-decoration: none;
+	text-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
 }
 
 .nav-title {
@@ -287,7 +344,7 @@ footer {
 }
 
 .sidebar-footer {
-	margin-top: 80px;
+	margin-top: auto;
 	font-size: 0.75em;
 	font-weight: lighter;
 	font-family: "Roboto";
@@ -296,6 +353,17 @@ footer {
 
 .sidebar-footer a {
 	color: #ccc;
+}
+
+#visitor-stats {
+	color: #888;
+	font-size: 1em;
+	margin-bottom: 4px;
+}
+
+.stats-sep {
+	margin: 0 4px;
+	opacity: 0.5;
 }
 
 
@@ -363,6 +431,7 @@ footer {
   height: 160px; /* 调整为您想要的尺寸 */
   border-radius: 50%;
   overflow: hidden;
+  margin: 0 auto;
 }
 
 .circular-image img {
