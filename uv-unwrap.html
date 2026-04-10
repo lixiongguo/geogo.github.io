@@ -7,7 +7,6 @@
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/numeric@1.2.6/numeric.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
@@ -444,6 +443,68 @@
         };
       }
 
+      function solveLinearSystem(matrix, vector) {
+        const n = matrix.length;
+        const a = new Array(n);
+        const b = vector.slice();
+
+        for (let i = 0; i < n; i++) {
+          a[i] = matrix[i].slice();
+        }
+
+        for (let col = 0; col < n; col++) {
+          let pivotRow = col;
+          let pivotAbs = Math.abs(a[col][col]);
+          for (let row = col + 1; row < n; row++) {
+            const candidate = Math.abs(a[row][col]);
+            if (candidate > pivotAbs) {
+              pivotAbs = candidate;
+              pivotRow = row;
+            }
+          }
+
+          if (pivotAbs < 1e-12) {
+            throw new Error("线性系统不可解，可能存在退化三角形或约束不足");
+          }
+
+          if (pivotRow !== col) {
+            const tmpRow = a[col];
+            a[col] = a[pivotRow];
+            a[pivotRow] = tmpRow;
+            const tmpB = b[col];
+            b[col] = b[pivotRow];
+            b[pivotRow] = tmpB;
+          }
+
+          const pivot = a[col][col];
+          for (let row = col + 1; row < n; row++) {
+            const factor = a[row][col] / pivot;
+            if (Math.abs(factor) < 1e-16) {
+              continue;
+            }
+            a[row][col] = 0;
+            for (let k = col + 1; k < n; k++) {
+              a[row][k] -= factor * a[col][k];
+            }
+            b[row] -= factor * b[col];
+          }
+        }
+
+        const x = new Array(n).fill(0);
+        for (let row = n - 1; row >= 0; row--) {
+          let sum = b[row];
+          for (let col = row + 1; col < n; col++) {
+            sum -= a[row][col] * x[col];
+          }
+          const diag = a[row][row];
+          if (Math.abs(diag) < 1e-12) {
+            throw new Error("回代失败，矩阵奇异");
+          }
+          x[row] = sum / diag;
+        }
+        return x;
+      }
+
       function solveLSCM(meshData) {
         const vertices = meshData.positions;
         const faces = meshData.faces;
@@ -527,7 +588,7 @@
           ata[i][i] += 1e-8;
         }
 
-        const solution = numeric.solve(ata, atb);
+        const solution = solveLinearSystem(ata, atb);
         const uv = new Array(vertices.length);
         for (let i = 0; i < vertices.length; i++) {
           if (fixed.has(i)) {
