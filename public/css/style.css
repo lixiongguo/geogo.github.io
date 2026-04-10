@@ -143,6 +143,13 @@ code {
 	margin-top: 2px;
 }
 
+.quote-text {
+	font-family: 'Ma Shan Zheng', cursive;
+	font-size: 1.05em;
+	color: #b0b0c8;
+	letter-spacing: 2px;
+}
+
 .quote-section {
 	margin-top: 20px;
 }
@@ -160,6 +167,24 @@ code {
 	display: block;
 	text-align: center;
 	margin-top: 10px;
+}
+
+.signature-link {
+	display: block;
+	text-align: center;
+	margin-top: 12px;
+	font-family: 'Dancing Script', cursive;
+	font-size: 1.6em;
+	color: #c8b88a;
+	text-decoration: none;
+	letter-spacing: 1px;
+	transition: color 0.3s, text-shadow 0.3s;
+}
+
+.signature-link:hover {
+	color: #f0dca0;
+	text-decoration: none;
+	text-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
 }
 
 .nav-title {
