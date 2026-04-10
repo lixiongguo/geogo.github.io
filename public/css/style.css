@@ -124,10 +124,42 @@ code {
 
 .sidebar-header {
 	margin-bottom: 50px;
+	text-align: center;
 }
 
 .sidebar-nav {
 	margin-top: 20px;
+}
+
+.quote-divider {
+	border: none;
+	border-bottom: 1px solid rgba(255,255,255,0.15);
+	margin: 6px 0;
+}
+
+.quote-source {
+	font-size: 0.85em;
+	color: #888;
+	margin-top: 2px;
+}
+
+.quote-section {
+	margin-top: 20px;
+}
+
+/* 背景多边形画布 */
+#particle-canvas {
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: -1;
+	pointer-events: none;
+}
+
+.about-link {
+	display: block;
+	text-align: center;
+	margin-top: 10px;
 }
 
 .nav-title {
@@ -287,7 +319,7 @@ footer {
 }
 
 .sidebar-footer {
-	margin-top: 80px;
+	margin-top: auto;
 	font-size: 0.75em;
 	font-weight: lighter;
 	font-family: "Roboto";
@@ -363,6 +395,7 @@ footer {
   height: 160px; /* 调整为您想要的尺寸 */
   border-radius: 50%;
   overflow: hidden;
+  margin: 0 auto;
 }
 
 .circular-image img {
