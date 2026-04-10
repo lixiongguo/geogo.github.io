@@ -506,6 +506,25 @@ footer {
   color: #007bff;
 }
 
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 22px;
+  margin-top: 18px;
+}
+
+.pagination-info {
+  color: #7a7a8c;
+  white-space: nowrap;
+}
+
+.pagination-previous,
+.pagination-next {
+  white-space: nowrap;
+  text-decoration: none;
+}
+
 .circular-image {
   width: 160px; /* 调整为您想要的尺寸 */
   height: 160px; /* 调整为您想要的尺寸 */
