@@ -12,16 +12,8 @@
 	<div class='circular-image'>
 		<img src="/assets/image/Koushiro.png" alt="Circular Image">
 	</div>
+	<a href="/about" class="rainbow-shine about-link">About me</a>
 </div>
-
-<div >
-	<p>学与玩</p>
-</div>
-<ul class="nav">
-    <!-- ... 现有导航项 ... -->
-    <li><a href="/about" class="rainbow-shine">About me</a></li>
-    <!-- ... 现有导航项 ... -->
-</ul>
 <ul class="nav">
     <!-- ... 现有导航项 ... -->
     <li><a href="/gallery" class="rainbow-shine">Gallery</a></li>
@@ -33,21 +25,35 @@
 
 <div class="sidebar-item sidebar-nav">
   	<ul class="nav">
-			<li class="nav-title">Categories</li>
+			<li class="nav-title">文章分类</li>
 	    {% for category in site.categories %}
+	    {% assign cat_name = category | first %}
+	    {% case cat_name %}
+	      {% when '1.Parameterization' %}{% assign cat_display = '参数化' %}
+	      {% when '2.Machine Learning' %}{% assign cat_display = '机器学习' %}
+	      {% when '3.ComputerGraphics' %}{% assign cat_display = '计算机图形学' %}
+	      {% when '4.Reinforcement' %}{% assign cat_display = '强化学习' %}
+	      {% when '4.Related' %}{% assign cat_display = '相关论文' %}
+	      {% when '5.计算几何' %}{% assign cat_display = '计算几何' %}
+	      {% when 'Game&Shaders' %}{% assign cat_display = '游戏与着色器' %}
+	      {% when 'Diffusion' %}{% assign cat_display = '扩散模型' %}
+	      {% when 'Caustics' %}{% assign cat_display = '焦散' %}
+	      {% else %}{% assign cat_display = cat_name %}
+	    {% endcase %}
 	    <li>
-	    	<a class="nav-item" href="{{ root_url }}/{{ site.category_dir }}#{{ category | first }}">
-				<span class="name">{{ category | first }}</span>
-				<span class="badge">{{ category | last | size }}</span>
+	    	<a class="nav-item" href="{{ root_url }}/{{ site.category_dir }}#{{ cat_name }}">
+				<span class="name">{{ cat_display }}</span>
 	    	</a>
  		</li>
 	    {% endfor %}
 	  </nav>
 	</ul>
 </div>
-<div >
-	<p>人生箴言:</p>
-	<p>“成功的秘诀在于，你必须先知道失败的原因。”</p>
+<div class="quote-section">
+	<p>人生箴言</p>
+	<hr class="quote-divider">
+	<p>"志不强者智不达，言不信者行不果。"</p>
+	<p class="quote-source">——《墨子·修身》</p>
 </div>
 <div class="sidebar-item sidebar-footer">
 	<p>Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a></p>
