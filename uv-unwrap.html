@@ -170,14 +170,10 @@
         </div>
       </div>
       <div class="toolbar-right">
-        <select id="model-select">
-          <option value="rock">Rock</option>
-          <option value="plant">Plant</option>
-          <option value="shark">White Shark</option>
-        </select>
+        <select id="model-select"></select>
         <button id="upload-btn">上传OBJ</button>
         <input id="obj-upload" class="hidden-input" type="file" accept=".obj,model/obj,text/plain">
-        <button id="reload-btn">重新展开</button>
+        <button id="reload-btn">开始展开</button>
         <div class="status" id="status-text">正在加载模型...</div>
       </div>
     </div>
@@ -216,10 +212,18 @@
   <script>
     (function () {
       const MODELS = {
-        rock: { label: "Rock", url: "assets/rock.obj" },
-        plant: { label: "Plant", url: "assets/plant.obj" },
-        shark: { label: "White Shark", url: "assets/WhiteShark.obj" }
+        bunnyhead: { label: "Bunny Head", file: "bunnyhead.obj" },
+        cathead: { label: "Cat Head", file: "cathead.obj" },
+        camelhead: { label: "Camel Head", file: "camelhead.obj" },
+        cow_head: { label: "Cow Head", file: "cow_head.obj" },
+        spot_cowhead: { label: "Spot Cow Head", file: "spot_cowhead.obj" },
+        nefertiti: { label: "Nefertiti Face", file: "Nefertiti_face.obj" },
+        beetle: { label: "Beetle", file: "beetle.obj" },
+        hand: { label: "Hand", file: "hand_1_i_f5000.obj" },
+        hencky: { label: "Hencky", file: "hencky_f20000.obj" },
+        balls: { label: "Balls", file: "Balls.obj" }
       };
+      const MODEL_BASE_PATHS = ["assets/Models", "../assets/Models", "./assets/Models"];
 
       const modelCanvas = document.getElementById("model-canvas");
       const uvCanvas = document.getElementById("uv-canvas");
@@ -263,6 +267,8 @@
       let busy = false;
       let customModelFile = null;
       let dragDepth = 0;
+      let currentMeshData = null;
+      let currentSourcePath = "";
 
       function setStatus(message, color) {
         statusText.textContent = message;
@@ -274,6 +280,21 @@
         reloadBtn.disabled = nextBusy;
         modelSelect.disabled = nextBusy;
         uploadBtn.disabled = nextBusy;
+      }
+
+      function initModelOptions() {
+        const keys = Object.keys(MODELS);
+        modelSelect.innerHTML = "";
+        for (let i = 0; i < keys.length; i++) {
+          const key = keys[i];
+          const option = document.createElement("option");
+          option.value = key;
+          option.textContent = MODELS[key].label;
+          modelSelect.appendChild(option);
+        }
+        if (keys.length > 0) {
+          modelSelect.value = keys[0];
+        }
       }
 
       function resize() {
@@ -309,6 +330,40 @@
         return new Promise(function (resolve, reject) {
           objLoader.load(url, resolve, undefined, reject);
         });
+      }
+
+      function getModelCandidateUrls(modelKey) {
+        const model = MODELS[modelKey];
+        if (!model) {
+          return [];
+        }
+        const urls = [];
+        const seen = new Set();
+        for (let i = 0; i < MODEL_BASE_PATHS.length; i++) {
+          const url = MODEL_BASE_PATHS[i] + "/" + model.file;
+          if (!seen.has(url)) {
+            seen.add(url);
+            urls.push(url);
+          }
+        }
+        return urls;
+      }
+
+      async function loadBuiltinModel(modelKey) {
+        const candidateUrls = getModelCandidateUrls(modelKey);
+        let lastError = null;
+        for (let i = 0; i < candidateUrls.length; i++) {
+          const url = candidateUrls[i];
+          try {
+            const root = await loadOBJ(url);
+            return { root: root, sourcePath: url };
+          } catch (error) {
+            lastError = error;
+          }
+        }
+
+        const detail = lastError && lastError.message ? lastError.message : String(lastError || "unknown");
+        throw new Error("内置模型加载失败，尝试路径: " + candidateUrls.join(" | ") + "；最后错误: " + detail);
       }
 
       function loadOBJFromFile(file) {
@@ -743,15 +798,16 @@
           return;
         }
         customModelFile = file;
-        setStatus("已选择本地文件: " + file.name, "#ffd38a");
-        updateModel();
+        setStatus("已选择本地文件: " + file.name + "，正在加载 3D 预览...", "#ffd38a");
+        loadModelPreview();
       }
 
       async function resolveSourceObject() {
         if (customModelFile) {
-          return loadOBJFromFile(customModelFile);
+          const root = await loadOBJFromFile(customModelFile);
+          return { root: root, sourcePath: customModelFile.name };
         }
-        return loadOBJ(MODELS[modelSelect.value].url);
+        return loadBuiltinModel(modelSelect.value);
       }
 
       function getCurrentSourceLabel() {
@@ -761,7 +817,7 @@
         return MODELS[modelSelect.value].label;
       }
 
-      async function updateModel() {
+      async function loadModelPreview() {
         if (busy) {
           return;
         }
@@ -770,34 +826,70 @@
         setStatus("正在加载 OBJ 模型: " + getCurrentSourceLabel() + " ...");
 
         try {
-          const root = await resolveSourceObject();
+          const resolved = await resolveSourceObject();
+          const root = resolved.root;
           normalizeObject(root);
-
-          setStatus("正在提取三角网格...");
-          const meshData = collectMeshData(root);
-
-          setStatus("正在执行 LSCM 求解...");
-          const unwrapResult = solveLSCM(meshData);
 
           clearGroup(modelScene, currentModelGroup);
           clearGroup(uvScene, currentUvLines);
           clearGroup(uvScene, currentUvPins);
+          currentUvLines = null;
+          currentUvPins = null;
 
-          const modelVisual = buildModelGroup(root, unwrapResult.anchors, meshData.positions);
+          setStatus("正在提取三角网格...");
+          const meshData = collectMeshData(root);
+          const anchors = chooseAnchorPair(meshData.positions);
+
+          const modelVisual = buildModelGroup(root, anchors, meshData.positions);
           currentModelGroup = modelVisual.group;
           currentPins = modelVisual.pinPoints;
           modelScene.add(currentModelGroup);
           controls.target.set(0, 0, 0);
           controls.update();
 
-          const uvVisual = buildUvMesh(unwrapResult.uv, meshData.faces, unwrapResult.anchors);
+          currentMeshData = meshData;
+          currentSourcePath = resolved.sourcePath;
+
+          setStatus(
+            "3D 预览已加载: " + getCurrentSourceLabel() + " / " + meshData.positions.length + " 顶点 / " + meshData.faces.length + " 三角形，点击“开始展开”执行 UV",
+            "#89f0b6"
+          );
+        } catch (error) {
+          console.error(error);
+          setStatus("模型加载失败: " + error.message, "#ff9d9d");
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      async function updateModel() {
+        if (busy) {
+          return;
+        }
+
+        if (!currentMeshData) {
+          await loadModelPreview();
+          if (!currentMeshData) {
+            return;
+          }
+        }
+
+        setBusy(true);
+        setStatus("正在执行 LSCM 求解...");
+
+        try {
+          const unwrapResult = solveLSCM(currentMeshData);
+
+          clearGroup(uvScene, currentUvLines);
+          clearGroup(uvScene, currentUvPins);
+          const uvVisual = buildUvMesh(unwrapResult.uv, currentMeshData.faces, unwrapResult.anchors);
           currentUvLines = uvVisual.lines;
           currentUvPins = uvVisual.pins;
           uvScene.add(currentUvLines);
           uvScene.add(currentUvPins);
 
           setStatus(
-            "完成: " + getCurrentSourceLabel() + " / " + meshData.positions.length + " 顶点 / " + meshData.faces.length + " 三角形",
+            "完成: " + getCurrentSourceLabel() + " / " + currentMeshData.positions.length + " 顶点 / " + currentMeshData.faces.length + " 三角形 / 来源: " + currentSourcePath,
             "#89f0b6"
           );
         } catch (error) {
@@ -816,12 +908,17 @@
       }
 
       rebuildUvGrid();
+      initModelOptions();
       resize();
+      setStatus("正在加载默认模型 3D 预览...", "#8cc4ff");
       window.addEventListener("resize", resize);
       modelSelect.addEventListener("change", function () {
         customModelFile = null;
         objUpload.value = "";
-        updateModel();
+        currentMeshData = null;
+        currentSourcePath = "";
+        setStatus("已选择模型: " + getCurrentSourceLabel() + "，正在加载 3D 预览...", "#8cc4ff");
+        loadModelPreview();
       });
       uploadBtn.addEventListener("click", function () {
         objUpload.click();
@@ -861,7 +958,7 @@
         applyCustomFile(files[0]);
       });
       reloadBtn.addEventListener("click", updateModel);
-      updateModel();
+      loadModelPreview();
       animate();
     })();
   </script>
