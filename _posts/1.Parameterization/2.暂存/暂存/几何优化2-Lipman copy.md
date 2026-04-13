@@ -1,9 +1,3 @@
----
-layout: post
-title: "曲面参数化4-Lipman算法"
-category: Parameterization
----
-
 本文主要讲解的是如何控制三角网格(Mesh)上的分片线性映射$f$的共形扭曲(记为$\sigma$),并且同时确保$f$的局部单射性质，这个方法本身不是参数化方法而是对一般参数化方法(LSCM,ARAP等)进行加强。
 
 三角网格上$M = (V,F,E)$定义的映射可以认为是分片连续线性的（CPL continous Piecewise Linear ，每个三角面线性的同时，相邻两个三角面在边界保持连续）将所有这样的映射的空间定义为$F^M$ ,而我们需要的是$\sigma$有限的子空间

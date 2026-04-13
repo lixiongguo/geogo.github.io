@@ -24,25 +24,42 @@
 				displayMath: [['$$', '$$'], ['\\[', '\\]']]
 			  }
 		};
-  function typeWriter(text, elementId, speed) {
+  function typeWriterLoop(text, elementId, speed, holdMs) {
     let i = 0;
+    let deleting = false;
+    const placeholder = "&nbsp;";
     const element = document.getElementById(elementId);
-    element.innerHTML = "";
-    
-    function type() {
-      if (i < text.length) {
-        element.innerHTML += text.charAt(i);
-        i++;
-        setTimeout(type, speed);
+    if (!element) return;
+    element.innerHTML = placeholder;
+
+    function tick() {
+      if (!deleting) {
+        if (i < text.length) {
+          i++;
+          element.innerHTML = text.slice(0, i);
+          setTimeout(tick, speed);
+        } else {
+          deleting = true;
+          setTimeout(tick, holdMs);
+        }
+      } else {
+        if (i > 0) {
+          i--;
+          element.innerHTML = i === 0 ? placeholder : text.slice(0, i);
+          setTimeout(tick, Math.max(40, speed / 2));
+        } else {
+          deleting = false;
+          setTimeout(tick, Math.max(120, speed));
+        }
       }
     }
-    
-    type();
+
+    tick();
   }
   
   // 页面加载完成后执行打字机效果
   window.addEventListener('load', function() {
-    typeWriter("学与玩", "typewriter", 100);
+    typeWriterLoop("学中有乐玩中有学", "typewriter", 180, 1300);
   });
 	  </script>
     <script src="/assets/js/particles.js"></script>

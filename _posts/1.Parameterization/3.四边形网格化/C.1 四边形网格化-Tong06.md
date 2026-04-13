@@ -1,3 +1,9 @@
+---
+layout: post
+title: "四边形网格化-Tong06"
+category: Parameterization
+---
+
 通过对两个0-form u，v的等值线（手动设计**singularity graph**的辅助），并tiling实现四边形网格化
 
 ![image-20251107192440225](..\..\..\imgs\image-20251107192440225.png)

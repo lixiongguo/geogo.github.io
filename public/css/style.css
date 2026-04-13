@@ -268,11 +268,18 @@ code {
 }
 
 .nav-title {
-	font-size: 100%;
+	font-size: 135%;
+	font-weight: 600;
+	letter-spacing: 0.5px;
 	font-family: "Noto Sans";
 	text-transform: uppercase;
 	border-bottom: 1px solid gray;
 	margin-bottom: 5px;
+}
+
+.quote-section > p:first-child {
+	font-size: 135%;
+	font-weight: 600;
 }
 
 a.nav-item {

@@ -1,9 +1,3 @@
----
-layout: post
-title: "曲面参数化5-网格的Laplace算子"
-category: Parameterization
----
-
 ## 分段线性映射的梯度
 
 首先定义三角网格上梯度的定义

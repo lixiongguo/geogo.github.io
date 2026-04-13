@@ -32,14 +32,22 @@
 
 <script src="/public/js/jquery-3.4.1.slim.min.js"></script>
 <script>
+  function slugifyHash(input) {
+    return input
+      .toLowerCase()
+      .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
   function removeCategory() {
     // 隐藏所有分类内容
     $('.category-section').hide();
     
     if (window.location.hash) {
       let hash = window.location.hash.substring(1);
+      let normalized = slugifyHash(hash);
       // 显示对应分类内容
-      $('#category-' + hash.toLowerCase()).show();
+      $('#category-' + normalized).show();
       // 更新分类标题
       $('#category-name').text(hash);
     } else {

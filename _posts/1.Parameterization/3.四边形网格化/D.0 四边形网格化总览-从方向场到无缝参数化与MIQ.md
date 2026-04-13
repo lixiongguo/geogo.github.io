@@ -1,3 +1,9 @@
+---
+layout: post
+title: "四边形网格化总览-从方向场到无缝参数化与MIQ"
+category: Parameterization
+---
+
 ## 四边形网格化总览：从方向场设计到无缝参数化与 MIQ
 
 前面几篇文章分别从不同角度讨论了四边形网格化：

@@ -1,3 +1,9 @@
+---
+layout: post
+title: "四边形网格化-变形FrameField"
+category: Parameterization
+---
+
 ## 变形 Frame Field：通过几何变形来生成四边形网格
 
 这篇方法的出发点和前面常见的 `cross field -> seamless parameterization -> quad mesh` 路线不太一样。  
