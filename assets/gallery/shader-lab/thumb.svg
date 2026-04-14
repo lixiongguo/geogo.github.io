@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" role="img" aria-label="Shader Lab thumbnail">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#172554" />
+      <stop offset="100%" stop-color="#312e81" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="480" fill="url(#bg)" />
+  <circle cx="220" cy="210" r="130" fill="#22d3ee" opacity="0.25" />
+  <circle cx="400" cy="260" r="170" fill="#a78bfa" opacity="0.2" />
+  <circle cx="610" cy="210" r="120" fill="#38bdf8" opacity="0.22" />
+  <text x="58" y="400" fill="#e2e8f0" font-size="62" font-family="Arial, sans-serif">Shader Lab</text>
+</svg>
