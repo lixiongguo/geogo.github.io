@@ -33,9 +33,8 @@
 	    {% assign cat_name = category | first %}
 	    {% if cat_name != 'Others' %}
 	    {% case cat_name %}
-	      {% when 'Machine Learning' %}{% assign cat_display = '机器学习' %}
 	      {% when 'RL' %}{% assign cat_display = '强化学习' %}
-		  {% when 'Parameterization' %}{% assign cat_display = '曲面参数化' %}
+		  {% when 'Parameterization' %}{% assign cat_display = '曲面展开' %}
 		  {% when 'QuadMeshing' %}{% assign cat_display = '四边形网格化' %}
 		  {% when 'Computational_Geometry' %}{% assign cat_display = '计算几何' %}
 		  {% when 'OT' %}{% assign cat_display = '最优传输' %}
