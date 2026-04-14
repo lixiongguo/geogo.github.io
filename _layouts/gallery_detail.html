@@ -1,0 +1,30 @@
+---
+layout: page
+---
+
+{% assign gallery_item = site.data.gallery | where: "slug", page.gallery_slug | first %}
+
+{% if gallery_item %}
+<section class="gallery-detail-page">
+  <p class="gallery-back-link"><a href="/gallery/">← 返回 Gallery</a></p>
+  <h2 class="gallery-detail-title">{{ gallery_item.title }}</h2>
+  <p class="gallery-detail-desc">{{ gallery_item.description }}</p>
+
+  {% if gallery_item.demo_url %}
+  <div class="gallery-demo-frame-wrap">
+    <iframe class="gallery-demo-frame" src="{{ gallery_item.demo_url }}" title="{{ gallery_item.title }}"></iframe>
+  </div>
+  {% endif %}
+
+  <div class="gallery-detail-media">
+    <img src="{{ gallery_item.cover }}" alt="{{ gallery_item.title }}">
+  </div>
+
+  {{ content }}
+</section>
+{% else %}
+<section class="gallery-detail-page">
+  <p class="gallery-back-link"><a href="/gallery/">← 返回 Gallery</a></p>
+  <p>未找到对应的 Gallery 项目。</p>
+</section>
+{% endif %}

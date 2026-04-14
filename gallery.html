@@ -129,7 +129,7 @@
 
 <div class="gallery">
   <!-- Left panel: Caustics -->
-  <div class="demo-panel">
+  <div class="demo-panel" id="panel-caustics">
     <div class="panel-header">
       <h2>Water Caustics</h2>
       <span class="meta" id="fps-caustics">FPS: --</span>
@@ -141,7 +141,7 @@
   </div>
 
   <!-- Right panel: UV Animation -->
-  <div class="demo-panel">
+  <div class="demo-panel" id="panel-uv">
     <div class="panel-header">
       <h2>UV Animation</h2>
       <span class="meta" id="uv-mode-label">扭曲波纹</span>
@@ -722,6 +722,26 @@
     camera.updateProjectionMatrix();
     renderer.setSize(cw, ch);
   });
+})();
+
+// ============================================================
+//  Query view switcher
+// ============================================================
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const view = params.get('view');
+  const root = document.querySelector('.gallery');
+  const panelCaustics = document.getElementById('panel-caustics');
+  const panelUv = document.getElementById('panel-uv');
+  if (!root || !panelCaustics || !panelUv) return;
+
+  if (view === 'caustics') {
+    panelUv.style.display = 'none';
+    panelCaustics.style.flex = '1 1 100%';
+  } else if (view === 'uv') {
+    panelCaustics.style.display = 'none';
+    panelUv.style.flex = '1 1 100%';
+  }
 })();
 </script>
 
