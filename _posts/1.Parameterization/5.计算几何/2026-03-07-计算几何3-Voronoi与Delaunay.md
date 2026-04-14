@@ -2,7 +2,7 @@
 layout: post
 title: "计算几何3-Voronoi 图与 Delaunay 三角剖分"
 date: 2026-03-07
-categories: ComputationalGeometry
+categories: Computational_Geometry
 ---
 
 Voronoi 图与 Delaunay 三角剖分是计算几何中最经典的一对对偶结构。它们将离散的点集转化为连续的空间划分，在游戏开发、地理信息系统、机器学习、生物学等领域有广泛应用。

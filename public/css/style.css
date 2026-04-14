@@ -123,7 +123,7 @@ code {
 }
 
 .sidebar-header {
-	margin-bottom: 50px;
+	margin-bottom: 24px;
 	text-align: center;
 }
 
@@ -155,7 +155,7 @@ code {
 	flex-direction: row;
 	align-items: center;
 	gap: 8px;
-	margin-top: 32px;
+	margin-top: 8px;
 	color: #999;
 	text-decoration: none;
 	transition: color 0.3s;
@@ -196,23 +196,31 @@ code {
 
 .gallery-nav {
 	display: flex;
+	flex-direction: column;
 	justify-content: flex-start;
-	margin-top: -30px;
+	align-items: flex-start;
+	margin-top: 4px;
+	padding-left: 0;
 }
 
 .gallery-link {
 	display: flex;
 	align-items: center;
-	gap: 6px;
+	gap: 1px;
 	text-decoration: none;
-	font-size: 1em;
-	font-weight: 600;
+	font-size: 2.6em;
+	font-family: 'Ma Shan Zheng', 'STKaiti', cursive;
+	font-weight: 700;
+	letter-spacing: 1px;
+	line-height: 1;
+	padding: 4px 0;
 	background: linear-gradient(90deg, #f39c12, #e74c3c, #9b59b6, #3498db, #2ecc71);
 	background-size: 200% auto;
 	-webkit-background-clip: text;
 	-webkit-text-fill-color: transparent;
 	background-clip: text;
 	animation: galleryShine 4s linear infinite;
+	text-shadow: 0 0 10px rgba(150, 120, 255, 0.35);
 }
 
 @keyframes galleryShine {
@@ -225,13 +233,28 @@ code {
 }
 
 .gallery-logo {
-	width: 30px;
-	height: 30px;
+	width: 104px;
+	height: 104px;
 	vertical-align: middle;
 }
 
 .quote-section {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 12px;
 	margin-top: 20px;
+}
+
+.project-card {
+	width: 100%;
+	padding: 8px 0;
+}
+
+.project-title {
+	font-size: 1.35em;
+	font-weight: 600;
+	margin: 0;
 }
 
 /* 背景多边形画布 */
@@ -254,7 +277,7 @@ code {
 	text-align: center;
 	margin-top: 12px;
 	font-family: 'Dancing Script', cursive;
-	font-size: 1.6em;
+	font-size: 2.718em;
 	color: #c8b88a;
 	text-decoration: none;
 	letter-spacing: 1px;
@@ -275,11 +298,6 @@ code {
 	text-transform: uppercase;
 	border-bottom: 1px solid gray;
 	margin-bottom: 5px;
-}
-
-.quote-section > p:first-child {
-	font-size: 135%;
-	font-weight: 600;
 }
 
 a.nav-item {
@@ -311,12 +329,9 @@ a.nav-item:hover { color: #777; }
 .badge::before { content: "("; }
 .badge::after { content: ")"; }
 
-.post-list > li {
-}
-
 .post-link {
 	margin-left: 10px;
-	font-size: 110%;
+	font-size: 125%;
 	color: #333;
 }
 

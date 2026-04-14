@@ -1,8 +1,8 @@
 ---
 
 layout: post
-title: "最优传输1-Monge问题与Kantorivch问题"
-categories  : OptimalTransport
+title: "最优传输-Monge问题与Kantorivch问题"
+categories  : OT
 ---
 
 引子：
