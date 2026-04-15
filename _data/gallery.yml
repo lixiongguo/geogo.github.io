@@ -12,3 +12,11 @@
   thumbnail: /assets/gallery/suiboku-ca/thumb.svg
   cover: /assets/gallery/suiboku-ca/cover.svg
   detail_url: /gallery/suiboku-ca/
+
+- slug: littlest-tokyo
+  title: Littlest Tokyo
+  description: 基于 Three.js 的等距视角东京微缩城市场景渲染。
+  thumbnail: /assets/gallery/littlest-tokyo/thumb.svg
+  cover: /assets/gallery/littlest-tokyo/cover.svg
+  detail_url: /gallery/littlest-tokyo/
+  demo_url: /littlest-tokyo.html

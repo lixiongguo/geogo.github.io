@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#16213e"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#sky)"/>
+  <!-- ground plane -->
+  <polygon points="60,180 200,100 340,180 200,260" fill="#0f3460" opacity="0.6"/>
+  <polygon points="60,180 200,260 200,200 60,140" fill="#0a2540"/>
+  <!-- buildings - back row -->
+  <polygon points="130,130 155,115 155,80 130,95" fill="#e94560" opacity="0.8"/>
+  <polygon points="155,115 180,100 180,65 155,80" fill="#c23152"/>
+  <polygon points="200,110 225,95 225,55 200,70" fill="#533483" opacity="0.9"/>
+  <polygon points="225,95 250,80 250,50 225,65" fill="#e94560" opacity="0.7"/>
+  <polygon points="260,115 280,103 280,70 260,82" fill="#0f3460" opacity="0.8"/>
+  <!-- buildings - front row -->
+  <polygon points="140,165 160,153 160,120 140,132" fill="#533483" opacity="0.85"/>
+  <polygon points="170,155 195,140 195,105 170,120" fill="#e94560" opacity="0.75"/>
+  <polygon points="205,150 230,135 230,95 205,110" fill="#c23152" opacity="0.8"/>
+  <polygon points="245,158 265,146 265,112 245,124" fill="#0f3460"/>
+  <!-- windows -->
+  <rect x="144" y="96" width="3" height="3" fill="#f5c518" opacity="0.7"/>
+  <rect x="150" y="96" width="3" height="3" fill="#f5c518" opacity="0.5"/>
+  <rect x="144" y="102" width="3" height="3" fill="#f5c518" opacity="0.6"/>
+  <rect x="214" y="72" width="3" height="3" fill="#f5c518" opacity="0.8"/>
+  <rect x="220" y="72" width="3" height="3" fill="#f5c518" opacity="0.5"/>
+  <rect x="214" y="78" width="3" height="3" fill="#f5c518" opacity="0.6"/>
+  <rect x="220" y="78" width="3" height="3" fill="#f5c518" opacity="0.7"/>
+  <rect x="233" y="67" width="3" height="3" fill="#f5c518" opacity="0.6"/>
+  <rect x="239" y="67" width="3" height="3" fill="#f5c518" opacity="0.4"/>
+  <rect x="268" y="84" width="3" height="3" fill="#f5c518" opacity="0.7"/>
+  <rect x="268" y="90" width="3" height="3" fill="#f5c518" opacity="0.5"/>
+  <rect x="209" y="112" width="3" height="3" fill="#f5c518" opacity="0.6"/>
+  <rect x="215" y="112" width="3" height="3" fill="#f5c518" opacity="0.8"/>
+  <rect x="209" y="118" width="3" height="3" fill="#f5c518" opacity="0.4"/>
+  <!-- title -->
+  <text x="200" y="285" text-anchor="middle" font-family="'SF Mono',monospace" font-size="14" fill="#a0a0d0" opacity="0.8">Littlest Tokyo</text>
+</svg>
