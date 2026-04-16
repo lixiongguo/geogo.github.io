@@ -1,5 +1,5 @@
 source "https://rubygems.org"
-
+gem "json", "~> 2.7.0"
 # Jekyll 本身
 gem "jekyll", "~> 4.0"
 

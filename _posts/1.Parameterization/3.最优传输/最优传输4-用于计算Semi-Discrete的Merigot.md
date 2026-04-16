@@ -4,136 +4,367 @@ title: "最优传输4-计算Semi-Discrete的Merigot算法"
 categories  : OptimalTransport
 ---
 
-**直接计算连续（continuous）OT 映射在一般情况下是解析不可行、数值不稳定且计算复杂度极高的；而 Semi-discrete OT（一端离散、一端连续）将问题转化为一个凸优化问题（通常是对偶势函数的优化），具有良好的数学结构、高效算法和数值稳定性，因此成为实际计算 OT 映射的主流方法**
+**直接计算 continuous OT 映射通常解析不可得、数值上也不稳定；Semi-Discrete OT（一端连续、一端离散）则把问题转成对权重的凸优化，因此是实际计算最优传输映射时最常用的一条路线。**
 
-本文是对Semi-Discrete类型最优传输的一种求解
+本文整理 Merigot 用于计算 Semi-Discrete OT 的核心思想，并把图中的主要公式改写成 Markdown/LaTeX 形式。
 
 ![image-20250927091641814](..\..\..\imgs\image-20250927091641814.png)
 
-1.什么是Semi-Discrete的OT？
+## 1. 什么是 Semi-Discrete OT
 
-1/测度的定义，对于在定义域Omega中的任意子集B，测度是一个从B到R+的一个映射
+Semi-Discrete 的意思是：
+
+- 源测度 $\mu$ 是连续的；
+- 目标测度 $\nu$ 是离散的 Dirac 测度之和。
+
+连续测度通常写成
+
+$$
+\mu(B)=\int_B \rho(x)\,dx,
+$$
+
+其中 $B\subset \Omega$，$\rho$ 是密度函数。
+
+离散目标测度写成
+
+$$
+\nu=\sum_{p\in S}\lambda_p\,\delta_p,
+$$
+
+因此对任意集合 $B$ 有
+
+$$
+\nu(B)=\sum_{p\in S\cap B}\lambda_p.
+$$
 
 ![image-20250927092322299](..\..\..\imgs\image-20250927092322299.png)
 
-1.5 图像的测度
-
-天然的连续测度
-
-1/灰度值矩阵[WxH] 2/灰度归一化 3/进行插值（对于网格是PL(PieceWise Linear)）
-
-
-
-**问题：对于图像是如何转化为离散测度的？**
-
-
-
-2/mu是连续测度，nu是离散的Dirac测度
-
 ![image-20250927092120045](..\..\..\imgs\image-20250927092120045.png)
-
-\rho是密度
 
 ![image-20250927092217926](..\..\..\imgs\image-20250927092217926.png)
 
-3/测度的推前(Push Forward)映射：
+### 图像如何看成测度
 
-将一个测度映射mu到另外一个测度T#mu
+对于图像，最自然的做法是把灰度值归一化成密度：
+
+1. 取灰度矩阵 $I[i,j]$；
+2. 归一化得到非负密度 $\rho$；
+3. 在像素网格上做常数或分片线性插值，得到连续密度。
+
+这样图像就被解释成定义在区域 $\Omega$ 上的连续概率测度。
+
+## 2. Push-Forward 与传输映射
+
+若映射 $T:\Omega\to S$ 把连续测度推送到离散测度，则推前测度定义为
+
+$$
+T_{\#}\mu(B):=\mu\big(T^{-1}(B)\big).
+$$
 
 ![image-20250927102553894](..\..\..\imgs\image-20250927102553894.png)
 
-从而得到lambda的准确表达
+由于目标是离散原子测度，对每个目标点 $p\in S$，其质量必须满足
+
+$$
+\lambda_p=\mu\big(T^{-1}(\{p\})\big)
+=\int_{T^{-1}(\{p\})}\rho(x)\,dx.
+$$
 
 ![image-20250927102629482](..\..\..\imgs\image-20250927102629482.png)
 
-4/最优传输映射
+这句话非常关键：**Semi-Discrete OT 的本质就是把定义域分成若干块，每一块的质量恰好等于对应原子的权重 $\lambda_p$。**
 
-映射的传输代价
+## 3. 最优传输目标
+
+在平方欧氏代价下，传输代价为
+
+$$
+c(T):=\int_{\mathbb{R}^d}\|x-T(x)\|^2\,d\mu(x)
+=\int_{\mathbb{R}^d}\|x-T(x)\|^2\rho(x)\,dx.
+$$
 
 ![image-20250927102817963](..\..\..\imgs\image-20250927102817963.png)
 
-而最优传输就是找到这样一个使得传输代价最小的映射
+最优传输映射定义为
+
+$$
+T_{\mathrm{opt}}
+:=\arg\min\{c(T)\,;\,T\in \Pi(\mu,\nu)\},
+$$
+
+其中 $\Pi(\mu,\nu)$ 表示把 $\mu$ 推到 $\nu$ 的可行映射集合。
 
 ![image-20250927102825151](..\..\..\imgs\image-20250927102825151.png)
 
-5/power diagram
+## 4. Power Diagram / Laguerre 图
 
-是研究semi-discrete传输的重要工具
+Merigot 方法的核心是：不用直接在所有映射中搜索，而是把搜索限制到由加权点集产生的 power diagram 上。
 
-在最优传输问题中，Power 图/Laguerre 图用于表示目标测度的离散划分。每个加权点代表一个目标质量点，权重用于调整 Voronoi 单元的大小，使得每个单元的质量与目标质量相匹配。
+对于带权点集 $(S,w)$，其中 $S=\{p_i\}$，$w=\{w_i\}$，对应的 power cell 定义为
 
-通过调整权重，可以控制每个 Power 单元的面积，从而实现质量的重新分配。这就是 Monge-Ampère 方程数值求解中的关键思想：通过优化权重来实现源测度到目标测度的最优传输。
+$$
+\operatorname{Vor}^{w}_{S}(p)
+=
+\left\{
+x\in\Omega\;\middle|\;
+\|x-p\|^2-w(p)\le \|x-q\|^2-w(q),\ \forall q\in S
+\right\}.
+$$
 
-power diagram是对voronoi图的推广，对每个site规定了权重
+当所有权重都相等时，它退化成普通 Voronoi 图；权重不同时，单元大小可调。
 
 ![image-20250927103409819](..\..\..\imgs\image-20250927103409819.png)
 
-Aurenhammeret al.[1998]有如下结果
+Aurenhammer 等人的核心结论是：满足容量约束的最优划分可以在 power diagrams 中找到。  
+这一步极大缩小了搜索空间，也让 OT 问题变成了权重优化问题。
 
 ![image-20250927103223060](..\..\..\imgs\image-20250927103223060.png)
 
-Wasserstein距离用来度量两个测度之间差异（与KL散度之间的对比），又称为推土机距离（EMD,Earth Moving Distance）
+## 5. 由 Power Diagram 诱导的传输映射
 
-![image-20250927113043423](..\..\..\imgs\image-20250927113043423.png)
+给定权重 $w$ 后，就得到一个 piecewise constant 映射 $T_S^w$：每个 cell 内的点都被送到它对应的目标原子 $p$。
 
-通过Power Diagram对空间的划分，可以得到一个semi-discrete映射
+推前测度可写为
+
+$$
+T_S^w{}_{\#}\mu
+=
+\sum_{p\in S}\mu\big(\operatorname{Vor}^{w}_{S}(p)\big)\,\delta_p.
+$$
 
 ![image-20250927113226638](..\..\..\imgs\image-20250927113226638.png)
 
-并且原始测度与此测度的推前的Wasserstein距离
+于是对应的 Wasserstein 距离满足
+
+$$
+\operatorname{Wass}_2\!\left(\mu,T_S^w{}_{\#}\mu\right)
+=
+\left(
+\sum_{p\in S}
+\int_{\operatorname{Vor}^{w}_{S}(p)}
+\|x-p\|^2\rho(x)\,dx
+\right)^{1/2}.
+$$
 
 ![image-20250927113328912](..\..\..\imgs\image-20250927113328912.png)
 
-w是是对于测度对(mu,nu)是adapted是如下
+如果对每个 $p$ 都有
+
+$$
+\lambda_p=\mu\big(\operatorname{Vor}^{w}_{S}(p)\big)
+=
+\int_{\operatorname{Vor}^{w}_{S}(p)}\rho(x)\,dx,
+$$
+
+就称该权重 $w$ 对 $(\mu,\nu)$ 是 **adapted** 的。
 
 ![image-20250927113528269](..\..\..\imgs\image-20250927113528269.png)
 
-最优传输映射即是如下能量的无约束优化
+## 6. 凸能量优化
 
+Merigot 方法把 adapted weight 的求解转成一个无约束凸优化问题。  
+核心能量写为
 
+$$
+\Phi(w)
+:=
+\sum_{p\in S}
+\left(
+\lambda_p\,w(p)
+-
+\int_{\operatorname{Vor}^{w}_{S}(p)}
+\big(\|x-p\|^2-w(p)\big)\,d\mu(x)
+\right).
+$$
 
 ![image-20250927115405342](..\..\..\imgs\image-20250927115405342.png)
 
+文中的定理说明以下三件事等价：
 
+1. $T_S^w$ 是 $\mu$ 到 $\nu$ 的最优传输；
+2. $w$ 对 $(\mu,\nu)$ 是 adapted；
+3. $w$ 是凸函数 $\Phi$ 的全局极小点。
 
-3.多尺度(Multiscale)方式对此能量进行最优化
+从优化角度看，这非常漂亮，因为它把 OT 直接变成了对权重向量 $w$ 的优化。
 
-一种Coarse to fine的方式，前一次的计算作为后一次计算的初始化
+虽然图中没有直接写出梯度公式，但由能量结构可得到
 
-收敛性有如下保证
+$$
+\frac{\partial \Phi}{\partial w(p)}
+=
+\lambda_p-\mu\big(\operatorname{Vor}^{w}_{S}(p)\big).
+$$
+
+也就是说，梯度正是“目标质量 - 当前 cell 质量”的残差。  
+这和你前面整理的顾险峰那篇在本质上是同一件事。
+
+## 7. 多尺度（Multiscale）优化
+
+Merigot 的另一个关键点是 multi-scale。  
+直接在大量目标点上优化权重，容易慢且不稳定，因此先在粗尺度上解，再向细尺度递推。
+
+### 收敛性直觉
+
+若离散测度序列 $\nu_n$ 收敛到 $\nu$，且对应 adapted weights 为 $w_n$，则在适当条件下 $w_n$ 会收敛到真实解 $w$。
 
 ![image-20250927115720001](..\..\..\imgs\image-20250927115720001.png)
 
-递进方式$\lambda_p$的计算
+### 目标测度分解
+
+构造一串离散测度
+
+$$
+\nu_\ell=\sum_{p\in S_\ell}\lambda_{p,\ell}\,\delta_p,
+$$
+
+其中 $\nu_0=\nu$，随着层级 $\ell$ 增大，支撑点数逐渐减少。
+
+并给定从细层到粗层的映射 $\pi_\ell:S_\ell\to S_{\ell+1}$，使得
+
+$$
+\lambda_{p,\ell+1}
+=
+\sum_{q\in \pi_\ell^{-1}(p)}\lambda_{q,\ell}.
+$$
 
 ![image-20250927120712503](..\..\..\imgs\image-20250927120712503.png)
 
-最终算法：
+### 算法流程
+
+从最粗层开始：
+
+1. 初始化最粗层权重 $w_L=0$；
+2. 对 $\ell=L-1,\dots,0$：
+3. 用上一层权重初始化当前层
+   $$
+   w_{\ell,0}(p)=w_{\ell+1}\big(\pi_\ell(p)\big);
+   $$
+4. 在当前层上用 L-BFGS 等方法最小化 $\Phi_\ell$；
+5. 当 $\|\nabla \Phi_\ell(w)\|$ 小于阈值 $\varepsilon$ 时停止；
+6. 把当前结果作为下一更细层的初值。
+
+文中给出的停止准则可取
+
+$$
+\|\nabla \Phi(w)\|_\infty
+=
+\sup_{p\in S}\left|\lambda_p-\mu(\operatorname{Vor}^{w}_{S}(p))\right|,
+$$
+
+或
+
+$$
+\|\nabla \Phi(w)\|_1
+=
+\sum_{p\in S}\left|\lambda_p-\mu(\operatorname{Vor}^{w}_{S}(p))\right|.
+$$
 
 ![image-20250927120936722](..\..\..\imgs\image-20250927120936722.png)
 
-4.实现细节
+## 8. 实现细节：如何从图像构造离散测度
 
-测度序列的构造：
+### 8.1 初始量化
 
-![image-20250927120011943](..\..\..\imgs\image-20250927120011943.png)
+若目标不是离散测度，而是一张图像对应的连续密度 $\sigma$，需要先做量化：
 
-逐步递进的方式，$v_{l+1}$包含n(l+1)个点
+$$
+\nu=\sum_{p\in S}\lambda_p\delta_p.
+$$
 
-![image-20250927120305958](..\..\..\imgs\image-20250927120305958.png)
-
-难以求解这个优化，通过Lloyd sample进行数值逼近
-
-![image-20250927120600253](..\..\..\imgs\image-20250927120600253.png)
-
-通过Lloyd sample将图像转化为离散测度 
+Merigot 的做法是对图像密度应用 Lloyd 算法，得到一组代表点和其权重。
 
 ![image-20250927115022999](..\..\..\imgs\image-20250927115022999.png)
 
-**问题：**
+### 8.2 递进层级
 
-两个权重 $\lambda_p$与$w_p$是如何确定的？
+文中使用一系列层级测度
 
-为什么初始化需要用到Lloyd sample？
+$$
+\nu_\ell=\sum_{p\in S_\ell}\lambda_{p,\ell}\delta_p,
+$$
 
-对于图像是如何转化为离散测度的？
+并令支撑点个数按层级减少。实践中常选
+
+$$
+n(\ell)=\frac{n(0)}{k^\ell},
+$$
+
+其中 $k=5$ 往往已经足够。
+
+![image-20250927120011943](..\..\..\imgs\image-20250927120011943.png)
+
+进一步，下一层可通过近似量化问题构造：
+
+$$
+\nu_{\ell+1}
+\in
+\arg\min_{\bar{\nu}}
+\left\{
+\operatorname{Wass}_2(\bar{\nu},\nu_\ell)\; ;\;
+|\operatorname{spt}(\bar{\nu})|\le n(\ell+1)
+\right\}.
+$$
+
+![image-20250927120305958](..\..\..\imgs\image-20250927120305958.png)
+
+这个问题直接求通常较难，所以使用 Lloyd sampling 做数值逼近。
+
+![image-20250927120600253](..\..\..\imgs\image-20250927120600253.png)
+
+### 8.3 回答文末几个问题
+
+**1. 两个权重 $\lambda_p$ 与 $w_p$ 如何确定？**
+
+- $\lambda_p$ 是目标离散测度本身的质量，来自目标图像/目标分布的量化结果；
+- $w_p$ 不是先验给定，而是通过最小化 $\Phi(w)$ 优化出来的。
+
+**2. 为什么初始化需要用 Lloyd sample？**
+
+- 因为它能把连续密度压缩成较少的代表点；
+- 这些点更接近真实质量中心，利于后续多尺度优化；
+- 作为 coarse-to-fine 初值时，通常比随机点稳定得多。
+
+**3. 图像如何转化为离散测度？**
+
+- 先把灰度归一化成连续密度；
+- 再通过 Lloyd quantization 选出若干代表点；
+- 每个代表点对应一个 Voronoi/Laguerre 区域，其积分质量就是对应的 $\lambda_p$。
+
+## 9. 与顾险峰方法的对比
+
+可对照 `最优传输3-顾老师的Semi-Discrete解法.md` 来看。
+
+### 相同点
+
+- 两者都讨论 Semi-Discrete OT；
+- 都把问题转成对权重/势函数的优化；
+- 梯度本质上都是“目标质量 - 当前 cell 质量”；
+- 几何对象都依赖 Laguerre/Power 图。
+
+### 不同点
+
+- **顾险峰路线**更强调凸几何来源：Minkowski、Alexandrov、Legendre-Fenchel 对偶。  
+  它的优点是几何解释很强，能清楚看到“为什么会有这个能量”。
+- **Merigot 路线**更强调计算框架：power diagram、adapted weights、L-BFGS、多尺度。  
+  它的优点是更接近真正可实现的工程算法。
+
+### 可以怎样理解两者关系
+
+可以把顾险峰的方法看成“理论母体”，把 Merigot 方法看成“面向实现的数值化版本”：
+
+- 顾险峰回答“为什么这个优化问题成立”；  
+- Merigot 回答“怎样把它在大规模数据上稳定地算出来”。
+
+### 实践建议
+
+- 想理解 Semi-Discrete OT 的数学来源，先看顾险峰那篇；
+- 想真正写程序算图像/网格上的半离散 OT，Merigot 这套 multi-scale + L-BFGS 更直接；
+- 两篇结合起来看，会形成“几何理论 -> 优化模型 -> 工程算法”的完整链路。
+
+## 参考文献
+
+- Villani, C. (2009). *Optimal Transport: Old and New*. Springer.
+- Peyre, G., & Cuturi, M. (2019). *Computational Optimal Transport*. Foundations and Trends in Machine Learning.
+- Brenier, Y. (1991). *Polar factorization and monotone rearrangement of vector-valued functions*.
+- Benamou, J.-D., & Brenier, Y. (2000). *A computational fluid mechanics solution to the Monge-Kantorovich mass transfer problem*.
+- Cuturi, M. (2013). *Sinkhorn distances: Lightspeed computation of optimal transport*.

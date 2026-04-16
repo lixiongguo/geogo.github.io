@@ -1,0 +1,14 @@
+- slug: water-caustics
+  title: Water Caustics
+  description: 水体焦散由波面折射与反射共同形成，效果受 Fresnel 权重影响。
+  thumbnail: /assets/gallery/water-caustics/thumb.svg
+  cover: /assets/gallery/water-caustics/cover.svg
+  detail_url: /gallery/water-caustics/
+  demo_url: /gallery.html?view=caustics
+
+- slug: suiboku-ca
+  title: Suiboku Cellular Automata
+  description: 基于元胞自动机的水墨扩散与洇墨演化效果。
+  thumbnail: /assets/gallery/suiboku-ca/thumb.svg
+  cover: /assets/gallery/suiboku-ca/cover.svg
+  detail_url: /gallery/suiboku-ca/

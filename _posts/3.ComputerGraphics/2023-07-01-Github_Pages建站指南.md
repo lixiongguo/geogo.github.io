@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Github Pages 建个人网站全程攻略"
-category: ComputerGraphics
+category: Others
 ---
 ## Github Pages 建个人网站全程攻略
 

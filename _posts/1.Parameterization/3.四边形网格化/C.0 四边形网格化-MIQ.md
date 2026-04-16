@@ -1,3 +1,9 @@
+---
+layout: post
+title: "四边形网格化-MIQ"
+category: Parameterization
+---
+
 ## 四边形网格
 
 ### **构建平滑的正交向量场(cross fileds)**

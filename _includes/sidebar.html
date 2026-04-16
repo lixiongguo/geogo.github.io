@@ -12,41 +12,97 @@
 	<div class='circular-image'>
 		<img src="/assets/image/Koushiro.png" alt="Circular Image">
 	</div>
+	<a href="/about" class="signature-link">About me</a>
 </div>
-
-<div >
-	<p>学与玩</p>
+<div class="gallery-card">
+		<a href="/gallery/" class="nav-item gallery-link">
+	  <img src="/assets/platte_logo.png" alt="" class="gallery-logo">
+	  Gallery
+	</a>
 </div>
-<ul class="nav">
-    <!-- ... 现有导航项 ... -->
-    <li><a href="/about" class="rainbow-shine">About me</a></li>
-    <!-- ... 现有导航项 ... -->
-</ul>
-<ul class="nav">
-    <!-- ... 现有导航项 ... -->
-    <li><a href="/caustics" class="rainbow-shine">Gallery</a></li>
-    <!-- ... 现有导航项 ... -->
-</ul>
-
-
 <div class="sidebar-item sidebar-nav">
   	<ul class="nav">
-			<li class="nav-title">Categories</li>
-	    {% for category in site.categories %}
-	    <li>
-	    	<a class="nav-item" href="{{ root_url }}/{{ site.category_dir }}#{{ category | first }}">
-				<span class="name">{{ category | first }}</span>
-				<span class="badge">{{ category | last | size }}</span>
+			<li class="nav-title">文章分类</li>
+			<li>
+	    	<a class="nav-item algo-link-with-icon" href="{{ '/' | relative_url }}">
+				<span class="algo-mini-icon" aria-hidden="true"></span>
+				<span class="name">全部文章</span>
 	    	</a>
  		</li>
+	    {% for category in site.categories %}
+	    {% assign cat_name = category | first %}
+	    {% if cat_name != 'Others' %}
+	    {% case cat_name %}
+	      {% when 'RL' %}{% assign cat_display = '强化学习' %}
+		  {% when 'Parameterization' %}{% assign cat_display = '曲面展开' %}
+		  {% when 'QuadMeshing' %}{% assign cat_display = '四边形网格化' %}
+		  {% when 'Computational_Geometry' %}{% assign cat_display = '计算几何' %}
+		  {% when 'OT' %}{% assign cat_display = '最优传输' %}
+		  {% when 'DL&ML' %}{% assign cat_display = '深度学习与机器学习' %}
+		  {% else %}{% assign cat_display = cat_name %}
+	    {% endcase %}
+	    <li>
+	    	<a class="nav-item algo-link-with-icon" href="{{ root_url }}/{{ site.category_dir }}#{{ cat_name }}">
+				<span class="algo-mini-icon" aria-hidden="true"></span>
+				<span class="name">{{ cat_display }}</span>
+	    	</a>
+ 		</li>
+	    {% endif %}
+	    {% endfor %}
+	    {% for category in site.categories %}
+	    {% assign cat_name = category | first %}
+	    {% if cat_name == 'Others' %}
+	    <li>
+	    	<a class="nav-item algo-link-with-icon" href="{{ root_url }}/{{ site.category_dir }}#{{ cat_name }}">
+				<span class="algo-mini-icon" aria-hidden="true"></span>
+				<span class="name">其他</span>
+	    	</a>
+ 		</li>
+	    {% endif %}
 	    {% endfor %}
 	  </nav>
 	</ul>
 </div>
-<div >
-	<p>人生箴言:</p>
-	<p>“成功的秘诀在于，你必须先知道失败的原因。”</p>
+<div class="sidebar-item sidebar-nav algo-section">
+  	<ul class="nav">
+			<li class="nav-title">算法测试</li>
+			<li><a class="nav-item algo-link-with-icon" href="/uv-unwrap" target="_blank" rel="noopener"><span class="algo-mini-icon" aria-hidden="true"></span>曲面展开</a></li>
+			<li><a class="nav-item algo-link-with-icon" href="/miq-quad" target="_blank" rel="noopener"><span class="algo-mini-icon" aria-hidden="true"></span>四边形网格化</a></li>
+	  </nav>
+	</ul>
 </div>
+<div class="sidebar-item sidebar-nav">
+	<div class="project-card">
+		<a class="nav-item tsumego-link" href="/tsumego">
+			<img src="/assets/image/go_logo.jpeg" alt="围棋" class="go-logo">
+			<div class="tsumego-info">
+				<span class="tsumego-title">致邈围棋</span>
+				<span class="tsumego-subtitle">Let's Go!</span>
+			</div>
+		</a>
+	</div>
+</div>
+<!-- <div class="sidebar-item sidebar-nav">
+	<img src="/assets/image/eko_neko.png" alt="neko_eko" class="neko_eko">
+	<div class="neko_eko_info">
+		幻境
+	</div>
+</div> -->
+<!-- <div class="quote-section">
+	<div class="project-card quote-card">
+		<p class="quote-text">"志不强者智不达，言不信者行不果。"</p>
+		<p class="quote-source">——《墨子·修身》</p>
+	</div>
+</div> -->
 <div class="sidebar-item sidebar-footer">
+	<div class="project-card quote-card">
+		<p class="quote-text">"志不强者智不达，言不信者行不果。"</p>
+		<p class="quote-source">——《墨子·修身》</p>
+	</div>
+	<p id="visitor-stats">
+		<span>访客 <span id="busuanzi_value_site_uv"></span></span>
+		<span class="stats-sep">·</span>
+		<span>访问 <span id="busuanzi_value_site_pv"></span></span>
+	</p>
 	<p>Powered by <a href="https://github.com/jekyll/jekyll">Jekyll</a></p>
 </div>

@@ -1,3 +1,9 @@
+﻿---
+layout: post
+title: "SpringBoot"
+categories: [4.Others]
+---
+
 ![image-20251217145647410](..\..\..\imgs\image-20251217145647410.png)
 
 [SpringCloud从入门到精通（超详细文档一）_spring cloud-CSDN博客](https://blog.csdn.net/cuiqwei/article/details/118329609)

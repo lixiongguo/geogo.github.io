@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" role="img" aria-label="Water Caustics thumbnail">
+  <rect width="800" height="480" fill="#0f172a" />
+  <path d="M0 310 Q120 250 240 310 T480 310 T720 310 T800 310 V480 H0 Z" fill="#22d3ee" opacity="0.3" />
+  <path d="M0 350 Q100 290 220 350 T460 350 T700 350 T800 350 V480 H0 Z" fill="#60a5fa" opacity="0.35" />
+  <text x="60" y="90" fill="#dbeafe" font-size="58" font-family="Arial, sans-serif">Water Caustics</text>
+</svg>
