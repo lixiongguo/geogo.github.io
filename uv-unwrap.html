@@ -21,6 +21,41 @@
       flex-direction: column;
       height: 100vh;
     }
+    .timing-display {
+      display: none;
+      padding: 12px 18px;
+      background: linear-gradient(90deg, rgba(16, 30, 61, 0.95), rgba(26, 46, 91, 0.95));
+      border-bottom: 2px solid rgba(106, 132, 255, 0.35);
+      text-align: center;
+    }
+    .timing-display.visible {
+      display: block;
+    }
+    .timing-display .timing-label {
+      font-size: 12px;
+      color: #8a9dd4;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    }
+    .timing-display .timing-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #ffd700;
+      text-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 0 0 40px rgba(255, 215, 0, 0.25);
+      font-family: "SF Mono", "Consolas", monospace;
+    }
+    .timing-display .timing-unit {
+      font-size: 16px;
+      font-weight: 400;
+      color: #c9a227;
+      margin-left: 4px;
+    }
+    .timing-display .timing-details {
+      font-size: 11px;
+      color: #6a7db5;
+      margin-top: 6px;
+    }
     .toolbar {
       display: flex;
       align-items: center;
@@ -162,6 +197,11 @@
 </head>
 <body>
   <div class="app">
+    <div class="timing-display" id="timing-display">
+      <div class="timing-label">计算耗时</div>
+      <div class="timing-value"><span id="timing-ms">0</span><span class="timing-unit">ms</span></div>
+      <div class="timing-details" id="timing-details"></div>
+    </div>
     <div class="toolbar">
       <div class="toolbar-left">
         <div>
@@ -275,6 +315,31 @@
       let textureEnabled = false;
       let currentTexturedMesh = null;
       let checkerTexture = null;
+      let lastElapsedMs = 0;
+
+      function setStatus(message, color) {
+        statusText.textContent = message;
+        statusText.style.color = color || "#8cc4ff";
+      }
+
+      function showTiming(ms, details) {
+        const display = document.getElementById("timing-display");
+        const msSpan = document.getElementById("timing-ms");
+        const detailsSpan = document.getElementById("timing-details");
+        display.classList.add("visible");
+        msSpan.textContent = ms.toFixed(1);
+        detailsSpan.textContent = details || "";
+        lastElapsedMs = ms;
+      }
+
+      function hideTiming() {
+        document.getElementById("timing-display").classList.remove("visible");
+      }
+
+      function updateTimingProgress(current, total) {
+        const msSpan = document.getElementById("timing-ms");
+        msSpan.textContent = "计算中 " + current + "/" + total;
+      }
 
       function setStatus(message, color) {
         statusText.textContent = message;
@@ -567,7 +632,8 @@
         return x;
       }
 
-      function solveLSCM(meshData) {
+      // 异步分片求解 LSCM，避免大模型时阻塞 UI
+      async function solveLSCMAsync(meshData, onProgress) {
         const vertices = meshData.positions;
         const faces = meshData.faces;
         if (vertices.length < 3 || faces.length < 1) {
@@ -619,37 +685,53 @@
           entries.push({ index: id, value: value });
         }
 
-        for (let f = 0; f < faces.length; f++) {
-          const tri = faces[f];
-          const local = buildLocalTriangle(vertices[tri[0]], vertices[tri[1]], vertices[tri[2]]);
-          if (!local) {
-            continue;
+        // 分批处理三角形，每批处理 500 个面后让出主线程
+        const BATCH_SIZE = 500;
+        for (let batchStart = 0; batchStart < faces.length; batchStart += BATCH_SIZE) {
+          const batchEnd = Math.min(batchStart + BATCH_SIZE, faces.length);
+          for (let f = batchStart; f < batchEnd; f++) {
+            const tri = faces[f];
+            const local = buildLocalTriangle(vertices[tri[0]], vertices[tri[1]], vertices[tri[2]]);
+            if (!local) {
+              continue;
+            }
+
+            const weight = Math.sqrt(local.area);
+            const row1 = [];
+            const row2 = [];
+            const known1 = { value: 0 };
+            const known2 = { value: 0 };
+
+            for (let corner = 0; corner < 3; corner++) {
+              const dx = local.grad[corner][0] * weight;
+              const dy = local.grad[corner][1] * weight;
+              const vid = tri[corner];
+              addCoefficient(row1, vid, 0, dx, known1);
+              addCoefficient(row1, vid, 1, -dy, known1);
+              addCoefficient(row2, vid, 0, dy, known2);
+              addCoefficient(row2, vid, 1, dx, known2);
+            }
+
+            accumulate(row1, -known1.value);
+            accumulate(row2, -known2.value);
           }
 
-          const weight = Math.sqrt(local.area);
-          const row1 = [];
-          const row2 = [];
-          const known1 = { value: 0 };
-          const known2 = { value: 0 };
-
-          for (let corner = 0; corner < 3; corner++) {
-            const dx = local.grad[corner][0] * weight;
-            const dy = local.grad[corner][1] * weight;
-            const vid = tri[corner];
-            addCoefficient(row1, vid, 0, dx, known1);
-            addCoefficient(row1, vid, 1, -dy, known1);
-            addCoefficient(row2, vid, 0, dy, known2);
-            addCoefficient(row2, vid, 1, dx, known2);
+          // 报告进度
+          if (onProgress) {
+            onProgress(batchEnd, faces.length);
           }
 
-          accumulate(row1, -known1.value);
-          accumulate(row2, -known2.value);
+          // 让出主线程，防止 UI 阻塞
+          if (batchEnd < faces.length) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+          }
         }
 
         for (let i = 0; i < variableCount; i++) {
           ata[i][i] += 1e-8;
         }
 
+        // 求解线性系统
         const solution = solveLinearSystem(ata, atb);
         const uv = new Array(vertices.length);
         for (let i = 0; i < vertices.length; i++) {
@@ -993,9 +1075,18 @@
 
         setBusy(true);
         setStatus("正在执行 LSCM 求解...");
+        hideTiming();
 
         try {
-          const unwrapResult = solveLSCM(currentMeshData);
+          const startTime = performance.now();
+
+          // 使用异步分片求解，避免大模型时阻塞 UI
+          const unwrapResult = await solveLSCMAsync(currentMeshData, function(progress, total) {
+            updateTimingProgress(progress, total);
+          });
+
+          const endTime = performance.now();
+          const elapsedMs = endTime - startTime;
           currentUnwrapUv = unwrapResult.uv;
 
           clearGroup(uvScene, currentUvLines);
@@ -1006,8 +1097,12 @@
           uvScene.add(currentUvLines);
           uvScene.add(currentUvPins);
 
+          // 显示醒目的耗时信息
+          const details = getCurrentSourceLabel() + " / " + currentMeshData.positions.length + " 顶点 / " + currentMeshData.faces.length + " 三角形";
+          showTiming(elapsedMs, details);
+
           setStatus(
-            "完成: " + getCurrentSourceLabel() + " / " + currentMeshData.positions.length + " 顶点 / " + currentMeshData.faces.length + " 三角形 / 来源: " + currentSourcePath,
+            "UV 展开完成",
             "#89f0b6"
           );
           if (textureEnabled) {
@@ -1015,6 +1110,7 @@
           }
         } catch (error) {
           console.error(error);
+          hideTiming();
           setStatus("展开失败: " + error.message, "#ff9d9d");
         } finally {
           setBusy(false);
