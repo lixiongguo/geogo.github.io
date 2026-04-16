@@ -26,7 +26,12 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
-          bundler-cache: true
+          bundler-cache: false
+
+      - name: Add platform & install deps
+        run: |
+          bundle lock --add-platform x86_64-linux
+          bundle install --jobs 4
 
       - name: Build site
         run: bundle exec jekyll build
