@@ -8,6 +8,10 @@ excerpt_separator: <!--more-->
 highlighter-theme : emacs
 # highlighter-theme : rouge
 category_dir: category
+# 保留 WASM 文件，不被 Jekyll 清理
+keep_files:
+  - assets/wasm/*.wasm
+  - assets/wasm/*.js
 plugins:
   - jekyll-feed
   - jekyll-paginate-v2

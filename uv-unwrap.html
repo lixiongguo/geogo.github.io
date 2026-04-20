@@ -7,6 +7,9 @@
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
+  
+  <!-- WASM LSCM Solver (Eigen 稀疏 Cholesky) -->
+  <script src="assets/wasm/lscm_solver.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
@@ -206,7 +209,7 @@
       <div class="toolbar-left">
         <div>
           <h1>UV展开</h1>
-          <div class="desc">使用 LSCM 对现有 OBJ 模型做参数化展开</div>
+          <div class="desc">LSCM · WebAssembly + Eigen 稀疏 Cholesky</div>
         </div>
       </div>
       <div class="toolbar-right">
@@ -533,6 +536,84 @@
         return [bestA, bestB];
       }
 
+      // ==================== WASM 求解器初始化 ====================
+      let wasmSolver = null;          // WASM 模块实例
+      let wasmReady = false;          // WASM 是否已就绪
+      let wasmLoadFailed = false;     // WASM 加载是否失败
+
+      /**
+       * 异步加载 WASM 求解器
+       * @returns {Promise<boolean>} 是否加载成功
+       */
+      async function initWASMSolver() {
+        if (wasmReady) return true;
+        if (wasmLoadFailed) return false;
+        
+        try {
+          // LCMSolver 由 lscm_solver.js (Emscripten MODULARIZE) 自动创建
+          if (typeof LCMSolver === 'undefined') {
+            throw new Error('WASM 胶水代码未加载，请确保 assets/wasm/lscm_solver.js 已部署');
+          }
+          
+          wasmSolver = await LCMSolver();
+          wasmReady = true;
+          console.log('WASM LSCM 求解器加载成功 (Eigen 稀疏 Cholesky)');
+          return true;
+        } catch (err) {
+          console.error('WASM 加载失败:', err);
+          wasmLoadFailed = true;
+          return false;
+        }
+      }
+
+      /**
+       * 更新按钮状态，显示 WASM 引擎加载状态
+       */
+      function updateStartButtonState() {
+        const btn = document.getElementById('reloadBtn');
+        if (!btn) return;
+        
+        if (wasmLoadFailed) {
+          btn.textContent = '引擎加载失败';
+          btn.disabled = true;
+          btn.title = 'WASM 引擎加载失败，请检查控制台错误信息';
+        } else if (!wasmReady) {
+          btn.textContent = '引擎加载中...';
+          btn.disabled = true;
+        } else {
+          btn.textContent = '开始展开';
+          btn.disabled = false;
+          btn.title = '执行 LSCM UV 展开';
+        }
+      }
+
+      /**
+       * 选择距离最远的两个顶点作为 LSCM 锚点
+       */
+      function chooseAnchorPair(vertices) {
+        let maxDist = -1;
+        let bestA = 0;
+        let bestB = 1;
+        for (let i = 0; i < vertices.length; i++) {
+          for (let j = i + 1; j < vertices.length; j++) {
+            const dx = vertices[i][0] - vertices[j][0];
+            const dy = vertices[i][1] - vertices[j][1];
+            const dz = vertices[i][2] - vertices[j][2];
+            const dist = dx * dx + dy * dy + dz * dz;
+            if (dist > maxDist) {
+              maxDist = dist;
+              bestA = i;
+              bestB = j;
+            }
+          }
+        }
+        return [bestA, bestB];
+      }
+
+      /**
+       * 计算局部三角形的 LSCM 梯度权重
+       * (此函数保留用于调试，WASM 版本不依赖它)
+       */
       function buildLocalTriangle(p0, p1, p2) {
         const a = new THREE.Vector3().fromArray(p0);
         const b = new THREE.Vector3().fromArray(p1);
@@ -570,69 +651,12 @@
         };
       }
 
-      function solveLinearSystem(matrix, vector) {
-        const n = matrix.length;
-        const a = new Array(n);
-        const b = vector.slice();
+      // ==================== WASM 驱动的 LSCM 求解 ====================
 
-        for (let i = 0; i < n; i++) {
-          a[i] = matrix[i].slice();
-        }
-
-        for (let col = 0; col < n; col++) {
-          let pivotRow = col;
-          let pivotAbs = Math.abs(a[col][col]);
-          for (let row = col + 1; row < n; row++) {
-            const candidate = Math.abs(a[row][col]);
-            if (candidate > pivotAbs) {
-              pivotAbs = candidate;
-              pivotRow = row;
-            }
-          }
-
-          if (pivotAbs < 1e-12) {
-            throw new Error("线性系统不可解，可能存在退化三角形或约束不足");
-          }
-
-          if (pivotRow !== col) {
-            const tmpRow = a[col];
-            a[col] = a[pivotRow];
-            a[pivotRow] = tmpRow;
-            const tmpB = b[col];
-            b[col] = b[pivotRow];
-            b[pivotRow] = tmpB;
-          }
-
-          const pivot = a[col][col];
-          for (let row = col + 1; row < n; row++) {
-            const factor = a[row][col] / pivot;
-            if (Math.abs(factor) < 1e-16) {
-              continue;
-            }
-            a[row][col] = 0;
-            for (let k = col + 1; k < n; k++) {
-              a[row][k] -= factor * a[col][k];
-            }
-            b[row] -= factor * b[col];
-          }
-        }
-
-        const x = new Array(n).fill(0);
-        for (let row = n - 1; row >= 0; row--) {
-          let sum = b[row];
-          for (let col = row + 1; col < n; col++) {
-            sum -= a[row][col] * x[col];
-          }
-          const diag = a[row][row];
-          if (Math.abs(diag) < 1e-12) {
-            throw new Error("回代失败，矩阵奇异");
-          }
-          x[row] = sum / diag;
-        }
-        return x;
-      }
-
-      // 异步分片求解 LSCM，避免大模型时阻塞 UI
+      /**
+       * 基于 WebAssembly + Eigen 的 LSCM UV 展开
+       * 使用稀疏 Cholesky 分解，替代纯 JS 稠密高斯消元
+       */
       async function solveLSCMAsync(meshData, onProgress) {
         const vertices = meshData.positions;
         const faces = meshData.faces;
@@ -640,126 +664,70 @@
           throw new Error("模型顶点或三角形数量不足");
         }
 
+        // 选择锚点对
         const anchors = chooseAnchorPair(vertices);
-        const fixed = new Map();
-        fixed.set(anchors[0], [0, 0]);
-        fixed.set(anchors[1], [1, 0]);
 
-        const freeMap = new Map();
-        let freeCount = 0;
+        // 确保 WASM 已就绪
+        if (!wasmReady) {
+          const loaded = await initWASMSolver();
+          if (!loaded) {
+            throw new Error("WASM 求解器初始化失败，请刷新页面重试");
+          }
+        }
+
+        if (onProgress) onProgress(0, faces.length);
+
+        // 扁平化顶点数据: [x0,y0,z0, x1,y1,z1, ...]
+        const flatPositions = new Float64Array(vertices.length * 3);
         for (let i = 0; i < vertices.length; i++) {
-          if (!fixed.has(i)) {
-            freeMap.set(i, freeCount++);
-          }
+          flatPositions[i * 3] = vertices[i][0];
+          flatPositions[i * 3 + 1] = vertices[i][1];
+          flatPositions[i * 3 + 2] = vertices[i][2];
         }
 
-        const variableCount = freeCount * 2;
-        if (variableCount === 0) {
-          throw new Error("自由变量不足，无法求解");
+        // 扁平化面数据: [i0,i1,i2, i0,i1,i2, ...]
+        const flatFaces = new Int32Array(faces.length * 3);
+        for (let i = 0; i < faces.length; i++) {
+          flatFaces[i * 3] = faces[i][0];
+          flatFaces[i * 3 + 1] = faces[i][1];
+          flatFaces[i * 3 + 2] = faces[i][2];
         }
 
-        const ata = [];
-        const atb = new Array(variableCount).fill(0);
-        for (let i = 0; i < variableCount; i++) {
-          ata.push(new Array(variableCount).fill(0));
+        if (onProgress) onProgress(faces.length * 0.3, faces.length);
+
+        // 调用 WASM 求解器 (Eigen 稀疏 Cholesky)
+        let result;
+        try {
+          result = wasmSolver.solve_lscm(
+            Array.from(flatPositions),
+            Array.from(flatFaces),
+            anchors[0],
+            anchors[1]
+          );
+        } catch (err) {
+          throw new Error("WASM 求解失败: " + err.message);
         }
 
-        function accumulate(rowEntries, rhs) {
-          for (let i = 0; i < rowEntries.length; i++) {
-            const a = rowEntries[i];
-            atb[a.index] += a.value * rhs;
-            for (let j = 0; j < rowEntries.length; j++) {
-              const b = rowEntries[j];
-              ata[a.index][b.index] += a.value * b.value;
-            }
-          }
+        if (!result || !result.uv) {
+          throw new Error("WASM 返回结果无效");
         }
 
-        function addCoefficient(entries, vertexIndex, component, value, known) {
-          if (fixed.has(vertexIndex)) {
-            const uv = fixed.get(vertexIndex);
-            known.value += value * uv[component];
-            return;
-          }
-          const id = freeMap.get(vertexIndex) * 2 + component;
-          entries.push({ index: id, value: value });
+        if (onProgress) onProgress(faces.length * 0.9, faces.length);
+
+        // 解包 UV 数据: [u0,v0, u1,v1, ...] -> [[u0,v0], [u1,v1], ...]
+        const uvArray = result.uv;
+        const n = vertices.length;
+        const uv = new Array(n);
+        for (let i = 0; i < n; i++) {
+          uv[i] = [uvArray[i * 2], uvArray[i * 2 + 1]];
         }
 
-        // 分批处理三角形，每批处理 500 个面后让出主线程
-        const BATCH_SIZE = 500;
-        for (let batchStart = 0; batchStart < faces.length; batchStart += BATCH_SIZE) {
-          const batchEnd = Math.min(batchStart + BATCH_SIZE, faces.length);
-          for (let f = batchStart; f < batchEnd; f++) {
-            const tri = faces[f];
-            const local = buildLocalTriangle(vertices[tri[0]], vertices[tri[1]], vertices[tri[2]]);
-            if (!local) {
-              continue;
-            }
+        if (onProgress) onProgress(faces.length, faces.length);
 
-            const weight = Math.sqrt(local.area);
-            const row1 = [];
-            const row2 = [];
-            const known1 = { value: 0 };
-            const known2 = { value: 0 };
-
-            for (let corner = 0; corner < 3; corner++) {
-              const dx = local.grad[corner][0] * weight;
-              const dy = local.grad[corner][1] * weight;
-              const vid = tri[corner];
-              addCoefficient(row1, vid, 0, dx, known1);
-              addCoefficient(row1, vid, 1, -dy, known1);
-              addCoefficient(row2, vid, 0, dy, known2);
-              addCoefficient(row2, vid, 1, dx, known2);
-            }
-
-            accumulate(row1, -known1.value);
-            accumulate(row2, -known2.value);
-          }
-
-          // 报告进度
-          if (onProgress) {
-            onProgress(batchEnd, faces.length);
-          }
-
-          // 让出主线程，防止 UI 阻塞
-          if (batchEnd < faces.length) {
-            await new Promise(resolve => setTimeout(resolve, 0));
-          }
-        }
-
-        for (let i = 0; i < variableCount; i++) {
-          ata[i][i] += 1e-8;
-        }
-
-        // 求解线性系统
-        const solution = solveLinearSystem(ata, atb);
-        const uv = new Array(vertices.length);
-        for (let i = 0; i < vertices.length; i++) {
-          if (fixed.has(i)) {
-            uv[i] = fixed.get(i).slice();
-          } else {
-            const base = freeMap.get(i) * 2;
-            uv[i] = [solution[base], solution[base + 1]];
-          }
-        }
-
-        let minU = Infinity;
-        let minV = Infinity;
-        let maxU = -Infinity;
-        let maxV = -Infinity;
-        for (let i = 0; i < uv.length; i++) {
-          minU = Math.min(minU, uv[i][0]);
-          minV = Math.min(minV, uv[i][1]);
-          maxU = Math.max(maxU, uv[i][0]);
-          maxV = Math.max(maxV, uv[i][1]);
-        }
-
-        const spanU = Math.max(maxU - minU, 1e-8);
-        const spanV = Math.max(maxV - minV, 1e-8);
-        const scale = 1 / Math.max(spanU, spanV);
-        for (let i = 0; i < uv.length; i++) {
-          uv[i][0] = (uv[i][0] - minU) * scale;
-          uv[i][1] = (uv[i][1] - minV) * scale;
+        // 记录求解耗时 (可选, 用于调试)
+        const timeMs = result.time_ms || 0;
+        if (timeMs > 0) {
+          console.log(`WASM LSCM 求解耗时: ${timeMs.toFixed(2)} ms (${n} 顶点, ${faces.length} 三角形)`);
         }
 
         return { uv: uv, anchors: anchors };
@@ -1178,6 +1146,18 @@
       textureBtn.addEventListener("click", function () {
         setTextureDistortionEnabled(!textureEnabled);
       });
+      
+      // 页面启动时预加载 WASM 求解器
+      updateStartButtonState();
+      initWASMSolver().then(ready => {
+        updateStartButtonState();
+        if (!ready) {
+          setStatus("WASM 引擎加载失败，将无法执行 UV 展开", "#ff9d9d");
+        } else {
+          setStatus("WASM 引擎已就绪，请选择模型后点击「开始展开」", "#89f0b6");
+        }
+      });
+      
       loadModelPreview();
       animate();
     })();
