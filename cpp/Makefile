@@ -42,7 +42,7 @@
 
 # Eigen 库路径 (根据实际情况修改)
 # EIGEN_PATH := E:/Dev/libs/eigen-3.4.0
-EIGEN_PATH := D:\third_party\eigen-3.4.0
+EIGEN_PATH := ./eigen-3.4.0
 # 或者使用相对路径 (如果 Eigen 解压在同一父目录)
 # EIGEN_PATH := ../eigen
 
@@ -66,7 +66,6 @@ LDFLAGS := --bind \
            -s ALLOW_MEMORY_GROWTH=1 \
            -s TOTAL_MEMORY=256MB \
            -s WASM=1 \
-           -s EXPORTED_FUNCTIONS="['_solve_lscm', '_malloc', '_free']" \
            -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'getValue', 'setValue', 'allocate']"
 
 # ========== 构建目标 ==========

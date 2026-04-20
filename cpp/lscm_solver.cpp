@@ -202,7 +202,7 @@ emscripten::val solve_lscm(
     // solver.compute(ata);
     
     VecXd sol;
-    // std::cout << "XXXXX"<< std::endl;
+    std::cout << "Hello From Mac"<< std::endl;
     // if (solver.info() != Eigen::ComputationInfo::Success) {
     //     // 回退: 使用稠密求解
     //     std::cout << "Dense"<< std::endl;
