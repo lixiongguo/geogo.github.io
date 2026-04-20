@@ -17,15 +17,15 @@
 # 使用方法:
 #   Windows (PowerShell): .\Makefile
 #   或手动执行:
-#     em++ lscm_solver.cpp -o ../assets/wasm/lscm_solver.js \
-#         -O3 -std=c++17 \
-#         -IE:/path/to/eigen \
-#         --bind \
-#         -s MODULARIZE=1 \
-#         -s EXPORT_NAME="LCMSolver" \
-#         -s ALLOW_MEMORY_GROWTH=1 \
-#         -s TOTAL_MEMORY=256MB \
-#         -s WASM=1
+    # em++ lscm_solver.cpp -o ../assets/wasm/lscm_solver.js \
+    #     -O3 -std=c++17 \
+    #     -ID:\third_party\eigen-3.4.0 \
+    #     --bind \
+    #     -s MODULARIZE=1 \
+    #     -s EXPORT_NAME="LCMSolver" \
+    #     -s ALLOW_MEMORY_GROWTH=1 \
+    #     -s TOTAL_MEMORY=256MB \
+    #     -s WASM=1
 #
 #   Linux/macOS:
 #     em++ lscm_solver.cpp -o ../assets/wasm/lscm_solver.js \

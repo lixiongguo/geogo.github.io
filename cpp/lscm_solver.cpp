@@ -12,6 +12,7 @@
 #include <cmath>
 #include <chrono>
 #include <algorithm>
+#include <iostream>
 
 using SparseMat = Eigen::SparseMatrix<double>;
 using Trip = Eigen::Triplet<double>;
@@ -86,7 +87,7 @@ emscripten::val solve_lscm(
 ) {
     auto start_time = std::chrono::high_resolution_clock::now();
     
-    // 从 JS 复制数据
+    // // 从 JS 复制数据
     std::vector<double> positions = emscripten::vecFromJSArray<double>(positions_val);
     std::vector<int> faces = emscripten::vecFromJSArray<int>(faces_val);
     
@@ -196,21 +197,25 @@ emscripten::val solve_lscm(
     SparseMat ata(varCount, varCount);
     ata.setFromTriplets(triplets.begin(), triplets.end());
     ata.makeCompressed();
-    
     // 稀疏 Cholesky 分解求解
-    SpLDLT solver;
-    solver.compute(ata);
+    // SpLDLT solver;
+    // solver.compute(ata);
     
     VecXd sol;
-    if (solver.info() != Eigen::ComputationInfo::Success) {
-        // 回退: 使用稠密求解
-        Eigen::MatrixXd ataDense = Eigen::MatrixXd(ata);
-        sol = ataDense.colPivHouseholderQr().solve(rhs);
-    } else {
-        sol = solver.solve(rhs);
-    }
+    // std::cout << "XXXXX"<< std::endl;
+    // if (solver.info() != Eigen::ComputationInfo::Success) {
+    //     // 回退: 使用稠密求解
+    //     std::cout << "Dense"<< std::endl;
+    //     Eigen::MatrixXd ataDense = Eigen::MatrixXd(ata);
+    //     sol = ataDense.colPivHouseholderQr().solve(rhs);
+    // } else {
+    //     std::cout << "Cholesky"<< std::endl;
+    //     sol = solver.solve(rhs);
+    // }
+    Eigen::MatrixXd ataDense = Eigen::MatrixXd(ata);
+    sol = ataDense.colPivHouseholderQr().solve(rhs);
     
-    // 组装结果 UV
+    // // 组装结果 UV
     std::vector<double> uv(n * 2);
     for (int i = 0; i < n; i++) {
         if (fixed.find(i) != fixed.end()) {
@@ -243,7 +248,7 @@ emscripten::val solve_lscm(
     
     auto end_time = std::chrono::high_resolution_clock::now();
     double time_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
-    
+std::cout << "DEBUG: positions.size()=" << positions.size() << std::endl;
     // 返回 JS 对象
     emscripten::val result = emscripten::val::object();
     result.set("uv", emscripten::val::array(uv));

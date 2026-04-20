@@ -1,3 +1,10 @@
+# 编译
+.\emsdk activate latest
+em++ lscm_solver.cpp -o ../assets/wasm/lscm_solver.js -O3 -std=c++17 "-ID:/third_party/eigen-3.4.0" --bind -s MODULARIZE=1 -s EXPORT_NAME="LCMSolver" -s ALLOW_MEMORY_GROWTH=1 -s TOTAL_MEMORY=256MB -s WASM=1
+
+
+
+
 # LSCM Solver WASM 编译说明
 
 本文档说明如何将 C++ LSCM 求解器编译为 WebAssembly 模块。
