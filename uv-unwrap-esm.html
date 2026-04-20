@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UV展开 - LSCM（ESM）</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      overflow: hidden;
+      background: #070b14;
+      color: #d8def7;
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    .timing-display {
+      display: none;
+      padding: 12px 18px;
+      background: linear-gradient(90deg, rgba(16, 30, 61, 0.95), rgba(26, 46, 91, 0.95));
+      border-bottom: 2px solid rgba(106, 132, 255, 0.35);
+      text-align: center;
+    }
+    .timing-display.visible {
+      display: block;
+    }
+    .timing-display .timing-label {
+      font-size: 12px;
+      color: #8a9dd4;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    }
+    .timing-display .timing-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #ffd700;
+      text-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 0 0 40px rgba(255, 215, 0, 0.25);
+      font-family: "SF Mono", "Consolas", monospace;
+    }
+    .timing-display .timing-unit {
+      font-size: 16px;
+      font-weight: 400;
+      color: #c9a227;
+      margin-left: 4px;
+    }
+    .timing-display .timing-details {
+      font-size: 11px;
+      color: #6a7db5;
+      margin-top: 6px;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px;
+      background: rgba(9, 15, 28, 0.96);
+      border-bottom: 1px solid rgba(106, 132, 255, 0.18);
+    }
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .toolbar h1 {
+      margin: 0;
+      font-size: 20px;
+      color: #eef2ff;
+    }
+    .toolbar .desc {
+      color: #91a0c7;
+      font-size: 13px;
+    }
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    select, button {
+      border: 1px solid rgba(106, 132, 255, 0.25);
+      background: #121b31;
+      color: #eef2ff;
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-size: 14px;
+    }
+    button {
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    button:hover {
+      background: #172546;
+    }
+    .hidden-input {
+      display: none;
+    }
+    .drop-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(6, 11, 21, 0.78);
+      border: 2px dashed rgba(132, 175, 255, 0.55);
+      color: #dce7ff;
+      font-size: 24px;
+      letter-spacing: 1px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 20;
+    }
+    .drop-overlay.active {
+      opacity: 1;
+    }
+    .drop-overlay small {
+      display: block;
+      margin-top: 10px;
+      color: #9eb4df;
+      font-size: 14px;
+      text-align: center;
+    }
+    .status {
+      min-width: 240px;
+      color: #8cc4ff;
+      font-size: 13px;
+      text-align: right;
+    }
+    .main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      background: #11192b;
+      min-height: 0;
+    }
+    .panel {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      background: #0b1220;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(106, 132, 255, 0.16);
+      color: #c6d1f4;
+      font-size: 14px;
+    }
+    .panel-header span:last-child {
+      color: #8292bd;
+      font-size: 12px;
+    }
+    .canvas-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .footer-note {
+      padding: 10px 16px;
+      border-top: 1px solid rgba(106, 132, 255, 0.16);
+      color: #7e8db5;
+      font-size: 12px;
+    }
+    @media (max-width: 900px) {
+      .toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .status {
+        text-align: left;
+      }
+      .main {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="timing-display" id="timing-display">
+      <div class="timing-label">计算耗时</div>
+      <div class="timing-value"><span id="timing-ms">0</span><span class="timing-unit">ms</span></div>
+      <div class="timing-details" id="timing-details"></div>
+    </div>
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div>
+          <h1>UV展开 <small style="font-size:12px;color:#6a84c9;font-weight:400">ESM</small></h1>
+          <div class="desc">使用 LSCM 对现有 OBJ 模型做参数化展开</div>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <select id="model-select"></select>
+        <button id="upload-btn">上传OBJ</button>
+        <input id="obj-upload" class="hidden-input" type="file" accept=".obj,model/obj,text/plain">
+        <button id="reload-btn">开始展开</button>
+        <button id="texture-btn">纹理扭曲</button>
+        <div class="status" id="status-text">正在加载模型...</div>
+      </div>
+    </div>
+
+    <div class="main">
+      <section class="panel">
+        <div class="panel-header">
+          <span>3D 模型</span>
+          <span>拖拽旋转 / 滚轮缩放</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="model-canvas"></canvas>
+        </div>
+        <div class="footer-note">左侧显示原始三角网格与自动选择的约束点。</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <span>LSCM UV 网格</span>
+          <span>边界归一化到 0..1</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="uv-canvas"></canvas>
+        </div>
+        <div class="footer-note">右侧展示展开后的线框结果，便于直接观察参数化畸变。</div>
+      </section>
+    </div>
+  </div>
+  <div id="drop-overlay" class="drop-overlay">
+    <div>
+      拖拽 OBJ 文件到这里
+      <small>松开鼠标后立即开始解析与 LSCM 展开</small>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+    // ── 常量配置 ─────────────────────────────────────────────
+    const MODELS = {
+      bunnyhead:   { label: "Bunny Head",       file: "bunnyhead.obj" },
+      cathead:     { label: "Cat Head",         file: "cathead.obj" },
+      camelhead:   { label: "Camel Head",       file: "camelhead.obj" },
+      cow_head:    { label: "Cow Head",         file: "cow_head.obj" },
+      spot_cowhead:{ label: "Spot Cow Head",    file: "spot_cowhead.obj" },
+      nefertiti:   { label: "Nefertiti Face",   file: "Nefertiti_face.obj" },
+      beetle:      { label: "Beetle",           file: "beetle.obj" },
+      hand:        { label: "Hand",             file: "hand_1_i_f5000.obj" },
+      hencky:      { label: "Hencky",           file: "hencky_f20000.obj" },
+      balls:       { label: "Balls",            file: "Balls.obj" },
+    };
+    const MODEL_BASE_PATHS = ["assets/Models", "../assets/Models", "./assets/Models"];
+
+    // ── DOM 引用 ─────────────────────────────────────────────
+    const $ = (id) => document.getElementById(id);
+    const modelCanvas = $("model-canvas");
+    const uvCanvas     = $("uv-canvas");
+    const modelSelect  = $("model-select");
+    const uploadBtn    = $("upload-btn");
+    const objUpload    = $("obj-upload");
+    const reloadBtn    = $("reload-btn");
+    const textureBtn   = $("texture-btn");
+    const statusText   = $("status-text");
+    const dropOverlay  = $("drop-overlay");
+
+    // ── Three.js 核心对象 ────────────────────────────────────
+    const objLoader = new OBJLoader();
+
+    const modelRenderer = new THREE.WebGLRenderer({ canvas: modelCanvas, antialias: true, alpha: true });
+    const uvRenderer   = new THREE.WebGLRenderer({ canvas: uvCanvas,     antialias: true, alpha: true });
+    modelRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    uvRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const modelScene = new THREE.Scene();
+    const uvScene   = new THREE.Scene();
+    modelScene.background = new THREE.Color(0x08101d);
+    uvScene.background   = new THREE.Color(0x091120);
+
+    const modelCamera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
+    modelCamera.position.set(1.8, 1.5, 1.8);
+
+    const uvCamera = new THREE.OrthographicCamera(-1.15, 1.15, 1.15, -1.15, 0.1, 10);
+    uvCamera.position.set(0, 0, 2);
+
+    const controls = new OrbitControls(modelCamera, modelCanvas);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+
+    // 灯光
+    const ambient  = new THREE.AmbientLight(0xffffff, 0.8);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    dirLight.position.set(2, 3, 4);
+    modelScene.add(ambient, dirLight);
+
+    // ── 可变状态 ─────────────────────────────────────────────
+    let currentModelGroup  = null;
+    let currentPins         = null;
+    let currentUvLines      = null;
+    let currentUvPins       = null;
+    let busy                = false;
+    let customModelFile     = null;
+    let dragDepth           = 0;
+    let currentMeshData     = null;
+    let currentSourcePath   = "";
+    let currentUnwrapUv     = null;
+    let textureEnabled      = false;
+    let currentTexturedMesh = null;
+    let checkerTexture      = null;
+
+    // ── 工具函数 ─────────────────────────────────────────────
+
+    function setStatus(message, color) {
+      statusText.textContent = message;
+      statusText.style.color = color || "#8cc4ff";
+    }
+
+    function showTiming(ms, details) {
+      const display    = $("timing-display");
+      const msSpan     = $("timing-ms");
+      const detailsSpan = $("timing-details");
+      display.classList.add("visible");
+      msSpan.textContent = ms.toFixed(1);
+      detailsSpan.textContent = details || "";
+    }
+
+    function hideTiming() {
+      $("timing-display").classList.remove("visible");
+    }
+
+    function updateTimingProgress(current, total) {
+      $("timing-ms").textContent = `计算中 ${current}/${total}`;
+    }
+
+    function setBusy(nextBusy) {
+      busy = nextBusy;
+      reloadBtn.disabled  = nextBusy;
+      modelSelect.disabled = nextBusy;
+      uploadBtn.disabled   = nextBusy;
+      $("texture-btn").disabled = nextBusy;
+    }
+
+    function initModelOptions() {
+      const keys = Object.keys(MODELS);
+      modelSelect.innerHTML = "";
+      for (const key of keys) {
+        const option = document.createElement("option");
+        option.value = key;
+        option.textContent = MODELS[key].label;
+        modelSelect.appendChild(option);
+      }
+      if (keys.length > 0) {
+        modelSelect.value = keys[0];
+      }
+    }
+
+    function resize() {
+      const modelRect = modelCanvas.parentElement.getBoundingClientRect();
+      const uvRect    = uvCanvas.parentElement.getBoundingClientRect();
+
+      modelRenderer.setSize(modelRect.width, modelRect.height, false);
+      uvRenderer.setSize(uvRect.width, uvRect.height, false);
+
+      modelCamera.aspect = modelRect.width / Math.max(modelRect.height, 1);
+      modelCamera.updateProjectionMatrix();
+
+      const aspect = uvRect.width / Math.max(uvRect.height, 1);
+      const scale  = 1.15;
+      uvCamera.left   = -scale * aspect;
+      uvCamera.right  = scale * aspect;
+      uvCamera.top    = scale;
+      uvCamera.bottom = -scale;
+      uvCamera.updateProjectionMatrix();
+    }
+
+    function normalizeObject(root) {
+      const box   = new THREE.Box3().setFromObject(root);
+      const center = box.getCenter(new THREE.Vector3());
+      const size  = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z) || 1;
+      root.position.sub(center);
+      root.scale.setScalar(1 / maxDim);
+      root.updateMatrixWorld(true);
+    }
+
+    // ── 模型加载 ─────────────────────────────────────────────
+
+    function loadOBJ(url) {
+      return new Promise((resolve, reject) => {
+        objLoader.load(url, resolve, undefined, reject);
+      });
+    }
+
+    function getModelCandidateUrls(modelKey) {
+      const model = MODELS[modelKey];
+      if (!model) return [];
+
+      const urls  = [];
+      const seen  = new Set();
+      for (const base of MODEL_BASE_PATHS) {
+        const url = `${base}/${model.file}`;
+        if (!seen.has(url)) {
+          seen.add(url);
+          urls.push(url);
+        }
+      }
+      return urls;
+    }
+
+    async function loadBuiltinModel(modelKey) {
+      const candidateUrls = getModelCandidateUrls(modelKey);
+      let lastError = null;
+
+      for (const url of candidateUrls) {
+        try {
+          const root = await loadOBJ(url);
+          return { root, sourcePath: url };
+        } catch (error) {
+          lastError = error;
+        }
+      }
+
+      const detail = lastError?.message ?? String(lastError ?? "unknown");
+      throw new Error(
+        `内置模型加载失败，尝试路径: ${candidateUrls.join(" | ")}；最后错误: ${detail}`
+      );
+    }
+
+    function loadOBJFromFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const text = typeof reader.result === "string" ? reader.result : "";
+            resolve(objLoader.parse(text));
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(new Error("读取本地 OBJ 文件失败"));
+        reader.readAsText(file);
+      });
+    }
+
+    // ── 网格数据提取 ─────────────────────────────────────────
+
+    function collectMeshData(root) {
+      root.updateMatrixWorld(true);
+      const positions = [];
+      const faces     = [];
+      const vertexMap = new Map();
+      const temp      = new THREE.Vector3();
+
+      const getVertexIndex = (x, y, z) => {
+        const key = `${Math.round(x * 100000)}_${Math.round(y * 100000)}_${Math.round(z * 100000)}`;
+        if (!vertexMap.has(key)) {
+          vertexMap.set(key, positions.length);
+          positions.push([x, y, z]);
+        }
+        return vertexMap.get(key);
+      };
+
+      root.traverse((child) => {
+        if (!child.isMesh || !child.geometry?.attributes.position) return;
+
+        const geometry    = child.geometry.clone();
+        const positionAttr = geometry.attributes.position;
+        const localToGlobal = new Array(positionAttr.count);
+
+        for (let i = 0; i < positionAttr.count; i++) {
+          temp.fromBufferAttribute(positionAttr, i).applyMatrix4(child.matrixWorld);
+          localToGlobal[i] = getVertexIndex(temp.x, temp.y, temp.z);
+        }
+
+        if (geometry.index) {
+          const index = geometry.index.array;
+          for (let i = 0; i < index.length; i += 3) {
+            faces.push([localToGlobal[index[i]], localToGlobal[index[i + 1]], localToGlobal[index[i + 2]]]);
+          }
+        } else {
+          for (let i = 0; i < positionAttr.count; i += 3) {
+            faces.push([localToGlobal[i], localToGlobal[i + 1], localToGlobal[i + 2]]);
+          }
+        }
+      });
+
+      return { positions, faces };
+    }
+
+    // ── 锚点选择 ─────────────────────────────────────────────
+
+    function chooseAnchorPair(vertices) {
+      let bestA = 0, bestB = 1, bestDist2 = -1;
+      for (let i = 0; i < vertices.length; i++) {
+        for (let j = i + 1; j < vertices.length; j++) {
+          const dx = vertices[i][0] - vertices[j][0];
+          const dy = vertices[i][1] - vertices[j][1];
+          const dz = vertices[i][2] - vertices[j][2];
+          const dist2 = dx * dx + dy * dy + dz * dz;
+          if (dist2 > bestDist2) {
+            bestDist2 = dist2;
+            bestA = i;
+            bestB = j;
+          }
+        }
+      }
+      return [bestA, bestB];
+    }
+
+    // ── 局部三角形构建（LSCM 核心数学） ──────────────────────
+
+    function buildLocalTriangle(p0, p1, p2) {
+      const a  = new THREE.Vector3().fromArray(p0);
+      const b  = new THREE.Vector3().fromArray(p1);
+      const c  = new THREE.Vector3().fromArray(p2);
+      const e1 = new THREE.Vector3().subVectors(b, a);
+      const e2 = new THREE.Vector3().subVectors(c, a);
+      const area2 = new THREE.Vector3().crossVectors(e1, e2).length();
+
+      if (area2 < 1e-10) return null;
+
+      const xAxis  = e1.clone().normalize();
+      const normal = new THREE.Vector3().crossVectors(e1, e2).normalize();
+      const yAxis  = new THREE.Vector3().crossVectors(normal, xAxis).normalize();
+
+      const x0 = 0, y0 = 0;
+      const x1 = e1.length(), y1 = 0;
+      const x2 = e2.dot(xAxis), y2 = e2.dot(yAxis);
+
+      const signedArea2 = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);
+      if (Math.abs(signedArea2) < 1e-10) return null;
+
+      return {
+        area: Math.abs(signedArea2) * 0.5,
+        grad: [
+          [(y1 - y2) / signedArea2, (x2 - x1) / signedArea2],
+          [(y2 - y0) / signedArea2, (x0 - x2) / signedArea2],
+          [(y0 - y1) / signedArea2, (x1 - x0) / signedArea2],
+        ],
+      };
+    }
+
+    // ── 线性系统求解器（高斯消元） ──────────────────────────
+
+    function solveLinearSystem(matrix, vector) {
+      const n = matrix.length;
+      const a  = matrix.map(row => row.slice());
+      const b  = vector.slice();
+
+      // 前向消元
+      for (let col = 0; col < n; col++) {
+        let pivotRow = col;
+        let pivotAbs = Math.abs(a[col][col]);
+        for (let row = col + 1; row < n; row++) {
+          const candidate = Math.abs(a[row][col]);
+          if (candidate > pivotAbs) {
+            pivotAbs = candidate;
+            pivotRow = row;
+          }
+        }
+
+        if (pivotAbs < 1e-12) {
+          throw new Error("线性系统不可解，可能存在退化三角形或约束不足");
+        }
+
+        if (pivotRow !== col) {
+          [a[col], a[pivotRow]]     = [a[pivotRow], a[col]];
+          [b[col], b[pivotRow]]     = [b[pivotRow], b[col]];
+        }
+
+        const pivot = a[col][col];
+        for (let row = col + 1; row < n; row++) {
+          const factor = a[row][col] / pivot;
+          if (Math.abs(factor) < 1e-16) continue;
+          a[row][col] = 0;
+          for (let k = col + 1; k < n; k++) {
+            a[row][k] -= factor * a[col][k];
+          }
+          b[row] -= factor * b[col];
+        }
+      }
+
+      // 回代
+      const x = new Array(n).fill(0);
+      for (let row = n - 1; row >= 0; row--) {
+        let sum = b[row];
+        for (let col = row + 1; col < n; col++) {
+          sum -= a[row][col] * x[col];
+        }
+        const diag = a[row][row];
+        if (Math.abs(diag) < 1e-12) {
+          throw new Error("回代失败，矩阵奇异");
+        }
+        x[row] = sum / diag;
+      }
+      return x;
+    }
+
+    // ── 异步 LSCM 求解器 ────────────────────────────────────
+
+    async function solveLSCMAsync(meshData, onProgress) {
+      const { positions, faces } = meshData;
+      if (positions.length < 3 || faces.length < 1) {
+        throw new Error("模型顶点或三角形数量不足");
+      }
+
+      const anchors = chooseAnchorPair(positions);
+      const fixed   = new Map([
+        [anchors[0], [0, 0]],
+        [anchors[1], [1, 0]],
+      ]);
+
+      const freeMap   = new Map();
+      let freeCount   = 0;
+      for (let i = 0; i < positions.length; i++) {
+        if (!fixed.has(i)) {
+          freeMap.set(i, freeCount++);
+        }
+      }
+
+      const variableCount = freeCount * 2;
+      if (variableCount === 0) {
+        throw new Error("自由变量不足，无法求解");
+      }
+
+      const ata = Array.from({ length: variableCount }, () => new Array(variableCount).fill(0));
+      const atb = new Array(variableCount).fill(0);
+
+      const accumulate = (rowEntries, rhs) => {
+        for (const entryA of rowEntries) {
+          atb[entryA.index] += entryA.value * rhs;
+          for (const entryB of rowEntries) {
+            ata[entryA.index][entryB.index] += entryA.value * entryB.value;
+          }
+        }
+      };
+
+      const addCoefficient = (entries, vertexIndex, component, value, known) => {
+        if (fixed.has(vertexIndex)) {
+          known.value += value * fixed.get(vertexIndex)[component];
+          return;
+        }
+        const id = freeMap.get(vertexIndex) * 2 + component;
+        entries.push({ index: id, value });
+      };
+
+      // 分批处理三角形，每批 500 个面后让出主线程
+      const BATCH_SIZE = 500;
+      for (let batchStart = 0; batchStart < faces.length; batchStart += BATCH_SIZE) {
+        const batchEnd = Math.min(batchStart + BATCH_SIZE, faces.length);
+        for (let f = batchStart; f < batchEnd; f++) {
+          const tri  = faces[f];
+          const local = buildLocalTriangle(positions[tri[0]], positions[tri[1]], positions[tri[2]]);
+          if (!local) continue;
+
+          const weight  = Math.sqrt(local.area);
+          const row1    = [];
+          const row2    = [];
+          const known1  = { value: 0 };
+          const known2  = { value: 0 };
+
+          for (let corner = 0; corner < 3; corner++) {
+            const dx = local.grad[corner][0] * weight;
+            const dy = local.grad[corner][1] * weight;
+            const vid = tri[corner];
+            addCoefficient(row1, vid, 0, dx,  known1);
+            addCoefficient(row1, vid, 1, -dy, known1);
+            addCoefficient(row2, vid, 0, dy,  known2);
+            addCoefficient(row2, vid, 1, dx,  known2);
+          }
+
+          accumulate(row1, -known1.value);
+          accumulate(row2, -known2.value);
+        }
+
+        onProgress?.(batchEnd, faces.length);
+
+        // 让出主线程防止 UI 阻塞
+        if (batchEnd < faces.length) {
+          await new Promise((r) => setTimeout(r, 0));
+        }
+      }
+
+      // 正则化：对角线加微小值避免奇异
+      for (let i = 0; i < variableCount; i++) {
+        ata[i][i] += 1e-8;
+      }
+
+      // 求解
+      const solution = solveLinearSystem(ata, atb);
+      const uv       = new Array(positions.length);
+
+      for (let i = 0; i < positions.length; i++) {
+        if (fixed.has(i)) {
+          uv[i] = fixed.get(i).slice();
+        } else {
+          const base = freeMap.get(i) * 2;
+          uv[i] = [solution[base], solution[base + 1]];
+        }
+      }
+
+      // 归一化到 [0, 1]
+      let minU = Infinity, minV = Infinity;
+      let maxU = -Infinity, maxV = -Infinity;
+      for (const u of uv) {
+        minU = Math.min(minU, u[0]); minV = Math.min(minV, u[1]);
+        maxU = Math.max(maxU, u[0]); maxV = Math.max(maxV, u[1]);
+      }
+
+      const spanU = Math.max(maxU - minU, 1e-8);
+      const spanV = Math.max(maxV - minV, 1e-8);
+      const scale = 1 / Math.max(spanU, spanV);
+
+      for (const u of uv) {
+        u[0] = (u[0] - minU) * scale;
+        u[1] = (u[1] - minV) * scale;
+      }
+
+      return { uv, anchors };
+    }
+
+    // ── 3D 视觉构建 ─────────────────────────────────────────
+
+    function buildModelGroup(root, anchors, positions) {
+      const group = new THREE.Group();
+      const meshMaterial = new THREE.MeshStandardMaterial({
+        color: 0x7fa7ff,
+        roughness: 0.55,
+        metalness: 0.05,
+        flatShading: false,
+        side: THREE.DoubleSide,
+      });
+
+      root.traverse((child) => {
+        if (!child.isMesh || !child.geometry) return;
+
+        const mesh = new THREE.Mesh(child.geometry, meshMaterial);
+        mesh.matrixAutoUpdate = false;
+        mesh.matrix.copy(child.matrixWorld);
+        group.add(mesh);
+
+        const wire = new THREE.LineSegments(
+          new THREE.WireframeGeometry(child.geometry),
+          new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent: true, opacity: 0.65 })
+        );
+        wire.matrixAutoUpdate = false;
+        wire.matrix.copy(child.matrixWorld);
+        group.add(wire);
+      });
+
+      // 锚点标记
+      const pinPositions = [];
+      for (const idx of anchors) {
+        const p = positions[idx];
+        pinPositions.push(p[0], p[1], p[2]);
+      }
+
+      const points = new THREE.Points(
+        new THREE.BufferGeometry()
+          .setAttribute("position", new THREE.Float32BufferAttribute(pinPositions, 3)),
+        new THREE.PointsMaterial({ color: 0xffb74d, size: 0.05, sizeAttenuation: true })
+      );
+      group.add(points);
+
+      return { group, pinPoints: points };
+    }
+
+    // ── UV 视觉构建 ──────────────────────────────────────────
+
+    function buildUvMesh(uv, faces, anchors) {
+      const edgeSet  = new Set();
+      const segments = [];
+
+      const toPlane = (p) => [(p[0] - 0.5) * 1.8, (p[1] - 0.5) * 1.8, 0];
+
+      const addEdge = (a, b) => {
+        const key = a < b ? `${a}_${b}` : `${b}_${a}`;
+        if (edgeSet.has(key)) return;
+        edgeSet.add(key);
+        const pa = toPlane(uv[a]);
+        const pb = toPlane(uv[b]);
+        segments.push(pa[0], pa[1], pa[2], pb[0], pb[1], pb[2]);
+      };
+
+      for (const face of faces) {
+        addEdge(face[0], face[1]);
+        addEdge(face[1], face[2]);
+        addEdge(face[2], face[0]);
+      }
+
+      const lineGeom = new THREE.BufferGeometry();
+      lineGeom.setAttribute("position", new THREE.Float32BufferAttribute(segments, 3));
+      const lines = new THREE.LineSegments(
+        lineGeom,
+        new THREE.LineBasicMaterial({ color: 0x86b2ff, transparent: true, opacity: 0.95 })
+      );
+
+      // UV 锚点
+      const pinPositions = [];
+      for (const idx of anchors) {
+        const p = toPlane(uv[idx]);
+        pinPositions.push(p[0], p[1], 0.01);
+      }
+      const pins = new THREE.Points(
+        new THREE.BufferGeometry()
+          .setAttribute("position", new THREE.Float32BufferAttribute(pinPositions, 3)),
+        new THREE.PointsMaterial({ color: 0xffa94d, size: 0.06, sizeAttenuation: false })
+      );
+
+      return { lines, pins };
+    }
+
+    // ── 纹理相关 ─────────────────────────────────────────────
+
+    function createCheckerTexture() {
+      const texSize  = 512;
+      const cells    = 16;
+      const cellSize = texSize / cells;
+      const canvas   = document.createElement("canvas");
+      canvas.width  = texSize;
+      canvas.height = texSize;
+      const ctx = canvas.getContext("2d");
+
+      for (let y = 0; y < cells; y++) {
+        for (let x = 0; x < cells; x++) {
+          ctx.fillStyle = ((x + y) & 1) === 0 ? "#1f2f54" : "#e9f0ff";
+          ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+        }
+      }
+
+      ctx.strokeStyle = "rgba(120,150,210,0.4)";
+      for (let i = 0; i <= cells; i++) {
+        const p = i * cellSize;
+        ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, texSize); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(texSize, p); ctx.stroke();
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS  = THREE.RepeatWrapping;
+      texture.wrapT  = THREE.RepeatWrapping;
+      texture.repeat.set(1, 1);
+      texture.needsUpdate = true;
+      return texture;
+    }
+
+    function buildTexturedMesh(meshData, uv) {
+      const positions = [];
+      for (const p of meshData.positions) {
+        positions.push(p[0], p[1], p[2]);
+      }
+      const indices = [];
+      for (const f of meshData.faces) {
+        indices.push(f[0], f[1], f[2]);
+      }
+      const uvFlat = [];
+      for (const u of uv) {
+        uvFlat.push(u[0], u[1]);
+      }
+
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+      geom.setAttribute("uv",       new THREE.Float32BufferAttribute(uvFlat, 2));
+      geom.setIndex(indices);
+      geom.computeVertexNormals();
+
+      if (!checkerTexture) {
+        checkerTexture = createCheckerTexture();
+      }
+
+      const material = new THREE.MeshStandardMaterial({
+        map: checkerTexture,
+        metalness: 0.05,
+        roughness: 0.75,
+        side: THREE.DoubleSide,
+      });
+
+      return new THREE.Mesh(geom, material);
+    }
+
+    function clearTexturedMesh() {
+      if (currentTexturedMesh?.parent) {
+        currentTexturedMesh.parent.remove(currentTexturedMesh);
+      }
+      currentTexturedMesh = null;
+    }
+
+    function setTextureDistortionEnabled(enabled) {
+      if (enabled && (!currentMeshData || !currentUnwrapUv)) {
+        setStatus("请先点击「开始展开」生成 UV，再开启纹理扭曲", "#ffd38a");
+        return;
+      }
+
+      textureEnabled = enabled;
+      if (textureEnabled) {
+        clearTexturedMesh();
+        currentTexturedMesh = buildTexturedMesh(currentMeshData, currentUnwrapUv);
+        modelScene.add(currentTexturedMesh);
+        if (currentModelGroup) currentModelGroup.visible = false;
+        textureBtn.textContent = "关闭纹理扭曲";
+        setStatus("已开启纹理扭曲（棋盘格贴图）", "#89f0b6");
+      } else {
+        clearTexturedMesh();
+        if (currentModelGroup) currentModelGroup.visible = true;
+        textureBtn.textContent = "纹理扭曲";
+        setStatus("已关闭纹理扭曲", "#8cc4ff");
+      }
+    }
+
+    // ── 场景辅助 ─────────────────────────────────────────────
+
+    function rebuildUvGrid() {
+      const grid         = new THREE.Group();
+      const gridMaterial = new THREE.LineBasicMaterial({ color: 0x1a2947, transparent: true, opacity: 0.85 });
+      const coords       = [];
+      for (let i = -10; i <= 10; i++) {
+        const t = i / 10;
+        coords.push(-1, t, 0, 1, t, 0);
+        coords.push(t, -1, 0, t, 1, 0);
+      }
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute("position", new THREE.Float32BufferAttribute(coords, 3));
+      grid.add(new THREE.LineSegments(geom, gridMaterial));
+      uvScene.add(grid);
+    }
+
+    function clearGroup(scene, objectRef) {
+      if (objectRef?.parent) {
+        objectRef.parent.remove(objectRef);
+      }
+    }
+
+    function setDropOverlay(active) {
+      dropOverlay.classList.toggle("active", active);
+    }
+
+    // ── 文件处理 ──────────────────────────────────────────────
+
+    function applyCustomFile(file) {
+      if (!file) return;
+      if (!/\.obj$/i.test(file.name)) {
+        setStatus("仅支持上传 .obj 文件", "#ff9d9d");
+        return;
+      }
+      customModelFile = file;
+      setStatus(`已选择本地文件: ${file.name}，正在加载 3D 预览...`, "#ffd38a");
+      loadModelPreview();
+    }
+
+    async function resolveSourceObject() {
+      if (customModelFile) {
+        const root = await loadOBJFromFile(customModelFile);
+        return { root, sourcePath: customModelFile.name };
+      }
+      return loadBuiltinModel(modelSelect.value);
+    }
+
+    function getCurrentSourceLabel() {
+      return customModelFile
+        ? customModelFile.name
+        : MODELS[modelSelect.value]?.label ?? "未知";
+    }
+
+    // ── 主流程 ────────────────────────────────────────────────
+
+    async function loadModelPreview() {
+      if (busy) return;
+
+      setBusy(true);
+      setStatus(`正在加载 OBJ 模型: ${getCurrentSourceLabel()} ...`);
+
+      try {
+        const resolved = await resolveSourceObject();
+        normalizeObject(resolved.root);
+
+        clearGroup(modelScene, currentModelGroup);
+        clearGroup(uvScene, currentUvLines);
+        clearGroup(uvScene, currentUvPins);
+        clearTexturedMesh();
+        currentUvLines = null;
+        currentUvPins = null;
+        currentUnwrapUv = null;
+        textureEnabled = false;
+        textureBtn.textContent = "纹理扭曲";
+
+        setStatus("正在提取三角网格...");
+        const meshData = collectMeshData(resolved.root);
+        const anchors  = chooseAnchorPair(meshData.positions);
+
+        const modelVisual = buildModelGroup(resolved.root, anchors, meshData.positions);
+        currentModelGroup = modelVisual.group;
+        currentPins       = modelVisual.pinPoints;
+        currentModelGroup.visible = true;
+        modelScene.add(currentModelGroup);
+        controls.target.set(0, 0, 0);
+        controls.update();
+
+        currentMeshData   = meshData;
+        currentSourcePath = resolved.sourcePath;
+
+        setStatus(
+          `3D 预览已加载: ${getCurrentSourceLabel()} / ${meshData.positions.length} 顶点 / ${meshData.faces.length} 三角形，点击「开始展开」执行 UV`,
+          "#89f0b6"
+        );
+      } catch (error) {
+        console.error(error);
+        setStatus(`模型加载失败: ${error.message}`, "#ff9d9d");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function updateModel() {
+      if (busy) return;
+
+      if (!currentMeshData) {
+        await loadModelPreview();
+        if (!currentMeshData) return;
+      }
+
+      setBusy(true);
+      setStatus("正在执行 LSCM 求解...");
+      hideTiming();
+
+      try {
+        const startTime = performance.now();
+
+        const unwrapResult = await solveLSCMAsync(currentMeshData, (progress, total) => {
+          updateTimingProgress(progress, total);
+        });
+
+        const elapsedMs = performance.now() - startTime;
+        currentUnwrapUv = unwrapResult.uv;
+
+        clearGroup(uvScene, currentUvLines);
+        clearGroup(uvScene, currentUvPins);
+        const uvVisual = buildUvMesh(unwrapResult.uv, currentMeshData.faces, unwrapResult.anchors);
+        currentUvLines = uvVisual.lines;
+        currentUvPins = uvVisual.pins;
+        uvScene.add(currentUvLines, currentUvPins);
+
+        const details = `${getCurrentSourceLabel()} / ${currentMeshData.positions.length} 顶点 / ${currentMeshData.faces.length} 三角形`;
+        showTiming(elapsedMs, details);
+        setStatus("UV 展开", "#89f0b6");
+
+        if (textureEnabled) setTextureDistortionEnabled(true);
+      } catch (error) {
+        console.error(error);
+        hideTiming();
+        setStatus(`展开失败: ${error.message}`, "#ff9d9d");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    // ── 渲染循环 ─────────────────────────────────────────────
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      modelRenderer.render(modelScene, modelCamera);
+      uvRenderer.render(uvScene, uvCamera);
+    }
+
+    // ── 事件绑定与初始化 ─────────────────────────────────────
+
+    function init() {
+      rebuildUvGrid();
+      initModelOptions();
+      resize();
+      setStatus("正在加载默认模型 3D 预览...", "#8cc4ff");
+
+      window.addEventListener("resize", resize);
+
+      modelSelect.addEventListener("change", () => {
+        customModelFile = null;
+        objUpload.value  = "";
+        currentMeshData = null;
+        currentSourcePath = "";
+        setStatus(`已选择模型: ${getCurrentSourceLabel()}，正在加载 3D 预览...`, "#8cc4ff");
+        loadModelPreview();
+      });
+
+      uploadBtn.addEventListener("click", () => { objUpload.click(); });
+
+      objUpload.addEventListener("change", () => {
+        const file = objUpload.files?.[0];
+        applyCustomFile(file);
+        objUpload.value = "";
+      });
+
+      window.addEventListener("dragenter", (event) => {
+        event.preventDefault();
+        dragDepth++;
+        setDropOverlay(true);
+      });
+
+      window.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        event.dataTransfer && (event.dataTransfer.dropEffect = "copy");
+        setDropOverlay(true);
+      });
+
+      window.addEventListener("dragleave", (event) => {
+        event.preventDefault();
+        dragDepth = Math.max(0, dragDepth - 1);
+        if (dragDepth === 0) setDropOverlay(false);
+      });
+
+      window.addEventListener("drop", (event) => {
+        event.preventDefault();
+        dragDepth = 0;
+        setDropOverlay(false);
+        const files = event.dataTransfer?.files;
+        if (files?.length) applyCustomFile(files[0]);
+      });
+
+      reloadBtn.addEventListener("click", updateModel);
+
+      $("texture-btn").addEventListener("click", () => {
+        setTextureDistortionEnabled(!textureEnabled);
+      });
+
+      loadModelPreview();
+      animate();
+    }
+
+    init();
+  </script>
+</body>
+</html>
