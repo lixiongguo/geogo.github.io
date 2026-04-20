@@ -138,6 +138,12 @@
     <label>输入三角网格</label>
     <select id="model-select"></select>
     <button id="upload-btn">上传OBJ</button>
+    <label>参数化方式
+      <select id="solver-select">
+        <option value="lscm">LSCM</option>
+        <option value="arap">ARAP</option>
+      </select>
+    </label>
     <input id="obj-upload" class="hidden-input" type="file" accept=".obj,model/obj,text/plain">
     <label>网格密度
       <input id="density" type="range" min="8" max="34" step="1" value="18">
@@ -188,6 +194,7 @@
       const MODEL_BASE_PATHS = ["assets/Models", "../assets/Models", "./assets/Models"];
 
       const modelSelect = document.getElementById("model-select");
+      const solverSelect = document.getElementById("solver-select");
       const uploadBtn = document.getElementById("upload-btn");
       const objUpload = document.getElementById("obj-upload");
       const densityInput = document.getElementById("density");
@@ -234,6 +241,7 @@
       function setBusy(nextBusy) {
         busy = nextBusy;
         modelSelect.disabled = nextBusy;
+        solverSelect.disabled = nextBusy;
         uploadBtn.disabled = nextBusy;
         solveBtn.disabled = nextBusy;
         showQuadBtn.disabled = nextBusy;
@@ -582,6 +590,167 @@
         return uv;
       }
 
+      function solveARAP(meshData) {
+        const vertices = meshData.positions;
+        const faces = meshData.faces;
+        if (vertices.length < 3 || faces.length < 1) {
+          throw new Error("三角网格数据不足");
+        }
+
+        const anchors = chooseAnchorPair(vertices);
+        const fixed = new Map();
+        fixed.set(anchors[0], [0, 0]);
+        fixed.set(anchors[1], [1, 0]);
+
+        let uv = solveLSCM(meshData);
+        if (!uv || uv.length !== vertices.length) {
+          throw new Error("ARAP 初始参数化失败");
+        }
+
+        const triangles = [];
+        for (let f = 0; f < faces.length; f++) {
+          const tri = faces[f];
+          const p0 = new THREE.Vector3().fromArray(vertices[tri[0]]);
+          const p1 = new THREE.Vector3().fromArray(vertices[tri[1]]);
+          const p2 = new THREE.Vector3().fromArray(vertices[tri[2]]);
+          const e1 = new THREE.Vector3().subVectors(p1, p0);
+          const e2 = new THREE.Vector3().subVectors(p2, p0);
+          const area2 = new THREE.Vector3().crossVectors(e1, e2).length();
+          if (area2 < 1e-10) {
+            continue;
+          }
+          const xAxis = e1.clone().normalize();
+          const normal = new THREE.Vector3().crossVectors(e1, e2).normalize();
+          const yAxis = new THREE.Vector3().crossVectors(normal, xAxis).normalize();
+          const x1 = e1.length();
+          const x2 = e2.dot(xAxis);
+          const y2 = e2.dot(yAxis);
+          triangles.push({
+            ids: tri,
+            area: Math.abs(x1 * y2) * 0.5,
+            coords: [
+              [0, 0],
+              [x1, 0],
+              [x2, y2]
+            ]
+          });
+        }
+
+        const freeMap = new Map();
+        let freeCount = 0;
+        for (let i = 0; i < vertices.length; i++) {
+          if (!fixed.has(i)) {
+            freeMap.set(i, freeCount++);
+          }
+        }
+
+        const varCount = freeCount * 2;
+        if (varCount < 2) {
+          return uv;
+        }
+
+        for (let iter = 0; iter < 6; iter++) {
+          const A = Array.from({ length: varCount }, () => new Array(varCount).fill(0));
+          const bu = new Array(varCount).fill(0);
+          const bv = new Array(varCount).fill(0);
+
+          for (const tri of triangles) {
+            const ids = tri.ids;
+            const localCoords = tri.coords;
+            const centroid = [
+              (localCoords[0][0] + localCoords[1][0] + localCoords[2][0]) / 3,
+              (localCoords[0][1] + localCoords[1][1] + localCoords[2][1]) / 3
+            ];
+            const uvs = ids.map((vid) => fixed.has(vid) ? fixed.get(vid) : uv[vid]);
+            const uc = [
+              (uvs[0][0] + uvs[1][0] + uvs[2][0]) / 3,
+              (uvs[0][1] + uvs[1][1] + uvs[2][1]) / 3
+            ];
+
+            let s00 = 0, s01 = 0, s10 = 0, s11 = 0;
+            for (let k = 0; k < 3; k++) {
+              const dx = localCoords[k][0] - centroid[0];
+              const dy = localCoords[k][1] - centroid[1];
+              const ux = uvs[k][0] - uc[0];
+              const uy = uvs[k][1] - uc[1];
+              s00 += ux * dx;
+              s01 += ux * dy;
+              s10 += uy * dx;
+              s11 += uy * dy;
+            }
+
+            const alpha = s00 + s11;
+            const beta = s10 - s01;
+            const denom = Math.hypot(alpha, beta);
+            const r00 = denom > 1e-12 ? alpha / denom : 1;
+            const r01 = denom > 1e-12 ? -beta / denom : 0;
+            const r10 = denom > 1e-12 ? beta / denom : 0;
+            const r11 = denom > 1e-12 ? alpha / denom : 1;
+            const weight = tri.area;
+
+            for (let i = 0; i < 3; i++) {
+              const vidI = ids[i];
+              if (!freeMap.has(vidI)) {
+                continue;
+              }
+              const row = freeMap.get(vidI) * 2;
+              const xi = localCoords[i][0] - centroid[0];
+              const yi = localCoords[i][1] - centroid[1];
+              const targetU = r00 * xi + r01 * yi;
+              const targetV = r10 * xi + r11 * yi;
+              let buValue = weight * targetU;
+              let bvValue = weight * targetV;
+
+              for (let j = 0; j < 3; j++) {
+                const vidJ = ids[j];
+                const coeff = (i === j ? 2 / 3 : -1 / 3) * weight;
+                if (freeMap.has(vidJ)) {
+                  const col = freeMap.get(vidJ) * 2;
+                  A[row][col] += coeff;
+                  A[row + 1][col + 1] += coeff;
+                } else if (fixed.has(vidJ)) {
+                  const uvFixed = fixed.get(vidJ);
+                  buValue -= coeff * uvFixed[0];
+                  bvValue -= coeff * uvFixed[1];
+                }
+              }
+
+              bu[row] += buValue;
+              bv[row] += bvValue;
+            }
+          }
+
+          const solU = solveLinearSystem(A, bu);
+          const solV = solveLinearSystem(A, bv);
+
+          for (let i = 0; i < vertices.length; i++) {
+            if (fixed.has(i)) {
+              uv[i] = fixed.get(i).slice();
+            } else {
+              const base = freeMap.get(i) * 2;
+              uv[i] = [solU[base], solV[base]];
+            }
+          }
+        }
+
+        let minU = Infinity, minV = Infinity, maxU = -Infinity, maxV = -Infinity;
+        for (let i = 0; i < uv.length; i++) {
+          minU = Math.min(minU, uv[i][0]);
+          minV = Math.min(minV, uv[i][1]);
+          maxU = Math.max(maxU, uv[i][0]);
+          maxV = Math.max(maxV, uv[i][1]);
+        }
+        const spanU2 = Math.max(maxU - minU, 1e-8);
+        const spanV2 = Math.max(maxV - minV, 1e-8);
+        const scale2 = 1 / Math.max(spanU2, spanV2);
+        for (let i = 0; i < uv.length; i++) {
+          uv[i][0] = (uv[i][0] - minU) * scale2;
+          uv[i][1] = (uv[i][1] - minV) * scale2;
+        }
+
+        return uv;
+      }
+
       function clearGroup(scene, obj) {
         if (obj && obj.parent) {
           obj.parent.remove(obj);
@@ -773,9 +942,12 @@
           return;
         }
         setBusy(true);
-        setStatus("正在执行 MIQ 参数化并提取四边形网格...", "#9ecbff");
+        const solverType = solverSelect.value;
+        setStatus(`正在执行 ${solverType === "arap" ? "ARAP" : "LSCM"} 参数化并提取四边形网格...`, "#9ecbff");
         try {
-          const uv = solveLSCM(currentMeshData);
+          const uv = solverType === "arap"
+            ? solveARAP(currentMeshData)
+            : solveLSCM(currentMeshData);
           currentUv = uv;
           quadVisible = false;
           showQuadBtn.textContent = "显示四边形网格化效果";
