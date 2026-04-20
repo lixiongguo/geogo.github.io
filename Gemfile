@@ -1,13 +1,16 @@
 source "https://rubygems.org"
-# gem "json", "~> 2.7.0"
-# Jekyll 本身
-gem "jekyll", "~> 4.0"
 
-# Jekyll 插件（根据需要添加）
-gem "jekyll-feed"
-gem "jekyll-seo-tag"
-gem "jekyll-paginate-v2"
+# Jekyll 本身 (兼容 Ruby 2.6)
+gem "jekyll", "~> 4.2.0"
 
-# 其他插件或工具
-gem "bundler"
+# Jekyll 插件
+gem "jekyll-feed", "~> 0.15"
+gem "jekyll-seo-tag", "~> 2.7"
+gem "jekyll-paginate-v2", "~> 3.0"
 
+# 依赖项版本锁定 (兼容 Ruby 2.6)
+gem "ffi", "~> 1.15.0"
+gem "sassc", "~> 2.4.0"
+
+# Bundler
+gem "bundler", "~> 2.4.0"
