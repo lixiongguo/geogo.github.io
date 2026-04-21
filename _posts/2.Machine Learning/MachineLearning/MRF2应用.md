@@ -1,3 +1,7 @@
+### MRF用于三维重建的贴图生成 《Let There Be Color》
+
+### MRF用于三维重建《Class Specific 3D Object Shape Priors Using Surface Normals》
+
 输入：rgb图像，深度图。
 
 输出mesh

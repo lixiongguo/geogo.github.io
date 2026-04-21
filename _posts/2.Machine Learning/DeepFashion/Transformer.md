@@ -1,5 +1,0 @@
-Attention
-
-SAGAN
-
-Transformer
