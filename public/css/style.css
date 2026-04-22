@@ -238,6 +238,15 @@ code {
 	vertical-align: middle;
 }
 
+.gallery-subtitle {
+	display: block;
+	font-size: 0.85em;
+	color: #707090;
+	text-align: center;
+	margin-top: 4px;
+	letter-spacing: 1px;
+}
+
 .xiaomeng-logo {
 	width: 13px;
 	height: 13px;
