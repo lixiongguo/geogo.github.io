@@ -14,12 +14,6 @@
 	</div>
 	<a href="/about" class="signature-link">About me</a>
 </div>
-<div class="gallery-card">
-		<a href="/gallery/" class="nav-item gallery-link">
-	  <img src="/assets/platte_logo.png" alt="" class="gallery-logo">
-	  Gallery
-	</a>
-</div>
 <div class="sidebar-item sidebar-nav">
   	<ul class="nav">
 			<li class="nav-title">文章分类</li>
@@ -41,6 +35,7 @@
 		  {% when 'OT' %}{% assign cat_display = '最优传输' %}
 		  {% when 'Math' %}{% assign cat_display = '数学理论' %}
 		  {% when 'DL&ML' %}{% assign cat_display = '深度学习与机器学习' %}
+		  {% when 'Humanities' %}{% assign cat_display = '阅读与生活' %}
 		  {% else %}{% assign cat_display = cat_name %}
     {% endcase %}
 	    <li>
@@ -77,6 +72,18 @@
 	</ul>
 </div>
 <div class="sidebar-item sidebar-nav">
+  	<ul class="nav">
+			<li class="nav-title">阅读与生活</li>
+			<li>
+	    	<a class="nav-item algo-link-with-icon" href="{{ root_url }}/{{ site.category_dir }}#Humanities">
+				<span class="algo-mini-icon" aria-hidden="true"></span>
+				<span class="name">阅读与生活</span>
+				<span class="cat-count">({{ site.categories.Humanities.size }})</span>
+	    	</a>
+ 		</li>
+	  </nav>
+</div>
+<div class="sidebar-item sidebar-nav">
 	<div class="project-card">
 		<a class="nav-item tsumego-link" href="/tsumego">
 			<img src="/assets/image/go_logo.jpeg" alt="围棋" class="go-logo">
@@ -86,6 +93,24 @@
 			</div>
 		</a>
 	</div>
+</div>
+<div class="gallery-card xiaomeng-card">
+	<a href="/xiaomeng.html" class="nav-item gallery-link">
+		<img src="/assets/image/eko_neko.png" alt="晓梦" class="xiaomeng-logo">
+		晓梦
+	</a>
+</div>
+<div class="gallery-card">
+		<a href="/gallery/" class="nav-item gallery-link">
+  	<img src="/assets/platte_logo.png" alt="" class="gallery-logo">
+  	Gallery
+	</a>
+</div>
+<div class="gallery-card bookshelf-card">
+	<a href="/bookshelf.html" class="nav-item gallery-link">
+		<span class="bookshelf-icon">📚</span>
+		书架
+	</a>
 </div>
 <!-- <div class="sidebar-item sidebar-nav">
 	<img src="/assets/image/eko_neko.png" alt="neko_eko" class="neko_eko">
