@@ -730,7 +730,22 @@
           console.log(`WASM LSCM 求解耗时: ${timeMs.toFixed(2)} ms (${n} 顶点, ${faces.length} 三角形)`);
         }
 
-        return { uv: uv, anchors: anchors };
+        let flippedFaceCount = 0;
+        const areaEps = 1e-12;
+        for (let i = 0; i < faces.length; i++) {
+          const tri = faces[i];
+          const uv0 = uv[tri[0]];
+          const uv1 = uv[tri[1]];
+          const uv2 = uv[tri[2]];
+          const signedArea2 =
+            (uv1[0] - uv0[0]) * (uv2[1] - uv0[1]) -
+            (uv2[0] - uv0[0]) * (uv1[1] - uv0[1]);
+          if (signedArea2 < -areaEps) {
+            flippedFaceCount += 1;
+          }
+        }
+
+        return { uv: uv, anchors: anchors, flippedFaceCount: flippedFaceCount };
       }
 
       function buildModelGroup(root, anchors, positions) {
@@ -1066,11 +1081,15 @@
           uvScene.add(currentUvPins);
 
           // 显示醒目的耗时信息
-          const details = getCurrentSourceLabel() + " / " + currentMeshData.positions.length + " 顶点 / " + currentMeshData.faces.length + " 三角形";
+          const details =
+            getCurrentSourceLabel() +
+            " / " + currentMeshData.positions.length + " 顶点" +
+            " / " + currentMeshData.faces.length + " 三角形" +
+            " / 翻转面: " + unwrapResult.flippedFaceCount;
           showTiming(elapsedMs, details);
 
           setStatus(
-            "UV 展开完成",
+            "UV 展开完成，翻转面 " + unwrapResult.flippedFaceCount + " 个",
             "#89f0b6"
           );
           if (textureEnabled) {

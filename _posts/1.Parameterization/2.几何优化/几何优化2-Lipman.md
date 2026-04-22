@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "曲面参数化4-Lipman算法"
+title: "曲面展开4-Lipman算法"
 category: Parameterization
 ---
 

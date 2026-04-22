@@ -4,7 +4,7 @@
   </header>
 
   <div class="post-content">
-      {%- assign posts_list = site.posts reversed -%}
+      {%- assign posts_list = site.posts -%}
       {%- if paginator and paginator.posts -%}
         {%- assign posts_list = paginator.posts -%}
       {%- endif -%}

@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "计算几何3-Voronoi 图与 Delaunay 三角剖分"
+title: "计算几何-Voronoi与Delaunay"
 date: 2026-03-07
 categories: Computational_Geometry
 ---
