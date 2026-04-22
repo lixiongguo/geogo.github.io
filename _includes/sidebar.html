@@ -41,6 +41,7 @@
 		  {% when 'OT' %}{% assign cat_display = '最优传输' %}
 		  {% when 'Math' %}{% assign cat_display = '数学理论' %}
 		  {% when 'DL&ML' %}{% assign cat_display = '深度学习与机器学习' %}
+		  {% when 'Humanities' %}{% assign cat_display = '人文社科' %}
 		  {% else %}{% assign cat_display = cat_name %}
     {% endcase %}
 	    <li>
@@ -75,6 +76,18 @@
 			<li><a class="nav-item algo-link-with-icon" href="/miq-quad" target="_blank" rel="noopener"><span class="algo-mini-icon" aria-hidden="true"></span>四边形网格化</a></li>
 	  </nav>
 	</ul>
+</div>
+<div class="sidebar-item sidebar-nav">
+  	<ul class="nav">
+			<li class="nav-title">人文社科</li>
+			<li>
+	    	<a class="nav-item algo-link-with-icon" href="{{ root_url }}/{{ site.category_dir }}#Humanities">
+				<span class="algo-mini-icon" aria-hidden="true"></span>
+				<span class="name">人文社科</span>
+				<span class="cat-count">({{ site.categories.Humanities.size }})</span>
+	    	</a>
+ 		</li>
+	  </nav>
 </div>
 <div class="sidebar-item sidebar-nav">
 	<div class="project-card">
