@@ -455,6 +455,12 @@ a.nav-item:hover { color: #777; }
 .badge::before { content: "("; }
 .badge::after { content: ")"; }
 
+.cat-count {
+	font-size: 85%;
+	color: #888;
+	margin-left: 4px;
+}
+
 .post-link {
 	margin-left: 10px;
 	font-size: 125%;
