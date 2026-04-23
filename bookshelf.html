@@ -125,12 +125,6 @@ title: 书架
 .book-color-3 { background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #5d6d7e 100%); }
 .book-color-4 { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e8ba3 100%); }
 .book-color-5 { background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); }
-.book-color-6 { background: linear-gradient(135deg, #232526 0%, #414345 50%, #6b6b6b 100%); }
-.book-color-7 { background: linear-gradient(135deg, #2b5876 0%, #4e4376 50%, #6b5b95 100%); }
-.book-color-8 { background: linear-gradient(135deg, #141e30 0%, #243b55 50%, #3a6073 100%); }
-.book-color-9 { background: linear-gradient(135deg, #3d2c2e 0%, #5d4e52 50%, #8b7d82 100%); }
-.book-color-10 { background: linear-gradient(135deg, #16222a 0%, #3a6073 50%, #5c8a9e 100%); }
-.book-color-11 { background: linear-gradient(135deg, #1f1c2c 0%, #928dab 50%, #a8a4b8 100%); }
 
 /* 装饰图案 */
 .pattern-circles {
@@ -146,16 +140,6 @@ title: 书架
 .pattern-dots {
   background-image: radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px);
   background-size: 15px 15px;
-}
-
-.pattern-waves {
-  background-image: repeating-radial-gradient(circle at 50% 50%, transparent 0, transparent 15px, rgba(255,255,255,0.03) 16px, rgba(255,255,255,0.03) 30px);
-}
-
-.pattern-grid {
-  background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-  background-size: 20px 20px;
 }
 
 /* 响应式 */
@@ -181,39 +165,14 @@ title: 书架
 </div>
 
 <script>
-// 书籍数据 - 你可以在这里添加更多书籍
+// 书籍数据 - 根据书架.md生成
 const books = [
-  { title: "百年孤独", author: "加西亚·马尔克斯" },
-  { title: "1984", author: "乔治·奥威尔" },
-  { title: "三体", author: "刘慈欣" },
-  { title: "人类简史", author: "尤瓦尔·赫拉利" },
-  { title: "小王子", author: "圣埃克苏佩里" },
-  { title: "活着", author: "余华" },
-  { title: "挪威的森林", author: "村上春树" },
-  { title: "围城", author: "钱钟书" },
-  { title: "红楼梦", author: "曹雪芹" },
-  { title: "追风筝的人", author: "卡勒德·胡赛尼" },
-  { title: "白夜行", author: "东野圭吾" },
-  { title: "局外人", author: "加缪" },
-  { title: "月亮与六便士", author: "毛姆" },
-  { title: "霍乱时期的爱情", author: "马尔克斯" },
-  { title: "平凡的世界", author: "路遥" },
-  { title: "苏菲的世界", author: "乔斯坦·贾德" },
-  { title: "瓦尔登湖", author: "梭罗" },
-  { title: "老人与海", author: "海明威" },
-  { title: "麦田里的守望者", author: "塞林格" },
-  { title: "不能承受的生命之轻", author: "米兰·昆德拉" },
-  { title: "傲慢与偏见", author: "简·奥斯汀" },
-  { title: "简爱", author: "夏洛蒂·勃朗特" },
-  { title: "飘", author: "玛格丽特·米切尔" },
-  { title: "杀死一只知更鸟", author: "哈珀·李" }
+  { title: "一个陌生女人的来信", author: "茨威格" },
+  { title: "人类群星闪耀时", author: "茨威格" },
+  { title: "象棋的故事", author: "茨威格" }
 ];
 
-const patterns = ['pattern-circles', 'pattern-lines', 'pattern-dots', 'pattern-waves', 'pattern-grid'];
-
-function getRandomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+const patterns = ['pattern-circles', 'pattern-lines', 'pattern-dots'];
 
 function shuffleArray(array) {
   const newArray = [...array];
@@ -225,7 +184,7 @@ function shuffleArray(array) {
 }
 
 function createBookElement(book, index) {
-  const colorClass = `book-color-${index % 12}`;
+  const colorClass = `book-color-${index % 6}`;
   const patternClass = patterns[index % patterns.length];
   
   const bookDiv = document.createElement('div');
@@ -234,7 +193,6 @@ function createBookElement(book, index) {
     <div class="book-cover ${colorClass} ${patternClass}">
       <div class="book-pattern"></div>
       <div class="book-title">${book.title}</div>
-      <div class="book-author">${book.author}</div>
     </div>
     <div class="book-name">${book.title}</div>
   `;
@@ -252,7 +210,6 @@ function initBookshelf() {
   });
 }
 
-// 页面加载完成后初始化
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initBookshelf);
 } else {
