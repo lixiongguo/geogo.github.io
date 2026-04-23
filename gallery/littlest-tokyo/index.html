@@ -5,11 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Littlest Tokyo</title>
 
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/three@v0.157.0/build/three.min.js"></script>
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/three@v0.157.0/examples/js/controls/OrbitControls.js"></script>
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/three@v0.157.0/examples/js/loaders/GLTFLoader.js"></script>
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/three@v0.157.0/examples/js/loaders/DRACOLoader.js"></script>
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/three@v0.157.0/examples/js/libs/draco/gltf/draco_decoder.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/"
+    }
+  }
+  </script>
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -46,7 +49,12 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
 (function () {
   const canvas = document.createElement('canvas');
   document.body.appendChild(canvas);
@@ -64,7 +72,7 @@
   const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
   camera.position.set(6, 5, 8);
 
-  const controls = new THREE.OrbitControls(camera, canvas);
+  const controls = new OrbitControls(camera, canvas);
   controls.target.set(0, 1, 0);
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
@@ -106,10 +114,10 @@
   scene.fog = new THREE.Fog(0x0a0a1a, 15, 30);
 
   // Load GLB
-  const dracoLoader = new THREE.DRACOLoader();
-  dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@v0.157.0/examples/js/libs/draco/gltf/');
+  const dracoLoader = new DRACOLoader();
+  dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/libs/draco/gltf/');
 
-  const loader = new THREE.GLTFLoader();
+  const loader = new GLTFLoader();
   loader.setDRACOLoader(dracoLoader);
 
   loader.load('/assets/LittlestTokyo.glb', function (gltf) {
