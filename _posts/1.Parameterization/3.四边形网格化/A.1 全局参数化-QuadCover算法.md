@@ -1,3 +1,9 @@
+
+
+
+有了方向场之后，需要解决它的多值性和不可积性。  
+这时可以走 `QuadCover` 这条路：先用 matching 构造 covering space，再把 cross field 提升为 covering field，随后通过 Hodge 分解与势函数恢复得到局部可积、全局无缝的参数化。
+
 思考：
 
 为什么要引入branch-cover?
