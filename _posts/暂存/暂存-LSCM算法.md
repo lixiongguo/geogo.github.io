@@ -1,4 +1,4 @@
-{% raw %}
+
 共形映射是什么
 
 如图将一个三维人脸曲面映射到平面圆盘上。我们在人脸曲面任意画两条相交曲线，这两条曲面上的曲线被映射到平面上的两条曲线，空间曲线的交点被映成平面曲线的交点，在交点处，空间曲线的夹角等于平面曲线的夹角。这两条空间曲线任意选取，其夹角都被映射完美保持。
@@ -40,11 +40,11 @@ $$
 
 
 那么对于每个三角形$T_i$可以通过如下方法定义一个能量来衡量其不满足共形性的程度
-{% raw %}
+
 $$
 C(T_i) = {||{{\partial U}/{\partial x}}+i{{\partial U}/{\partial y}}||}^2 A_{T_j}=\frac {1} {4A_T}{|(W_{j1},W_{j2},W_{j3})(U_{j1},U_{j2},U_{j3})|}^2
 $$
-{% endraw %}
+
 将所有三角形能量进行累加$E_{lscm} = \Sigma_{i=1}^{n} C(T_i)$，可以认为是关于复数$U=(U_1,U_2,...,U_n)^T$的二次型$E_{lscm} = C(U=(U_1,U_2,...,U_n)^T)=U^*CU = ||MU||^2$
 
 $$
@@ -90,4 +90,3 @@ $$
 **参考文献**
 
 [1] B. Lévy, S. Petitjean, N. Ray, and J. Maillot, "Least Squares Conformal Maps for Automatic Texture Atlas Generation," *ACM Trans. Graph.*, vol. 21, no. 3, pp. 362–371, Jul. 2002, doi: 10.1145/566654.566590.
-{% endraw %}
