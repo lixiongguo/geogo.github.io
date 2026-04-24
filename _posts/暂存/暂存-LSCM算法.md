@@ -41,9 +41,11 @@ $$
 
 那么对于每个三角形$T_i$可以通过如下方法定义一个能量来衡量其不满足共形性的程度
 
+{% raw %}
 $$
 C(T_i) = {||{{\partial U}/{\partial x}}+i{{\partial U}/{\partial y}}||}^2 A_{T_j}=\frac {1} {4A_T}{|(W_{j1},W_{j2},W_{j3})(U_{j1},U_{j2},U_{j3})|}^2
 $$
+{% endraw %}
 
 将所有三角形能量进行累加$E_{lscm} = \Sigma_{i=1}^{n} C(T_i)$，可以认为是关于复数$U=(U_1,U_2,...,U_n)^T$的二次型$E_{lscm} = C(U=(U_1,U_2,...,U_n)^T)=U^*CU = ||MU||^2$
 
