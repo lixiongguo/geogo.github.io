@@ -1,3 +1,9 @@
+---
+layout: post
+title: "四边形网格化-全局参数化QuadCover算法"
+category: QuadRemeshing
+---
+
 **分支覆盖(branch cover)**
 
 ![image-20251218151727881](..\..\..\imgs/image-20251218151727881.png)

@@ -1,3 +1,10 @@
+---
+layout: post
+title: "四边形网格化-向量场设计TrivialConnection"
+category: QuadRemeshing
+---
+
+
 ## 平凡联络与向量场
 
 平凡联络：对每条环路的和乐都是零，可以证明，平凡联络确保了平行移动的路径无关性
