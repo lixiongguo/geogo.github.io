@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>计算几何-游戏中的导航</title>
+</head>
+<body>
+  <header style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+    <h1 style="margin:0;font-size:24px;color:#333;">计算几何-游戏中的导航</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;">2015年07月13日 #Computational_Geometry</p>
+  </header>
+  <article><div style="font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:16px;line-height:1.8;color:#333333;"><p><img src="https://latex.codecogs.com/svg.image?\small%20G" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20H" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20H" alt="formula" /> 之后，搜索会更倾向于逼近目标，而不是向四周盲目扩散，因此通常更高效。</p>
+
+<h3 id="23-启发因子的选择">2.3 启发因子的选择</h3>
+
+<p>常见启发函数有两种：</p>
+
+<ul>
+  <li><strong>欧几里得距离</strong>：适合连续空间</li>
+  <li><strong>曼哈顿距离</strong>：适合规则网格，如战棋类游戏</li>
+</ul>
+
+<p>在连续空间中，最常用的是欧几里得距离。为了节约计算量，工程上常直接使用距离平方。</p>
+
+<blockquote>
+  <p><strong>重点</strong>：<br />
+单一目标搜索优先用 <strong>A*</strong>；<br />
+如果要从一类目标中找最近实例，则更适合使用 <strong>Dijkstra</strong>。</p>
+</blockquote>
+
+<hr />
+
+<h2 id="3-导航图的构造">3. 导航图的构造</h2>
+
+<p>为了使用图搜索算法，必须先把游戏地图转换为图结构。常见方法有两类。</p>
+
+<h3 id="31-基于单元的导航图">3.1 基于单元的导航图</h3>
+
+<p>把地图均匀划分为网格，每个格子对应一个节点，相邻格子之间建立连边。</p>
+
+<p>优点：</p>
+
+<ul>
+  <li>信息细致</li>
+  <li>容易表达地形和阻挡属性</li>
+</ul>
+
+<p>缺点：</p>
+
+<ul>
+  <li>图规模增长很快</li>
+  <li>节点数和边数都很大</li>
+  <li>大地图和多 AI 同时搜索时，时间与空间开销都很高</li>
+</ul>
+
+<h3 id="32-基于可视点的导航图">3.2 基于可视点的导航图</h3>
+
+<p>通过人工安置关键节点，并在彼此可见的节点之间建立连边，构造导航图。</p>
+
+<p>优点：</p>
+
+<ul>
+  <li>图规模较小</li>
+  <li>易于嵌入”有意义的位置”，如掩体、伏击点、狙击点</li>
+</ul>
+
+<p>缺点：</p>
+
+<ul>
+  <li>强依赖人工布点</li>
+  <li>需要地图设计者持续维护和调整</li>
+</ul>
+
+<hr />
+
+<h2 id="4-游戏中的寻路模块">4. 游戏中的寻路模块</h2>
+
+<p>寻路是 AI 系统的基础模块，许多行为逻辑都会依赖它。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251015172149041.png" alt="image-20251015172149041" /></p>
+
+<p>在这个项目中，寻路模块主要由两部分组成：</p>
+
+<ol>
+  <li>导航图构建</li>
+  <li>图搜索算法</li>
+</ol>
+
+<h3 id="41-算法选型">4.1 算法选型</h3>
+
+<p>根据目标类型不同，选择不同算法：</p>
+
+<ul>
+  <li>
+    <p><strong>单一目标</strong>：使用 A*<br />
+因为 A* 能借助启发函数更有针对性地逼近目标。</p>
+  </li>
+  <li>
+    <p><strong>目标是一类物品</strong>（如药品、武器）：使用 Dijkstra<br />
+因为它能构造最短路径树，从而找到最近的实例。</p>
+  </li>
+</ul>
+
+<h3 id="42-导航图选型">4.2 导航图选型</h3>
+
+<p>本项目采用 <strong>基于可视点的导航图</strong>，主要是因为：</p>
+
+<ul>
+  <li>场景复杂，需要在图中布置多个有语义的关键位置</li>
+  <li>地图规模较大，若使用网格图会占用过多资源</li>
+  <li>在移动端平台上，网格导航图的代价通常过高</li>
+</ul>
+
+<p>因此，导航节点主要由策划设计，美术参与整体导航图制作。</p>
+
+<h3 id="43-a-启发函数设计">4.3 A* 启发函数设计</h3>
+
+<p>本游戏使用 <strong>欧几里得距离</strong> 作为 A* 的启发因子。<br />
+由于地图空间是连续的，为了节约资源，实际实现中使用的是距离平方。</p>
+
+<hr />
+
+<h2 id="5-工程实现细节">5. 工程实现细节</h2>
+
+<h3 id="51-索引优先队列">5.1 索引优先队列</h3>
+
+<p>A* 和 Dijkstra 都依赖优先队列。</p>
+
+<p>如果直接把”当前累计开销”写入图节点，会有两个问题：</p>
+
+<ul>
+  <li>会破坏原有图结构</li>
+  <li>多个搜索同时运行时，节点数据会互相干扰</li>
+</ul>
+
+<p>因此更合适的方式是使用 <strong>索引优先队列</strong>：</p>
+
+<ul>
+  <li>队列中存放节点索引</li>
+  <li>节点对应的代价保存在外部数组中</li>
+  <li>出队时返回索引，再访问实际节点</li>
+</ul>
+
+<p>这样既不需要修改图结构，也更适合多搜索任务并存。</p>
+
+<h3 id="52-时间片规划">5.2 时间片规划</h3>
+
+<p>为降低 CPU 峰值开销，可以把一次完整搜索拆成多个时间步骤，分散到多个更新帧中执行。</p>
+
+<p>这类似操作系统中的”时间片轮转”：</p>
+
+<ul>
+  <li>每一帧给所有活跃搜索分配固定预算</li>
+  <li>每个搜索只执行若干个搜索周期</li>
+  <li>搜索完成或失败后再通知对应 AI</li>
+</ul>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251015172427914.png" alt="image-20251015172427914" /></p>
+
+<p>一次搜索周期通常包括：</p>
+
+<ol>
+  <li>从优先队列中取出下一个节点</li>
+  <li>将该节点加入最短路径树</li>
+  <li>检查它是否为目标节点</li>
+  <li>若不是，则检查其邻接节点并进行边放松</li>
+</ol>
+
+<p>把整次搜索拆成多个搜索周期后，就能把寻路任务均匀摊到多帧中执行。</p>
+
+<h3 id="53-分层路径寻找">5.3 分层路径寻找</h3>
+
+<p>另一种降低 CPU 开销的方式是 <strong>分层寻路</strong>。</p>
+
+<p>基本思想是先在粗层级上找大致路径，再逐步细化。例如：</p>
+
+<ul>
+  <li>先在省级范围搜索</li>
+  <li>再缩小到市级</li>
+  <li>再缩小到县级</li>
+  <li>最后在局部区域进行精细寻路</li>
+</ul>
+
+<p>这种方法特别适合大世界或超大场景。</p>
+
+<hr />
+
+<h2 id="6-funnel-算法详解">6. Funnel 算法详解</h2>
+
+<p>参考：<a href="https://medium.com/@reza.teshnizi/the-funnel-algorithm-explained-visually-41e374172d2d">The Funnel Algorithm Explained</a></p>
+
+<p>在实际游戏项目里，A* 或 Dijkstra 往往先给出的是一条”经过哪些节点 / 哪些三角形”的路径，但这条路径通常还不够平滑。特别是在 <strong>NavMesh</strong> 上，A* 找到的常常是一串三角形通道，此时还需要进一步把通道中的折线路径”拉直”，这就是 <strong>Funnel 算法</strong> 的作用。</p>
+
+<h3 id="61-funnel-解决什么问题">6.1 Funnel 解决什么问题</h3>
+
+<p>Funnel 算法是计算几何里一个非常经典的最短路径算法。它讨论的不是”任意两点最短路”，而是一个更细的问题：</p>
+
+<blockquote>
+  <p>已知一条从 <code class="language-plaintext highlighter-rouge">A</code> 到 <code class="language-plaintext highlighter-rouge">B</code> 的可行路径 <code class="language-plaintext highlighter-rouge">p</code>，如何求一条与它<strong>绕障方式相同</strong>、但长度最短的路径？</p>
+</blockquote>
+
+<p>这里”绕障方式相同”就是<strong>同伦（homotopy）</strong>。</p>
+
+<h3 id="62-什么叫同伦">6.2 什么叫”同伦”</h3>
+
+<p>可以把一条路径想成一根绳子，两端钉在起点和终点上：</p>
+
+<ul>
+  <li>你可以在平面上拖动它</li>
+  <li>但不能把绳子抬起来</li>
+  <li>也不能穿过障碍物</li>
+</ul>
+
+<p>如果一条路径可以这样连续变形成另一条路径，那么它们就是同伦的。</p>
+
+<p>所以 Funnel 算法的目标不是全局最短，而是：<strong>在固定同伦类中，把路径”拉紧”。</strong></p>
+
+<p>这和机器人运动规划、导航网格 shortest path、mesh 上的 corridor shortest path 都是同一类问题。</p>
+
+<h3 id="63-为什么最短路径一定是折线">6.3 为什么最短路径一定是折线</h3>
+
+<p>在二维带多边形障碍的环境里，固定同伦类下的最短路径一定是若干条线段拼起来的折线。</p>
+
+<p>这个结论非常直观：</p>
+
+<ul>
+  <li>如果路径中某一段是弯的</li>
+  <li>那么把它拉直一定更短</li>
+  <li>真正阻止继续拉直的，是障碍物边界</li>
+</ul>
+
+<p>所以最终得到的路径，一定在一些关键拐点处贴着障碍物”折一下”，其余部分都是直线。</p>
+
+<h3 id="64-先把环境变成三角形通道">6.4 先把环境变成”三角形通道”</h3>
+
+<p>Funnel 算法通常建立在<strong>三角化</strong>基础上。做法是：</p>
+
+<ol>
+  <li>先把整个可行区域三角化。</li>
+  <li>找出原始路径 <code class="language-plaintext highlighter-rouge">p</code> 穿过了哪些三角形。</li>
+  <li>这些三角形连起来，就形成一条”通道（channel / corridor）”。</li>
+</ol>
+
+<p>之后问题就从”整个环境里找路”变成：<strong>在这条固定通道里，找从 <code class="language-plaintext highlighter-rouge">A</code> 到 <code class="language-plaintext highlighter-rouge">B</code> 的最短折线。</strong></p>
+
+<p>因为同伦类已经由这条通道固定住了。</p>
+
+<h3 id="65-漏斗funnel到底是什么">6.5 漏斗（funnel）到底是什么</h3>
+
+<p>漏斗是算法里维护的核心结构。它由三部分组成：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">tail</code>：左右边界重合的公共部分</li>
+  <li><code class="language-plaintext highlighter-rouge">left</code>：漏斗左边界</li>
+  <li><code class="language-plaintext highlighter-rouge">right</code>：漏斗右边界</li>
+</ul>
+
+<p>其中 <code class="language-plaintext highlighter-rouge">tail</code> 的最后一个点叫 <strong>apex</strong>，也就是漏斗尖端。</p>
+
+<p>可以这样理解：</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">tail</code> 是已经确定属于最短路径的那一段</li>
+  <li><code class="language-plaintext highlighter-rouge">left</code> 和 <code class="language-plaintext highlighter-rouge">right</code> 是当前通道对最短路径的左右约束</li>
+  <li>漏斗包住的区域，就是”最短路径接下来可能经过的区域”</li>
+</ul>
+
+<p>初始化非常简单：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">tail</span> <span class="o">=</span> <span class="p">[</span><span class="n">A</span><span class="p">]</span>
+<span class="n">left</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">right</span> <span class="o">=</span> <span class="p">[]</span>
+</code></pre></div></div>
+
+<h3 id="66-沿着原路径扫描通道">6.6 沿着原路径扫描通道</h3>
+
+<p>接下来沿着原路径 <code class="language-plaintext highlighter-rouge">p</code> 前进，每当路径穿过一条三角形边，就会遇到一个新的”门户（portal）”。每个 portal 都有两个端点：</p>
+
+<ul>
+  <li>一个在当前方向下位于左侧</li>
+  <li>一个位于右侧</li>
+</ul>
+
+<p>我们把它们分别拿来更新 <code class="language-plaintext highlighter-rouge">left</code> 和 <code class="language-plaintext highlighter-rouge">right</code>。</p>
+
+<p>本质上就是：<strong>每向前走一步，就用新的通道边继续收紧”最短路径可能存在的区域”。</strong></p>
+
+<h3 id="67-更新漏斗时会发生什么">6.7 更新漏斗时会发生什么</h3>
+
+<h4 id="情况-1新点让边界更紧">情况 1：新点让边界更紧</h4>
+
+<p>如果新出现的点比当前边界更靠内，那么旧边界就不再是最紧约束，需要被替换。也就是：</p>
+
+<ul>
+  <li>原来的边界太”松”</li>
+  <li>新点提供了更紧的包围</li>
+  <li>于是把旧边界末端改成新点</li>
+</ul>
+
+<p>这相当于漏斗口被进一步收缩。</p>
+
+<h4 id="情况-2新点没有更紧但必须扩展边界">情况 2：新点没有更紧，但必须扩展边界</h4>
+
+<p>有时候新点不会替换原边界，而是把边界继续往前延长。比如：</p>
+
+<ul>
+  <li>当前左边界已经有一个折点</li>
+  <li>新点没有把前面的边界压缩掉</li>
+  <li>但通道继续往前走，左侧边界链必须延伸</li>
+</ul>
+
+<p>这时直接把它追加到对应边界即可：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">left</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">new_point</span><span class="p">)</span>
+<span class="c1"># 或
+</span><span class="n">right</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">new_point</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h4 id="情况-3一侧边界穿过了另一侧apex-前进最关键">情况 3：一侧边界穿过了另一侧，apex 前进（最关键）</h4>
+
+<p>这是 Funnel 算法最核心的地方。如果某个新点不仅比当前右边界更靠左，甚至已经越过了左边界的一部分，那么说明：</p>
+
+<ul>
+  <li>漏斗口已经在某处”夹闭”</li>
+  <li>那个交汇点之前的公共部分已经确定属于最短路径</li>
+  <li>需要把这部分并入 <code class="language-plaintext highlighter-rouge">tail</code></li>
+</ul>
+
+<p>也就是说，<strong>最短路径新增了一个拐点</strong>。这时会发生三件事：</p>
+
+<ol>
+  <li><code class="language-plaintext highlighter-rouge">tail</code> 增长</li>
+  <li><code class="language-plaintext highlighter-rouge">apex</code> 前进到新的尖点</li>
+  <li>左右边界以这个新 apex 重新开始组织</li>
+</ol>
+
+<p>这一步就是”橡皮筋真正卡到障碍物上”的地方。</p>
+
+<h3 id="68-为什么-tail-一定属于最短路径">6.8 为什么 <code class="language-plaintext highlighter-rouge">tail</code> 一定属于最短路径</h3>
+
+<p>因为 <code class="language-plaintext highlighter-rouge">tail</code> 是左右边界重合的部分。换句话说：</p>
+
+<ul>
+  <li>漏斗两侧在这段路径上没有任何自由度</li>
+  <li>无论你怎么走，只要还留在同一通道里，都必须经过它</li>
+</ul>
+
+<p>所以 <code class="language-plaintext highlighter-rouge">tail</code> 是已经被确定下来的最短路径前缀。这也是为什么算法把 <code class="language-plaintext highlighter-rouge">tail</code> 和左右边界分开存储会更清楚。</p>
+
+<h3 id="69-漏斗建完后如何真正得到最短路">6.9 漏斗建完后，如何真正得到最短路</h3>
+
+<p>当整个通道都扫描完以后，漏斗就完整了。剩下的事情反而最简单：</p>
+
+<ol>
+  <li>把 <code class="language-plaintext highlighter-rouge">tail</code> 放进结果路径。</li>
+  <li>从当前 <code class="language-plaintext highlighter-rouge">apex</code> 直接连一条线到终点 <code class="language-plaintext highlighter-rouge">B</code>。</li>
+  <li>如果这条线没有穿出漏斗，说明可以直接到终点。</li>
+  <li>如果穿出了某一侧边界，就把那一侧对应的转折点加入路径。</li>
+  <li>把那个转折点当作新的 apex，继续朝终点尝试。</li>
+</ol>
+
+<p>直到能直接连到 <code class="language-plaintext highlighter-rouge">B</code> 为止。所以最终的最短路径就是：</p>
+
+<ul>
+  <li>一段已经确定的 <code class="language-plaintext highlighter-rouge">tail</code></li>
+  <li>加上若干个被漏斗逼出来的拐点</li>
+  <li>最后接终点</li>
+</ul>
+
+<h3 id="610-直观理解绳子与走廊">6.10 直观理解：绳子与走廊</h3>
+
+<p>可以把通道想成一条狭长走廊，把路径想成一根带张力的绳子：</p>
+
+<ul>
+  <li>左边界和右边界是走廊墙面</li>
+  <li><code class="language-plaintext highlighter-rouge">apex</code> 是绳子当前被拉到最紧的位置</li>
+  <li>每往前遇到一个 portal，就像走廊形状发生一次变化</li>
+  <li>如果墙面逼得越来越紧，绳子就会在某个障碍顶点处”挂住”</li>
+</ul>
+
+<p>那个”挂住”的点，就是新产生的最短路径折点。</p>
+
+<p>所以 Funnel 算法其实就是：<strong>一边向前读通道，一边维护”绳子被拉紧后会挂在哪”。</strong></p>
+
+<h3 id="611-最简伪代码">6.11 最简伪代码</h3>
+
+<p>下面给一个非常简化的思路版伪代码：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">tail</span> <span class="o">=</span> <span class="p">[</span><span class="n">start</span><span class="p">]</span>
+<span class="n">left</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">right</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">portal</span> <span class="ow">in</span> <span class="n">portals</span><span class="p">:</span>
+    <span class="n">l</span><span class="p">,</span> <span class="n">r</span> <span class="o">=</span> <span class="n">portal</span><span class="p">.</span><span class="n">left</span><span class="p">,</span> <span class="n">portal</span><span class="p">.</span><span class="n">right</span>
+
+    <span class="nf">update_left_boundary</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
+    <span class="nf">update_right_boundary</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nf">boundaries_overlap</span><span class="p">():</span>
+        <span class="nf">move_common_part_to_tail</span><span class="p">()</span>
+        <span class="nf">reset_apex</span><span class="p">()</span>
+
+<span class="n">path</span> <span class="o">=</span> <span class="n">tail</span><span class="p">.</span><span class="nf">copy</span><span class="p">()</span>
+
+<span class="k">while</span> <span class="ow">not</span> <span class="nf">visible</span><span class="p">(</span><span class="n">path</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">goal</span><span class="p">,</span> <span class="n">funnel</span><span class="p">):</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="nf">next_blocking_corner</span><span class="p">()</span>
+    <span class="n">path</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="n">path</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">goal</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>这里最难的不是框架，而是：</p>
+
+<ul>
+  <li>如何判断”更紧”</li>
+  <li>如何判断边界交叉</li>
+  <li>以及更新后如何维护 <code class="language-plaintext highlighter-rouge">tail/left/right</code></li>
+</ul>
+
+<p>这些本质上都是二维方向测试（orientation test）和边界链裁剪问题。</p>
+
+<h3 id="612-算法评价">6.12 算法评价</h3>
+
+<h4 id="优点">优点</h4>
+
+<ul>
+  <li>几何意义非常直观</li>
+  <li>在导航网格上特别常用</li>
+  <li>固定 corridor 后效率高</li>
+  <li>结果就是实际最短折线，而不是近似折线</li>
+</ul>
+
+<h4 id="局限">局限</h4>
+
+<ul>
+  <li>依赖已有 corridor / triangulation</li>
+  <li>一般情况会遇到 U-turn、重复点、退化 portal 等边界情况</li>
+  <li>更完整的版本通常会使用<strong>双端队列</strong>来维护 funnel，而不是简单的 <code class="language-plaintext highlighter-rouge">tail + left + right</code> 三数组</li>
+</ul>
+
+<h3 id="613-与-navmesh-的完整关系">6.13 与 NavMesh 的完整关系</h3>
+
+<p>在游戏 AI 和机器人规划里，一个典型流程是：</p>
+
+<ol>
+  <li>在 NavMesh 上先用 A* 找到一串三角形</li>
+  <li>这串三角形形成 corridor</li>
+  <li>再用 Funnel 算法把 corridor 中心线”拉直”</li>
+  <li>输出一条平滑的最短折线路径</li>
+</ol>
+
+<p>因此可以理解为：</p>
+
+<ul>
+  <li><strong>A*</strong> 决定”走哪条通道”</li>
+  <li><strong>Funnel</strong> 决定”在通道内怎么走得最短”</li>
+</ul>
+
+<p>这也是为什么 Funnel 算法经常和 NavMesh 一起出现。</p>
+
+<blockquote>
+  <p><strong>重点</strong>：
+在现代游戏导航中，真正可用的路径通常不是 “A* 结束时的输出”，而是
+<strong>A* 给出通道 + Funnel 做路径拉直</strong> 的组合结果。</p>
+</blockquote>
+
+<p>如果只记一句话：</p>
+
+<blockquote>
+  <p><strong>Funnel 算法就是在固定通道中，不断收紧左右边界，直到把路径”拉直”为同伦类中的最短折线。</strong></p>
+</blockquote>
+
+<p>它可以看成：</p>
+<ul>
+  <li>一种 <strong>corridor shortest path</strong> 方法</li>
+  <li>一种 <strong>固定同伦类最短路</strong> 方法</li>
+  <li>也是 NavMesh 路径后处理最常见的几何算法之一</li>
+</ul>
+
+<hr />
+
+<h2 id="7-总结">7. 总结</h2>
+
+<p>游戏导航可以概括为一句话：</p>
+
+<blockquote>
+  <p><strong>先把地图变成图，再在图上高效搜索，最后在几何层面对路径做平滑和拉直。</strong></p>
+</blockquote>
+
+<p>其中最关键的设计点包括：</p>
+
+<ul>
+  <li>单目标优先使用 A*</li>
+  <li>多目标最近实例问题可使用 Dijkstra</li>
+  <li>连续空间通常采用欧几里得启发</li>
+  <li>大场景下导航图设计往往比搜索算法本身更关键</li>
+  <li>NavMesh 场景中常需要配合 Funnel 算法做路径后处理</li>
+  <li>工程实现中要重点考虑优先队列、时间片和分层寻路</li>
+</ul>
+
+</div></article>
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;color:#999;font-size:12px;">
+    <p>本文由 Jekyll WechatGenerator 自动生成</p>
+    <p>请复制上方内容到微信公众号编辑器发布</p>
+  </footer>
+</body>
+</html>

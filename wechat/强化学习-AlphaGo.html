@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>强化学习-AlphaGo</title>
+</head>
+<body>
+  <header style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+    <h1 style="margin:0;font-size:24px;color:#333;">强化学习-AlphaGo</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;">2022年07月07日 #RL</p>
+  </header>
+  <article><div style="font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:16px;line-height:1.8;color:#333333;"><p><img src="https://latex.codecogs.com/svg.image?\small%2019%20%5Ctimes%2019" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%2019%20%5Ctimes%2019%20%5Ctimes%20K" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%2019%20%5Ctimes%2019%20%5Ctimes%2048" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cbar%7BQ%7D%28v_i%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v_i" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20P%28v_i%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20N%28v%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20N%28v_i%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v_i" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20C_%7Bpuct%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20z" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%2010%5E%7B170%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20Q" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%2019%20%5Ctimes%2019" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Csigma" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20s" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%2019%20%5Ctimes%2019%20%5Ctimes%2048" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%205%5Ctimes5" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%2019%20%5Ctimes%2019%20%5Ctimes%2048" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%205%5Ctimes5" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%2019%20%5Ctimes%2019%20%5Ctimes%2064" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%203%5Ctimes3" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%2019%20%5Ctimes%2019%20%5Ctimes%20128" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%203%5Ctimes3" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%2019%20%5Ctimes%2019%20%5Ctimes%20192" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%201%5Ctimes1" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%2019%20%5Ctimes%2019%20%5Ctimes%20192" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%2019%20%5Ctimes%2019%20%2B%201" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v_%5Ctheta" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20s" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Csigma" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v_%5Ctheta" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathcal%7BD%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Csigma" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Cpi" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Csigma" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Csigma" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Cpi" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Cpi" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Csigma" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Csigma" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20z_g%20%5Cin%20%5C%7B-1%2C%20%2B1%5C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cepsilon" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Crho" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Crho" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Csigma" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Csigma" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Csigma" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Crho" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Crho" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20p_%5Csigma" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v_%5Ctheta" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20C_%7Bpuct%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20Q" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20C" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20n_%7Bsa%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20Q" alt="formula" />）</p>
+
+<h3 id="局限性与开放问题">局限性与开放问题</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">问题</th>
+      <th style="text-align: left">说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left"><strong>计算成本极高</strong></td>
+      <td style="text-align: left">AlphaGo Lee 每步约需数千万次 MCTS 迭代，单机无法复现</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>不可解释性</strong></td>
+      <td style="text-align: left">神经网络的下法往往超出人类理解（如 vs 李世石 “God Move 37”）</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>泛化到不完美信息博弈困难</strong></td>
+      <td style="text-align: left">隐藏信息（如对手手牌）使得 MCTS 的确定性假设失效</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>对环境依赖强</strong></td>
+      <td style="text-align: left">自我对弈要求环境可高速仿真；现实世界的机器人控制无法如此高效地 self-play</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>Sample efficiency</strong></td>
+      <td style="text-align: left">即使是 AlphaZero 也需要海量自我对弈才能收敛</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="延伸阅读路线">延伸阅读路线</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>入门:
+├── Silver, D. et al. "Mastering the game of Go..." Nature 2016  ← AlphaGo 原始论文 ⭐⭐⭐
+│
+进阶:
+├── Silver, D. et al. "Mastering the game of Go without human knowledge" Nature 2017  ← AlphaGo Zero ⭐⭐⭐
+├── Silver, D. et al. "A general reinforcement learning algorithm that masters chess, shogi, and Go" Science 2018  ← AlphaZero ⭐⭐⭐
+│
+前沿:
+├── Schrittwieser, J. et al. "Mastering Atari, Go, Chess and Shogi by Planning with a Learned Model" 2020  ← MuZero ⭐⭐⭐
+├── Ye, H. et al. "Mastering Atari Games with Sample-Efficient MCTS" ICLR 2022  ← EfficientZero
+│
+理论基础:
+├── Kocsis, Szepesvári "Bandit based Monte-Carlo Planning" ECML 2006  ← UCT 原论文
+├── Browne et al. "A Survey of Monte Carlo Tree Methods" IEEE TCIAIG 2012  ← MCTS 综述
+└── Sutton, Barto "Reinforcement Learning: An Introduction" Ch. 2  ← MDP 基础
+</code></pre></div></div>
+</div></article>
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;color:#999;font-size:12px;">
+    <p>本文由 Jekyll WechatGenerator 自动生成</p>
+    <p>请复制上方内容到微信公众号编辑器发布</p>
+  </footer>
+</body>
+</html>

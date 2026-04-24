@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>强化学习-稀疏奖励问题</title>
+</head>
+<body>
+  <header style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+    <h1 style="margin:0;font-size:24px;color:#333;">强化学习-稀疏奖励问题</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;">2022年06月07日 #RL</p>
+  </header>
+  <article><div style="font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:16px;line-height:1.8;color:#333333;"><table>
+  <tbody>
+    <tr>
+      <td><img src="https://latex.codecogs.com/svg.image?\small%20%5CPhi%3A%20S%20%5Cto%20%5Cmathbb%7BR%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cgamma" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5CPhi%28s%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20-%5C%7Cs%20-%20s_%7Bgoal%7D%5C%7C" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbb%7B1%7D_%7B%5Ctext%7B%E6%8E%A5%E8%BF%91%7D%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20-%5C%7C%5Ctheta%5C%7C" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5CPhi" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20g" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20g%27" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20g" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20g%27" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%28s%2C%20g%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20s" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20g" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20a" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20s%27%20%5Csim%20P%28%5Ccdot%20%7C%20s%2C%20a%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20r%28s%27%2C%20g%29%20%3D%20-%5C%7Cf%28s%27%29%20-%20g%5C%7C_2" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20r%20%3D%20%5Cmathbb%7B1%7D%5B%5C%7Cf%28s%27%29%20-%20g%5C%7C%20%3C%20%5Cepsilon%5D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cpi_%5Ctheta%28a%20%7C%20s%2C%20g%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20k" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5C%7B%28s_i%2C%20a_i%5E%7Bdemo%7D%29%5C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathcal%7BL%7D%28r%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathcal%7BR%7D%28r%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cphi%28s%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20s" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Chat%7B%5Cphi%7D_%7Bt%2B1%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%28s_t%2C%20a_t%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20f%3A%20S%20%5Cto%20%5Cmathbb%7BR%7D%5Ed" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Chat%7Bf%7D%3A%20S%20%5Cto%20%5Cmathbb%7BR%7D%5Ed" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20g_t" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20g_t" alt="formula" /> 执行</td>
+      <td> </td>
+      <td> </td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td><strong>HAC</strong> (Levy et al., 2019)</td>
+      <td>多层级子目标</td>
+      <td>逐级细化</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td><strong>Decision Transformer</strong> (Chen et al., 2021)</td>
+      <td>条件生成 desired return</td>
+      <td>序列建模</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>对稀疏奖励的帮助</strong>：即使全局奖励稀疏，<strong>子目标可以设计得更密集</strong>，使低层策略更容易学习。</p>
+
+<hr />
+
+<h2 id="方法选择指南">方法选择指南</h2>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>决策树:
+
+你的任务是？
+│
+├── 目标可达、状态维度低
+│   └── 直接 RL (PPO/SAC) + 足够探索
+│
+├── 多目标/参数化目标任务
+│   └── HER (Hindsight Experience Replay)
+│       └── 推荐: HER + SAC/TD3
+│
+├── 有可用的专家演示数据
+│   ├── 演示质量高且足够 → Pre-train with BC + Fine-tune with RL
+│   ├── 演示有限但优质 → SQIL / AWAC
+│   └── 可在线查询专家 → DAgger
+│
+├── 无演示、单目标、高度稀疏
+│   ├── 环境交互成本低 → Intrinsic Motivation (Curiosity/RND)
+│   ├── 可分解为子任务 → Hierarchical RL (HIRO/HAC)
+│   └── 可手动设计中间奖励 → Reward Shaping (注意 PBRS)
+│
+└── 以上组合使用效果更佳（实践中常混合多种方法）
+</code></pre></div></div>
+
+<h3 id="实战建议">实战建议</h3>
+
+<ol>
+  <li><strong>不要一开始就用稀疏奖励</strong>：先用 dense reward 验证算法和环境的正确性</li>
+  <li><strong>HER 是多目标任务的银弹</strong>：如果适用条件满足，优先尝试 HER</li>
+  <li><strong>BC pretrain 几乎总是有帮助的</strong>：即使是随机策略产生的数据也有一定价值</li>
+  <li><strong>调试时监控探索覆盖率</strong>：确保智能体确实在探索新的状态区域</li>
+  <li><strong>归一化和奖励缩放至关重要</strong>：稀疏奖励环境下不恰当的缩放会毁掉学习</li>
+  <li><strong>考虑 Offline RL</strong>：如果有大量历史交互数据（不一定是最优的），CQL/IQLE/BCQ 等方法可以直接从数据中学习</li>
+</ol>
+
+<hr />
+
+<h2 id="参考文献">参考文献</h2>
+
+<ol>
+  <li>Ng, A. Y., et al. “Policy Invariance Under Reward Transformations.” ICML 1999.</li>
+  <li>Andrychowicz, O., et al. “Hindsight Experience Replay.” NeurIPS 2017.</li>
+  <li>Pathak, D., et al. “Curiosity-Driven Exploration by Self-Supervised Prediction.” ICML 2017.</li>
+  <li>Burda, Y., et al. “Exploration by Random Network Distillation.” ICLR 2018.</li>
+  <li>Ross, S., et al. “Reducing Aggregation Bias in Imitation Learning.” AISTATS 2011.</li>
+  <li>Ziebart, B. D., et al. “Maximum Entropy Inverse Reinforcement Optimization.” AAAI 2008.</li>
+  <li>Nachum, O., et al. “Data-Efficient Hierarchical RL.” arXiv 2018.</li>
+  <li>Nair, A., et al. “Awac: Accelerating Online Reinforcement Learning with Off-Policy Algorithms.” ICML 2020.</li>
+  <li>Reddy, S., et al. “SQIL: Imitation Learning via Reinforcement Learning with Few demonstrations.” ICLR 2019.</li>
+  <li>Sutton, R. S., et al. “Between MDPs and Semi-MDPs.” NIPS 1999.</li>
+</ol>
+</div></article>
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;color:#999;font-size:12px;">
+    <p>本文由 Jekyll WechatGenerator 自动生成</p>
+    <p>请复制上方内容到微信公众号编辑器发布</p>
+  </footer>
+</body>
+</html>

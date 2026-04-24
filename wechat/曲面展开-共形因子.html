@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>曲面展开-共形因子</title>
+</head>
+<body>
+  <header style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+    <h1 style="margin:0;font-size:24px;color:#333;">曲面展开-共形因子</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;">2017年04月14日 #Parameterization</p>
+  </header>
+  <article><div style="font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:16px;line-height:1.8;color:#333333;"><p><img src="https://latex.codecogs.com/svg.image?\small%20S" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbb%7BR%7D%5E3" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20g" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20u%3AS%20%5Cto%20%5Cmathbb%7BR%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20S" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cwidetilde%7Bg%7D%20%3D%20e%5E%7B2u%7Dg" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20S" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cwidetilde%7Bg%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20g" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20u" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cwidetilde%7Bg%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20g" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20u" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cwidetilde%7BK%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20M%20%3D%20%28V%2CE%2CT%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20E" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20l%3AE%20%5Cto%20R" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20u" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20u%3AS%20%5Cto%20R" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20M" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20l" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cwidetilde%7Bl%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%E5%AF%B9%E4%BA%8E%E4%BB%BB%E6%84%8F%E8%BE%B9e_%7Bij%7D%20%5Cin%20E%2C%5Cquad%20%5Cwidetilde%7Bl_%7Bi%2Cj%7D%7D%3De%5E%7B%5Cfrac%7B%28u_i%2Bu_j%29%7D%7B2%7D%7Dl_%7Bi%2Cj%7D%20%5Ctag%7B2%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5CDelta%5Cphi%20%3D%5Cwidetilde%7BK%7D%20-%20K" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cwidetilde%7BK%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cwidetilde%7BK%7D%20%3D%200" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5CDelta%5Cphi%20%3D%20-%20K%20%5Ctag%7B3%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%7CV%7C" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%7CV%7C" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%7CV%7C%E4%B8%AA%E6%9C%AA%E7%9F%A5%E6%95%B0%EF%BC%8C%7CV%7C-1%E4%B8%AA%E6%96%B9%E7%A8%8B" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20f%20%3D%20a%20%2B%20bi" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20u" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cwidetilde%20k" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20dg%2Fdt%20%3D%20-2Kg" alt="formula" />，最后收敛到常值。</p>
+
+<p>ricci流是通过曲率构造黎曼度量的强有力的工具，ricci流是根据曲率对曲面的Riemann度量进行共形变换，使得曲率能像热流一样在曲面上进行扩散。</p>
+
+<p>Discrete Ricci flow这篇工作将将球面空间/欧式空间/双曲三种空间的ricci流进行统一表达和求解的计算框架</p>
+
+<p>共形变换与circle packing</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250715110559164.png" alt="image-20250715110559164" /></p>
+
+<p>任意二维流形都可以归结为几个共形类中，而Ricci流解决了”How to”的问题，所有Riemann曲面都可以通过ricci流收敛到到常曲率</p>
+
+<p>在平滑曲面上的ricci流,类比温度流</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250715111424484.png" alt="image-20250715111424484" /></p>
+
+<ul>
+  <li>Ricci flow收敛性：<strong>陈-罗定理</strong>（Chow-Luo Theorem）为离散曲面上的Ricci流提供了关键的理论保证：在离散Ricci流下，曲率演化是收敛的，并且能实现任意给定的目标曲率（只要满足高斯-博内定理约束）。</li>
+</ul>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251205113525973.png" alt="image-20251205113525973" /></p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251205112847586.png" alt="image-20251205112847586" /></p>
+
+<p>对于离散化需要借助circle packing来定义度量</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251205113735180.png" alt="image-20251205113735180" /></p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250715111712897.png" alt="image-20250715111712897" /></p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250715111740842.png" alt="image-20250715111740842" /></p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251205113651201.png" alt="image-20251205113651201" /></p>
+
+<p>为什么用不直接用边长来刻画</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251205113941036.png" alt="image-20251205113941036" /></p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251205114006968.png" alt="image-20251205114006968" /></p>
+
+<p>所以，回到你的核心疑问：<strong>之所以不直接用三角网格的边长作为度量来实现Ricci流，是因为边长是一个“刚性”的参数，它无法自然地参数化共形结构，且会导致数值实现上不可行的带约束优化问题。而圆填充的半径，是一个“柔性”的参数，它完美地捕捉了离散共形类，并将离散Ricci流转化为一个优雅、无约束、理论完备的凸优化过程。</strong></p>
+
+<p>算法迭代过程</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251204211431171.png" alt="image-20251204211431171" /></p>
+
+<p>有些情况下在在双曲空间中展开要比在欧式空间中展开效果要好</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251205094459137.png" alt="image-20251205094459137" /></p>
+</div></article>
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;color:#999;font-size:12px;">
+    <p>本文由 Jekyll WechatGenerator 自动生成</p>
+    <p>请复制上方内容到微信公众号编辑器发布</p>
+  </footer>
+</body>
+</html>

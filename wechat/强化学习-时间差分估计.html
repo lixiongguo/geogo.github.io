@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>强化学习-时间差分估计</title>
+</head>
+<body>
+  <header style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+    <h1 style="margin:0;font-size:24px;color:#333;">强化学习-时间差分估计</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;">2022年04月17日 #RL</p>
+  </header>
+  <article><div style="font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:16px;line-height:1.8;color:#333333;"><p><img src="https://latex.codecogs.com/svg.image?\small%20s" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20s" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V_%5Cpi%28s%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20t" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20s" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20s" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20N%28s%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20N%28s%29%20%3D%20N%28s%29%20%2B%201" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20s" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20S%28s%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20G_t" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20S%28s%29%20%3D%20S%28s%29%20%2BG_t" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V%28s%29%20%3D%20S%28s%29%2FN%28s%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V%28s%29%20%5Cto%20V_%7B%5Cpi%7D%28s%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20S%28s%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V%28s%29%20%3D%20S%28s%29%2FN%28s%29%20%3D%20V%28s%29%2B%20%5Cfrac%201%20%7BN%28s%29%7D%28G_t%20-%20V%28s%29%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cfrac%201%20%7BN%28s%29%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Calpha" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V%28s%29%20%3D%20V%28s%29%2B%20%5Calpha%20%28G_t%20-%20V%28s%29%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V%28s%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20Q%28s%2Ca%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V%28s_t%29%20%3D%20V%28s_t%29%20%2B%20%5Calpha%28G_t%20-V%28s_t%29%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20G_t" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20r_%7Bt%2B1%7D%20%2B%20%5Cgamma%20V%28s_%7Bt%2B1%7D%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V%28s_t%29%20%3D%20V%28s_t%29%20%2B%20%5Calpha%28r_%7Bt%2B1%7D%20%2B%20%5Cgamma%20V%28s_%7Bt%2B1%7D%29%20-V%28s_t%29%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20Q%28s_t%2Ca_t%29%20%3D%20Q%28s_t%2Ca_t%29%2B%5Calpha%28r_%7Bt%2B1%7D%2B%5Cgamma%20Q%28s_%7Bt%2B1%7D%2Ca_%7Bt%2B1%7D%29-Q%28s_t%2Ca_t%29%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5C%7BS_t%2CA_t%2CR_%7Bt%2B1%7D%2CS_%7Bt%2B1%7D%2CA_%7Bt%2B1%7D%5C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20Q%28s_t%2Ca_t%29%20%3D%20Q%28s_t%2Ca_t%29%2B%5Calpha%28r_%7Bt%2B1%7D%2B%5Cgamma%20max_%7Ba%7D%20Q%28s_%7Bt%2B1%7D%2Ca%29-Q%28s_t%2Ca_t%29%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5C%7BS_t%2CA_t%2CR_%7Bt%2B1%7D%2CS_%7Bt%2B1%7D%5C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20argmax_aQ%28s%2Ca%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cepsilon-%E6%8E%A2%E7%B4%A2" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cepsilon" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%201-%5Cepsilon" alt="formula" />概率选择当前价值最大的动作。</p>
+
+<pre><code class="language-Python">#代码片段2 Q-learning 算法
+def take_action(state)
+	# ε-greedy 策略选择动作
+    if random.uniform(0, 1) &lt; epsilon:
+        action = env.action_space.sample()  # 随机选择动作
+    else:
+        action = np.argmax(Q_table[state])  # 选择最优动作
+    return action
+
+for episode in range(num_episodes):
+    state = env.reset()
+    done = False
+    total_reward = 0
+    while not done:
+        action = take_action(state)
+        # 执行动作并观察结果
+        next_state, reward, done,_, info = env.step(action)
+        #Q-learning选择最优的动作
+        best_next_action = np.argmax(Q_table[next_state])
+        #SARSA 继续按照当前策略选择下一个动作，next_action = take_action(next_state)
+        #TD估计更新Q-table
+        td_target = reward + gamma * Q_table[next_state, best_next_action]
+        td_error = td_target - Q_table[state, action]
+        Q_table[state, action] += alpha * td_error
+        # 更新状态和奖励
+        state = next_state
+        total_reward += reward
+    # 衰减探索率
+    epsilon = max(epsilon_min, epsilon * epsilon_decay)
+</code></pre>
+
+<p>Q-learning算法是非常激进的，它一直选择当前价值最大的动作而不管该动作是否有较大的危险性。而Sarsa算法则相对来说因为探索的更充分显得会更加保守些。</p>
+</div></article>
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;color:#999;font-size:12px;">
+    <p>本文由 Jekyll WechatGenerator 自动生成</p>
+    <p>请复制上方内容到微信公众号编辑器发布</p>
+  </footer>
+</body>
+</html>

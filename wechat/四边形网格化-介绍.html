@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>四边形网格化-介绍</title>
+</head>
+<body>
+  <header style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+    <h1 style="margin:0;font-size:24px;color:#333;">四边形网格化-介绍</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;">2021年01月13日 #QuadRemeshing</p>
+  </header>
+  <article><div style="font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:16px;line-height:1.8;color:#333333;"><p><img src="https://latex.codecogs.com/svg.image?\small%2090%5E%5Ccirc" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20M_c" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20u" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20u%27" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20u%20%5Cin%20%5Cmathbb%7BZ%7D%2C%20v%20%5Cin%20%5Cmathbb%7BZ%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%28%5Cvarphi%20%2C%5Cvarphi%27%2C...%29" alt="formula" />以及它们之间的<strong>转移函数</strong>。 曲面太复杂时，很难一次性铺平成一个平面区域，于是就需要多个重叠 chart 共同描述整个曲面。局部都能用平面坐标表示，全局则通过 chart 之间的转移函数粘起来</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251111171425686.png" alt="image-20251111171425686" /></p>
+
+<h4 id="基于向量场的全局参数化">基于向量场的全局参数化</h4>
+
+<p>向量场是定义在整体曲面上，是描述曲面全局几何的重要工具。动物身上包裹的毛发可以认为是一种向量场，每个人的头发就构成了一个向量场,有的人头上有发旋而有的人头上却没有。地球上风的分布也是一个向量场</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251113203703694.png" alt="image-20251113203703694" /></p>
+
+<p>按照向量场上的点搭载向量的不同，可以如下分类，让四边形网格的边与标架场<strong>cross  field(4-Rosy field)</strong>的向量相贴合，从而用户通过设计向量场从而让四边形网格的边贴合曲面的表面特征。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251113204024870.png" alt="image-20251113204024870" /></p>
+
+<p>最简单的<strong>cross field</strong>的例子自然就是主曲率方向场 :它描述了曲面局部弯曲最强和最弱的两个正交方向，但这里马上会遇到两个困难：</p>
+
+<ol>
+  <li>主曲率方向只在一般位置上定义良好，在脐点 <code class="language-plaintext highlighter-rouge">umbilic</code> 附近会退化。</li>
+  <li>即使每个局部区域都能定义方向，想把它们拼成全局一致的参数化也并不容易。</li>
+</ol>
+
+<p>所以向量场设计和全局参数化，本质上是在处理<strong>“局部方向信息如何变成全局结构”</strong>这个问题。</p>
+
+<h3 id="appendix">Appendix</h3>
+
+<h4 id="衡量四边形网格的质量">衡量四边形网格的质量</h4>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251109170905192.png" alt="image-20251109170905192" /></p>
+</div></article>
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;color:#999;font-size:12px;">
+    <p>本文由 Jekyll WechatGenerator 自动生成</p>
+    <p>请复制上方内容到微信公众号编辑器发布</p>
+  </footer>
+</body>
+</html>

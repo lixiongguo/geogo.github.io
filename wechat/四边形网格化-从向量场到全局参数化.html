@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>四边形网格化-全局参数化PGP算法</title>
+</head>
+<body>
+  <header style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+    <h1 style="margin:0;font-size:24px;color:#333;">四边形网格化-全局参数化PGP算法</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;">2021年07月13日 #QuadRemeshing</p>
+  </header>
+  <article><div style="font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:16px;line-height:1.8;color:#333333;"><p><img src="https://latex.codecogs.com/svg.image?\small%20%5Cvec%20K" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cvec%20K%5E%5Cperp" alt="formula" />**。<br />
+最常见的输入就是估计出来的主曲率方向，但只要满足正交关系，也可以换成用户指定的其他方向。</p>
+
+<h3 id="预处理先把输入方向场变得更适合参数化">预处理：先把输入方向场变得更适合参数化</h3>
+
+<p>PGP 的流程图中，首先提到了两个可选的预处理：</p>
+
+<p>第一，向量场平滑</p>
+
+<p>如果输入的是主曲率方向，那么在各向同性区域或者脐点附近，主方向会不稳定，因为这些地方本来就不存在唯一的“最大/最小”弯曲方向。 所以需要先做平滑，把这些区域处理成更稳定、更适合后续计算的方向场。</p>
+
+<p>第二，curl correction</p>
+
+<p>如果方向场本身带有比较强的旋度，那么它通常不能直接积分成全局参数函数，这会迫使参数化产生很多奇异点。  因此可以先对输入向量场做一次重标定或修正，尽量减少 curl，从而减少后面不可避免的奇异点数量。</p>
+
+<p>第三，PGP 把平移和旋转自由度显式纳入优化变量。</p>
+
+<p>直接优化 UV 容易被“绕了几圈”“平移了多少”这些自由度干扰，而改用三角函数形式的替代变量，会让优化形式更稳定。</p>
+
+<h3 id="26-pgp-的输出不是直接一张图而是先得到-chart-layout">2.6 PGP 的输出不是直接一张图，而是先得到 chart layout</h3>
+
+<p>PGP 的后处理大致分成几步：</p>
+
+<ol>
+  <li>先从优化结果中恢复每个三角形上的局部参数化。</li>
+  <li>然后检测这些局部参数化中出现的奇异点。</li>
+  <li>接着根据每个三角形的参数化去定义全局的 <code class="language-plaintext highlighter-rouge">chart layout</code>。</li>
+  <li>最后再对每个 chart 重新组装或重参数化，得到真正可用的 per-chart parameterization。</li>
+</ol>
+
+<p>这里最值得注意的是第 3 步。<br />
+PGP 的思想并不是“一开始就知道 chart 怎么切”，而是先在每个三角形上求出局部参数，再从这些局部结果中反推出一张全局图块布局。<br />
+也就是说，chart layout 不是先验输入，而是参数化结果里长出来的结构。</p>
+</div></article>
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;color:#999;font-size:12px;">
+    <p>本文由 Jekyll WechatGenerator 自动生成</p>
+    <p>请复制上方内容到微信公众号编辑器发布</p>
+  </footer>
+</body>
+</html>

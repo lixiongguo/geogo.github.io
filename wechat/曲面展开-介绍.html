@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>曲面展开-介绍</title>
+</head>
+<body>
+  <header style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+    <h1 style="margin:0;font-size:24px;color:#333;">曲面展开-介绍</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;">2016年03月06日 #Parameterization</p>
+  </header>
+  <article><div style="font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:16px;line-height:1.8;color:#333333;"><p><img src="https://latex.codecogs.com/svg.image?\small%20f%3AR%5E3%5Crightarrow%20R%5E%7B2%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20M" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v%20%5Cin%20V_%7Bint%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20M" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V%3D%5C%7B1%2C2%2C3%2C...n%5C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V%20%3D%20V_%7Bint%7D%20%5Ccup%20V_%7Bbnd%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v%20%5Cin%20V_%7Bint%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20N_v" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20x_v%20%3D%20%5Cfrac%201%20%7B%7CN_v%7C%7D%20%5CSigma_%7Bu%20%5Cin%20N_v%7Dx_u" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v%20%5Cin%20V_%7Bbnd%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20i_v" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20x_%7Bi_v%7D%3D%28rcos%28%7B%5Ctheta_%7Bi_v%7D%7D%29%2Crsin%28%7B%5Ctheta_%7Bi_v%7D%7D%29%29%5C%5C" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20Ax%3Db%2CA%3D%5C%7Ba_%7Bij%7D%5C%7D_%7Bn%2An%7D%5C%5C" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v%20%5Cin%20V_%7Bint%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20A%28v%2Cu%29%20%3D%20%5Cbegin%7Bcases%7D%20%201%20%26%EF%BC%8C%20%20u%3Dv%20%5C%5C%20-%5Cfrac%201%20%7B%7CN_v%7C%7D%26%EF%BC%8C%20u%20%5Cin%20N_v%20%5C%5C%200%20%26%EF%BC%8C%E5%85%B6%E5%AE%83%5Cend%7Bcases%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v%20%5Cin%20V_%7Bbnd%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20A%28v%2Cu%29%20%3D%20%5Cbegin%7Bcases%7D%20%201%20%26%EF%BC%8C%20%20u%3Dv%20%5C%5C%20%200%20%26%EF%BC%8C%E5%85%B6%E5%AE%83%5Cend%7Bcases%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20i_v" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20b_%7Bi_v%7D%20%3D%20%28rcos%28%7B%5Ctheta_%7Bi_v%7D%7D%29%EF%BC%8Crsin%28%7B%5Ctheta_%7Bi_v%7D%7D%29%20%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20A" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20Gauss-Seidal" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20A" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20A" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5COmega%20%5Csubset%20%5Cmathbb%7BC%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5COmega%20%5Cneq%20%5Cmathbb%7BC%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20z_0%20%5Cin%20%5COmega" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20f%20%3A%20%5COmega%20%5Cto%20%5Cmathbb%7BD%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20f%28z_0%29%20%3D%200%20%2C%20f%27%28z_0%29%20%3E%200" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbb%7BD%7D%20%3D%20%5C%7B%20z%20%5Cin%20%5Cmathbb%7BC%7D%20%2C%20%7Cz%7C%3C1%20%5C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20M%3D%5C%7BV%2CE%2CF%20%7CV%2CE%2CF%E4%B8%BA%E7%BD%91%E6%A0%BC%E7%9A%84%E9%A1%B6%E7%82%B9%2C%E8%BE%B9%2C%E9%9D%A2%5C%7D" alt="formula" />
+<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250311193102749.png" alt="image-20250311193102749" />
+<strong>拓扑圆盘</strong>是具有单个边界”开口网格曲面”，比如这个简化版(“抽象”)的大卫头像
+<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306112054639.png" alt="image-20250306112054639" /></p>
+
+<h4 id="三角网格的半边结构">三角网格的<strong>半边结构</strong></h4>
+
+<p>.obj文件记录了三角网的基本数据（顶点，边，面），另外用于记录三角网格的文件还有.off和.stl等
+对于三角网格(Mesh)这种对象，要想高效实施在其上的算法，该给它设计怎样的数据结构呢？要想到我们的算法会经常在这个数据上做哪些操作呢？我们需要快速索引以下信息:与顶点相邻的边，顶点所在的三角面，一个三角面上顶点，一个三角面上的边</p>
+
+<p><strong>三角网格的几何库</strong> ：Geometry Central ,LibIGL, GeoGram</p>
+
+<h3 id="2tutte嵌入定理">2.Tutte嵌入定理<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251027160427694.png" alt="image-20251027160427694" /></h3>
+<p>将三角网格(Mesh)看成是一个图(graph)的话，定理说明只要将边界点固定在一个凸多边形上，并且内部的点是其邻居的凸组合(上面算法设置内点位于邻居质心)就能形成一个符合约束的参数化（无自交，全局单射）</p>
+
+<h3 id="3医学上的应用">3.医学上的应用</h3>
+<p>比如通过CT扫描获取到腹部断层图像，然后用多视角几何的方法重建三维直肠曲面后，为了方便医生的观察，最后将这个直肠曲面平展到平面上。（使用这种方法，设备和病患没有接触，不需要麻醉，不会诱导并发症）</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227101914414.png" alt="image-20250227101914414" /></p>
+
+<h2 id="参考文献"><strong>参考文献</strong></h2>
+
+<p>[1] Tutte, W. T. (1963). <em>How to draw a graph</em>. Proceedings of the London Mathematical Society.</p>
+
+<p>[2] Floater, M. S. (1997). <em>Parametrization and smooth approximation of surface triangulations</em>. CAGD.</p>
+
+</div></article>
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;color:#999;font-size:12px;">
+    <p>本文由 Jekyll WechatGenerator 自动生成</p>
+    <p>请复制上方内容到微信公众号编辑器发布</p>
+  </footer>
+</body>
+</html>

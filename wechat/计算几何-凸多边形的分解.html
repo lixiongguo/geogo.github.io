@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>计算几何-凸多边形分解与三角剖分</title>
+</head>
+<body>
+  <header style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+    <h1 style="margin:0;font-size:24px;color:#333;">计算几何-凸多边形分解与三角剖分</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;">2015年03月07日 #Computational_Geometry</p>
+  </header>
+  <article><div style="font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:16px;line-height:1.8;color:#333333;"><table>
+  <tbody>
+    <tr>
+      <td><img src="https://latex.codecogs.com/svg.image?\small%20n" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20n" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20n" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Clfloor%20n%2F3%20%5Crfloor" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20n-2" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cleq%20%5Clfloor%20n%2F3%20%5Crfloor" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20n" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20P%20%3D%20%28v_0%2C%20v_1%2C%20%5Cldots%2C%20v_%7Bn-1%7D%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20P" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20n-2" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20n-3" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v_%7Bi-1%7D%2C%20v_i%2C%20v_%7Bi%2B1%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Ctriangle%20v_%7Bi-1%7Dv_iv_%7Bi%2B1%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v_%7Bi-1%7Dv_%7Bi%2B1%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Ctext%7Bcross%7D%20%3E%200" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Ctext%7Bcross%7D%20%3C%200" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20n-2" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E2%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E2%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20n%20%3E%2010%5E4" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20n-2" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20y" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20y" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20y" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20y" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E2%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20y" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E2%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E3%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E2%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20g%28n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20h%28n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E2%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%281%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E2%29%20%5Csim%20O%28n%5E3%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Clfloor%20n%2F3%20%5Crfloor" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E2%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E2%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /> 构建</td>
+      <td>Funnel 路径平滑</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="参考">参考</h2>
+
+<ul>
+  <li>Chvátal, V. (1975). “A combinatorial theorem in plane geometry.” <em>J. Combin. Theory Ser. B</em>.</li>
+  <li>Fisk, S. (1978). “A short proof of Chvátal’s watchman theorem.” <em>J. Combin. Theory Ser. B</em>.</li>
+  <li>Meisters, G. H. (1975). “Polygons have ears.” <em>Amer. Math. Monthly</em>.</li>
+  <li>Garey, M. R., et al. (1978). “Triangulating a simple polygon.” <em>Inf. Process. Lett.</em></li>
+  <li>Overmars, M. H., &amp; Welzl, E. (1988). “New methods for computing visibility graphs.” <em>SCG</em>.</li>
+  <li>Mononen, M. <strong>Recast/Detour</strong> — 开源导航网格库。</li>
+</ul>
+</div></article>
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;color:#999;font-size:12px;">
+    <p>本文由 Jekyll WechatGenerator 自动生成</p>
+    <p>请复制上方内容到微信公众号编辑器发布</p>
+  </footer>
+</body>
+</html>

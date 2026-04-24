@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>计算几何-三角形网格的生成</title>
+</head>
+<body>
+  <header style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+    <h1 style="margin:0;font-size:24px;color:#333;">计算几何-三角形网格的生成</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;">2016年02月13日 #Computational_Geometry</p>
+  </header>
+  <article><div style="font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:16px;line-height:1.8;color:#333333;"><table>
+  <tbody>
+    <tr>
+      <td><img src="https://latex.codecogs.com/svg.image?\small%20P%20%3D%20%5C%7Bp_1%2C%20p_2%2C%20%5Cldots%2C%20p_n%5C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Ctriangle%20p_i%20p_j%20p_k" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20C" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E2%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Ctheta_%7B%5Cmin%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cgeq%20%5Cmin%2820.7%C2%B0%2C%20%5Ctheta_%7B%5Cmin%7D%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%2B%20m%5E2%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20n" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20m" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%2026.5%C2%B0" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E2%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Crho%20%3D%20R%20%2F%20l_%7B%5Cmin%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20R" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20l_%7B%5Cmin%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Crho%20%3E%20%5Crho_0" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Crho_0%20%3D%202" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cepsilon" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cepsilon" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20T" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Csigma_i" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cleq%20%5Cepsilon" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cepsilon" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20f%3A%20V%20%5Cto%20%5Cmathbb%7BR%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20w_%7Bij%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%28v_i%2C%20v_j%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Calpha_%7Bij%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cbeta_%7Bij%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%28v_i%2C%20v_j%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20M" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V%20%3D%20V_B%20%5Ccup%20V_I" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V_B" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V_I" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v_k%20%5Cin%20V_B" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cphi_k" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cphi_k%28v_k%29%20%3D%201" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cphi_k%28v_j%29%20%3D%200" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v_j%20%5Cin%20V_B%20%5Csetminus%20%5C%7Bv_k%5C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7BL%7D_%7BII%7D%20%5Cmathbf%7Bf%7D_I%20%3D%20-%5Cmathbf%7BL%7D_%7BIB%7D%20%5Cmathbf%7Bf%7D_B" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5C%7B%5Cphi_1%2C%20%5Cphi_2%2C%20%5Cldots%2C%20%5Cphi_%7B%7CV_B%7C%7D%5C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v%20%3D%20%5Bv_x%2C%20v_y%2C%20v_z%2C%201%5D%5ET" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20ax%20%2B%20by%20%2B%20cz%20%2B%20d%20%3D%200" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20a%5E2%20%2B%20b%5E2%20%2B%20c%5E2%20%3D%201" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20v" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7Bp%7D%20%3D%20%5Ba%2C%20b%2C%20c%2C%20d%5D%5ET" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7BK%7D_p%20%3D%20%5Cmathbf%7Bp%7D%20%5Cmathbf%7Bp%7D%5ET" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%204%20%5Ctimes%204" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%28v_1%2C%20v_2%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cbar%7Bv%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cbar%7Bv%7D%5E%2A" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20M%20%3D%20%28V%2C%20E%2C%20F%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7BL%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7BD%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7BW%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%200%20%3D%20%5Clambda_1%20%5Cleq%20%5Clambda_2%20%5Cleq%20%5Ccdots%20%5Cleq%20%5Clambda_%7B%7CV%7C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Clambda_1%20%3D%200" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Clambda_2" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Clambda_3%20%5Csim%20%5Clambda_k" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Clambda_k%20%5Csim%20%5Clambda_%7B%7CV%7C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7BL%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20k" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5C%7B%5Cmathbf%7Bf%7D_1%2C%20%5Cldots%2C%20%5Cmathbf%7Bf%7D_k%5C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7BX%7D%20%5Cin%20%5Cmathbb%7BR%7D%5E%7B%7CV%7C%20%5Ctimes%203%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E3%29" alt="formula" />）</td>
+      <td> </td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>能自动区分全局结构和局部细节</td>
+      <td>需要全局计算，不支持增量式处理</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>多尺度分析能力强</td>
+      <td>对非均匀网格效果可能不理想</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td>可与压缩、去噪等操作统一处理</td>
+      <td>大规模网格（&gt;100K 顶点）需要近似方法</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>大规模网格的加速方法</strong>：</p>
+
+<p>对于大规模网格，直接进行完整的特征值分解代价过高，常用近似方法包括：</p>
+<ul>
+  <li><strong>Lanczos 算法</strong>：迭代计算前若干个特征值和特征向量</li>
+  <li><strong>LOSA（Locally Optimal Block Preconditioned Conjugate Gradient）</strong>：大规模稀疏矩阵的部分特征值求解</li>
+  <li><strong>Nyström 方法</strong>：基于采样点的低秩近似</li>
+  <li><strong>分块谱方法</strong>：将网格分块后分别做谱分析，再合并结果</li>
+</ul>
+</div></article>
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;color:#999;font-size:12px;">
+    <p>本文由 Jekyll WechatGenerator 自动生成</p>
+    <p>请复制上方内容到微信公众号编辑器发布</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>计算几何-游戏中的阴影计算</title>
+</head>
+<body>
+  <header style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+    <h1 style="margin:0;font-size:24px;color:#333;">计算几何-游戏中的阴影计算</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;">2015年10月13日 #Computational_Geometry</p>
+  </header>
+  <article><div style="font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:16px;line-height:1.8;color:#333333;"><p><img src="https://latex.codecogs.com/svg.image?\small%20%5Cvec%7BL%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cvec%7Bv%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cvec%7Bf%7D_%7Bfar%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20M_%7Bproj%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cvec%7Bp%7D_%7Bworld%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20d_%7Bfragment%7D%20%3E%20d_%7Bmap%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20d_%7Bfragment%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20d_%7Bmap%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20N%20%5Ctimes%20N" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%203%5Ctimes3" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20e%5E%7B-cd%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%28d%2C%20d%5E2%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20e%5E%7B-cd%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cvec%7Bp%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20S" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20h" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20t" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20h%2Ft" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20k" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20C_i%5E%7Blog%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20C_i%5E%7Buni%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20z_%7Bview%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20P_%7Bpsm%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20P_%7Bpsm%7D" alt="formula" /> 变换后再生成 Shadow Map</p>
+<ul>
+  <li>效果：<strong>近处物体在 Shadow Map 中占据更多纹素</strong></li>
+</ul>
+
+<ol>
+  <li><strong>关键矩阵</strong>：</li>
+</ol>
+
+<p><img src="https://latex.codecogs.com/svg.image?P_%7Bpsm%7D%20%3D%20%5Cbegin%7Bbmatrix%7D%20n%20%26%200%20%26%200%20%26%200%20%5C%5C%200%20%26%20n%20%26%200%20%26%200%20%5C%5C%200%20%26%200%20%26%20n%2Bf%20%26%20-nf%20%5C%5C%200%20%26%201%20%26%200%20%26%200%20%5Cend%7Bbmatrix%7D" alt="formula" /></p>
+
+<p>（注意最后一行与标准透视矩阵不同——这是为了将透视除法应用到光源空间）</p>
+
+<h4 id="致命问题">致命问题</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">问题</th>
+      <th style="text-align: left">描述</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left"><strong>透视失真</strong></td>
+      <td style="text-align: left">经过透视变换后，某些物体会被扭曲到无穷远，导致 Shadow Map 覆盖失败</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>退化情况</strong></td>
+      <td style="text-align: left">当视线方向与光照方向接近平行时，PSM 会严重退化甚至完全失效</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>实现复杂度</strong></td>
+      <td style="text-align: left">需要特殊处理裁剪、反向映射等问题</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="改进变体">改进变体</h4>
+
+<ul>
+  <li><strong>LiSPSM (Light-Space Perspective Shadow Maps)</strong>：在光源空间中应用透视变换，但避免了 PSM 的极端失真问题</li>
+  <li><strong>TSM (Trajectory Shadow Maps)</strong>：通过优化参数化的轨迹来改善精度分配</li>
+</ul>
+
+<h4 id="现状">现状</h4>
+
+<p>PSM 及其改进版在学术界有一定影响力，但<strong>工业界几乎全部采用 CSM</strong>。原因是：</p>
+
+<ol>
+  <li>CSM 更直观，参数调节更容易</li>
+  <li>PSM/LiSPSM 的 edge case 处理繁琐</li>
+  <li>现代 GPU 显存已不是瓶颈，CSM 的显存开销完全可以接受</li>
+</ol>
+
+<hr />
+
+<h2 id="总结对比">总结对比</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">技术</th>
+      <th style="text-align: left">阴影类型</th>
+      <th style="text-align: left">硬/软阴影</th>
+      <th style="text-align: left">动态支持</th>
+      <th style="text-align: left">性能开销</th>
+      <th style="text-align: left">主流程度</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left"><strong>朴素三角法 (Stencil Shadow Volume)</strong></td>
+      <td style="text-align: left">硬阴影</td>
+      <td style="text-align: left">硬</td>
+      <td style="text-align: left">✅</td>
+      <td style="text-align: left">高（填充率瓶颈）</td>
+      <td style="text-align: left">❌ 已淘汰</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>Projector</strong></td>
+      <td style="text-align: left">伪阴影</td>
+      <td style="text-align: left">N/A</td>
+      <td style="text-align: left">❌ 静态</td>
+      <td style="text-align: left">极低</td>
+      <td style="text-align: left">局部使用</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>Shadow Map (+PCF/PCSS/VSM)</strong></td>
+      <td style="text-align: left">硬/软阴影</td>
+      <td style="text-align: left">PCF 近似 / PCSS 软</td>
+      <td style="text-align: left">✅</td>
+      <td style="text-align: left">中</td>
+      <td style="text-align: left">✅✅ <strong>绝对主流</strong></td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>SDF Ray Marching</strong></td>
+      <td style="text-align: left">软阴影</td>
+      <td style="text-align: left">✅ 高质量</td>
+      <td style="text-align: left">受限于 SDF 更新</td>
+      <td style="text-align: left">中~高</td>
+      <td style="text-align: left">特定领域</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>CSM</strong></td>
+      <td style="text-align: left">SM 的精度增强方案</td>
+      <td style="text-align: left">继承 SM</td>
+      <td style="text-align: left">✅</td>
+      <td style="text-align: left">中（多张 map）</td>
+      <td style="text-align: left">✅✅ <strong>行业标准</strong></td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>PSM / LiSPSM</strong></td>
+      <td style="text-align: left">SM 的精度增强方案</td>
+      <td style="text-align: left">继承 SM</td>
+      <td style="text-align: left">✅</td>
+      <td style="text-align: left">中</td>
+      <td style="text-align: left">⚠️ 学术价值 &gt; 工业</td>
+    </tr>
+  </tbody>
+</table>
+
+<blockquote>
+  <p><strong>实际工程建议</strong>：绝大多数情况下直接使用 <strong>CSM + PCSS (或 VSM/ESM)</strong> 组合即可覆盖从移动端到高端 PC 的全部阴影需求。</p>
+</blockquote>
+</div></article>
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;color:#999;font-size:12px;">
+    <p>本文由 Jekyll WechatGenerator 自动生成</p>
+    <p>请复制上方内容到微信公众号编辑器发布</p>
+  </footer>
+</body>
+</html>

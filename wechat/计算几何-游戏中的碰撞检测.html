@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>计算几何-游戏中的碰撞检测</title>
+</head>
+<body>
+  <header style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+    <h1 style="margin:0;font-size:24px;color:#333;">计算几何-游戏中的碰撞检测</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;">2015年08月13日 #Computational_Geometry</p>
+  </header>
+  <article><div style="font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:16px;line-height:1.8;color:#333333;"><table>
+  <tbody>
+    <tr>
+      <td><img src="https://latex.codecogs.com/svg.image?\small%20n" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%281%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E2%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20n%20%3D%2010%5E4" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E2%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20c" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20r" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%281%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%28x_%7B%5Cmin%7D%2C%20x_%7B%5Cmax%7D%2C%20y_%7B%5Cmin%7D%2C%20y_%7B%5Cmax%7D%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20c" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7Bu%7D%2C%20%5Cmathbf%7Bv%7D%2C%20%5Cmathbf%7Bw%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20h_u%2C%20h_v%2C%20h_w" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20n" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%5E2%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20n_A%20%2B%20n_B" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7Bn%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20A" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20B" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20A" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20B" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20A" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20B" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20A%20%5Cominus%20B" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20S%28%5Cmathbf%7Bd%7D%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7Bc%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20r" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7Bc%7D%20%2B%20r%20%5Ccdot%20%5Chat%7B%5Cmathbf%7Bd%7D%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7Bc%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7Bh%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7Bc%7D%20%2B%20%28h_x%20%5Ctext%7Bsign%7D%28d_x%29%2C%5C%20h_y%20%5Ctext%7Bsign%7D%28d_y%29%2C%5C%20h_z%20%5Ctext%7Bsign%7D%28d_z%29%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Carg%5Cmax_%7B%5Cmathbf%7Bv%7D%20%5Cin%20V%7D%20%28%5Cmathbf%7Bv%7D%20%5Ccdot%20%5Cmathbf%7Bd%7D%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7Bc%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20h" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20r" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7Bc%7D%20%2B%20h%20%5Ccdot%20%5Ctext%7Bsign%7D%28%5Chat%7B%5Cmathbf%7Bd%7D%7D_y%29%20%5Ccdot%20%5Chat%7B%5Cmathbf%7By%7D%7D%20%2B%20r%20%5Ccdot%20%5Ctext%7Bproj%7D%28%5Chat%7B%5Cmathbf%7Bd%7D%7D%2C%20%5Cperp%5Chat%7B%5Cmathbf%7By%7D%7D%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28V%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%3C%2064" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28V%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmathbf%7Bp%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%281%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%281%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n%20%5Clog%20n%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28n_A%20%2B%20n_B%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28V%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20O%28V%29" alt="formula" /> 迭代</td>
+      <td>碰撞响应输入</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>工程推荐组合</strong>：</p>
+
+<p><img src="https://latex.codecogs.com/svg.image?%5Cboxed%7B%5Ctext%7BAABB%20%2B%20BVH%7D%7D%20%5Cxrightarrow%7B%5Ctext%7BBroad%20Phase%7D%7D%20%5Cboxed%7B%5Ctext%7BGJK%20%2B%20EPA%7D%7D%20%5Cxrightarrow%7B%5Ctext%7BNarrow%20Phase%7D%7D%20%5Cboxed%7B%5Ctext%7B%E7%A2%B0%E6%92%9E%E5%93%8D%E5%BA%94%7D%7D" alt="formula" /></p>
+
+<p>这也是 Box2D（2D）和 Bullet/PhysX/Jolt（3D）等主流物理引擎所采用的架构。</p>
+
+<h2 id="参考">参考</h2>
+
+<ul>
+  <li>Gilbert, E. G., Johnson, D. W., &amp; Keerthi, S. S. (1988). “A fast procedure for computing the distance between complex objects in three-dimensional space.” <em>IEEE Journal of Robotics and Automation</em>.</li>
+  <li>Ericson, C. (2004). <em>Real-Time Collision Detection</em>. Morgan Kaufmann.</li>
+  <li>van den Bergen, G. (1999). “A fast and robust GJK implementation for collision detection of convex objects.” <em>Journal of Graphics Tools</em>.</li>
+</ul>
+</div></article>
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;color:#999;font-size:12px;">
+    <p>本文由 Jekyll WechatGenerator 自动生成</p>
+    <p>请复制上方内容到微信公众号编辑器发布</p>
+  </footer>
+</body>
+</html>

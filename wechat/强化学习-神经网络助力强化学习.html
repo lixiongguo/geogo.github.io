@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>强化学习-神经网络助力强化学习</title>
+</head>
+<body>
+  <header style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+    <h1 style="margin:0;font-size:24px;color:#333;">强化学习-神经网络助力强化学习</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;">2022年05月01日 #RL</p>
+  </header>
+  <article><div style="font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:16px;line-height:1.8;color:#333333;"><p><img src="https://latex.codecogs.com/svg.image?\small%20Q%5Ea_%5Ctheta%28s%29%20%5Cto%20%5Chat%20Q%28s%2Ca%29%2C%E5%85%B6%E4%B8%AD%5Ctheta%E6%98%AF%E5%8F%AF%E5%AD%A6%E4%B9%A0%E7%9A%84%E7%BD%91%E7%BB%9C%E5%8F%82%E6%95%B0%2C%5Chat%20Q%28s%2Ca%29%E6%98%AF%E7%9C%9F%E5%80%BC%2Ca%20%5Cin%20%5C%7B%200%2C1%5C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20r_%7Bt%2B1%7D%2B%5Cgamma%20max_aQ_%5Ctheta%5Ea%28s_%7Bt%2B1%7D%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Chat%20Q%28s_t%2Ca_t%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20Loss%20%3D%20%28Q%5Ea%20_%5Ctheta%28s_t%29%20-%20%28r%20%2B%20%5Cgamma%20max_aQ_%5Ctheta%5Ea%28s_%7Bt%2B1%7D%29%29%5E2" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20i.i.d" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Chat%20Q%28s%2Ca%29%3Dr%20%2B%20%5Cgamma%20max_aQ_%5Ctheta%5Ea%28s_%7Bt%2B1%7D%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%28S_t%2CA_t%2CR_%7Bt%2B1%7D%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%28S_t%2CA_t%2CR_%7Bt%2B1%7D%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20Q%5Ea_%5Ctheta%28s%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20Q%5Ea_%5Cmu%28s%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Chat%20Q%28s%2Ca%29%3Dr%20%2B%20%5Cgamma%20max_aQ_%5Cmu%5Ea%28s_%7Bt%2B1%7D%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20Loss%20%3D%20%28Q%5Ea%20_%5Ctheta%28s%29%20-%20%28r%20%2B%20%5Cgamma%20max_aQ_%5Cmu%5Ea%28s_%7Bt%2B1%7D%29%29%5E2" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20o_t" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20s_t" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V_%5Cpi%28s%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V_%5Cpi%28s%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V_%5Cpi%28s%29" alt="formula" />可能就很小，因为剩下的怪兽也不多，并且红色的防护罩已经消失了，所以我们可能很快就会“死 掉”。因此接下来得到预期的奖励，就不会太大。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305175820904.png" alt="image-20250305175820904" /></p>
+
+<p>上图中展示的Landscape可以认为是一个图像数据生成的高维度的Q-table,Q网络前面架上卷积层可以将图像等高维数据映射到低维空间中。通过将这些低维空间状态可视化,我们可以直观地看到对于强化学习来说视频游戏的控制问题也就等价于高维数据空间中的”走迷宫“问题,所以近些年兴起AI技术即深度学习方法实际上就是高等数学理论中对高维空间数据的处理方法的应用。</p>
+
+<p>[1] Mnih, V., Kavukcuoglu, K., Silver, D. <em>et al.</em> Human-level control through deep reinforcement learning. <em>Nature</em> <strong>518</strong>, 529–533 (2015).</p>
+
+<p>[2] Nielsen, Michael. <a href="http://neuralnetworksanddeeplearning.com/chap4.html">4</a>. <a href="http://neuralnetworksanddeeplearning.com/">Neural Networks and Deep Learning</a>. Determination Press. 2015 [2020-08-27].</p>
+
+<p><strong>附录：</strong></p>
+
+<p><strong>A.</strong>倒立摆的动力学方程</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305164828426.png" alt="image-20250305164828426" /></p>
+</div></article>
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;color:#999;font-size:12px;">
+    <p>本文由 Jekyll WechatGenerator 自动生成</p>
+    <p>请复制上方内容到微信公众号编辑器发布</p>
+  </footer>
+</body>
+</html>

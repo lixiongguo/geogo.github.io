@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>计算几何-随机地图的生成</title>
+</head>
+<body>
+  <header style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+    <h1 style="margin:0;font-size:24px;color:#333;">计算几何-随机地图的生成</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;">2015年05月13日 #Computational_Geometry</p>
+  </header>
+  <article><div style="font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:16px;line-height:1.8;color:#333333;"><p><img src="https://latex.codecogs.com/svg.image?\small%209%20%5Ctimes%209" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%203%20%5Ctimes%203" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%209%5E%7B81%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20N%20%5Ctimes%20N" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5C%7B1%2C%202%2C%20%5Cldots%2C%209%5C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5C%7B%5Ctext%7Btile%7D_1%2C%20%5Ctext%7Btile%7D_2%2C%20%5Cldots%2C%20%5Ctext%7Btile%7D_%7BN%5E2%7D%5C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20k" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20i" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20j" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20i" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20j" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20R%20%5Ctimes%20C" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20w_i" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20i" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20H%27%20%3D%20H%20%2B%20%5Cepsilon%20%5Ccdot%20%5Ctext%7Brandom%7D%28%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20A" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20A" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20B" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5C%7B1%2C%20%5Cldots%2C%209%5C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5C%7B%5Ctext%7Btile%7D_1%2C%20%5Cldots%2C%20%5Ctext%7Btile%7D_k%5C%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20N%20%5Ctimes%20N" alt="formula" /> 的<strong>像素模式（patterns）</strong>，分析这些模式之间的重叠关系。</p>
+
+<ul>
+  <li><strong>输入</strong>：仅一张样本图像</li>
+  <li><strong>规则来源</strong>：自动从样本中提取模式及其允许的重叠方式</li>
+  <li><strong>优点</strong>：完全自动化，不需要手工定义规则</li>
+  <li><strong>缺点</strong>：模式数量可能很多，计算开销更大</li>
+</ul>
+
+<hr />
+
+<h2 id="6-矛盾处理回溯-vs-重启">6. 矛盾处理：回溯 vs 重启</h2>
+
+<p>当约束传播导致某个格子的可能性清零时，算法遇到了<strong>矛盾</strong>——就像数独中某个格子没有任何合法数字可填。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">策略</th>
+      <th style="text-align: left">方法</th>
+      <th style="text-align: left">优点</th>
+      <th style="text-align: left">缺点</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left"><strong>重启（Restart）</strong></td>
+      <td style="text-align: left">放弃当前结果，从头开始</td>
+      <td style="text-align: left">实现简单</td>
+      <td style="text-align: left">可能多次失败，浪费计算</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>回溯（Backtracking）</strong></td>
+      <td style="text-align: left">撤销上一次塌缩决策，尝试其他 tile</td>
+      <td style="text-align: left">更高成功率</td>
+      <td style="text-align: left">实现复杂，可能指数级回溯</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>原始 WFC 实现使用<strong>重启策略</strong>。实践表明，对于合理设计的邻接规则，重启几次后几乎总能成功。但对于约束很紧的问题（类似于数独中的”极难数独”），回溯更可靠。</p>
+
+<hr />
+
+<h2 id="7-wfc-与其他程序化生成方法的对比">7. WFC 与其他程序化生成方法的对比</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">方法</th>
+      <th style="text-align: left">原理</th>
+      <th style="text-align: left">输入</th>
+      <th style="text-align: left">优点</th>
+      <th style="text-align: left">缺点</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left"><strong>WFC</strong></td>
+      <td style="text-align: left">约束传播 + 熵塌缩</td>
+      <td style="text-align: left">一张样本图</td>
+      <td style="text-align: left">自动学习规则，局部连续性好</td>
+      <td style="text-align: left">全局结构不可控</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>L-System</strong></td>
+      <td style="text-align: left">字符串重写规则</td>
+      <td style="text-align: left">产生式规则</td>
+      <td style="text-align: left">适合植物/分形结构</td>
+      <td style="text-align: left">规则需手工设计</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>噪声函数（Perlin/Simplex）</strong></td>
+      <td style="text-align: left">梯度噪声插值</td>
+      <td style="text-align: left">参数</td>
+      <td style="text-align: left">连续平滑，计算快</td>
+      <td style="text-align: left">不适合结构化内容</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>Cellular Automata</strong></td>
+      <td style="text-align: left">局部邻域规则</td>
+      <td style="text-align: left">规则 + 初始状态</td>
+      <td style="text-align: left">简单直观，适合洞穴生成</td>
+      <td style="text-align: left">规则需手工设计</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>Voronoi 图</strong></td>
+      <td style="text-align: left">最近邻划分</td>
+      <td style="text-align: left">种子点</td>
+      <td style="text-align: left">天然分区效果</td>
+      <td style="text-align: left">生成结果模式单一</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>WFC 的独特优势在于<strong>数据驱动</strong>——只需提供一张样本，算法自动提取规则。不需要手工编写规则，也不需要机器学习训练。</p>
+
+<hr />
+
+<h2 id="8-应用场景">8. 应用场景</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">领域</th>
+      <th style="text-align: left">用途</th>
+      <th style="text-align: left">示例</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left"><strong>游戏关卡设计</strong></td>
+      <td style="text-align: left">生成城市布局、地牢、平台关卡</td>
+      <td style="text-align: left">Caves of Qud, Townscaper</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>纹理合成</strong></td>
+      <td style="text-align: left">从小样本生成大纹理贴图</td>
+      <td style="text-align: left">砖墙、地板、布料纹理</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>3D 场景生成</strong></td>
+      <td style="text-align: left">生成建筑群、城市街道</td>
+      <td style="text-align: left">城市天际线生成</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>像素艺术</strong></td>
+      <td style="text-align: left">扩展精灵图（sprite sheet）</td>
+      <td style="text-align: left">角色动画帧生成</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><strong>音乐生成</strong></td>
+      <td style="text-align: left">基于模式的音乐序列生成</td>
+      <td style="text-align: left">—</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="9-实现代码资源">9. 实现/代码资源</h2>
+
+<ul>
+  <li><strong>原始实现（C#）</strong>：<a href="https://github.com/mxgmn/WaveFunctionCollapse">mxgmn/WaveFunctionCollapse</a></li>
+  <li><strong>Python 实现</strong>：<a href="https://github.com/eyalrd/WaveFunctionCollapse">eyalrd/WaveFunctionCollapse</a></li>
+  <li><strong>Web 在线演示</strong>：<a href="https://wavefunctioncollapse.com/">wavefunctioncollapse.com</a></li>
+</ul>
+
+<h2 id="参考">参考</h2>
+
+<ul>
+  <li>Gumin, M. (2016). <em>WaveFunctionCollapse</em>. GitHub repository.</li>
+  <li>Karth, I., &amp; Smith, A. M. (2017). “WaveFunctionCollapse is constraint solving in the wild.” <em>Proceedings of the 12th International Conference on the Foundations of Digital Games</em>.</li>
+  <li>Heaton, R. (2018). “The Wavefunction Collapse Algorithm explained very clearly.” <a href="https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/">Blog post</a>.</li>
+  <li>Russell, S., &amp; Norvig, P. (2020). <em>Artificial Intelligence: A Modern Approach</em>. Chapter 6: Constraint Satisfaction Problems.</li>
+</ul>
+</div></article>
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;color:#999;font-size:12px;">
+    <p>本文由 Jekyll WechatGenerator 自动生成</p>
+    <p>请复制上方内容到微信公众号编辑器发布</p>
+  </footer>
+</body>
+</html>

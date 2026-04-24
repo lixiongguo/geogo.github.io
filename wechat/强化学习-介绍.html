@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>强化学习-介绍</title>
+</head>
+<body>
+  <header style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #eee;">
+    <h1 style="margin:0;font-size:24px;color:#333;">强化学习-介绍</h1>
+    <p style="margin:10px 0 0;color:#888;font-size:14px;">2022年03月06日 #RL</p>
+  </header>
+  <article><div style="font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;font-size:16px;line-height:1.8;color:#333333;"><p><img src="https://latex.codecogs.com/svg.image?\small%20s_%7Bt%2B1%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20s_t" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20a_t" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20P%28s_%7Bt%2B1%7D%7C%20s_t%2Ca_t%2Cs_%7Bt-1%7D%2Ca_%7Bt-1%7D%2C...%29%20%3D%20P%28s_%7Bt%2B1%7D%7Cs_t%2Ca_t%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cgamma" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20t%2B1" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20r_%7Bt%2B1%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cgamma%20r_%7Bt%2B1%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20Episode%3D%5B%28s_0%2Ca_0%2Cr_0%29%2C%28s_1%2Ca_1%2Cr_1%29%2C....%2C%28s_T%2Ca_T%2Cr_T%29%5D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20t" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20S_t" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20G_t%20%3D%20R_t%2B%5Cgamma%20R_%7Bt%2B1%7D%20%2B%7B%5Cgamma%7D%5E2%20R_%7Bt%2B2%7D%2B...%20%3D%20%5CSigma_%7Bk%3D0%7D%7B%5Cgamma%7D%5EkR_%7Bt%2Bk%7D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cpi%28a%7Cs%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20s" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cpi" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20a" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cmu%28s%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20s" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20a" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V%5E%7B%5Cpi%7D%28s%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20s" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cpi" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20V%5E%7B%5Cpi%7D%28s%29%3DE_%7B%5Cpi%7D%5BG_t%7CS_t%20%3Ds%5D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20Q%5E%7B%5Cpi%7D%28s%2Ca%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cpi" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20Q%5E%5Cpi%20%28s%2Ca%29%20%3D%20E_%5Cpi%5BG_t%7CS_t%20%3D%20s%2CA_t%20%3D%20a%5D" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cpi%28a%7Cs%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20argmax_a%20Q%28s%2Ca%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cpi%27%28a%7Cs%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cpi%27%28a%7Cs%29" alt="formula" /><img src="https://latex.codecogs.com/svg.image?\small%20%5Cpi%28a%7Cs%29" alt="formula" />更好（<strong>策略提升</strong>）</p>
+
+<p>如下图策略是每个状态采取的动作，价值每个状态下预期的回报</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250306091930065.png" alt="image-20250306091930065" /></p>
+
+<p>如果要用强化学习方法实现最优控制,也就是找到某个策略使得对应的回报最大，那么根据所学习的函数不同,强化学习方法可以分为两类</p>
+
+<ul>
+  <li>对动作价值函数Q进行估算,然后通过策略提升的方法,优化策略函数的“<strong>值函数估计</strong>”方法</li>
+  <li>对策略函数直接求梯度,然后通过梯度下降等优化方法,优化策略函数的“<strong>策略梯度</strong>”方法</li>
+</ul>
+
+<p>DQN是一种“值函数估计”方法，也是本文后面将要介绍的重点。AlphaGo用的方法(也是当前主流的方法)是同时进行值函数估计和策略函数的优化，两者相辅相成，一方面用值函数估计来对策略进行评估，另一方面根据值函数评估给出的梯度来优化策略函数。AlphaGo中用价值网络评估棋盘上当前和推演棋局的价值，同时用策略网络寻找下一个着子点。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250305192419094.png" alt="image-20250305192419094" /></p>
+
+<h4 id="最基础的强化学习过程">最基础的强化学习过程</h4>
+
+<p>对于一些简单的状态动作空间问题，可以通过列出表格(称为Q-table)来表示整个状态动作空间，从而做出决策。</p>
+
+<p>考虑如下的“冰湖迷宫”问题，想象一个被困在 4×4冰冻湖面的智能体，试图从起点安全地到达对岸的目标，智能体可以选择”上、下、左、右”方向移动一个格子，另外注意到湖面布满冰洞，智能体要避免掉进这些冰洞中。</p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250226195909215.png" alt="image-20250226195909215" /></p>
+
+<p>对于“冰湖迷宫”问题,我们的MDP建模如下：</p>
+
+<ul>
+  <li>状态空间：地图以网格形式呈现，每个格子代表一个状态，共有 16 个状态，结束状态是智能体到达目标或掉进冰</li>
+  <li>动作空间：有”上、下、左、右“ 4 个可能的动作</li>
+  <li>奖励机制：到达目标+1</li>
+</ul>
+
+<p>这个问题的Q-table如下图，图中每个格子四个值代表Q该值，灰度代表该格子的状态价值,而问题就是该如何填充这个<strong>Q-table</strong></p>
+
+<p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250228200354910.png" alt="image-20250228200354910" style="zoom:50%;" /></p>
+
+</div></article>
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;text-align:center;color:#999;font-size:12px;">
+    <p>本文由 Jekyll WechatGenerator 自动生成</p>
+    <p>请复制上方内容到微信公众号编辑器发布</p>
+  </footer>
+</body>
+</html>
