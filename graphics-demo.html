@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>装箱问题 - 3D Bin Packing</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #08081a;
+      color: #c0c0e0;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      overflow: hidden;
+      height: 100vh;
+    }
+    .container { display: flex; flex-direction: column; height: 100vh; }
+
+    /* Header */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px;
+      background: rgba(10, 10, 30, 0.95);
+      border-bottom: 1px solid rgba(100, 140, 255, 0.15); flex-shrink: 0;
+    }
+    .header h1 {
+      font-size: 16px; font-weight: 600;
+      background: linear-gradient(90deg, #6366f1, #a78bfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .header-actions { display: flex; gap: 8px; }
+
+    .btn {
+      padding: 6px 16px; border: 1px solid rgba(99, 102, 241, 0.4);
+      background: rgba(99, 102, 241, 0.12); color: #b4b4ff; border-radius: 6px;
+      font-size: 12px; cursor: pointer; font-family: inherit; transition: all 0.2s ease;
+    }
+    .btn:hover { background: rgba(99, 102, 241, 0.25); border-color: #6366f1; }
+    .btn-primary { background: rgba(99, 102, 241, 0.3); border-color: #6366f1; }
+    .btn-primary:hover { background: rgba(99, 102, 241, 0.45); }
+
+    /* Main */
+    .main-content { display: flex; flex: 1; overflow: hidden; }
+
+    /* Canvas */
+    .canvas-area { flex: 1; position: relative; }
+    #canvas-container { width: 100%; height: 100%; }
+    canvas { display: block; }
+
+    /* Side Panel */
+    .side-panel {
+      width: 300px; background: rgba(12, 12, 32, 0.95);
+      border-left: 1px solid rgba(100, 140, 255, 0.12);
+      overflow-y: auto; flex-shrink: 0; padding: 16px;
+    }
+    .panel-section { margin-bottom: 20px; }
+    .panel-title {
+      font-size: 13px; font-weight: 600; color: #8888cc;
+      margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;
+    }
+
+    /* Stats */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat-card {
+      background: rgba(99, 102, 241, 0.06); border: 1px solid rgba(99, 102, 241, 0.15);
+      border-radius: 8px; padding: 10px 12px; text-align: center;
+    }
+    .stat-value { font-size: 22px; font-weight: 700; color: #b4b4ff; }
+    .stat-label { font-size: 10px; color: #7778aa; margin-top: 2px; }
+
+    /* Box Legend */
+    .box-legend { list-style: none; }
+    .legend-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 8px; border-radius: 6px; margin-bottom: 4px;
+      background: rgba(255,255,255,0.02);
+    }
+    .legend-color {
+      width: 28px; height: 18px; border-radius: 3px; flex-shrink: 0;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .legend-info { flex: 1; min-width: 0; }
+    .legend-name { font-size: 12px; color: #d0d0ee; }
+    .legend-size { font-size: 10px; color: #667; }
+    .legend-count {
+      font-size: 14px; font-weight: 700; color: #b4b4ff;
+      min-width: 32px; text-align: right;
+    }
+
+    /* Container info */
+    .container-info {
+      background: rgba(168, 85, 247, 0.06); border: 1px solid rgba(168, 85, 247, 0.2);
+      border-radius: 8px; padding: 12px;
+    }
+    .container-info p { font-size: 11px; line-height: 1.8; color: #9999bb; }
+    .container-info span { color: #c084fc; font-weight: 600; }
+
+    /* Algorithm Info */
+    .algo-info {
+      font-size: 11px; color: #7778aa; line-height: 1.7;
+      background: rgba(0,0,0,0.2); border-radius: 6px; padding: 10px 12px;
+    }
+
+    /* Loading overlay */
+    #loading {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 14px; color: #6366f1; pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    #loading.hidden { opacity: 0; }
+
+    /* Progress bar */
+    .progress-wrap { margin-top: 10px; }
+    .progress-bar-bg {
+      height: 6px; background: rgba(99, 102, 241, 0.15); border-radius: 3px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; background: linear-gradient(90deg, #6366f1, #a78bfa, #c084fc);
+      border-radius: 3px; transition: width 0.3s ease;
+      width: 0%;
+    }
+    .progress-text { font-size: 10px; color: #7778aa; margin-top: 4px; text-align: center; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>📦 三维装箱问题 (3D Bin Packing)</h1>
+    <div class="header-actions">
+      <button class="btn" id="btn-reset">重置</button>
+      <button class="btn btn-primary" id="btn-pack">开始装箱</button>
+      <button class="btn" id="btn-view">切换视角</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="canvas-area">
+      <div id="canvas-container"></div>
+      <div id="loading">正在计算最优装箱方案...</div>
+    </div>
+
+    <div class="side-panel">
+      <!-- 统计 -->
+      <div class="panel-section">
+        <div class="panel-title">装箱统计</div>
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-label">装箱数量</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-util">0%</div>
+            <div class="stat-label">空间利用率</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-volume">0</div>
+            <div class="stat-label">已用体积</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-types">5</div>
+            <div class="stat-label">箱子种类</div>
+          </div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill"></div></div>
+          <div class="progress-text" id="progress-text">等待开始...</div>
+        </div>
+      </div>
+
+      <!-- 集装箱信息 -->
+      <div class="panel-section">
+        <div class="panel-title">集装箱尺寸</div>
+        <div class="container-info">
+          <p>长 × 宽 × 高 = <span>10 × 8 × 8</span> 单位</p>
+          <p>总体积 = <span>640</span> 立方单位</p>
+        </div>
+      </div>
+
+      <!-- 箱子图例 -->
+      <div class="panel-section">
+        <div class="panel-title">箱子类型</div>
+        <ul class="box-legend" id="box-legend"></ul>
+      </div>
+
+      <!-- 算法说明 -->
+      <div class="panel-section">
+        <div class="panel-title">算法说明</div>
+        <div class="algo-info">
+          采用<strong style="color:#a78bfa">三维最大空间分割算法</strong>(3D Maximal Spaces)，
+          按体积降序排列箱子，递归分割剩余空间，贪心选择最优位置。
+          支持箱子任意方向旋转以最大化填充率。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ==================== Configuration ====================
+const CONTAINER = { w: 10, d: 8, h: 8 };
+
+const BOX_TYPES = [
+  { name: '大型箱',   w: 3, d: 2.5, h: 2,   color: 0xef4444, hex: '#ef4444' }, // 红
+  { name: '中型箱A',  w: 2.5, d: 2, h: 1.8,  color: 0xf97316, hex: '#f97316' }, // 橙
+  { name: '中型箱B',  w: 2, d: 2, h: 2.5,    color: 0xeab308, hex: '#eab308' }, // 黄
+  { name: '小型箱A',  w: 1.5, d: 1.5, h: 1.5, color: 0x22c55e, hex: '#22c55e' }, // 绿
+  { name: '小型箱B',  w: 1, d: 1.8, h: 1.2,   color: 0x3b82f6, hex: '#3b82f6' }, // 蓝
+];
+
+// ==================== 3D Bin Packing Algorithm ====================
+class BinPacker {
+  constructor(w, d, h) {
+    this.binW = w; this.binD = d; this.binH = h;
+    this.placed = [];
+    this.freeSpaces = [{ x: 0, y: 0, z: 0, w, d, h }];
+  }
+
+  canFit(box, space) {
+    const orientations = [
+      [box.w, box.d, box.h],
+      [box.w, box.h, box.d],
+      [box.d, box.w, box.h],
+      [box.d, box.h, box.w],
+      [box.h, box.w, box.d],
+      [box.h, box.d, box.w],
+    ];
+    for (const [bw, bd, bh] of orientations) {
+      if (bw <= space.w + 0.001 && bd <= space.d + 0.001 && bh <= space.h + 0.001) {
+        return { fit: true, bw, bd, bh };
+      }
+    }
+    return { fit: false };
+  }
+
+  pack(boxes) {
+    let attempts = 0;
+    const maxAttempts = 50000;
+
+    outer:
+    while (attempts < maxAttempts) {
+      for (let bi = 0; bi < boxes.length; bi++) {
+        const box = boxes[bi];
+        if (!box) continue;
+
+        let bestSpaceIdx = -1;
+        let bestOri = null;
+        let bestRemnant = Infinity;
+
+        for (let si = 0; si < this.freeSpaces.length; si++) {
+          const space = this.freeSpaces[si];
+          const result = this.canFit(box, space);
+          if (result.fit) {
+            const remnant =
+              (space.w * space.d * space.h) -
+              (result.bw * result.bd * result.bh);
+            if (remnant < bestRemnant) {
+              bestRemnant = remnant;
+              bestSpaceIdx = si;
+              bestOri = result;
+            }
+          }
+        }
+
+        if (bestSpaceIdx >= 0 && bestOri) {
+          const space = this.freeSpaces.splice(bestSpaceIdx, 1)[0];
+
+          this.placed.push({
+            ...box,
+            x: space.x,
+            y: space.y,
+            z: space.z,
+            w: bestOri.bw,
+            d: bestOri.bd,
+            h: bestOri.bh,
+          });
+
+          // Split remaining space into up to 3 sub-spaces
+          const newSpaces = [];
+          // Right side
+          const rw = space.w - bestOri.bw;
+          if (rw > 0.05) {
+            newSpaces.push({
+              x: space.x + bestOri.bw, y: space.y, z: space.z,
+              w: rw, d: space.d, h: space.h,
+            });
+          }
+          // Front side
+          const rd = space.d - bestOri.bd;
+          if (rd > 0.05) {
+            newSpaces.push({
+              x: space.x, y: space.y, z: space.z + bestOri.bd,
+              w: bestOri.bw, d: rd, h: space.h,
+            });
+          }
+          // Top side
+          const rh = space.h - bestOri.bh;
+          if (rh > 0.05) {
+            newSpaces.push({
+              x: space.x, y: space.y + bestOri.bh, z: space.z,
+              w: bestOri.bw, d: bestOri.bd, h: rh,
+            });
+          }
+
+          // Remove subsumed spaces and add new ones
+          for (const ns of newSpaces) {
+            let subsumed = false;
+            for (let i = this.freeSpaces.length - 1; i >= 0; i--) {
+              if (this._contains(ns, this.freeSpaces[i])) {
+                this.freeSpaces.splice(i, 1);
+              } else if (this._contains(this.freeSpaces[i], ns)) {
+                subsumed = true; break;
+              }
+            }
+            if (!subsumed) this.freeSpaces.push(ns);
+          }
+
+          boxes[bi] = null;
+          continue outer;
+        }
+      }
+
+      // Try to re-add boxes with more quantity
+      let anyAdded = false;
+      for (let bi = 0; bi < boxes.length; bi++) {
+        if (!boxes[bi]) {
+          const origType = BOX_TYPES.find(t => t.name === this.placed[this.placed.length - 1]?.name);
+          if (origType) {
+            boxes[bi] = { ...origType };
+            anyAdded = true;
+            break;
+          }
+        }
+      }
+      if (!anyAdded) break;
+      attempts++;
+    }
+
+    return this.placed;
+  }
+
+  _contains(a, b) {
+    return (
+      a.x <= b.x + 0.001 &&
+      a.y <= b.y + 0.001 &&
+      a.z <= b.z + 0.001 &&
+      a.x + a.w >= b.x + b.w - 0.001 &&
+      a.y + a.h >= b.y + b.h - 0.001 &&
+      a.z + a.d >= b.z + b.d - 0.001
+    );
+  }
+}
+
+// ==================== Three.js Setup ====================
+const containerEl = document.getElementById('canvas-container');
+const loadingEl = document.getElementById('loading');
+
+let scene, camera, renderer, controls;
+let containerMesh, boxGroup;
+
+function initThree() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x08081a);
+
+  camera = new THREE.PerspectiveCamera(
+    45,
+    containerEl.clientWidth / containerEl.clientHeight,
+    0.1, 200
+  );
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(containerEl.clientWidth, containerEl.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  containerEl.appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 8;
+  controls.maxDistance = 60;
+
+  // Lights
+  const ambient = new THREE.AmbientLight(0xffffff, 0.45);
+  scene.add(ambient);
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+  dirLight.position.set(12, 20, 15);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.width = 2048;
+  dirLight.shadow.mapSize.height = 2048;
+  dirLight.shadow.camera.near = 1;
+  dirLight.shadow.camera.far = 60;
+  dirLight.shadow.camera.left = -15;
+  dirLight.shadow.camera.right = 15;
+  dirLight.shadow.camera.top = 15;
+  dirLight.shadow.camera.bottom = -15;
+  scene.add(dirLight);
+
+  const fillLight = new THREE.DirectionalLight(0x8888ff, 0.25);
+  fillLight.position.set(-10, 8, -10);
+  scene.add(fillLight);
+
+  const rimLight = new THREE.DirectionalLight(0xff88ff, 0.15);
+  rimLight.position.set(0, -5, -15);
+  scene.add(rimLight);
+
+  // Ground grid helper
+  const gridHelper = new THREE.GridHelper(40, 40, 0x222244, 0x16162e);
+  gridHelper.position.y = -CONTAINER.h / 2 - 0.01;
+  scene.add(gridHelper);
+
+  createContainer();
+  boxGroup = new THREE.Group();
+  scene.add(boxGroup);
+
+  setCameraView('default');
+}
+
+function createContainer() {
+  const geo = new THREE.BoxGeometry(CONTAINER.w, CONTAINER.h, CONTAINER.d);
+  const mat = new THREE.MeshPhysicalMaterial({
+    color: 0xa855f7,
+    metalness: 0.1,
+    roughness: 0.15,
+    transmission: 0.3,
+    thickness: 0.5,
+    transparent: true,
+    opacity: 0.25,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  containerMesh = new THREE.Mesh(geo, mat);
+  containerMesh.position.y = CONTAINER.h / 2;
+  scene.add(containerMesh);
+
+  // Wireframe edges for container
+  const edgesGeo = new THREE.EdgesGeometry(geo);
+  const edgesMat = new THREE.LineBasicMaterial({
+    color: 0xc084fc,
+    linewidth: 2,
+    transparent: true,
+    opacity: 0.8,
+  });
+  const edges = new THREE.LineSegments(edgesGeo, edgesMat);
+  edges.position.copy(containerMesh.position);
+  scene.add(edges);
+}
+
+function setCameraView(viewName) {
+  const center = new THREE.Vector3(CONTAINER.w / 2 - 1, CONTAINER.h / 2, CONTAINER.d / 2 - 1);
+  const dist = 28;
+  switch (viewName) {
+    case 'default':
+      camera.position.set(center.x + dist * 0.6, center.y + dist * 0.5, center.z + dist * 0.6);
+      break;
+    case 'top':
+      camera.position.set(center.x, center.y + dist * 1.2, center.z + 0.1);
+      break;
+    case 'front':
+      camera.position.set(center.x, center.y + 2, center.z + dist);
+      break;
+    case 'side':
+      camera.position.set(center.x + dist, center.y + 2, center.z);
+      break;
+    default:
+      camera.position.set(center.x + dist * 0.6, center.y + dist * 0.5, center.z + dist * 0.6);
+  }
+  controls.target.copy(center);
+  controls.update();
+}
+
+let currentViewIndex = 0;
+const viewNames = ['default', 'top', 'front', 'side'];
+
+// ==================== UI & Interaction ====================
+function buildLegend() {
+  const legendEl = document.getElementById('box-legend');
+  legendEl.innerHTML = '';
+  BOX_TYPES.forEach((type, i) => {
+    const li = document.createElement('li');
+    li.className = 'legend-item';
+    li.id = `legend-${i}`;
+    li.innerHTML = `
+      <div class="legend-color" style="background:${type.hex}"></div>
+      <div class="legend-info">
+        <div class="legend-name">${type.name}</div>
+        <div class="legend-size">${type.w}×${type.d}×${type.h}</div>
+      </div>
+      <div class="legend-count" id="count-${i}">0</div>
+    `;
+    legendEl.appendChild(li);
+  });
+}
+
+function updateStats(placedBoxes) {
+  const totalVol = CONTAINER.w * CONTAINER.d * CONTAINER.h;
+  let usedVol = 0;
+  const counts = {};
+  BOX_TYPES.forEach((t, i) => counts[i] = 0);
+
+  placedBoxes.forEach(b => {
+    usedVol += b.w * b.d * b.h;
+    for (let i = 0; i < BOX_TYPES.length; i++) {
+      if (BOX_TYPES[i].name === b.name) { counts[i]++; break; }
+    }
+  });
+
+  document.getElementById('stat-total').textContent = placedBoxes.length;
+  document.getElementById('stat-util').textContent = ((usedVol / totalVol) * 100).toFixed(1) + '%';
+  document.getElementById('stat-volume').textContent = usedVol.toFixed(1);
+
+  for (let i = 0; i < BOX_TYPES.length; i++) {
+    const el = document.getElementById(`count-${i}`);
+    if (el) el.textContent = counts[i];
+  }
+
+  const fillEl = document.getElementById('progress-fill');
+  const textEl = document.getElementById('progress-text');
+  fillEl.style.width = `${Math.min((usedVol / totalVol) * 100, 100)}%`;
+  textEl.textContent = `已利用 ${usedVol.toFixed(1)} / ${totalVol} 立方单位`;
+}
+
+// ==================== Box Rendering ====================
+function clearBoxes() {
+  while (boxGroup.children.length > 0) {
+    const child = boxGroup.children[0];
+    if (child.geometry) child.geometry.dispose();
+    if (child.material) child.material.dispose();
+    boxGroup.remove(child);
+  }
+}
+
+function renderBoxes(placedBoxes, animate = true) {
+  clearBoxes();
+
+  placedBoxes.forEach((b, idx) => {
+    const geo = new THREE.BoxGeometry(b.w * 0.98, b.h * 0.98, b.d * 0.98);
+    const mat = new THREE.MeshStandardMaterial({
+      color: b.color,
+      metalness: 0.15,
+      roughness: 0.35,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(
+      b.x + b.w / 2,
+      b.y + b.h / 2,
+      b.z + b.d / 2
+    );
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+
+    // Edges for each box
+    const edgeGeo = new THREE.EdgesGeometry(geo);
+    const edgeMat = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.2,
+    });
+    const edgeMesh = new THREE.LineSegments(edgeGeo, edgeMat);
+    mesh.add(edgeMesh);
+
+    if (animate) {
+      mesh.scale.set(0, 0, 0);
+      mesh.userData.targetScale = 1;
+      mesh.userData.delay = Math.min(idx * 15, 2000);
+      mesh.userData.animated = false;
+    }
+
+    boxGroup.add(mesh);
+  });
+}
+
+// Animation loop
+let animationStartTime = 0;
+let animationDone = false;
+
+function animateBoxes(time) {
+  if (!animationStartTime) animationStartTime = time;
+  const elapsed = time - animationStartTime;
+
+  boxGroup.children.forEach(mesh => {
+    if (!mesh.userData.animated && elapsed >= mesh.userData.delay) {
+      const t = Math.min((elapsed - mesh.userData.delay) / 400, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      mesh.scale.setScalar(eased * mesh.userData.targetScale);
+      if (t >= 1) mesh.userData.animated = true;
+    }
+  });
+
+  animationDone = boxGroup.every(m => m.userData.animated || !m.userData.targetScale);
+}
+
+// ==================== Main Pack Logic ====================
+async function runPacking() {
+  loadingEl.classList.remove('hidden');
+  document.getElementById('btn-pack').disabled = true;
+  document.getElementById('progress-text').textContent = '正在计算...';
+
+  await sleep(50);
+
+  // Create unlimited supply of each box type
+  // Sort by volume descending for better packing efficiency
+  const sortedTypes = [...BOX_TYPES].sort((a, b) =>
+    (b.w * b.d * b.h) - (a.w * a.d * a.h)
+  );
+
+  // Create initial batch of boxes (enough to overfill)
+  const boxes = [];
+  for (let round = 0; round < 150; round++) {
+    for (const t of sortedTypes) {
+      boxes.push({ ...t });
+    }
+  }
+
+  const packer = new BinPacker(CONTAINER.w, CONTAINER.d, CONTAINER.h);
+  const placed = packer.pack(boxes);
+
+  loadingEl.classList.add('hidden');
+  document.getElementById('btn-pack').disabled = false;
+
+  renderBoxes(placed, true);
+  updateStats(placed);
+  animationStartTime = 0;
+}
+
+function resetScene() {
+  clearBoxes();
+  updateStats([]);
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('progress-text').textContent = '等待开始...';
+
+  for (let i = 0; i < BOX_TYPES.length; i++) {
+    const el = document.getElementById(`count-${i}`);
+    if (el) el.textContent = '0';
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ==================== Event Listeners ====================
+document.getElementById('btn-pack').addEventListener('click', runPacking);
+document.getElementById('btn-reset').addEventListener('click', resetScene);
+document.getElementById('btn-view').addEventListener('click', () => {
+  currentViewIndex = (currentViewIndex + 1) % viewNames.length;
+  setCameraView(viewNames[currentViewIndex]);
+});
+
+window.addEventListener('resize', () => {
+  const w = containerEl.clientWidth;
+  const h = containerEl.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+});
+
+// ==================== Render Loop ====================
+function mainLoop(time) {
+  requestAnimationFrame(mainLoop);
+
+  controls.update();
+
+  if (!animationDone && animationStartTime) {
+    animateBoxes(time);
+  }
+
+  // Gentle auto-rotation when not interacting
+  if (containerMesh && !animationDone && animationStartTime) {
+    // Subtle rotation hint
+  }
+
+  renderer.render(scene, camera);
+}
+
+// ==================== Init ====================
+initThree();
+buildLegend();
+updateStats([]);
+
+// Auto-start packing after a short delay
+setTimeout(runPacking, 800);
+
+mainLoop();
+</script>
+</body>
+</html>
