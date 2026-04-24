@@ -11,8 +11,6 @@
 #   1. 在 _config.yml 中配置 wechat 段
 #   2. 执行 jekyll build 或 jekyll serve
 #   3. 微信版本输出到 _site/wechat/ 目录
-#
-# 注意：GitHub Pages 不支持自定义插件，需本地构建后提交 _wechat 目录
 
 require 'uri'
 require 'cgi'
@@ -30,6 +28,9 @@ module Jekyll
     safe true
     priority :low
 
+    # 代码块占位符计数器
+    @@code_placeholder_counter = 0
+
     def generate(site)
       config = site.config['wechat']
       return unless config && config['enabled']
@@ -38,14 +39,12 @@ module Jekyll
       @output_dir = config['output_dir'] || 'wechat'
       @mathjax_enabled = config.dig('mathjax', 'enabled') != false
       @style_config = config['style'] || {}
-
-      # 公式缓存，避免重复请求
       @formula_cache = {}
 
       if NOKOGIRI_AVAILABLE
         Jekyll.logger.info 'WechatGenerator:', '使用 Nokogiri 进行 HTML 处理'
       else
-        Jekyll.logger.warn 'WechatGenerator:', 'Nokogiri 未安装，使用正则模式处理 HTML（建议: gem install nokogiri）'
+        Jekyll.logger.warn 'WechatGenerator:', 'Nokogiri 未安装，使用正则模式（建议: gem install nokogiri）'
       end
 
       Jekyll.logger.info 'WechatGenerator:', '开始生成微信公众号版本...'
@@ -64,15 +63,68 @@ module Jekyll
 
     private
 
+    # ============================================
     # 主处理流程
+    # ============================================
+
     def generate_wechat_version(site, post)
       content = post.content.dup
+
+      # 步骤0: 保护代码块，防止其中的 $ 被误转为公式
+      content, code_blocks = protect_code_blocks(content)
+
+      # 步骤1: 替换图片路径
       content = replace_image_paths(content)
+
+      # 步骤2: 转换 MathJax 公式（此时代码块已被保护）
       content = convert_mathjax(content) if @mathjax_enabled
-      html = render_to_html(content, post.site)
+
+      # 步骤3: 恢复代码块
+      content = restore_code_blocks(content, code_blocks)
+
+      # 步骤4: 使用 kramdown 渲染为 HTML
+      html = render_to_html(content, site)
+
+      # 步骤5: 后处理 HTML - 内联样式、清理标签
       html = post_process_html(html)
+
+      # 步骤6: 包装完整页面
       full_html = wrap_with_template(post, html)
+
+      # 步骤7: 写入文件
       write_output_file(site, post, full_html)
+    end
+
+    # ============================================
+    # 代码块保护模块（防止 $ 被误转公式）
+    # ============================================
+
+    def protect_code_blocks(content)
+      code_blocks = {}
+      placeholder_prefix = "\x00CODE_BLOCK_"
+
+      # 保护围栏代码块 ``` ... ```
+      content = content.gsub(/```[\w]*\n.*?```/m) do |match|
+        key = "#{placeholder_prefix}#{@@code_placeholder_counter}\x00"
+        code_blocks[key] = match
+        @@code_placeholder_counter += 1
+        key
+      end
+
+      # 保护行内代码 `...`
+      content = content.gsub(/`[^`\n]+`/) do |match|
+        key = "#{placeholder_prefix}#{@@code_placeholder_counter}\x00"
+        code_blocks[key] = match
+        @@code_placeholder_counter += 1
+        key
+      end
+
+      [content, code_blocks]
+    end
+
+    def restore_code_blocks(content, code_blocks)
+      code_blocks.each { |placeholder, original| content = content.gsub(placeholder, original) }
+      content
     end
 
     # ============================================
@@ -80,9 +132,10 @@ module Jekyll
     # ============================================
 
     def replace_image_paths(content)
+      # 匹配所有 Markdown 图片语法，包括缺少 alt 文本的情况
       content.gsub(/!\[([^\]]*)\]\(([^)]+)\)/) do |_match|
-        alt_text = Regexp.last_match(1)
-        path = Regexp.last_match(2)
+        alt_text = Regexp.last_match[1]
+        path = Regexp.last_match[2]
         new_path = process_image_path(path)
         "![#{alt_text}](#{new_path})"
       end
@@ -91,14 +144,17 @@ module Jekyll
     def process_image_path(path)
       return path if path.start_with?('http://', 'https://')
 
-      filename = File.basename(path)
+      filename = File.basename(path).gsub('\\', '/') # 统一路径分隔符
       return path if filename.empty?
 
       ext = File.extname(filename).downcase
       valid_extensions = %w[.jpg .jpeg .png .gif .svg .webp .bmp]
       return path unless valid_extensions.include?(ext)
 
-      "#{@oss_base_url}/#{filename}"
+      # URL 编码中文等特殊字符
+      safe_filename = CGI.escape(filename).gsub('+', '%20')
+
+      "#{@oss_base_url}/#{safe_filename}"
     end
 
     # ============================================
@@ -106,13 +162,15 @@ module Jekyll
     # ============================================
 
     def convert_mathjax(content)
+      # 先处理块级公式 $$...$$（必须在行内之前）
       content = convert_block_math(content)
+      # 再处理行内公式 $...$
       convert_inline_math(content)
     end
 
     def convert_block_math(content)
       content.gsub(/\$\$(.*?)\$\$/m) do |_match|
-        formula = Regexp.last_match(1).strip
+        formula = Regexp.last_match[1].strip
         next Regexp.last_match[0] if formula.empty?
 
         img_url = get_formula_image_url(formula, false)
@@ -131,8 +189,8 @@ module Jekyll
           break
         end
 
-        # 块级公式 $$ 开头 - 跳过
-        if content[dollar_pos + 1] == '$'
+        # 块级公式 $$ 开头 — 跳过整个块级公式
+        if dollar_pos + 1 < content.length && content[dollar_pos + 1] == '$'
           end_pos = content.index('$$', dollar_pos + 2)
           if end_pos
             result += content[dollar_pos..end_pos + 1]
@@ -144,29 +202,20 @@ module Jekyll
           next
         end
 
-        # 行内公式结束 $
-        end_dollar_pos = nil
-        search_pos = dollar_pos + 1
-        while search_pos < content.length
-          idx = content.index('$', search_pos)
-          break unless idx
-
-          unless content[idx + 1] == '$'
-            end_dollar_pos = idx
-            break
-          end
-          search_pos = idx + 2
-        end
+        # 行内公式：查找配对的结束 $
+        end_dollar_pos = find_matching_dollar(content, dollar_pos + 1)
 
         if end_dollar_pos
-          formula = content[dollar_pos + 1...end_dollar_pos].strip
+          formula = content[(dollar_pos + 1)...end_dollar_pos].strip
           if formula.empty?
-            result += content[dollar_pos...end_dollar_pos + 1]
+            result += '$'
+            pos = dollar_pos + 1
           else
             img_url = get_formula_image_url(formula, true)
-            result += "![formula](#{img_url})"
+            # 行内公式使用 <img> 标签，设置 display:inline 使其与文字同行
+            result += "<img src=\"#{img_url}\" alt=\"formula\" style=\"display:inline;vertical-align:middle;margin:0 2px;height:1.2em;\" />"
+            pos = end_dollar_pos + 1
           end
-          pos = end_dollar_pos + 1
         else
           result += content[dollar_pos]
           pos = dollar_pos + 1
@@ -174,6 +223,24 @@ module Jekyll
       end
 
       result
+    end
+
+    def find_matching_dollar(content, start_pos)
+      search_pos = start_pos
+      while search_pos < content.length
+        idx = content.index('$', search_pos)
+        return nil unless idx
+
+        # 排除 $$ 的情况
+        next_idx = idx + 1
+        if next_idx < content.length && content[next_idx] == '$'
+          search_pos = next_idx + 2
+          next
+        else
+          return idx
+        end
+      end
+      nil
     end
 
     def get_formula_image_url(formula, inline)
@@ -219,7 +286,8 @@ module Jekyll
       end
     end
 
-    # Nokogiri 模式
+    # --- Nokogiri 模式 ---
+
     def post_process_with_nokogiri(html)
       doc = Nokogiri::HTML::DocumentFragment.parse(html)
       apply_nokogiri_styles(doc)
@@ -228,13 +296,13 @@ module Jekyll
     end
 
     def apply_nokogiri_styles(doc)
-      font_family = style_value('font_family')
-      font_size = style_value('font_size')
-      line_height = style_value('line_height')
-      text_color = style_value('text_color')
+      ff = style_value('font_family')
+      fs = style_value('font_size')
+      lh = style_value('line_height')
+      tc = style_value('text_color')
 
       styles_map = {
-        'body' => "font-family: #{font_family}; font-size: #{font_size}; line-height: #{line_height}; color: #{text_color}; padding: 10px; margin: 0;",
+        'body' => "font-family: #{ff}; font-size: #{fs}; line-height: #{lh}; color: #{tc}; padding: 10px; margin: 0;",
         'p' => 'margin: 16px 0; text-align: justify;',
         'h1' => 'font-size: 22px; font-weight: bold; margin: 24px 0 16px; color: #222; border-bottom: 2px solid #eee; padding-bottom: 8px;',
         'h2' => 'font-size: 20px; font-weight: bold; margin: 20px 0 14px; color: #333;',
@@ -242,7 +310,7 @@ module Jekyll
         'h4' => 'font-size: 16px; font-weight: bold; margin: 16px 0 10px; color: #555;',
         'ul' => 'margin: 12px 0; padding-left: 24px; list-style-type: disc;',
         'ol' => 'margin: 12px 0; padding-left: 24px; list-style-type: decimal;',
-        'li' => "margin: 6px 0; line-height: #{line_height};",
+        'li' => "margin: 6px 0; line-height: #{lh};",
         'blockquote' => 'border-left: 4px solid #ddd; margin: 16px 0; padding: 8px 16px; background-color: #f9f9f9; color: #666;',
         'pre' => 'background-color: #f6f8fa; padding: 16px; overflow-x: auto; border-radius: 6px; margin: 16px 0; font-size: 14px; line-height: 1.6;',
         'code' => "font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; background-color: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 14px;",
@@ -250,13 +318,23 @@ module Jekyll
         'table' => 'width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;',
         'th' => 'background-color: #f2f2f2; padding: 10px; border: 1px solid #ddd; text-align: left;',
         'td' => 'padding: 10px; border: 1px solid #ddd;',
-        'img' => 'max-width: 100%; height: auto; display: block; margin: 16px auto; border-radius: 4px;',
         'hr' => 'border: none; border-top: 1px solid #eee; margin: 24px 0;',
         'strong' => 'font-weight: bold;',
         'em' => 'font-style: italic;'
       }
 
       styles_map.each { |tag, styles| style_element(doc, tag, styles) }
+
+      # 图片样式（区分公式图片和普通图片）
+      doc.css('img').each do |el|
+        alt = el['alt'] || ''
+        if alt == 'formula'
+          el['style'] = 'display:inline; vertical-align:middle; margin:0 2px; max-width:none; height:1.2em;'
+        else
+          existing = el['style'] || ''
+          el['style'] = "#{existing.empty? ? '' : existing;}max-width:100%;height:auto;display:block;margin:16px auto;border-radius:4px;"
+        end
+      end
 
       # 代码块内的 code 不加背景
       doc.css('pre code').each { |el| el['style'] = 'background-color: transparent; padding: 0; font-size: inherit;' }
@@ -273,21 +351,19 @@ module Jekyll
       doc.css('script, link, meta').each(&:remove)
     end
 
-    # 正则模式（无 Nokogiri 时使用）
+    # --- 正则模式（无 Nokogiri 时使用）---
+
     def post_process_with_regex(html)
-      # 移除 script/link/meta 标签
       html = html.gsub(/<script[^>]*>.*?<\/script>/mi, '')
                   .gsub(/<link[^>]*>/i, '')
                   .gsub(/<meta[^>]*>/i, '')
 
-      # 为常见标签添加内联样式
-      font_family = style_value('font_family')
-      font_size = style_value('font_size')
-      line_height = style_value('line_height')
-      text_color = style_value('text_color')
-      base_style = "font-family:#{font_family};font-size:#{font_size};line-height:#{line_height};color:#{text_color};"
+      ff = style_value('font_family')
+      fs = style_value('font_size')
+      lh = style_value('line_height')
+      tc = style_value('text_color')
+      base_style = "font-family:#{ff};font-size:#{fs};line-height:#{lh};color:#{tc};"
 
-      # 包装 body 样式
       html = "<div style=\"#{base_style}\">#{html}</div>" unless html.include?('<body')
 
       html
