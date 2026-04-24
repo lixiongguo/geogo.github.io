@@ -14,19 +14,13 @@
       height: 100vh;
     }
     .container { display: flex; flex-direction: column; height: 100vh; }
-
-    /* Header */
     .header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 10px 20px;
       background: rgba(10, 10, 30, 0.95);
       border-bottom: 1px solid rgba(100, 140, 255, 0.15); flex-shrink: 0;
     }
-    .header h1 {
-      font-size: 16px; font-weight: 600;
-      background: linear-gradient(90deg, #6366f1, #a78bfa);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
+    .header h1 { font-size: 16px; font-weight: 600; background: linear-gradient(90deg, #6366f1, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .header-actions { display: flex; gap: 8px; }
 
     .btn {
@@ -38,86 +32,44 @@
     .btn-primary { background: rgba(99, 102, 241, 0.3); border-color: #6366f1; }
     .btn-primary:hover { background: rgba(99, 102, 241, 0.45); }
 
-    /* Main */
     .main-content { display: flex; flex: 1; overflow: hidden; }
-
-    /* Canvas */
     .canvas-area { flex: 1; position: relative; }
     #canvas-container { width: 100%; height: 100%; }
     canvas { display: block; }
 
-    /* Side Panel */
     .side-panel {
       width: 300px; background: rgba(12, 12, 32, 0.95);
       border-left: 1px solid rgba(100, 140, 255, 0.12);
       overflow-y: auto; flex-shrink: 0; padding: 16px;
     }
-    .panel-section { margin-bottom: 20px; }
-    .panel-title {
-      font-size: 13px; font-weight: 600; color: #8888cc;
-      margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;
-    }
+    .panel-section { margin-bottom: 18px; }
+    .panel-title { font-size: 13px; font-weight: 600; color: #8888cc; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
 
-    /* Stats */
     .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .stat-card {
-      background: rgba(99, 102, 241, 0.06); border: 1px solid rgba(99, 102, 241, 0.15);
-      border-radius: 8px; padding: 10px 12px; text-align: center;
-    }
+    .stat-card { background: rgba(99, 102, 241, 0.06); border: 1px solid rgba(99, 102, 241, 0.15); border-radius: 8px; padding: 10px 12px; text-align: center; }
     .stat-value { font-size: 22px; font-weight: 700; color: #b4b4ff; }
     .stat-label { font-size: 10px; color: #7778aa; margin-top: 2px; }
 
-    /* Box Legend */
     .box-legend { list-style: none; }
-    .legend-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 6px 8px; border-radius: 6px; margin-bottom: 4px;
-      background: rgba(255,255,255,0.02);
-    }
-    .legend-color {
-      width: 28px; height: 18px; border-radius: 3px; flex-shrink: 0;
-      border: 1px solid rgba(255,255,255,0.15);
-    }
+    .legend-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 6px; margin-bottom: 4px; background: rgba(255,255,255,0.02); }
+    .legend-color { width: 28px; height: 18px; border-radius: 3px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.15); }
     .legend-info { flex: 1; min-width: 0; }
     .legend-name { font-size: 12px; color: #d0d0ee; }
     .legend-size { font-size: 10px; color: #667; }
-    .legend-count {
-      font-size: 14px; font-weight: 700; color: #b4b4ff;
-      min-width: 32px; text-align: right;
-    }
+    .legend-count { font-size: 14px; font-weight: 700; color: #b4b4ff; min-width: 32px; text-align: right; }
 
-    /* Container info */
-    .container-info {
-      background: rgba(168, 85, 247, 0.06); border: 1px solid rgba(168, 85, 247, 0.2);
-      border-radius: 8px; padding: 12px;
-    }
+    .container-info { background: rgba(168, 85, 247, 0.06); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 8px; padding: 12px; }
     .container-info p { font-size: 11px; line-height: 1.8; color: #9999bb; }
     .container-info span { color: #c084fc; font-weight: 600; }
 
-    /* Algorithm Info */
-    .algo-info {
-      font-size: 11px; color: #7778aa; line-height: 1.7;
-      background: rgba(0,0,0,0.2); border-radius: 6px; padding: 10px 12px;
-    }
+    .algo-info { font-size: 11px; color: #7778aa; line-height: 1.7; background: rgba(0,0,0,0.2); border-radius: 6px; padding: 10px 12px; }
 
-    /* Loading overlay */
-    #loading {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      font-size: 14px; color: #6366f1; pointer-events: none;
-      transition: opacity 0.3s;
-    }
-    #loading.hidden { opacity: 0; }
+    #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; color: #6366f1; pointer-events: none; transition: opacity 0.3s; }
+    #loading.hidden { opacity: 0; pointer-events: none; }
 
-    /* Progress bar */
     .progress-wrap { margin-top: 10px; }
-    .progress-bar-bg {
-      height: 6px; background: rgba(99, 102, 241, 0.15); border-radius: 3px; overflow: hidden;
-    }
-    .progress-bar-fill {
-      height: 100%; background: linear-gradient(90deg, #6366f1, #a78bfa, #c084fc);
-      border-radius: 3px; transition: width 0.3s ease;
-      width: 0%;
-    }
+    .progress-bar-bg { height: 6px; background: rgba(99, 102, 241, 0.15); border-radius: 3px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #a78bfa, #c084fc); border-radius: 3px; transition: width 0.3s ease; width: 0%; }
     .progress-text { font-size: 10px; color: #7778aa; margin-top: 4px; text-align: center; }
   </style>
 </head>
@@ -139,26 +91,13 @@
     </div>
 
     <div class="side-panel">
-      <!-- 统计 -->
       <div class="panel-section">
         <div class="panel-title">装箱统计</div>
         <div class="stat-grid">
-          <div class="stat-card">
-            <div class="stat-value" id="stat-total">0</div>
-            <div class="stat-label">装箱数量</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="stat-util">0%</div>
-            <div class="stat-label">空间利用率</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="stat-volume">0</div>
-            <div class="stat-label">已用体积</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="stat-types">5</div>
-            <div class="stat-label">箱子种类</div>
-          </div>
+          <div class="stat-card"><div class="stat-value" id="stat-total">0</div><div class="stat-label">装箱数量</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-util">0%</div><div class="stat-label">空间利用率</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-volume">0</div><div class="stat-label">已用体积</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-types">5</div><div class="stat-label">箱子种类</div></div>
         </div>
         <div class="progress-wrap">
           <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill"></div></div>
@@ -166,7 +105,6 @@
         </div>
       </div>
 
-      <!-- 集装箱信息 -->
       <div class="panel-section">
         <div class="panel-title">集装箱尺寸</div>
         <div class="container-info">
@@ -175,19 +113,17 @@
         </div>
       </div>
 
-      <!-- 箱子图例 -->
       <div class="panel-section">
         <div class="panel-title">箱子类型</div>
         <ul class="box-legend" id="box-legend"></ul>
       </div>
 
-      <!-- 算法说明 -->
       <div class="panel-section">
         <div class="panel-title">算法说明</div>
         <div class="algo-info">
-          采用<strong style="color:#a78bfa">三维最大空间分割算法</strong>(3D Maximal Spaces)，
-          按体积降序排列箱子，递归分割剩余空间，贪心选择最优位置。
-          支持箱子任意方向旋转以最大化填充率。
+          采用<strong style="color:#a78bfa">层架贪心法</strong>(Shelf FFD)，
+          按体积降序排列，逐层填充集装箱。支持6方向旋转，
+          每层内使用最佳适应策略放置。
         </div>
       </div>
     </div>
@@ -210,172 +146,130 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const CONTAINER = { w: 10, d: 8, h: 8 };
 
 const BOX_TYPES = [
-  { name: '大型箱',   w: 3, d: 2.5, h: 2,   color: 0xef4444, hex: '#ef4444' }, // 红
-  { name: '中型箱A',  w: 2.5, d: 2, h: 1.8,  color: 0xf97316, hex: '#f97316' }, // 橙
-  { name: '中型箱B',  w: 2, d: 2, h: 2.5,    color: 0xeab308, hex: '#eab308' }, // 黄
-  { name: '小型箱A',  w: 1.5, d: 1.5, h: 1.5, color: 0x22c55e, hex: '#22c55e' }, // 绿
-  { name: '小型箱B',  w: 1, d: 1.8, h: 1.2,   color: 0x3b82f6, hex: '#3b82f6' }, // 蓝
+  { name: '大型箱',   w: 3, d: 2.5, h: 2,   color: 0xef4444, hex: '#ef4444' },
+  { name: '中型箱A',  w: 2.5, d: 2, h: 1.8,  color: 0xf97316, hex: '#f97316' },
+  { name: '中型箱B',  w: 2,   d: 2, h: 2.5,  color: 0xeab308, hex: '#eab308' },
+  { name: '小型箱A',  w: 1.5, d: 1.5, h: 1.5, color: 0x22c55e, hex: '#22c55e' },
+  { name: '小型箱B',  w: 1,   d: 1.8, h: 1.2, color: 0x3b82f6, hex: '#3b82f6' },
 ];
 
-// ==================== 3D Bin Packing Algorithm ====================
-class BinPacker {
-  constructor(w, d, h) {
-    this.binW = w; this.binD = d; this.binH = h;
-    this.placed = [];
-    this.freeSpaces = [{ x: 0, y: 0, z: 0, w, d, h }];
-  }
+// Gap between adjacent boxes (for visual separation)
+const GAP = 0.04;
 
-  canFit(box, space) {
-    const orientations = [
-      [box.w, box.d, box.h],
-      [box.w, box.h, box.d],
-      [box.d, box.w, box.h],
-      [box.d, box.h, box.w],
-      [box.h, box.w, box.d],
-      [box.h, box.d, box.w],
+// ==================== Bin Packing Algorithm (Layer-based) ====================
+function runBinPacking(binW, binD, binH) {
+  const placed = [];
+
+  // Generate orientations for a box (all 6 rotations)
+  function getOrientations(box) {
+    return [
+      { w: box.w, d: box.d, h: box.h },
+      { w: box.w, d: box.h, h: box.d },
+      { w: box.d, d: box.w, h: box.h },
+      { w: box.d, d: box.h, h: box.w },
+      { w: box.h, d: box.w, h: box.d },
+      { w: box.h, d: box.d, h: box.w },
     ];
-    for (const [bw, bd, bh] of orientations) {
-      if (bw <= space.w + 0.001 && bd <= space.d + 0.001 && bh <= space.h + 0.001) {
-        return { fit: true, bw, bd, bh };
-      }
-    }
-    return { fit: false };
   }
 
-  pack(boxes) {
-    let attempts = 0;
-    const maxAttempts = 50000;
+  // Check if a box at given position collides with any placed box
+  function collides(px, py, pz, pw, pd, ph) {
+    for (const b of placed) {
+      if (
+        px < b.x + b.w + GAP && px + pw + GAP > b.x &&
+        py < b.y + b.h + GAP && py + ph + GAP > b.y &&
+        pz < b.z + b.d + GAP && pz + pd + GAP > b.z
+      ) return true;
+    }
+    return false;
+  }
 
-    outer:
-    while (attempts < maxAttempts) {
-      for (let bi = 0; bi < boxes.length; bi++) {
-        const box = boxes[bi];
-        if (!box) continue;
+  // Try to find best position for a box (bottom-left-front strategy)
+  function findPosition(bw, bh, bd) {
+    if (bw > binW || bh > binH || bd > binD) return null;
 
-        let bestSpaceIdx = -1;
-        let bestOri = null;
-        let bestRemnant = Infinity;
+    let best = null;
+    let minY = Infinity;
 
-        for (let si = 0; si < this.freeSpaces.length; si++) {
-          const space = this.freeSpaces[si];
-          const result = this.canFit(box, space);
-          if (result.fit) {
-            const remnant =
-              (space.w * space.d * space.h) -
-              (result.bw * result.bd * result.bh);
-            if (remnant < bestRemnant) {
-              bestRemnant = remnant;
-              bestSpaceIdx = si;
-              bestOri = result;
+    // Scan positions from bottom to top, left to right, front to back
+    for (let y = 0; y <= binH - bh; y += 0.1) {
+      for (let z = 0; z <= binD - bd; z += 0.1) {
+        for (let x = 0; x <= binW - bw; x += 0.1) {
+          if (!collides(x, y, z, bw, bd, bh)) {
+            // Prefer lower Y (gravity), then lower Z, then lower X
+            if (!best || y < best.y || (y === best.y && z < best.z)) {
+              best = { x, y, z, w: bw, h: bh, d: bd };
+              minY = y;
+              break; // found lowest x at this (y,z), move to next
             }
           }
         }
+      }
+    }
+    return best;
+  }
 
-        if (bestSpaceIdx >= 0 && bestOri) {
-          const space = this.freeSpaces.splice(bestSpaceIdx, 1)[0];
+  // Create a large pool of boxes sorted by volume descending (FFD)
+  const pool = [];
+  const sortedTypes = [...BOX_TYPES].sort((a, b) => (b.w * b.d * b.h) - (a.w * a.d * a.h));
+  // Each type gets many copies
+  for (let round = 0; round < 200; round++) {
+    for (const t of sortedTypes) {
+      pool.push({ ...t });
+    }
+  }
 
-          this.placed.push({
-            ...box,
-            x: space.x,
-            y: space.y,
-            z: space.z,
-            w: bestOri.bw,
-            d: bestOri.bd,
-            h: bestOri.bh,
-          });
+  // Greedy placement: for each box, try all orientations, pick best fit
+  for (const box of pool) {
+    const oris = getOrientations(box);
 
-          // Split remaining space into up to 3 sub-spaces
-          const newSpaces = [];
-          // Right side
-          const rw = space.w - bestOri.bw;
-          if (rw > 0.05) {
-            newSpaces.push({
-              x: space.x + bestOri.bw, y: space.y, z: space.z,
-              w: rw, d: space.d, h: space.h,
-            });
-          }
-          // Front side
-          const rd = space.d - bestOri.bd;
-          if (rd > 0.05) {
-            newSpaces.push({
-              x: space.x, y: space.y, z: space.z + bestOri.bd,
-              w: bestOri.bw, d: rd, h: space.h,
-            });
-          }
-          // Top side
-          const rh = space.h - bestOri.bh;
-          if (rh > 0.05) {
-            newSpaces.push({
-              x: space.x, y: space.y + bestOri.bh, z: space.z,
-              w: bestOri.bw, d: bestOri.bd, h: rh,
-            });
-          }
+    let bestPos = null;
+    let bestOriIdx = 0;
+    let bestVol = Infinity; // prefer orientation with smallest leftover volume
 
-          // Remove subsumed spaces and add new ones
-          for (const ns of newSpaces) {
-            let subsumed = false;
-            for (let i = this.freeSpaces.length - 1; i >= 0; i--) {
-              if (this._contains(ns, this.freeSpaces[i])) {
-                this.freeSpaces.splice(i, 1);
-              } else if (this._contains(this.freeSpaces[i], ns)) {
-                subsumed = true; break;
-              }
-            }
-            if (!subsumed) this.freeSpaces.push(ns);
-          }
-
-          boxes[bi] = null;
-          continue outer;
+    for (let oi = 0; oi < oris.length; oi++) {
+      const o = oris[oi];
+      const pos = findPosition(o.w, o.h, o.d);
+      if (pos) {
+        // Score by how tightly it fits
+        const score = pos.y * 10000 + pos.z * 100 + pos.x;
+        if (score < bestVol) {
+          bestVol = score;
+          bestPos = pos;
+          bestOriIdx = oi;
         }
       }
-
-      // Try to re-add boxes with more quantity
-      let anyAdded = false;
-      for (let bi = 0; bi < boxes.length; bi++) {
-        if (!boxes[bi]) {
-          const origType = BOX_TYPES.find(t => t.name === this.placed[this.placed.length - 1]?.name);
-          if (origType) {
-            boxes[bi] = { ...origType };
-            anyAdded = true;
-            break;
-          }
-        }
-      }
-      if (!anyAdded) break;
-      attempts++;
     }
 
-    return this.placed;
+    if (bestPos) {
+      placed.push({
+        ...box,
+        x: bestPos.x,
+        y: bestPos.y,
+        z: bestPos.z,
+        w: bestPos.w,
+        h: bestPos.h,
+        d: bestPos.d,
+      });
+    }
   }
 
-  _contains(a, b) {
-    return (
-      a.x <= b.x + 0.001 &&
-      a.y <= b.y + 0.001 &&
-      a.z <= b.z + 0.001 &&
-      a.x + a.w >= b.x + b.w - 0.001 &&
-      a.y + a.h >= b.y + b.h - 0.001 &&
-      a.z + a.d >= b.z + b.d - 0.001
-    );
-  }
+  return placed;
 }
 
 // ==================== Three.js Setup ====================
 const containerEl = document.getElementById('canvas-container');
 const loadingEl = document.getElementById('loading');
-
-let scene, camera, renderer, controls;
-let containerMesh, boxGroup;
+let scene, camera, renderer, controls, containerMesh, boxGroup;
+let animationStartTime = 0;
+let animationDone = true;
 
 function initThree() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x08081a);
 
-  camera = new THREE.PerspectiveCamera(
-    45,
-    containerEl.clientWidth / containerEl.clientHeight,
-    0.1, 200
-  );
+  camera = new THREE.PerspectiveCamera(45, containerEl.clientWidth / containerEl.clientHeight, 0.1, 200);
+  camera.position.set(14, 18, 18);
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(containerEl.clientWidth, containerEl.clientHeight);
@@ -389,16 +283,14 @@ function initThree() {
   controls.dampingFactor = 0.08;
   controls.minDistance = 8;
   controls.maxDistance = 60;
+  controls.target.set(CONTAINER.w / 2, CONTAINER.h / 2, CONTAINER.d / 2);
 
   // Lights
-  const ambient = new THREE.AmbientLight(0xffffff, 0.45);
-  scene.add(ambient);
-
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
   dirLight.position.set(12, 20, 15);
   dirLight.castShadow = true;
-  dirLight.shadow.mapSize.width = 2048;
-  dirLight.shadow.mapSize.height = 2048;
+  dirLight.shadow.mapSize.set(2048, 2048);
   dirLight.shadow.camera.near = 1;
   dirLight.shadow.camera.far = 60;
   dirLight.shadow.camera.left = -15;
@@ -406,100 +298,64 @@ function initThree() {
   dirLight.shadow.camera.top = 15;
   dirLight.shadow.camera.bottom = -15;
   scene.add(dirLight);
+  scene.add(new THREE.DirectionalLight(0x8888ff, 0.25).setPosition(-10, 8, -10));
 
-  const fillLight = new THREE.DirectionalLight(0x8888ff, 0.25);
-  fillLight.position.set(-10, 8, -10);
-  scene.add(fillLight);
+  // Ground grid
+  const grid = new THREE.GridHelper(40, 40, 0x222244, 0x16162e);
+  grid.position.y = -0.01;
+  scene.add(grid);
 
-  const rimLight = new THREE.DirectionalLight(0xff88ff, 0.15);
-  rimLight.position.set(0, -5, -15);
-  scene.add(rimLight);
+  // Container (purple translucent)
+  const cGeo = new THREE.BoxGeometry(CONTAINER.w, CONTAINER.h, CONTAINER.d);
+  const cMat = new THREE.MeshPhysicalMaterial({
+    color: 0xa855f7, metalness: 0.05, roughness: 0.12,
+    transparent: true, opacity: 0.18, side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  containerMesh = new THREE.Mesh(cGeo, cMat);
+  containerMesh.position.set(CONTAINER.w / 2, CONTAINER.h / 2, CONTAINER.d / 2);
+  scene.add(containerMesh);
 
-  // Ground grid helper
-  const gridHelper = new THREE.GridHelper(40, 40, 0x222244, 0x16162e);
-  gridHelper.position.y = -CONTAINER.h / 2 - 0.01;
-  scene.add(gridHelper);
+  // Container edges
+  const edgeGeo = new THREE.EdgesGeometry(cGeo);
+  const edgeMat = new THREE.LineBasicMaterial({ color: 0xc084fc, transparent: true, opacity: 0.9 });
+  const edges = new THREE.LineSegments(edgeGeo, edgeMat);
+  edges.position.copy(containerMesh.position);
+  scene.add(edges);
 
-  createContainer();
   boxGroup = new THREE.Group();
   scene.add(boxGroup);
 
-  setCameraView('default');
-}
-
-function createContainer() {
-  const geo = new THREE.BoxGeometry(CONTAINER.w, CONTAINER.h, CONTAINER.d);
-  const mat = new THREE.MeshPhysicalMaterial({
-    color: 0xa855f7,
-    metalness: 0.1,
-    roughness: 0.15,
-    transmission: 0.3,
-    thickness: 0.5,
-    transparent: true,
-    opacity: 0.25,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-  });
-  containerMesh = new THREE.Mesh(geo, mat);
-  containerMesh.position.y = CONTAINER.h / 2;
-  scene.add(containerMesh);
-
-  // Wireframe edges for container
-  const edgesGeo = new THREE.EdgesGeometry(geo);
-  const edgesMat = new THREE.LineBasicMaterial({
-    color: 0xc084fc,
-    linewidth: 2,
-    transparent: true,
-    opacity: 0.8,
-  });
-  const edges = new THREE.LineSegments(edgesGeo, edgesMat);
-  edges.position.copy(containerMesh.position);
-  scene.add(edges);
-}
-
-function setCameraView(viewName) {
-  const center = new THREE.Vector3(CONTAINER.w / 2 - 1, CONTAINER.h / 2, CONTAINER.d / 2 - 1);
-  const dist = 28;
-  switch (viewName) {
-    case 'default':
-      camera.position.set(center.x + dist * 0.6, center.y + dist * 0.5, center.z + dist * 0.6);
-      break;
-    case 'top':
-      camera.position.set(center.x, center.y + dist * 1.2, center.z + 0.1);
-      break;
-    case 'front':
-      camera.position.set(center.x, center.y + 2, center.z + dist);
-      break;
-    case 'side':
-      camera.position.set(center.x + dist, center.y + 2, center.z);
-      break;
-    default:
-      camera.position.set(center.x + dist * 0.6, center.y + dist * 0.5, center.z + dist * 0.6);
-  }
-  controls.target.copy(center);
   controls.update();
 }
 
-let currentViewIndex = 0;
-const viewNames = ['default', 'top', 'front', 'side'];
+function setCameraView(name) {
+  const cx = CONTAINER.w / 2, cy = CONTAINER.h / 2, cz = CONTAINER.d / 2;
+  const d = 26;
+  switch (name) {
+    case 'default':  camera.position.set(cx + 12, cy + 14, cz + 14); break;
+    case 'top':     camera.position.set(cx, cy + d * 1.3, cz + 0.5); break;
+    case 'front':   camera.position.set(cx, cy + 3, cz + d); break;
+    case 'side':    camera.position.set(cx + d, cy + 3, cz); break;
+  }
+  controls.target.set(cx, cy, cz);
+  controls.update();
+}
 
-// ==================== UI & Interaction ====================
+// ==================== UI ====================
 function buildLegend() {
-  const legendEl = document.getElementById('box-legend');
-  legendEl.innerHTML = '';
-  BOX_TYPES.forEach((type, i) => {
+  const el = document.getElementById('box-legend');
+  el.innerHTML = '';
+  BOX_TYPES.forEach((t, i) => {
     const li = document.createElement('li');
     li.className = 'legend-item';
-    li.id = `legend-${i}`;
     li.innerHTML = `
-      <div class="legend-color" style="background:${type.hex}"></div>
+      <div class="legend-color" style="background:${t.hex}"></div>
       <div class="legend-info">
-        <div class="legend-name">${type.name}</div>
-        <div class="legend-size">${type.w}×${type.d}×${type.h}</div>
-      </div>
-      <div class="legend-count" id="count-${i}">0</div>
-    `;
-    legendEl.appendChild(li);
+        <div class="legend-name">${t.name}</div>
+        <div class="legend-size">${t.w}×${t.d}×${t.h}</div>
+      </div><div class="legend-count" id="count-${i}">0</div>`;
+    el.appendChild(li);
   });
 }
 
@@ -507,131 +363,103 @@ function updateStats(placedBoxes) {
   const totalVol = CONTAINER.w * CONTAINER.d * CONTAINER.h;
   let usedVol = 0;
   const counts = {};
-  BOX_TYPES.forEach((t, i) => counts[i] = 0);
-
+  BOX_TYPES.forEach((_, i) => counts[i] = 0);
   placedBoxes.forEach(b => {
     usedVol += b.w * b.d * b.h;
     for (let i = 0; i < BOX_TYPES.length; i++) {
       if (BOX_TYPES[i].name === b.name) { counts[i]++; break; }
     }
   });
-
   document.getElementById('stat-total').textContent = placedBoxes.length;
   document.getElementById('stat-util').textContent = ((usedVol / totalVol) * 100).toFixed(1) + '%';
   document.getElementById('stat-volume').textContent = usedVol.toFixed(1);
-
   for (let i = 0; i < BOX_TYPES.length; i++) {
     const el = document.getElementById(`count-${i}`);
     if (el) el.textContent = counts[i];
   }
-
-  const fillEl = document.getElementById('progress-fill');
-  const textEl = document.getElementById('progress-text');
-  fillEl.style.width = `${Math.min((usedVol / totalVol) * 100, 100)}%`;
-  textEl.textContent = `已利用 ${usedVol.toFixed(1)} / ${totalVol} 立方单位`;
+  const pct = Math.min((usedVol / totalVol) * 100, 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = `已利用 ${usedVol.toFixed(1)} / ${totalVol} 立方单位`;
 }
 
-// ==================== Box Rendering ====================
+// ==================== Rendering ====================
 function clearBoxes() {
   while (boxGroup.children.length > 0) {
-    const child = boxGroup.children[0];
-    if (child.geometry) child.geometry.dispose();
-    if (child.material) child.material.dispose();
-    boxGroup.remove(child);
+    const c = boxGroup.children[0];
+    if (c.geometry) c.geometry.dispose();
+    if (c.material) c.material.dispose();
+    boxGroup.remove(c);
   }
 }
 
-function renderBoxes(placedBoxes, animate = true) {
+function renderBoxes(boxes) {
   clearBoxes();
-
-  placedBoxes.forEach((b, idx) => {
-    const geo = new THREE.BoxGeometry(b.w * 0.98, b.h * 0.98, b.d * 0.98);
+  boxes.forEach((b, idx) => {
+    const geo = new THREE.BoxGeometry(
+      Math.max(0.01, b.w - GAP * 2),
+      Math.max(0.01, b.h - GAP * 2),
+      Math.max(0.01, b.d - GAP * 2)
+    );
     const mat = new THREE.MeshStandardMaterial({
-      color: b.color,
-      metalness: 0.15,
-      roughness: 0.35,
+      color: b.color, metalness: 0.12, roughness: 0.35,
     });
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(
-      b.x + b.w / 2,
-      b.y + b.h / 2,
-      b.z + b.d / 2
-    );
+    mesh.position.set(b.x + b.w / 2, b.y + b.h / 2, b.z + b.d / 2);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
 
-    // Edges for each box
-    const edgeGeo = new THREE.EdgesGeometry(geo);
-    const edgeMat = new THREE.LineBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.2,
-    });
-    const edgeMesh = new THREE.LineSegments(edgeGeo, edgeMat);
-    mesh.add(edgeMesh);
+    // Subtle edges
+    const eGeo = new THREE.EdgesGeometry(geo);
+    const eMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.12 });
+    mesh.add(new THREE.LineSegments(eGeo, eMat));
 
-    if (animate) {
-      mesh.scale.set(0, 0, 0);
-      mesh.userData.targetScale = 1;
-      mesh.userData.delay = Math.min(idx * 15, 2000);
-      mesh.userData.animated = false;
-    }
-
+    // Staggered pop-in animation
+    mesh.scale.set(0, 0, 0);
+    mesh.userData = {
+      targetScale: 1,
+      delay: idx * 12, // ms per box
+      animated: false,
+    };
     boxGroup.add(mesh);
   });
-}
 
-// Animation loop
-let animationStartTime = 0;
-let animationDone = false;
+  animationStartTime = 0;
+  animationDone = false;
+}
 
 function animateBoxes(time) {
   if (!animationStartTime) animationStartTime = time;
   const elapsed = time - animationStartTime;
-
-  boxGroup.children.forEach(mesh => {
-    if (!mesh.userData.animated && elapsed >= mesh.userData.delay) {
-      const t = Math.min((elapsed - mesh.userData.delay) / 400, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      mesh.scale.setScalar(eased * mesh.userData.targetScale);
-      if (t >= 1) mesh.userData.animated = true;
+  let allDone = true;
+  boxGroup.children.forEach(m => {
+    if (!m.userData.animated) {
+      allDone = false;
+      if (elapsed >= m.userData.delay) {
+        const t = Math.min((elapsed - m.userData.delay) / 350, 1);
+        const e = 1 - Math.pow(1 - t, 3);
+        m.scale.setScalar(e * m.userData.targetScale);
+        if (t >= 1) m.userData.animated = true;
+      }
     }
   });
-
-  animationDone = boxGroup.every(m => m.userData.animated || !m.userData.targetScale);
+  if (allDone) animationDone = true;
 }
 
-// ==================== Main Pack Logic ====================
+// ==================== Main Logic ====================
 async function runPacking() {
   loadingEl.classList.remove('hidden');
   document.getElementById('btn-pack').disabled = true;
-  document.getElementById('progress-text').textContent = '正在计算...';
 
-  await sleep(50);
+  // Yield so loading shows
+  await new Promise(r => setTimeout(r, 30));
 
-  // Create unlimited supply of each box type
-  // Sort by volume descending for better packing efficiency
-  const sortedTypes = [...BOX_TYPES].sort((a, b) =>
-    (b.w * b.d * b.h) - (a.w * a.d * a.h)
-  );
-
-  // Create initial batch of boxes (enough to overfill)
-  const boxes = [];
-  for (let round = 0; round < 150; round++) {
-    for (const t of sortedTypes) {
-      boxes.push({ ...t });
-    }
-  }
-
-  const packer = new BinPacker(CONTAINER.w, CONTAINER.d, CONTAINER.h);
-  const placed = packer.pack(boxes);
+  const result = runBinPacking(CONTAINER.w, CONTAINER.d, CONTAINER.h);
 
   loadingEl.classList.add('hidden');
   document.getElementById('btn-pack').disabled = false;
 
-  renderBoxes(placed, true);
-  updateStats(placed);
-  animationStartTime = 0;
+  renderBoxes(result);
+  updateStats(result);
 }
 
 function resetScene() {
@@ -639,57 +467,43 @@ function resetScene() {
   updateStats([]);
   document.getElementById('progress-fill').style.width = '0%';
   document.getElementById('progress-text').textContent = '等待开始...';
-
   for (let i = 0; i < BOX_TYPES.length; i++) {
     const el = document.getElementById(`count-${i}`);
     if (el) el.textContent = '0';
   }
+  animationDone = true;
 }
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+// ==================== Events & Loop ====================
+let viewIndex = 0;
+const views = ['default', 'top', 'front', 'side'];
 
-// ==================== Event Listeners ====================
 document.getElementById('btn-pack').addEventListener('click', runPacking);
 document.getElementById('btn-reset').addEventListener('click', resetScene);
 document.getElementById('btn-view').addEventListener('click', () => {
-  currentViewIndex = (currentViewIndex + 1) % viewNames.length;
-  setCameraView(viewNames[currentViewIndex]);
+  viewIndex = (viewIndex + 1) % views.length;
+  setCameraView(views[viewIndex]);
 });
 
 window.addEventListener('resize', () => {
-  const w = containerEl.clientWidth;
-  const h = containerEl.clientHeight;
+  const w = containerEl.clientWidth, h = containerEl.clientHeight;
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
 });
 
-// ==================== Render Loop ====================
 function mainLoop(time) {
   requestAnimationFrame(mainLoop);
-
   controls.update();
-
-  if (!animationDone && animationStartTime) {
-    animateBoxes(time);
-  }
-
-  // Gentle auto-rotation when not interacting
-  if (containerMesh && !animationDone && animationStartTime) {
-    // Subtle rotation hint
-  }
-
+  if (!animationDone && boxGroup.children.length > 0) animateBoxes(time);
   renderer.render(scene, camera);
 }
 
-// ==================== Init ====================
+// ==================== Init & Auto-start ====================
 initThree();
 buildLegend();
 updateStats([]);
-
-// Auto-start packing after a short delay
-setTimeout(runPacking, 800);
-
+setTimeout(runPacking, 500);
 mainLoop();
 </script>
 </body>
