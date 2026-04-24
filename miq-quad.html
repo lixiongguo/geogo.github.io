@@ -281,6 +281,25 @@
         root.updateMatrixWorld(true);
       }
 
+      function fitCameraToModel(camera, modelGroup, controls) {
+        const box = new THREE.Box3().setFromObject(modelGroup);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z) || 1;
+
+        // 根据相机 FOV 计算合适的观察距离（留 20% 边距）
+        const fovRad = camera.fov * (Math.PI / 180);
+        const distance = (maxDim / 2) / Math.tan(fovRad / 2) * 1.4;
+
+        // 保持当前观察方向，调整距离使模型居中并充满视口
+        const direction = new THREE.Vector3()
+          .subVectors(camera.position, controls.target)
+          .normalize();
+        camera.position.copy(direction.multiplyScalar(distance).add(center));
+        controls.target.copy(center);
+        controls.update();
+      }
+
       function loadOBJ(url) {
         return new Promise(function (resolve, reject) {
           objLoader.load(url, resolve, undefined, reject);
@@ -917,6 +936,7 @@
           currentSourceLabel = resolved.sourceLabel;
           controls.target.set(0, 0, 0);
           controls.update();
+          fitCameraToModel(modelCamera, currentModelGroup, controls);
           clearQuadOutput();
           setStatus("输入三角网格已就绪: " + currentSourceLabel + " / " + currentMeshData.positions.length + " 顶点 / " + currentMeshData.faces.length + " 三角形", "#8ce6b0");
         } catch (error) {
