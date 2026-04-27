@@ -54,8 +54,6 @@ Coherent System
 
 ![image-20251204112720358](..\..\..\imgs\image-20251204112720358.png)
 
-Colin de Verdiere
-
 本文思路引自Colin
 
 ![image-20251204211123545](..\..\..\imgs\image-20251204211123545.png)
