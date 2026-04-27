@@ -1,15 +1,32 @@
-
 ---
 layout: post
 title: "四边形网格化-向量场设计"
 category: QuadRemeshing
 ---
 
-`N-Symmetric direction field` 关心的是：怎样描述、分析并设计带奇异点的方向场拓扑。
+### 向量场的指标
 
-### 3.1 分数指标奇异点是怎么来的
+向量场中某个点的指标(Index)是指向量沿着一条路径绕其一周后，向量改变的角度
 
-先看图：
+![image-20251113213959634](../../../imgs/image-20251113213959634.png)
+
+一些常见的指标
+
+![image-20251113212512163](../../../imgs/image-20251113212512163.png)
+
+![image-20251028141405746](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20251028141405746.png)
+
+容易看到指标为0的点是平凡的点，奇异点(Singularity)是指标不为0的点。向量场的拓扑是由其上奇异点的分布决定的。
+
+**指标定理**指出，曲面上所有奇异点的指标之和等于其欧拉示性数
+
+
+
+![image-20251113214151372](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20251113214151372.png)
+
+所以我们看到只要规定了向量场的联络以及其上的奇异点就可以确定整个向量场
+
+### Cross field的分数指标奇异点
 
 ![image-20251111163816759](..\..\..\imgs\image-20251111163816759.png)
 
@@ -18,9 +35,7 @@ category: QuadRemeshing
 - 左边是立方体状物体上的平滑 cross field，出现了 `+1/4` 的奇异点；
 - 右边是指纹上的方向场，出现了 `+1/2` 和 `-1/2` 的奇异点。
 
-这说明一个很重要的现象：  
-对于 N-symmetric direction field，奇异点指标不再一定是整数，而可能是分数。  
-这并不是“异常”，而是因为方向本身只在模 $2\pi/N$ 的意义下有定义，所以绕一圈后的净旋转也 naturally 允许出现分数化的 index。
+对于 N-symmetric direction field，奇异点指标不再一定是整数，而可能是分数。  这并不是“异常”，而是因为方向本身只在模 $2\pi/N$ 的意义下有定义，所以绕一圈后的净旋转也 naturally 允许出现分数化的 index。
 
 ### 3.2 用 turning number 来研究方向场拓扑
 

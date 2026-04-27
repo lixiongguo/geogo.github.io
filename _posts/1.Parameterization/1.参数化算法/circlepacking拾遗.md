@@ -1,0 +1,41 @@
+### 7.1 折纸设计中的 Circle Packing
+
+Circle Packing 在折纸设计中有重要应用：
+
+![折纸与Circle Packing](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260116191240682.png)
+
+折纸展开图（crease pattern）中，纸张折叠后形成的各个"树状构型（tree structure）"对应圆填充中的各个圆：
+
+![Tree构型](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260116185723964.png)
+
+![折纸展开图示例](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260116190955972.png)
+
+通过求解圆填充问题，可以自动生成折叠出给定形状所需的展开图。Robert Lang 的 TreeMaker 算法即基于此原理。
+
+相关理论还涉及 **Circle-River 设计**——Demaine 等人证明了这一设计问题是 **NP-完全**的：
+
+![Circle-River设计](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260116185739131.png)
+
+![NP完全证明](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260116191154789.png)
+
+![折纸复杂性](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260116191207159.png)
+
+### 7.2 组合几何中的最密填装
+
+Circle Packing 在组合几何中对应**圆的最密填装问题**：
+
+![最密填装问题](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260116184552019.png)
+
+在平面上，正六边形排列（蜂窝结构）给出最密圆填装，填装密度为：
+
+$$\rho = \frac{\pi}{2\sqrt{3}} \approx 90.7\%$$
+
+![最密填装示意](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260116184620333.png)
+
+在有界区域中，最密填装问题通常是 NP-难的：
+
+![有界区域填装](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260116184711615.png)
+
+组合几何中的其他相关问题：
+
+![组合几何其他问题](../../../imgs/image-20260116191838508.png)
