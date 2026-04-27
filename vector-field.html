@@ -238,7 +238,14 @@
           <option value="sphere">球面</option>
           <option value="torus">环面</option>
           <option value="torusKnot">环面结</option>
-          <option value="bunny">Stanford Bunny</option>
+          <option value="armadillo">Armadillo</option>
+          <option value="beast">Beast</option>
+          <option value="bunny">Bunny</option>
+          <option value="cow">Cow</option>
+          <option value="fandisk">Fandisk</option>
+          <option value="happy">Happy Buddha</option>
+          <option value="lucy">Lucy</option>
+          <option value="rocker-arm">Rocker Arm</option>
         </select>
       </div>
       <div class="control-group">
@@ -348,8 +355,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
 // ============================================================
 // Curvature Field Visualization
@@ -678,6 +684,18 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
     scene.add(streamlineGroup);
   }
 
+  // Model file mapping for OBJ models
+  const MODEL_FILES = {
+    armadillo: 'armadillo.obj',
+    beast: 'beast.obj',
+    bunny: 'bunny.obj',
+    cow: 'cow.obj',
+    fandisk: 'fandisk.obj',
+    happy: 'happy.obj',
+    lucy: 'lucy.obj',
+    'rocker-arm': 'rocker-arm.obj'
+  };
+
   // Create model
   function createModel(type) {
     // Clear existing
@@ -687,6 +705,12 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
     let geometry;
     let vertCount = 0, faceCount = 0;
+
+    if (MODEL_FILES[type]) {
+      // Load external OBJ model
+      loadOBJModel('/assets/Models2/' + MODEL_FILES[type]);
+      return;
+    }
 
     switch (type) {
       case 'sphere':
@@ -698,10 +722,6 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
       case 'torusKnot':
         geometry = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);
         break;
-      case 'bunny':
-        // Will load externally
-        loadGLTFModel();
-        return;
       default:
         geometry = new THREE.SphereGeometry(1, 32, 32);
     }
@@ -739,50 +759,40 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
     loader.classList.add('hidden');
   }
 
-  // Load GLTF model
-  function loadGLTFModel() {
-    const loaderGLTF = new GLTFLoader();
-    const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@v0.157.0/examples/js/libs/draco/gltf/');
-    loaderGLTF.setDRACOLoader(dracoLoader);
+  // Load OBJ model
+  function loadOBJModel(url) {
+    const loader = new OBJLoader();
 
-    loaderGLTF.load('/assets/Models2/fandisk.obj',
-      function(gltf) {
-        const model = gltf.scene;
+    loader.load(url,
+      function(object) {
+        // Center and scale
+        const box = new THREE.Box3().setFromObject(object);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const scale = 3 / maxDim;
 
-        // Find first mesh
+        object.scale.setScalar(scale);
+        object.position.sub(center.multiplyScalar(scale));
+
+        // Find first mesh and extract geometry
         let foundMesh = null;
-        model.traverse(c => {
+        object.traverse(c => {
           if (c.isMesh && !foundMesh) foundMesh = c;
         });
 
         if (foundMesh) {
-          // Center and scale
-          const box = new THREE.Box3().setFromObject(model);
-          const center = box.getCenter();
-          const size = box.getSize();
-          const maxDim = Math.max(size.x, size.y, size.z);
-          const scale = 3 / maxDim;
-
-          model.scale.setScalar(scale);
-          box.setFromObject(model);
-          box.getCenter(center);
-          model.position.sub(center);
-
-          // Get geometry
           const geometry = foundMesh.geometry.clone();
           geometry.computeVertexNormals();
-
           setupMesh(geometry, geometry.attributes.position.count,
-            geometry.index ? geometry.index.count / 3 : 0);
+            geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3);
         }
 
-        meshGroup.add(model);
+        meshGroup.add(object);
       },
       undefined,
       function(err) {
-        console.error('Failed to load model:', err);
-        // Fallback to sphere
+        console.error('Failed to load model:', err, url);
         setupMesh(new THREE.SphereGeometry(1, 64, 64), 4225, 4096);
       }
     );

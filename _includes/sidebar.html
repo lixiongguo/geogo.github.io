@@ -19,12 +19,12 @@
 <div class="sidebar-item sidebar-nav">
   	<ul class="nav">
 			<li class="nav-title">文章分类</li>
-			<li>
+			<!-- <li>
 	    	<a class="nav-item algo-link-with-icon" href="{{ '/' | relative_url }}">
 				<span class="algo-mini-icon" aria-hidden="true"></span>
 				<span class="name">全部文章</span>
 	    	</a>
- 		</li>
+ 		</li> -->
     {% assign param_cats = "Parameterization|QuadRemeshing|Math" | split: "|" %}
     {% for category in site.categories %}
     {% assign cat_name = category | first %}
@@ -49,7 +49,7 @@
 	</ul>
 </div>
 
-<!-- 文章分类2: 索引 2.Machine Learning + 3.ComputerGraphics 文件夹 -->
+<!-- 文章分类2: 已隐藏
 <div class="sidebar-item sidebar-nav">
   	<ul class="nav">
 			<li class="nav-title">文章分类2</li>
@@ -79,6 +79,7 @@
 	  </nav>
 	</ul>
 </div>
+-->
 
 <!-- 算法测试: 静态链接 + 图形学 Demo -->
 <div class="sidebar-item sidebar-nav algo-section">

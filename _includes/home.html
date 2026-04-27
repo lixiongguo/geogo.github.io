@@ -1,10 +1,10 @@
 <article class="post">
   <header class="post-header home">
-    <div class="post-title" id="typewriter">Articles</div>
+    <div class="post-title" id="typewriter">曲面展开</div>
   </header>
 
   <div class="post-content">
-      {%- assign posts_list = site.posts -%}
+      {%- assign posts_list = site.posts | where_exp: "post", "post.path contains '1.Parameterization'" -%}
       {%- if paginator and paginator.posts -%}
         {%- assign posts_list = paginator.posts -%}
       {%- endif -%}
@@ -37,7 +37,7 @@
   </div>
 </article>
 
-<!-- 文章分类2：Machine Learning 目录 -->
+<!-- 文章分类2：已隐藏
 <article class="post">
   <header class="post-header home">
     <div class="post-title">文章分类2 — Machine Learning</div>
@@ -62,6 +62,7 @@
     {%- endif -%}
   </div>
 </article>
+-->
 
 
 
