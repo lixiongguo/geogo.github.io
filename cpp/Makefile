@@ -54,7 +54,18 @@ TARGET_JS := $(OUTPUT_DIR)/lscm_solver.js
 TARGET_WASM := $(OUTPUT_DIR)/lscm_solver.wasm
 
 # 源文件
-SRC := lscm_solver.cpp
+SRC := conformal-parameterization/wasm_bindings.cpp \
+       conformal-parameterization/wasm_mesh.cpp \
+       conformal-parameterization/MeshIO.cpp \
+       conformal-parameterization/Vertex.cpp \
+       conformal-parameterization/Edge.cpp \
+       conformal-parameterization/Face.cpp \
+       conformal-parameterization/HalfEdge.cpp \
+       conformal-parameterization/Lscm.cpp \
+       conformal-parameterization/Cetm.cpp \
+       conformal-parameterization/Solver.cpp \
+       conformal-parameterization/Parameterization.cpp \
+       conformal-parameterization/QcError.cpp
 
 # 编译选项
 CXX := em++
@@ -62,11 +73,11 @@ CXXFLAGS := -O3 -std=c++17 -Wall -Wextra
 INC := -I$(EIGEN_PATH)
 LDFLAGS := --bind \
            -s MODULARIZE=1 \
-           -s EXPORT_NAME="LCMSolver" \
+           -s EXPORT_NAME="LSCMSolver" \
            -s ALLOW_MEMORY_GROWTH=1 \
-           -s TOTAL_MEMORY=256MB \
            -s WASM=1 \
-           -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'getValue', 'setValue', 'allocate']"
+           -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'getValue', 'setValue']" \
+           -s EXPORTED_FUNCTIONS="['_malloc', '_free']"
 
 # ========== 构建目标 ==========
 
