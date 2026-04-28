@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>网格变形 - Bounded Distortion 可视化</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #08081a;
+      color: #c0c0e0;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      overflow: hidden;
+      height: 100vh;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: rgba(10, 10, 30, 0.95);
+      border-bottom: 1px solid rgba(100, 140, 255, 0.15);
+      flex-shrink: 0;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      background: linear-gradient(90deg, #6366f1, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .control-group label {
+      font-size: 12px;
+      color: #8888aa;
+    }
+    select, button {
+      background: #1a1a3a;
+      color: #c0c0e0;
+      border: 1px solid rgba(100, 140, 255, 0.3);
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    select:hover, button:hover {
+      background: #2a2a4a;
+      border-color: rgba(100, 140, 255, 0.5);
+    }
+    button.active {
+      background: #4a4a8a;
+      border-color: #6366f1;
+    }
+    input[type="range"] {
+      width: 100px;
+      accent-color: #6366f1;
+    }
+    .main-content {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    .canvas-area {
+      flex: 1;
+      position: relative;
+      background: #0a0a1a;
+    }
+    .canvas-area canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .info-panel {
+      width: 280px;
+      background: rgba(10, 10, 30, 0.95);
+      border-left: 1px solid rgba(100, 140, 255, 0.15);
+      padding: 16px;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    .info-section {
+      margin-bottom: 20px;
+    }
+    .info-section h3 {
+      font-size: 13px;
+      color: #6366f1;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .info-item {
+      margin-bottom: 12px;
+    }
+    .info-item .label {
+      font-size: 11px;
+      color: #707090;
+      margin-bottom: 4px;
+    }
+    .info-item .value {
+      font-size: 13px;
+      color: #c0c0e0;
+    }
+    .color-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .stat-box {
+      background: #12122a;
+      padding: 10px;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .stat-box .number {
+      font-size: 18px;
+      font-weight: 600;
+      color: #6366f1;
+    }
+    .stat-box .number.warn {
+      color: #f59e0b;
+    }
+    .stat-box .number.bad {
+      color: #ef4444;
+    }
+    .stat-box .desc {
+      font-size: 10px;
+      color: #707090;
+      margin-top: 2px;
+    }
+    .toast {
+      position: absolute;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(99, 102, 241, 0.9);
+      color: #fff;
+      padding: 8px 20px;
+      border-radius: 6px;
+      font-size: 13px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 20;
+    }
+    .toast.show {
+      opacity: 1;
+    }
+    @media (max-width: 900px) {
+      .info-panel { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>网格变形 - Bounded Distortion 可视化</h1>
+    <div class="controls">
+      <div class="control-group">
+        <label>网格:</label>
+        <select id="mesh-select">
+          <option value="grid">规则网格</option>
+          <option value="triangulated">三角化网格</option>
+          <option value="circle">圆形网格</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>密度:</label>
+        <input type="range" id="density-slider" min="4" max="16" value="8">
+      </div>
+      <div class="control-group">
+        <label>显示:</label>
+        <select id="display-select">
+          <option value="distortion">扭曲着色</option>
+          <option value="wireframe">线框</option>
+          <option value="both">两者</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>扭曲阈值 C:</label>
+        <input type="range" id="threshold-slider" min="1" max="8" step="0.1" value="3">
+        <span id="threshold-val" style="font-size:12px;color:#a78bfa;">3.0</span>
+      </div>
+      <div class="control-group">
+        <button id="btn-reset">重置</button>
+      </div>
+    </div>
+  </div>
+  <div class="main-content">
+    <div class="canvas-area">
+      <canvas id="main-canvas"></canvas>
+      <div class="toast" id="toast"></div>
+    </div>
+    <div class="info-panel">
+      <div class="info-section">
+        <h3>网格信息</h3>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="number" id="vert-count">-</div>
+            <div class="desc">顶点数</div>
+          </div>
+          <div class="stat-box">
+            <div class="number" id="face-count">-</div>
+            <div class="desc">三角形数</div>
+          </div>
+          <div class="stat-box">
+            <div class="number" id="max-distortion">-</div>
+            <div class="desc">最大扭曲 σ</div>
+          </div>
+          <div class="stat-box">
+            <div class="number" id="avg-distortion">-</div>
+            <div class="desc">平均扭曲 σ</div>
+          </div>
+        </div>
+      </div>
+      <div class="info-section">
+        <h3>扭曲统计</h3>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="number" id="flipped-count">-</div>
+            <div class="desc">翻转面</div>
+          </div>
+          <div class="stat-box">
+            <div class="number" id="bounded-count">-</div>
+            <div class="desc">σ ≤ C 的面</div>
+          </div>
+          <div class="stat-box">
+            <div class="number" id="exceeded-count">-</div>
+            <div class="desc">σ > C 的面</div>
+          </div>
+          <div class="stat-box">
+            <div class="number" id="area-distortion">-</div>
+            <div class="desc">面积扭曲</div>
+          </div>
+        </div>
+      </div>
+      <div class="info-section">
+        <h3>扭曲色图</h3>
+        <div class="color-legend">
+          <div class="legend-item">
+            <div class="legend-color" style="background: #22c55e;"></div>
+            <span>σ = 1 (等距/共形)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #eab308;"></div>
+            <span>σ ≈ C (接近阈值)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #ef4444;"></div>
+            <span>σ > C (超出阈值)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #7c3aed;"></div>
+            <span>翻转面 (σ = ∞)</span>
+          </div>
+        </div>
+      </div>
+      <div class="info-section">
+        <h3>操作说明</h3>
+        <div class="info-item">
+          <div class="value" style="font-size: 11px; line-height: 1.6;">
+            拖拽网格顶点进行变形。<br><br>
+            每个三角形实时计算共形扭曲 σ = σ₁/σ₂（奇异值之比），并用颜色编码显示。<br><br>
+            当 σ > C 时，三角形变为红色，表示超出有界扭曲约束。<br><br>
+            翻转面（σ = ∞）显示为紫色。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('main-canvas');
+  const ctx = canvas.getContext('2d');
+
+  // State
+  let vertices = [];     // [{x, y, restX, restY, pinned}]
+  let triangles = [];    // [[i, j, k], ...]
+  let dragVertex = -1;
+  let hoverVertex = -1;
+  let meshType = 'grid';
+  let density = 8;
+  let displayMode = 'distortion';
+  let thresholdC = 3.0;
+  let dpr = 1;
+
+  // Resize
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio, 2);
+    canvas.width = Math.floor(rect.width * dpr);
+    canvas.height = Math.floor(rect.height * dpr);
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+  }
+
+  // Mesh generation
+  function generateMesh() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height;
+    const margin = 60;
+    const meshW = w - 2 * margin;
+    const meshH = h - 2 * margin;
+    const nx = density;
+    const ny = Math.max(2, Math.round(density * meshH / meshW));
+
+    vertices = [];
+    triangles = [];
+
+    if (meshType === 'grid' || meshType === 'triangulated') {
+      // Create grid vertices
+      for (let j = 0; j <= ny; j++) {
+        for (let i = 0; i <= nx; i++) {
+          const x = margin + (i / nx) * meshW;
+          const y = margin + (j / ny) * meshH;
+          const pinned = (i === 0 || i === nx || j === 0 || j === ny);
+          vertices.push({ x, y, restX: x, restY: y, pinned });
+        }
+      }
+
+      // Create triangles
+      const cols = nx + 1;
+      for (let j = 0; j < ny; j++) {
+        for (let i = 0; i < nx; i++) {
+          const v00 = j * cols + i;
+          const v10 = j * cols + i + 1;
+          const v01 = (j + 1) * cols + i;
+          const v11 = (j + 1) * cols + i + 1;
+
+          if (meshType === 'triangulated') {
+            // Alternate diagonal direction for more interesting deformation
+            if ((i + j) % 2 === 0) {
+              triangles.push([v00, v10, v11]);
+              triangles.push([v00, v11, v01]);
+            } else {
+              triangles.push([v00, v10, v01]);
+              triangles.push([v10, v11, v01]);
+            }
+          } else {
+            // Uniform diagonal
+            triangles.push([v00, v10, v11]);
+            triangles.push([v00, v11, v01]);
+          }
+        }
+      }
+    } else if (meshType === 'circle') {
+      // Circular mesh
+      const cx = w / 2;
+      const cy = h / 2;
+      const r = Math.min(meshW, meshH) / 2;
+      const rings = Math.max(3, Math.floor(density / 2));
+      const segments = density * 2;
+
+      // Center vertex
+      vertices.push({ x: cx, y: cy, restX: cx, restY: cy, pinned: false });
+
+      // Ring vertices
+      for (let ring = 1; ring <= rings; ring++) {
+        const rr = (ring / rings) * r;
+        const n = Math.max(6, Math.round(segments * ring / rings));
+        for (let s = 0; s < n; s++) {
+          const angle = (2 * Math.PI * s) / n;
+          const x = cx + rr * Math.cos(angle);
+          const y = cy + rr * Math.sin(angle);
+          const pinned = (ring === rings);
+          vertices.push({ x, y, restX: x, restY: y, pinned });
+        }
+      }
+
+      // Center triangles
+      const firstRingStart = 1;
+      const firstRingCount = Math.max(6, Math.round(segments * 1 / rings));
+      for (let s = 0; s < firstRingCount; s++) {
+        const next = (s + 1) % firstRingCount;
+        triangles.push([0, firstRingStart + s, firstRingStart + next]);
+      }
+
+      // Ring-to-ring triangles
+      let ringStart = firstRingStart;
+      for (let ring = 1; ring < rings; ring++) {
+        const currCount = Math.max(6, Math.round(segments * ring / rings));
+        const nextRingStart = ringStart + currCount;
+        const nextCount = Math.max(6, Math.round(segments * (ring + 1) / rings));
+
+        // Map each vertex in current ring to the next ring
+        for (let s = 0; s < currCount; s++) {
+          const sNext = (s + 1) % currCount;
+          // Find corresponding vertices in next ring
+          const t0 = nextRingStart + Math.floor(s * nextCount / currCount) % nextCount;
+          const t1 = nextRingStart + Math.floor(sNext * nextCount / currCount) % nextCount;
+
+          triangles.push([ringStart + s, nextRingStart + (Math.floor(s * nextCount / currCount)) % nextCount, ringStart + sNext]);
+          
+          const ns = Math.floor(s * nextCount / currCount);
+          const ne = Math.floor(sNext * nextCount / currCount);
+          
+          // Fan triangles
+          if (ns === ne) {
+            triangles.push([ringStart + sNext, nextRingStart + ns, nextRingStart + (ns + 1) % nextCount]);
+          } else {
+            for (let t = ns; t !== ne; t = (t + 1) % nextCount) {
+              triangles.push([ringStart + (t === ns ? s : sNext), nextRingStart + t, nextRingStart + (t + 1) % nextCount]);
+            }
+          }
+        }
+        ringStart = nextRingStart;
+      }
+    }
+
+    updateStats();
+  }
+
+  // Compute distortion for a triangle
+  function computeDistortion(tri) {
+    const [i, j, k] = tri;
+    const p0 = vertices[i], p1 = vertices[j], p2 = vertices[k];
+
+    // Current configuration
+    const ax = p1.x - p0.x, ay = p1.y - p0.y;
+    const bx = p2.x - p0.x, by = p2.y - p0.y;
+
+    // Rest configuration
+    const rax = p1.restX - p0.restX, ray = p1.restY - p0.restY;
+    const rbx = p2.restX - p0.restX, rby = p2.restY - p0.restY;
+
+    // Current area (signed, 2x)
+    const currArea2 = ax * by - ay * bx;
+    // Rest area (signed, 2x)
+    const restArea2 = rax * rby - ray * rbx;
+
+    if (Math.abs(restArea2) < 1e-10) {
+      return { sigma: Infinity, flipped: false, areaRatio: 1, conformal: 1 };
+    }
+
+    // Jacobian: J = [u1-u0, u2-u0] * [v1-v0, v2-v0]^{-1}
+    // Where current = J * rest
+    // J = [ax, bx; ay, by] * [rax, rbx; ray, rby]^{-1}
+    const detRest = restArea2; // = rax*rby - ray*rbx
+    const invDet = 1.0 / detRest;
+
+    // J = current * inv(rest)
+    const J00 = (ax * rby - bx * ray) * invDet;
+    const J01 = (bx * rax - ax * rbx) * invDet;
+    const J10 = (ay * rby - by * ray) * invDet;
+    const J11 = (by * rax - ay * rbx) * invDet;
+
+    // Singular values of J
+    // σ₁, σ₂ = sqrt of eigenvalues of J^T * J
+    const a = J00 * J00 + J10 * J10;
+    const b = J01 * J01 + J11 * J11;
+    const c = J00 * J01 + J10 * J11;
+
+    // Eigenvalues of [[a, c], [c, b]]
+    const trace = a + b;
+    const det = a * b - c * c;
+    const disc = Math.max(0, trace * trace - 4 * det);
+    const sqrtDisc = Math.sqrt(disc);
+
+    const sigma1sq = (trace + sqrtDisc) / 2;
+    const sigma2sq = (trace - sqrtDisc) / 2;
+
+    const sigma1 = Math.sqrt(Math.max(0, sigma1sq));
+    const sigma2 = Math.sqrt(Math.max(0, sigma2sq));
+
+    const flipped = currArea2 * restArea2 < 0;
+    const sigma = sigma2 > 1e-10 ? sigma1 / sigma2 : Infinity;
+
+    // Area distortion
+    const areaRatio = Math.abs(currArea2 / restArea2);
+
+    return { sigma, flipped, areaRatio, sigma1, sigma2 };
+  }
+
+  // Color from distortion value
+  function distortionColor(sigma, flipped) {
+    if (flipped) return 'rgba(124, 58, 237, 0.7)'; // Purple for flipped
+
+    if (sigma <= 1.01) return 'rgba(34, 197, 94, 0.6)';  // Green = conformal
+    if (sigma <= thresholdC) {
+      // Interpolate green -> yellow
+      const t = (sigma - 1) / (thresholdC - 1);
+      const r = Math.round(34 + (234 - 34) * t);
+      const g = Math.round(197 + (179 - 197) * t);
+      const b = Math.round(94 + (8 - 94) * t);
+      return `rgba(${r}, ${g}, ${b}, 0.6)`;
+    }
+    // Red for exceeding threshold
+    const t = Math.min(1, (sigma - thresholdC) / thresholdC);
+    const r = Math.round(239 + (220 - 239) * t);
+    const g = Math.round(68 - 68 * t);
+    const b = Math.round(68 - 68 * t);
+    return `rgba(${r}, ${g}, ${b}, 0.7)`;
+  }
+
+  // Draw
+  function draw() {
+    const w = canvas.width;
+    const h = canvas.height;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.scale(dpr, dpr);
+
+    // Draw triangles
+    for (const tri of triangles) {
+      const [i, j, k] = tri;
+      const p0 = vertices[i], p1 = vertices[j], p2 = vertices[k];
+
+      if (displayMode === 'distortion' || displayMode === 'both') {
+        const dist = computeDistortion(tri);
+        const color = distortionColor(dist.sigma, dist.flipped);
+
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
+
+      if (displayMode === 'wireframe' || displayMode === 'both') {
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.closePath();
+        ctx.strokeStyle = displayMode === 'both'
+          ? 'rgba(100, 140, 255, 0.25)'
+          : 'rgba(100, 140, 255, 0.5)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+
+    // Draw vertices
+    for (let i = 0; i < vertices.length; i++) {
+      const v = vertices[i];
+      const isHovered = (i === hoverVertex);
+      const isDragged = (i === dragVertex);
+
+      ctx.beginPath();
+      ctx.arc(v.x, v.y, isHovered || isDragged ? 5 : 3, 0, Math.PI * 2);
+
+      if (v.pinned) {
+        ctx.fillStyle = isHovered ? '#ffb74d' : '#f59e0b';
+      } else {
+        ctx.fillStyle = isHovered ? '#a78bfa' : (isDragged ? '#c4b5fd' : '#6366f1');
+      }
+      ctx.fill();
+
+      if (isHovered || isDragged) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    }
+
+    // Draw distortion labels on hovered triangle
+    if (hoverVertex >= 0) {
+      for (const tri of triangles) {
+        if (tri.includes(hoverVertex)) {
+          const dist = computeDistortion(tri);
+          const cx = (vertices[tri[0]].x + vertices[tri[1]].x + vertices[tri[2]].x) / 3;
+          const cy = (vertices[tri[0]].y + vertices[tri[1]].y + vertices[tri[2]].y) / 3;
+          ctx.font = '10px monospace';
+          ctx.fillStyle = 'rgba(255,255,255,0.8)';
+          ctx.textAlign = 'center';
+          ctx.fillText(dist.flipped ? '∞' : dist.sigma.toFixed(2), cx, cy);
+        }
+      }
+    }
+
+    ctx.restore();
+  }
+
+  // Update statistics
+  function updateStats() {
+    let maxSigma = 0, sumSigma = 0, flipped = 0, bounded = 0, exceeded = 0;
+    let sumAreaRatio = 0;
+
+    for (const tri of triangles) {
+      const dist = computeDistortion(tri);
+      if (dist.flipped) {
+        flipped++;
+      } else {
+        sumSigma += dist.sigma;
+        maxSigma = Math.max(maxSigma, dist.sigma);
+        if (dist.sigma <= thresholdC) bounded++;
+        else exceeded++;
+        sumAreaRatio += dist.areaRatio;
+      }
+    }
+
+    const validFaces = triangles.length - flipped;
+    const avgSigma = validFaces > 0 ? sumSigma / validFaces : 0;
+    const avgArea = validFaces > 0 ? sumAreaRatio / validFaces : 0;
+
+    document.getElementById('vert-count').textContent = vertices.length;
+    document.getElementById('face-count').textContent = triangles.length;
+
+    const maxEl = document.getElementById('max-distortion');
+    maxEl.textContent = maxSigma === Infinity ? '∞' : maxSigma.toFixed(2);
+    maxEl.className = 'number' + (maxSigma > thresholdC ? ' bad' : maxSigma > 2 ? ' warn' : '');
+
+    const avgEl = document.getElementById('avg-distortion');
+    avgEl.textContent = avgSigma.toFixed(2);
+    avgEl.className = 'number' + (avgSigma > thresholdC ? ' bad' : avgSigma > 2 ? ' warn' : '');
+
+    const flippedEl = document.getElementById('flipped-count');
+    flippedEl.textContent = flipped;
+    flippedEl.className = 'number' + (flipped > 0 ? ' bad' : '');
+
+    document.getElementById('bounded-count').textContent = bounded;
+
+    const excEl = document.getElementById('exceeded-count');
+    excEl.textContent = exceeded;
+    excEl.className = 'number' + (exceeded > 0 ? ' bad' : '');
+
+    const areaEl = document.getElementById('area-distortion');
+    areaEl.textContent = avgArea.toFixed(2);
+    areaEl.className = 'number' + (avgArea > 3 ? ' bad' : avgArea > 1.5 ? ' warn' : '');
+  }
+
+  // Find closest vertex
+  function findClosestVertex(mx, my, maxDist) {
+    let best = -1, bestDist2 = maxDist * maxDist;
+    for (let i = 0; i < vertices.length; i++) {
+      const dx = vertices[i].x - mx;
+      const dy = vertices[i].y - my;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestDist2) {
+        bestDist2 = d2;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  // Mouse handling
+  function getMousePos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    const pos = getMousePos(e);
+    const idx = findClosestVertex(pos.x, pos.y, 20);
+    if (idx >= 0 && !vertices[idx].pinned) {
+      dragVertex = idx;
+    } else if (idx >= 0 && vertices[idx].pinned) {
+      showToast('边界顶点已固定，无法拖拽');
+    }
+  });
+
+  canvas.addEventListener('mousemove', (e) => {
+    const pos = getMousePos(e);
+    if (dragVertex >= 0) {
+      vertices[dragVertex].x = pos.x;
+      vertices[dragVertex].y = pos.y;
+      updateStats();
+    }
+    hoverVertex = findClosestVertex(pos.x, pos.y, 20);
+    canvas.style.cursor = hoverVertex >= 0 ? (vertices[hoverVertex].pinned ? 'not-allowed' : 'grab') : 'default';
+    if (dragVertex >= 0) canvas.style.cursor = 'grabbing';
+  });
+
+  canvas.addEventListener('mouseup', () => {
+    dragVertex = -1;
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    dragVertex = -1;
+    hoverVertex = -1;
+  });
+
+  // Touch support
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const pos = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    const idx = findClosestVertex(pos.x, pos.y, 30);
+    if (idx >= 0 && !vertices[idx].pinned) {
+      dragVertex = idx;
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (dragVertex >= 0) {
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      vertices[dragVertex].x = touch.clientX - rect.left;
+      vertices[dragVertex].y = touch.clientY - rect.top;
+      updateStats();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', () => {
+    dragVertex = -1;
+  });
+
+  // Toast
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 1500);
+  }
+
+  // Controls
+  document.getElementById('mesh-select').addEventListener('change', (e) => {
+    meshType = e.target.value;
+    generateMesh();
+  });
+
+  document.getElementById('density-slider').addEventListener('input', (e) => {
+    density = parseInt(e.target.value);
+    generateMesh();
+  });
+
+  document.getElementById('display-select').addEventListener('change', (e) => {
+    displayMode = e.target.value;
+  });
+
+  document.getElementById('threshold-slider').addEventListener('input', (e) => {
+    thresholdC = parseFloat(e.target.value);
+    document.getElementById('threshold-val').textContent = thresholdC.toFixed(1);
+    updateStats();
+  });
+
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    for (const v of vertices) {
+      v.x = v.restX;
+      v.y = v.restY;
+    }
+    updateStats();
+    showToast('网格已重置');
+  });
+
+  window.addEventListener('resize', () => {
+    resize();
+    generateMesh();
+  });
+
+  // Animation loop
+  function animate() {
+    requestAnimationFrame(animate);
+    draw();
+  }
+
+  // Init
+  resize();
+  generateMesh();
+  animate();
+})();
+</script>
+</body>
+</html>

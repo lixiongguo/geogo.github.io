@@ -2,13 +2,65 @@
 
 将 2D 平面变形视为一个复映射，那么我们知道调和映射是有比较好的性质那样也就是对应了更好的变形效果，所以本研究的主要目的就是通过数值方法寻找一个这样比较好的映射。
 
+### 0. 与 Lipman 凸化技巧的关联
+
+BDHM 方法在多个关键点上借鉴了 Lipman 的凸化思想，核心联系如下：
+
+#### 0.1 统一的复数表示框架
+
+Lipman 将三角面上的仿射映射用复数表示为 $A_j(z) = \alpha z + \beta \bar{z} + \gamma$，其中 $\alpha, \beta \in \mathbb{C}$ 分别控制共形部分和反共形部分。BDHM 将连续的调和映射表示为 $f(z) = h(z) + \overline{g(z)}$，其复导数为 $f_z = h'(z)$、$f_{\bar{z}} = \overline{g'(z)}$。
+
+**两者的对应关系**：
+
+| Lipman（离散分片线性） | BDHM（连续调和映射） |
+|---|---|
+| $\alpha$ 对应共形部分 | $f_z$ 是全纯的 |
+| $\beta$ 对应反共形部分 | $f_{\bar{z}}$ 是反全纯的 |
+| 扭曲 $\sigma = \frac{\|\alpha\|+\|\beta\|}{\|\alpha\|-\|\beta\|}$ | Dilation $K_f = \frac{\|f_z\|+\|f_{\bar{z}}\|}{\|f_z\|-\|f_{\bar{z}}\|}$ |
+
+本质上，BDHM 将 Lipman 的离散复数表示提升到了连续域，用复导数 $f_z, f_{\bar{z}}$ 替代了离散的 $\alpha, \beta$。
+
+#### 0.2 二阶锥(SOC)凸化技术的直接继承
+
+Lipman 的核心贡献是将非凸的扭曲约束转化为**二阶锥约束(SOC)**，从而可以用凸优化求解。具体来说，Lipman 引入辅助变量 $r_j = |\alpha|^2 - |\beta|^2$，将约束改写为：
+
+$$|\alpha|^2 - |\beta|^2 \geq r_j > 0, \quad |\beta|^2 \leq \frac{(C-1)^2}{(C+1)^2} \cdot r_j$$
+
+BDHM 在第 2.3 节中**直接沿用这一技术**，将连续的扭曲约束 $|f_{\bar{z}}| \leq \kappa |f_z|$ 和正定性约束 $|f_z|^2 - |f_{\bar{z}}|^2 \geq \varepsilon$ 也转化为二阶锥约束的形式（见第 144 行和第 162 行）。区别仅在于：Lipman 是在每个三角面的局部坐标系下做凸化，而 BDHM 是在边界采样点上做凸化（由 Theorem 2，边界约束可决定内部约束）。
+
+#### 0.3 ARAP 能量凸化的引用
+
+BDHM 在第 174 行明确写道："由于这个能量也是非凸的所以做如下凸化，**过程参考 Lipman 的文章**"。具体来说，Lipman 将非凸的 ARAP 能量 $E_{ARAP} = \sum \|A_j - R_j\|_F^2$ 通过固定上一轮的旋转矩阵 $R_0$ 进行线性化，得到凸近似：
+
+$$E_{ARAP}^{convex} = \sum \left( \|A_j\|_F^2 - 2\,\text{tr}(A_j R_0^T) \right)$$
+
+BDHM 对连续的 ARAP 能量做了完全相同的处理（第 178 行）。
+
+#### 0.4 总结
+
+```mermaid
+flowchart LR
+    A["Lipman 凸化技巧"] --> B["复数表示 α,β"]
+    A --> C["二阶锥约束 SOC"]
+    A --> D["ARAP能量线性化"]
+    
+    B --> E["BDHM: f_z, f_z̄"]
+    C --> F["BDHM: 边界SOC约束"]
+    D --> G["BDHM: 连续ARAP凸化"]
+    
+    style A fill:#ff9999
+    style E fill:#99ff99
+    style F fill:#99ff99
+    style G fill:#99ff99
+```
+
+---
+
 ### 1. 复调和映射的基本性质
 
 1）首先一个复调和映射可以分解为一个全纯函数与另一个反全纯函数的和：
 
 $$f(z) = h(z) + \overline{g(z)}$$
-
-![image-20250326191459767](..\..\..\imgs\image-20250326191459767.png)
 
 其中 $h(z)$ 和 $g(z)$ 是 $\Omega$ 上的全纯函数。对应的复导数为：
 
@@ -20,7 +72,7 @@ $$f_z = h'(z), \quad f_{\bar{z}} = \overline{g'(z)}$$
 
 由此得到一个推论 Corollary 1：
 
-![image-20250326191727770](..\..\..\imgs\image-20250326191727770.png)
+
 
 > **Corollary 1**：若 $f$ 是调和映射，则 $f_z$ 是全纯的，$f_{\bar{z}}$ 是反全纯的。映射 $f$ 是保向的（orientation-preserving）当且仅当 $|f_z| > |f_{\bar{z}}|$。
 
@@ -28,13 +80,9 @@ $$f_z = h'(z), \quad f_{\bar{z}} = \overline{g'(z)}$$
 
 #### 1.1.2 f 的 Jacobian 以及奇异值
 
-![image-20250326192504209](..\..\..\imgs\image-20250326192504209.png)
-
 $f$ 的 Jacobian 行列式可以通过复导数表达：
 
 $$J_f = |f_z|^2 - |f_{\bar{z}}|^2$$
-
-![image-20250326192435124](..\..\..\imgs\image-20250326192435124.png)
 
 对应地，$f$ 的 Jacobian 矩阵的两个奇异值为：
 
@@ -167,6 +215,21 @@ $$|f_{\bar{z}}| \leq \kappa \, |f_z|, \quad \kappa = \frac{K-1}{K+1}$$
 
 $$\left\| \begin{pmatrix} 2\,\text{Re}(f_{\bar{z}}) \\ 2\,\text{Im}(f_{\bar{z}}) \end{pmatrix} \right\|_2 \leq (1-\kappa)|f_z|^2 - (1+\kappa)|f_{\bar{z}}|^2$$
 
+##### 🤔 上述 SOC 凸化与 Lipman 方法的关联
+
+上述两个二阶锥约束的推导直接借鉴了 Lipman 的凸化技巧。回顾 Lipman 的方法：
+
+1. **Lipman 的凸化思路**：将非凸的扭曲约束 $\frac{|\alpha|+|\beta|}{|\alpha|-|\beta|} \leq C$ 通过引入辅助变量 $r_j = |\alpha|^2 - |\beta|^2$ 转化为凸约束：
+   $$|\alpha|^2 - |\beta|^2 \geq r_j > 0, \quad |\beta|^2 \leq \frac{(C-1)^2}{(C+1)^2} \cdot r_j$$
+   这构成一个**二阶锥（Second-Order Cone）**，可以用凸优化高效求解。
+
+2. **BDHM 的直接继承**：BDHM 将同样的思路应用到连续的调和映射上：
+   - 将 $|f_{\bar{z}}| \leq \kappa |f_z|$ 转化为类似的 SOC 形式（第 216 行）
+   - 将正定性约束 $|f_z|^2 - |f_{\bar{z}}|^2 \geq \varepsilon$ 也转化为 SOC 形式（第 198 行）
+   - 区别仅在于：Lipman 在每个三角面的局部坐标系下做凸化，而 BDHM 由 Theorem 2（边界值决定内部）只需在边界采样点上做凸化
+
+3. **数学本质的统一**：两者都将关于**奇异值比值**的非凸约束，转化为关于**复导数模长**的二阶锥约束，从而可以用标准的凸优化工具（如 ECOS、MOSEK）求解。
+
 对于非线性**边界条件 5a) 的处理**比较复杂，见原文 6.4 节。
 
 #### 正则项
@@ -184,6 +247,38 @@ $$E_{\text{reg}}(f) = \int_\Omega \left\| \nabla f - R(\nabla f) \right\|_F^2 \,
 $$E_{\text{reg}}^{\text{convex}} = \int_\Omega \left( \|\nabla f\|_F^2 - 2\,\text{tr}(\nabla f \cdot R_0^T) \right) dA$$
 
 其中 $R_0$ 是上一迭代的旋转矩阵（线性化）。
+
+##### 🤔 Lipman 的 ARAP 能量凸化技巧详解
+
+Lipman 原文中处理非凸 ARAP 能量的方法是**交替优化（Alternating Optimization）**策略：
+
+1. **问题**：ARAP 能量 $E_{ARAP} = \sum \|A_j - R_j\|_F^2$ 中，变量 $A_j$（或 $\alpha_j, \beta_j$）和 $R_j$ 耦合在一起，导致能量关于 $A_j$ 非凸。
+
+2. **Lipman 的解法**：固定 $R_j$，则能量关于 $A_j$ 变为**二次凸函数**：
+   $$E_{ARAP}^{\text{convex}} = \sum \left( \|A_j\|_F^2 - 2\,\text{tr}(A_j R_j^T) \right) + \text{const}$$
+   
+3. **交替迭代**：
+   - Step 1：固定 $A_j$，更新 $R_j = \text{argmin}_R \|A_j - R\|_F^2$（SVD 求解）
+   - Step 2：固定 $R_j$，更新 $A_j$（求解凸优化问题，结合 SOC 约束）
+   - 重复直到收敛
+
+4. **BDHM 的继承**：BDHM 对连续的 ARAP 能量做了**完全相同的处理**（第 247 行），将 $\|\nabla f - R\|_F^2$ 线性化为 $\|\nabla f\|_F^2 - 2\,\text{tr}(\nabla f \cdot R_0^T)$，然后与 SOC 约束一起求解凸优化问题。
+
+```mermaid
+flowchart TB
+    A["非凸 ARAP 能量<br/>E = ||∇f - R||²"] --> B{"如何凸化?"}
+    
+    B --> C["Lipman 的技巧:<br/>交替优化"]
+    C --> D["Step 1: 固定 ∇f,<br/>更新 R (SVD)"]
+    C --> E["Step 2: 固定 R,<br/>更新 ∇f (凸优化+SOC)"]
+    
+    D <--> E
+    
+    E --> F["BDHM 继承:<br/>相同交替优化策略"]
+    F --> G["✅ 收敛到局部最优"]
+    
+    style G fill:#99ff99
+```
 
 ### 2.4 完整优化问题
 
@@ -233,6 +328,41 @@ $$\min_{\{\phi_k\}} \; \sum_{j \in \mathcal{M}} w_j \, |f_z(z_j)|^2 \quad \text{
 ### 3. GLID：基于牛顿法的方法
 
 BDHM 那篇文章是通过求带约束凸优化的方法，而这里（GLID）通过将 Hessian 矩阵凸化，用求解无约束优化问题的牛顿法来做优化。
+
+##### 🤔 GLID 与 Lipman/BDHM 凸化策略的对比
+
+GLID 采用了与 Lipman/BDHM **完全不同**的凸化策略：
+
+| 方法 | 凸化对象 | 技术手段 | 优化问题形式 |
+|---|---|---|---|
+| Lipman | 可行域（约束条件） | 二阶锥(SOC)约束 | 凸约束 + 凸目标 |
+| BDHM | 可行域（约束条件） | 二阶锥(SOC)约束 | 凸约束 + 凸目标 |
+| GLID | 目标函数（Hessian矩阵） | Hessian凸化（修正负特征值） | 无约束凸优化 |
+
+**核心区别**：
+- **Lipman/BDHM**：将非凸的**约束** $|f_{\bar{z}}| \leq \kappa |f_z|$ 转化为凸的 SOC 约束，然后求解**带约束的凸优化**问题
+- **GLID**：将非凸的**目标函数** $E_{iso}(f)$ 的 Hessian 矩阵进行凸化（将负特征值设为0或正数），然后求解**无约束的凸优化**问题（牛顿法）
+
+**相同点**：
+- 两者都使用了 Lipman 提出的 **bounded distortion 约束** $|f_{\bar{z}}| \leq \kappa |f_z|$（GLID 在迭代中投影到该可行域）
+- 两者都旨在找到一个扭曲有界的映射
+
+```mermaid
+flowchart TB
+    A["非凸优化问题"] --> B{"凸化策略?"}
+    
+    B --> C["策略1: 凸化约束<br/>(Lipman/BDHM)"]
+    B --> D["策略2: 凸化目标函数<br/>(GLID)"]
+    
+    C --> E["将约束转化为SOC<br/>求解带约束凸优化"]
+    D --> F["修正Hessian负特征值<br/>求解无约束凸优化(牛顿法)"]
+    
+    E --> G["✅ 得到扭曲有界的映射"]
+    F --> H["✅ 得到扭曲有界的映射<br/>(迭代中投影到可行域)"]
+    
+    style G fill:#99ff99
+    style H fill:#99ff99
+```
 
 #### 3.1 Bounded 约束
 
