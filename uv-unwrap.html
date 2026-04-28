@@ -552,11 +552,11 @@
         
         try {
           // LSCMSolver 由 lscm_solver.js (Emscripten MODULARIZE) 自动创建
-          if (typeof LCMSolver === 'undefined') {
+          if (typeof LSCMSolver === 'undefined') {
             throw new Error('WASM 胶水代码未加载，请确保 assets/wasm/lscm_solver.js 已部署');
           }
           
-          wasmModule = await LCMSolver();
+          wasmModule = await LSCMSolver();
           wasmReady = true;
           console.log('WASM LSCM 求解器加载成功');
           return true;
