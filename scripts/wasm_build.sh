@@ -121,7 +121,7 @@ echo "[3/3] 编译 WASM 模块..."
 echo "  使用 C++17 标准，优化级别 O2"
 echo ""
 
-# 编译选项
+# 编译选项 (匹配 uv-unwrap.html 的需求)
 EMCC_FLAGS=(
     # C++ 标准与优化
     -std=c++17
@@ -133,44 +133,41 @@ EMCC_FLAGS=(
     -I./deps/Eigen
     -I.
 
-    # Emscripten 标志
+    # Emscripten 标志 (MODULARIZE + EXPORT_NAME 匹配 HTML)
     -s WASM=1
     -s MODULARIZE=1
-    -s EXPORT_NAME="ConformalParamModule"
-    -s "EXPORTED_RUNTIME_METHODS=['ccall','cwrap','getValue','setValue','UTF8ToString','stringToUTF8','_malloc','_free']"
+    -s EXPORT_NAME="LSCMSolver"
+    -s "EXPORTED_RUNTIME_METHODS=['ccall','cwrap','getValue','setValue','UTF8ToString','stringToUTF8','lengthBytesUTF8','_malloc','_free']"
     -s ALLOW_MEMORY_GROWTH=1
     -s FORCE_FILESYSTEM=1
     -s ERRNO_EXCEPTIONS=0
     -s DISABLE_EXCEPTION_CATCHING=1
 
-    # Embind 绑定
-    --bind
+    # 注意：不使用 --bind，因为 wasm_main.cpp 使用 EMSCRIPTEN_KEEPALIVE (C 接口)
 
     # 禁用异常 (与 DISABLE_EXCEPTION_CATCHING 配合)
     -fno-exceptions
 )
 
-# 源文件
+# 源文件 (使用 wasm_main.cpp，提供 C 接口)
 SRCS=(
-    wasm_bindings.cpp
+    wasm_main.cpp
     Mesh.cpp
     MeshIO.cpp
     Lscm.cpp
-    Cetm.cpp
-    Solver.cpp
     Parameterization.cpp
-    Utils.cpp
     QcError.cpp
-    Scp.cpp
+    Solver.cpp
+    Utils.cpp
     Vertex.cpp
     Edge.cpp
     Face.cpp
     HalfEdge.cpp
 )
 
-# 输出文件
-OUTPUT_JS="$OUT_DIR/conformal_param.js"
-OUTPUT_WASM="$OUT_DIR/conformal_param.wasm"
+# 输出文件 (匹配 uv-unwrap.html 中的引用)
+OUTPUT_JS="$OUT_DIR/lscm_solver.js"
+OUTPUT_WASM="$OUT_DIR/lscm_solver.wasm"
 
 echo "执行编译命令..."
 emcc "${EMCC_FLAGS[@]}" "${SRCS[@]}" -o "$OUTPUT_JS"
@@ -199,17 +196,30 @@ else
 fi
 
 # 检查是否生成了 worker 文件
-if [ -f "$OUT_DIR/conformal_param.worker.js" ]; then
-    echo "  [OK] $OUT_DIR/conformal_param.worker.js"
+if [ -f "$OUT_DIR/lscm_solver.worker.js" ]; then
+    echo "  [OK] $OUT_DIR/lscm_solver.worker.js"
 fi
 
 echo ""
-echo "在 JavaScript 中使用:"
-echo "  import Module from './conformal_param.js';"
-echo "  const param = new Module.ConformalParam();"
-echo "  param.initMesh(positions, faces);"
-echo "  param.computeLSCM();"
-echo "  const uvs = param.getUVs();"
+echo "在 JavaScript 中使用 (参见 uv-unwrap.html):"
+echo "  <!-- 在 HTML 中引用 -->"
+echo "  <script src=\"assets/wasm/lscm_solver.js\"></script>"
+echo ""
+echo "  // 在 JS 中调用"
+echo "  const module = await LSCMSolver();"
+echo "  const posPtr = module._malloc(...);"
+echo "  const facePtr = module._malloc(...);"
+echo "  module.ccall('solve_lscm', 'number', [...], [...]);"
+echo "  const uvSize = module.ccall('get_uv_result_size', 'number', [], []);"
+echo "  const uvPtr = module.ccall('get_uv_result', 'number', [], []);"
+echo "  // ... 读取 UV 数据 ..."
+echo "  module.ccall('dispose', 'void', [], []);"
+echo "  module._free(posPtr);"
 echo ""
 
 cd "$PROJECT_ROOT"
+
+echo "==================================="
+echo "下次编译时，只需运行:"
+echo "  bash scripts/wasm_build.sh"
+echo "==================================="
