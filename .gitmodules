@@ -2,3 +2,6 @@
 	path = cpp/conformal-parameterization
 	url = https://github.com/lixiongguo/conformal-parameterization.git
 	branch = wasm_dev
+[submodule "cpp/emsdk"]
+	path = cpp/emsdk
+	url = https://github.com/emscripten-core/emsdk.git
