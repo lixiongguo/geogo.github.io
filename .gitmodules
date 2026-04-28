@@ -1,0 +1,4 @@
+[submodule "cpp/conformal-parameterization"]
+	path = cpp/conformal-parameterization
+	url = https://github.com/lixiongguo/conformal-parameterization.git
+	branch = wasm_dev
