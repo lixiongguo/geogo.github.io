@@ -538,7 +538,7 @@
       }
 
       // ==================== WASM 求解器初始化 ====================
-      let wasmSolver = null;          // WASM 模块实例
+      let wasmModule = null;          // WASM 模块实例
       let wasmReady = false;          // WASM 是否已就绪
       let wasmLoadFailed = false;     // WASM 加载是否失败
 
@@ -551,14 +551,14 @@
         if (wasmLoadFailed) return false;
         
         try {
-          // LCMSolver 由 lscm_solver.js (Emscripten MODULARIZE) 自动创建
+          // LSCMSolver 由 lscm_solver.js (Emscripten MODULARIZE) 自动创建
           if (typeof LCMSolver === 'undefined') {
             throw new Error('WASM 胶水代码未加载，请确保 assets/wasm/lscm_solver.js 已部署');
           }
           
-          wasmSolver = await LCMSolver();
+          wasmModule = await LCMSolver();
           wasmReady = true;
-          console.log('WASM LSCM 求解器加载成功 (Eigen 稀疏 Cholesky)');
+          console.log('WASM LSCM 求解器加载成功');
           return true;
         } catch (err) {
           console.error('WASM 加载失败:', err);
@@ -696,21 +696,53 @@
 
         if (onProgress) onProgress(faces.length * 0.3, faces.length);
 
-        // 调用 WASM 求解器 (Eigen 稀疏 Cholesky)
+        // 调用 WASM 求解器 (C 接口)
         let result;
         try {
-          result = wasmSolver.solve_lscm(
-            Array.from(flatPositions),
-            Array.from(flatFaces),
-            anchors[0],
-            anchors[1]
-          );
+          // 1. 分配内存并复制 positions (double 数组)
+          const posPtr = wasmModule._malloc(flatPositions.length * 8);
+          for (let i = 0; i < flatPositions.length; i++) {
+            wasmModule.setValue(posPtr + i * 8, flatPositions[i], 'double');
+          }
+
+          // 2. 分配内存并复制 faces (int 数组)
+          const facePtr = wasmModule._malloc(flatFaces.length * 4);
+          for (let i = 0; i < flatFaces.length; i++) {
+            wasmModule.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+          }
+
+          try {
+            // 3. 调用 solve_lscm
+            const ret = wasmModule.ccall('solve_lscm', 'number', 
+              ['number', 'number', 'number', 'number', 'number', 'number'],
+              [posPtr, flatPositions.length, facePtr, flatFaces.length, anchors[0], anchors[1]]
+            );
+
+            if (ret !== 0) {
+              throw new Error("WASM solve_lscm 返回错误码: " + ret);
+            }
+
+            // 4. 读取 UV 结果
+            const uvSize = wasmModule.ccall('get_uv_result_size', 'number', [], []);
+            const uvPtr = wasmModule.ccall('get_uv_result', 'number', [], []);
+
+            const uvs = [];
+            for (let i = 0; i < uvSize; i++) {
+              uvs.push(wasmModule.getValue(uvPtr + i * 8, 'double'));
+            }
+
+            // 5. 释放 C++ 资源
+            wasmModule.ccall('dispose', 'void', [], []);
+
+            // 6. 构建 JSON 格式的结果
+            result = { uv: uvs, time_ms: wasmModule.ccall('get_last_time_ms', 'number', [], []) };
+          } finally {
+            // 7. 释放 JS 分配的内存
+            wasmModule._free(posPtr);
+            wasmModule._free(facePtr);
+          }
         } catch (err) {
           throw new Error("WASM 求解失败: " + err.message);
-        }
-
-        if (!result || !result.uv) {
-          throw new Error("WASM 返回结果无效");
         }
 
         if (onProgress) onProgress(faces.length * 0.9, faces.length);
