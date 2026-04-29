@@ -194,6 +194,7 @@ $EMCC_FLAGS = @(
     "-s", "MODULARIZE=1",
     "-s", "EXPORT_NAME='LSCMSolver'",
     "-s", "EXPORTED_RUNTIME_METHODS=['ccall','cwrap','getValue','setValue','UTF8ToString','stringToUTF8','lengthBytesUTF8']",
+    "-s", "EXPORTED_FUNCTIONS=['_malloc','_free','_solve_lscm','_get_uv_result','_get_uv_result_size','_get_last_time_ms','_dispose']"
     "-s", "ALLOW_MEMORY_GROWTH=1",
     "-s", "FORCE_FILESYSTEM=1",
     "-fno-exceptions"
