@@ -130,17 +130,17 @@ EMCC_FLAGS=(
 
     # Include 路径
     -I./deps
-    -I./deps/Eigen
     -I.
 
     # Emscripten 标志 (MODULARIZE + EXPORT_NAME 匹配 HTML)
     -s WASM=1
     -s MODULARIZE=1
     -s EXPORT_NAME="LSCMSolver"
-    -s "EXPORTED_RUNTIME_METHODS=['ccall','cwrap','getValue','setValue','UTF8ToString','stringToUTF8','lengthBytesUTF8','_malloc','_free']"
+    # -s "EXPORTED_RUNTIME_METHODS=['ccall','cwrap','getValue','setValue','UTF8ToString','stringToUTF8','lengthBytesUTF8','_malloc','_free']"
+    -s "EXPORTED_RUNTIME_METHODS=['ccall','cwrap','getValue','setValue','UTF8ToString','stringToUTF8','lengthBytesUTF8']"
+    -s "EXPORTED_FUNCTIONS=['_malloc','_free']"
     -s ALLOW_MEMORY_GROWTH=1
     -s FORCE_FILESYSTEM=1
-    -s ERRNO_EXCEPTIONS=0
     -s DISABLE_EXCEPTION_CATCHING=1
 
     # 注意：不使用 --bind，因为 wasm_main.cpp 使用 EMSCRIPTEN_KEEPALIVE (C 接口)
@@ -158,7 +158,6 @@ SRCS=(
     Parameterization.cpp
     QcError.cpp
     Solver.cpp
-    Utils.cpp
     Vertex.cpp
     Edge.cpp
     Face.cpp
