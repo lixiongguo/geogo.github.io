@@ -193,11 +193,9 @@ $EMCC_FLAGS = @(
     "-s", "WASM=1",
     "-s", "MODULARIZE=1",
     "-s", "EXPORT_NAME='LSCMSolver'",
-    "-s", "EXPORTED_RUNTIME_METHODS=['ccall','cwrap','getValue','setValue','UTF8ToString','stringToUTF8','lengthBytesUTF8','_malloc','_free']",
+    "-s", "EXPORTED_RUNTIME_METHODS=['ccall','cwrap','getValue','setValue','UTF8ToString','stringToUTF8','lengthBytesUTF8']",
     "-s", "ALLOW_MEMORY_GROWTH=1",
     "-s", "FORCE_FILESYSTEM=1",
-    "-s", "ERRNO_EXCEPTIONS=0",
-    "-s", "DISABLE_EXCEPTION_CATCHING=1",
     "-fno-exceptions"
 )
 
@@ -210,7 +208,6 @@ $SRCS = @(
     "Parameterization.cpp",
     "QcError.cpp",
     "Solver.cpp",
-    "Utils.cpp",
     "Vertex.cpp",
     "Edge.cpp",
     "Face.cpp",
@@ -226,7 +223,9 @@ Write-Host "  emcc $($EMCC_FLAGS -join ' ') $($SRCS -join ' ') -o $OUTPUT_JS"
 Write-Host ""
 
 # 执行编译
-& emcc $EMCC_FLAGS $SRCS -o "$OUTPUT_JS"
+# & emcc $EMCC_FLAGS $SRCS -o "$OUTPUT_JS"
+$AllArgs = $EMCC_FLAGS + $SRCS + @("-o", $OUTPUT_JS)
+& emcc @AllArgs
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[失败] 编译出错 (退出码: $LASTEXITCODE)" -ForegroundColor Red
