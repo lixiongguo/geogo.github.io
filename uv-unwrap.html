@@ -3,13 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UV展开 - LSCM</title>
+  <title>UV展开 - LSCM / BD-LSCM</title>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
   
   <!-- WASM LSCM Solver (Eigen 稀疏 Cholesky) -->
   <script src="assets/wasm/lscm_solver.js"></script>
+  <!-- WASM BD-LSCM Solver (Bounded Distortion + LSCM) -->
+  <script src="assets/wasm/bd_lscm_solver.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
@@ -209,11 +211,20 @@
       <div class="toolbar-left">
         <div>
           <h1>UV展开</h1>
-          <div class="desc">LSCM · WebAssembly + Eigen 稀疏 Cholesky</div>
+          <div class="desc">LSCM · BD-LSCM · WebAssembly + Eigen</div>
         </div>
       </div>
       <div class="toolbar-right">
         <select id="model-select"></select>
+        <select id="method-select" title="展开算法">
+          <option value="lscm">LSCM</option>
+          <option value="bd_lscm" selected>BD-LSCM (C=10)</option>
+        </select>
+        <label style="font-size:12px;color:#8a9dd4;display:flex;align-items:center;gap:4px;">
+          C:<input id="bd-c-input" type="number" value="10" min="1.1" max="100" step="1"
+            style="width:50px;padding:4px 6px;border-radius:6px;text-align:center"
+            title="共形扭曲上限 σ₁/σ₂ ≤ C（越小越保角）">
+        </label>
         <button id="upload-btn">上传OBJ</button>
         <input id="obj-upload" class="hidden-input" type="file" accept=".obj,model/obj,text/plain">
         <button id="reload-btn">开始展开</button>
@@ -236,7 +247,7 @@
 
       <section class="panel">
         <div class="panel-header">
-          <span>LSCM UV 网格</span>
+          <span id="uv-panel-label">LSCM / BD-LSCM UV 网格</span>
           <span>边界归一化到 0..1</span>
         </div>
         <div class="canvas-wrap">
@@ -343,11 +354,6 @@
       function updateTimingProgress(current, total) {
         const msSpan = document.getElementById("timing-ms");
         msSpan.textContent = "计算中 " + current + "/" + total;
-      }
-
-      function setStatus(message, color) {
-        statusText.textContent = message;
-        statusText.style.color = color || "#8cc4ff";
       }
 
       function setBusy(nextBusy) {
@@ -538,33 +544,67 @@
       }
 
       // ==================== WASM 求解器初始化 ====================
-      let wasmModule = null;          // WASM 模块实例
-      let wasmReady = false;          // WASM 是否已就绪
-      let wasmLoadFailed = false;     // WASM 加载是否失败
+      let wasmModule = null;          // LSCM WASM 模块实例
+      let wasmReady = false;          // LSCM WASM 是否已就绪
+      let wasmLoadFailed = false;
+
+      let bdWasmModule = null;        // BD-LSCM WASM 模块实例
+      let bdWasmReady = false;
+      let bdWasmLoadFailed = false;
 
       /**
-       * 异步加载 WASM 求解器
-       * @returns {Promise<boolean>} 是否加载成功
+       * 异步加载 LSCM WASM 求解器
        */
       async function initWASMSolver() {
         if (wasmReady) return true;
         if (wasmLoadFailed) return false;
         
         try {
-          // LSCMSolver 由 lscm_solver.js (Emscripten MODULARIZE) 自动创建
           if (typeof LSCMSolver === 'undefined') {
             throw new Error('WASM 胶水代码未加载，请确保 assets/wasm/lscm_solver.js 已部署');
           }
-          
           wasmModule = await LSCMSolver();
           wasmReady = true;
           console.log('WASM LSCM 求解器加载成功');
           return true;
         } catch (err) {
-          console.error('WASM 加载失败:', err);
+          console.error('LSCM WASM 加载失败:', err);
           wasmLoadFailed = true;
           return false;
         }
+      }
+
+      /**
+       * 异步加载 BD-LSCM WASM 求解器
+       */
+      async function initBDWASMSolver() {
+        if (bdWasmReady) return true;
+        if (bdWasmLoadFailed) return false;
+
+        try {
+          if (typeof BDLSCMSolver === 'undefined') {
+            throw new Error('BD-LSCM WASM 胶水代码未加载，请确保 assets/wasm/bd_lscm_solver.js 已部署');
+          }
+          bdWasmModule = await BDLSCMSolver();
+          bdWasmReady = true;
+          console.log('WASM BD-LSCM 求解器加载成功');
+          return true;
+        } catch (err) {
+          console.error('BD-LSCM WASM 加载失败:', err);
+          bdWasmLoadFailed = true;
+          return false;
+        }
+      }
+
+      /** 当前选中的算法 */
+      function getCurrentMethod() {
+        return document.getElementById('method-select').value;
+      }
+
+      /** 获取 BD C 参数值 */
+      function getBDCParam() {
+        const v = parseFloat(document.getElementById('bd-c-input').value);
+        return (isNaN(v) || v < 1.01) ? 10.0 : v;
       }
 
       /**
@@ -574,90 +614,35 @@
         const btn = document.getElementById('reloadBtn');
         if (!btn) return;
         
-        if (wasmLoadFailed) {
+        const method = getCurrentMethod();
+        const lscmFailed = (method === 'lscm' && wasmLoadFailed);
+        const bdFailed   = (method === 'bd_lscm' && bdWasmLoadFailed);
+        const lscmLoading = (method === 'lscm' && !wasmReady && !wasmLoadFailed);
+        const bdLoading   = (method === 'bd_lscm' && !bdWasmReady && !bdWasmLoadFailed);
+
+        if (lscmFailed || bdFailed) {
           btn.textContent = '引擎加载失败';
           btn.disabled = true;
-          btn.title = 'WASM 引擎加载失败，请检查控制台错误信息';
-        } else if (!wasmReady) {
+        } else if (lscmLoading || bdLoading) {
           btn.textContent = '引擎加载中...';
           btn.disabled = true;
         } else {
           btn.textContent = '开始展开';
           btn.disabled = false;
-          btn.title = '执行 LSCM UV 展开';
+          btn.title = method === 'bd_lscm' ? '执行 BD-LSCM 有界扭曲展开' : '执行 LSCM UV 展开';
         }
       }
 
-      /**
-       * 选择距离最远的两个顶点作为 LSCM 锚点
-       */
-      function chooseAnchorPair(vertices) {
-        let maxDist = -1;
-        let bestA = 0;
-        let bestB = 1;
-        for (let i = 0; i < vertices.length; i++) {
-          for (let j = i + 1; j < vertices.length; j++) {
-            const dx = vertices[i][0] - vertices[j][0];
-            const dy = vertices[i][1] - vertices[j][1];
-            const dz = vertices[i][2] - vertices[j][2];
-            const dist = dx * dx + dy * dy + dz * dz;
-            if (dist > maxDist) {
-              maxDist = dist;
-              bestA = i;
-              bestB = j;
-            }
-          }
-        }
-        return [bestA, bestB];
-      }
-
-      /**
-       * 计算局部三角形的 LSCM 梯度权重
-       * (此函数保留用于调试，WASM 版本不依赖它)
-       */
-      function buildLocalTriangle(p0, p1, p2) {
-        const a = new THREE.Vector3().fromArray(p0);
-        const b = new THREE.Vector3().fromArray(p1);
-        const c = new THREE.Vector3().fromArray(p2);
-        const e1 = new THREE.Vector3().subVectors(b, a);
-        const e2 = new THREE.Vector3().subVectors(c, a);
-        const area2 = new THREE.Vector3().crossVectors(e1, e2).length();
-        if (area2 < 1e-10) {
-          return null;
-        }
-
-        const xAxis = e1.clone().normalize();
-        const normal = new THREE.Vector3().crossVectors(e1, e2).normalize();
-        const yAxis = new THREE.Vector3().crossVectors(normal, xAxis).normalize();
-
-        const x0 = 0;
-        const y0 = 0;
-        const x1 = e1.length();
-        const y1 = 0;
-        const x2 = e2.dot(xAxis);
-        const y2 = e2.dot(yAxis);
-
-        const signedArea2 = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);
-        if (Math.abs(signedArea2) < 1e-10) {
-          return null;
-        }
-
-        return {
-          area: Math.abs(signedArea2) * 0.5,
-          grad: [
-            [(y1 - y2) / signedArea2, (x2 - x1) / signedArea2],
-            [(y2 - y0) / signedArea2, (x0 - x2) / signedArea2],
-            [(y0 - y1) / signedArea2, (x1 - x0) / signedArea2]
-          ]
-        };
-      }
+      // 方法切换时更新 UI
+      document.getElementById('method-select').addEventListener('change', function() {
+        const isBD = this.value === 'bd_lscm';
+        document.getElementById('bd-c-input').disabled = !isBD;
+        document.getElementById('bd-c-input').style.opacity = isBD ? '1' : '0.4';
+        updateStartButtonState();
+      });
 
       // ==================== WASM 驱动的 LSCM 求解 ====================
 
-      /**
-       * 基于 WebAssembly + Eigen 的 LSCM UV 展开
-       * 使用稀疏 Cholesky 分解，替代纯 JS 稠密高斯消元
-       */
       async function solveLSCMAsync(meshData, onProgress) {
         const vertices = meshData.positions;
         const faces = meshData.faces;
@@ -665,20 +650,15 @@
           throw new Error("模型顶点或三角形数量不足");
         }
 
-        // 选择锚点对
         const anchors = chooseAnchorPair(vertices);
 
-        // 确保 WASM 已就绪
         if (!wasmReady) {
           const loaded = await initWASMSolver();
-          if (!loaded) {
-            throw new Error("WASM 求解器初始化失败，请刷新页面重试");
-          }
+          if (!loaded) throw new Error("LSCM WASM 求解器初始化失败");
         }
 
         if (onProgress) onProgress(0, faces.length);
 
-        // 扁平化顶点数据: [x0,y0,z0, x1,y1,z1, ...]
         const flatPositions = new Float64Array(vertices.length * 3);
         for (let i = 0; i < vertices.length; i++) {
           flatPositions[i * 3] = vertices[i][0];
@@ -686,7 +666,6 @@
           flatPositions[i * 3 + 2] = vertices[i][2];
         }
 
-        // 扁平化面数据: [i0,i1,i2, i0,i1,i2, ...]
         const flatFaces = new Int32Array(faces.length * 3);
         for (let i = 0; i < faces.length; i++) {
           flatFaces[i * 3] = faces[i][0];
@@ -696,33 +675,26 @@
 
         if (onProgress) onProgress(faces.length * 0.3, faces.length);
 
-        // 调用 WASM 求解器 (C 接口)
         let result;
         try {
-          // 1. 分配内存并复制 positions (double 数组)
           const posPtr = wasmModule._malloc(flatPositions.length * 8);
           for (let i = 0; i < flatPositions.length; i++) {
             wasmModule.setValue(posPtr + i * 8, flatPositions[i], 'double');
           }
 
-          // 2. 分配内存并复制 faces (int 数组)
           const facePtr = wasmModule._malloc(flatFaces.length * 4);
           for (let i = 0; i < flatFaces.length; i++) {
             wasmModule.setValue(facePtr + i * 4, flatFaces[i], 'i32');
           }
 
           try {
-            // 3. 调用 solve_lscm
             const ret = wasmModule.ccall('solve_lscm', 'number', 
               ['number', 'number', 'number', 'number', 'number', 'number'],
               [posPtr, flatPositions.length, facePtr, flatFaces.length, anchors[0], anchors[1]]
             );
 
-            if (ret !== 0) {
-              throw new Error("WASM solve_lscm 返回错误码: " + ret);
-            }
+            if (ret !== 0) throw new Error("WASM solve_lscm 返回错误码: " + ret);
 
-            // 4. 读取 UV 结果
             const uvSize = wasmModule.ccall('get_uv_result_size', 'number', [], []);
             const uvPtr = wasmModule.ccall('get_uv_result', 'number', [], []);
 
@@ -731,23 +703,19 @@
               uvs.push(wasmModule.getValue(uvPtr + i * 8, 'double'));
             }
 
-            // 5. 释放 C++ 资源
             wasmModule.ccall('dispose', 'void', [], []);
 
-            // 6. 构建 JSON 格式的结果
             result = { uv: uvs, time_ms: wasmModule.ccall('get_last_time_ms', 'number', [], []) };
           } finally {
-            // 7. 释放 JS 分配的内存
             wasmModule._free(posPtr);
             wasmModule._free(facePtr);
           }
         } catch (err) {
-          throw new Error("WASM 求解失败: " + err.message);
+          throw new Error("WASM LSCM 求解失败: " + err.message);
         }
 
         if (onProgress) onProgress(faces.length * 0.9, faces.length);
 
-        // 解包 UV 数据: [u0,v0, u1,v1, ...] -> [[u0,v0], [u1,v1], ...]
         const uvArray = result.uv;
         const n = vertices.length;
         const uv = new Array(n);
@@ -757,28 +725,110 @@
 
         if (onProgress) onProgress(faces.length, faces.length);
 
-        // 记录求解耗时 (可选, 用于调试)
-        const timeMs = result.time_ms || 0;
-        if (timeMs > 0) {
-          console.log(`WASM LSCM 求解耗时: ${timeMs.toFixed(2)} ms (${n} 顶点, ${faces.length} 三角形)`);
+        return { uv: uv, anchors: anchors, flippedFaceCount: countFlippedFaces(uv, faces), timeMs: result.time_ms || 0, method: 'lscm' };
+      }
+
+      // ==================== WASM 驱动的 BD-LSCM 求解 ====================
+
+      async function solveBDLSCMAsync(meshData, onProgress) {
+        const vertices = meshData.positions;
+        const faces = meshData.faces;
+        if (vertices.length < 3 || faces.length < 1) {
+          throw new Error("模型顶点或三角形数量不足");
         }
 
-        let flippedFaceCount = 0;
-        const areaEps = 1e-12;
+        if (!bdWasmReady) {
+          const loaded = await initBDWASMSolver();
+          if (!loaded) throw new Error("BD-LSCM WASM 求解器初始化失败");
+        }
+
+        if (onProgress) onProgress(0, faces.length);
+
+        const anchors = chooseAnchorPair(vertices);
+
+        const flatPositions = new Float64Array(vertices.length * 3);
+        for (let i = 0; i < vertices.length; i++) {
+          flatPositions[i * 3] = vertices[i][0];
+          flatPositions[i * 3 + 1] = vertices[i][1];
+          flatPositions[i * 3 + 2] = vertices[i][2];
+        }
+
+        const flatFaces = new Int32Array(faces.length * 3);
         for (let i = 0; i < faces.length; i++) {
-          const tri = faces[i];
-          const uv0 = uv[tri[0]];
-          const uv1 = uv[tri[1]];
-          const uv2 = uv[tri[2]];
-          const signedArea2 =
-            (uv1[0] - uv0[0]) * (uv2[1] - uv0[1]) -
-            (uv2[0] - uv0[0]) * (uv1[1] - uv0[1]);
-          if (signedArea2 < -areaEps) {
-            flippedFaceCount += 1;
-          }
+          flatFaces[i * 3] = faces[i][0];
+          flatFaces[i * 3 + 1] = faces[i][1];
+          flatFaces[i * 3 + 2] = faces[i][2];
         }
 
-        return { uv: uv, anchors: anchors, flippedFaceCount: flippedFaceCount };
+        if (onProgress) onProgress(faces.length * 0.1, faces.length);
+
+        const C = getBDCParam();
+        const maxIter = 40;
+
+        let result;
+        try {
+          const posPtr = bdWasmModule._malloc(flatPositions.length * 8);
+          for (let i = 0; i < flatPositions.length; i++) {
+            bdWasmModule.setValue(posPtr + i * 8, flatPositions[i], 'double');
+          }
+
+          const facePtr = bdWasmModule._malloc(flatFaces.length * 4);
+          for (let i = 0; i < flatFaces.length; i++) {
+            bdWasmModule.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+          }
+
+          try {
+            // solve_bd_lscm(posPtr, posLen, facePtr, faceLen, C, maxIter) -> int
+            const ret = bdWasmModule.ccall('solve_bd_lscm', 'number',
+              ['number', 'number', 'number', 'number', 'number', 'number'],
+              [posPtr, flatPositions.length, facePtr, flatFaces.length, C, maxIter]
+            );
+
+            if (ret !== 0) throw new Error("WASM solve_bd_lscm 返回错误码: " + ret);
+
+            const uvSize = bdWasmModule.ccall('get_bd_uv_result_size', 'number', [], []);
+            const uvPtr = bdWasmModule.ccall('get_bd_uv_result', 'number', [], []);
+
+            const uvs = [];
+            for (let i = 0; i < uvSize; i++) {
+              uvs.push(bdWasmModule.getValue(uvPtr + i * 8, 'double'));
+            }
+
+            bdWasmModule.ccall('bd_dispose', 'void', [], []);
+
+            result = { uv: uvs, time_ms: bdWasmModule.ccall('get_bd_last_time_ms', 'number', [], []) };
+          } finally {
+            bdWasmModule._free(posPtr);
+            bdWasmModule._free(facePtr);
+          }
+        } catch (err) {
+          console.error('BD-LSCM WASM 调用失败:', err.message, err.stack);
+          throw new Error("WASM BD-LSCM 求解失败 (" + err.message + ")，可尝试减小 C 值或切换到 LSCM");
+        }
+
+        if (onProgress) onProgress(faces.length * 0.9, faces.length);
+
+        const uvArray = result.uv;
+        const n = vertices.length;
+        const uv = new Array(n);
+        for (let i = 0; i < n; i++) {
+          uv[i] = [uvArray[i * 2], uvArray[i * 2 + 1]];
+        }
+
+        if (onProgress) onProgress(faces.length, faces.length);
+
+        return { uv: uv, anchors: anchors, flippedFaceCount: countFlippedFaces(uv, faces), timeMs: result.time_ms || 0, method: 'bd_lscm', C: C };
+      }
+
+      function countFlippedFaces(uv, faces) {
+        let count = 0;
+        const eps = 1e-12;
+        for (let i = 0; i < faces.length; i++) {
+          const t = faces[i];
+          const a = uv[t[0]], b = uv[t[1]], c = uv[t[2]];
+          if ((b[0]-a[0])*(c[1]-a[1]) - (c[0]-a[0])*(b[1]-a[1]) < -eps) count++;
+        }
+        return count;
       }
 
       function buildModelGroup(root, anchors, positions) {
@@ -1078,32 +1128,40 @@
       }
 
       async function updateModel() {
-        if (busy) {
-          return;
-        }
+        if (busy) return;
 
         if (!currentMeshData) {
           await loadModelPreview();
-          if (!currentMeshData) {
-            return;
-          }
+          if (!currentMeshData) return;
         }
 
+        const method = getCurrentMethod();
+        const methodLabel = method === 'bd_lscm' ? 'BD-LSCM (C=' + getBDCParam().toFixed(1) + ')' : 'LSCM';
+
         setBusy(true);
-        setStatus("正在执行 LSCM 求解...");
+        setStatus("正在执行 " + methodLabel + " 求解...");
         hideTiming();
 
         try {
           const startTime = performance.now();
 
-          // 使用异步分片求解，避免大模型时阻塞 UI
-          const unwrapResult = await solveLSCMAsync(currentMeshData, function(progress, total) {
-            updateTimingProgress(progress, total);
-          });
+          let unwrapResult;
+          if (method === 'bd_lscm') {
+            unwrapResult = await solveBDLSCMAsync(currentMeshData, function(progress, total) {
+              updateTimingProgress(progress, total);
+            });
+          } else {
+            unwrapResult = await solveLSCMAsync(currentMeshData, function(progress, total) {
+              updateTimingProgress(progress, total);
+            });
+          }
 
-          const endTime = performance.now();
-          const elapsedMs = endTime - startTime;
+          const elapsedMs = unwrapResult.timeMs > 0 ? unwrapResult.timeMs : (performance.now() - startTime);
           currentUnwrapUv = unwrapResult.uv;
+
+          // 更新 UV 面板标签
+          document.getElementById('uv-panel-label').textContent =
+            (unwrapResult.method === 'bd_lscm' ? 'BD-LSCM' : 'LSCM') + ' UV 网格';
 
           clearGroup(uvScene, currentUvLines);
           clearGroup(uvScene, currentUvPins);
@@ -1113,23 +1171,25 @@
           uvScene.add(currentUvLines);
           uvScene.add(currentUvPins);
 
-          // 显示醒目的耗时信息
-          const details =
-            getCurrentSourceLabel() +
+          let details =
+            methodLabel +
+            " / " + getCurrentSourceLabel() +
             " / " + currentMeshData.positions.length + " 顶点" +
             " / " + currentMeshData.faces.length + " 三角形" +
             " / 翻转面: " + unwrapResult.flippedFaceCount;
+          if (unwrapResult.C) details += " / C=" + unwrapResult.C.toFixed(1);
           showTiming(elapsedMs, details);
 
+          const color = unwrapResult.flippedFaceCount === 0 ? "#89f0b6" : "#ffd38a";
           setStatus(
-            "UV 展开完成，翻转面 " + unwrapResult.flippedFaceCount + " 个",
-            "#89f0b6"
+            methodLabel + " 展开完成，翻转面 " + unwrapResult.flippedFaceCount + " 个",
+            color
           );
           if (textureEnabled) {
             setTextureDistortionEnabled(true);
           }
         } catch (error) {
-          console.error(error);
+          console.error('展开失败:', error.message, error.stack);
           hideTiming();
           setStatus("展开失败: " + error.message, "#ff9d9d");
         } finally {
@@ -1201,12 +1261,12 @@
       
       // 页面启动时预加载 WASM 求解器
       updateStartButtonState();
-      initWASMSolver().then(ready => {
+      Promise.all([initWASMSolver(), initBDWASMSolver()]).then(([lscmOk, bdOk]) => {
         updateStartButtonState();
-        if (!ready) {
-          setStatus("WASM 引擎加载失败，将无法执行 UV 展开", "#ff9d9d");
-        } else {
-          setStatus("WASM 引擎已就绪，请选择模型后点击「开始展开」", "#89f0b6");
+        if (!lscmOk && !bdOk) {
+          setStatus("所有 WASM 引擎加载失败", "#ff9d9d");
+        } else if (!bdOk) {
+          console.warn("BD-LSCM WASM 未加载，仅 LSCM 可用");
         }
       });
       
