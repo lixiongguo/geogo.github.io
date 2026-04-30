@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>向量场生成 - 主曲率场可视化</title>
+  <script src="./assets/wasm/principal_curvature.js"></script>
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -375,6 +376,12 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   let isAnimating = false;
   let animationPhase = 0;
 
+  // WASM principal curvature state
+  let pcModule = null;          // Emscripten module instance
+  let pcResult = null;          // { numV, numF, PD1_face, PD2_face, PV1_face, PV2_face, PD1_vert, PD2_vert, PV1_vert, PV2_vert }
+  let currentV = null;          // Float32Array of vertex positions (V_rows x 3)
+  let currentF = null;          // Int32Array of face indices (F_rows x 3)
+
   // Three.js setup
   function sizeCanvas() {
     const rect = canvas.parentElement.getBoundingClientRect();
@@ -470,42 +477,105 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     return { normal, ...curvature };
   }
 
-  // Estimate curvature from position (simplified analytical approach)
-  function estimateCurvature(geometry, point) {
-    // For different primitives, use analytical formulas
-    if (currentModel === 'sphere') {
-      // Sphere: both principal curvatures are equal = 1/R
-      const R = 1.0;
-      return { k1: 1/R, k2: 1/R, kMean: 1/R, kGauss: 1/(R*R) };
-    } else if (currentModel === 'torus') {
-      // Torus: R = major radius, r = minor radius
-      const R = 2.0, r = 0.6;
-      const d = Math.sqrt(point.x * point.x + point.z * point.z);
-      const k1 = 1/r;
-      const k2 = Math.cos(Math.atan2(point.y, d - R)) / (d - R * Math.cos(Math.atan2(point.y, d - R)));
-      return { k1: Math.abs(k1), k2: Math.abs(k2), kMean: (k1 + k2) / 2, kGauss: k1 * k2 };
-    } else if (currentModel === 'torusKnot') {
-      // Simplified curvature estimation
-      return { k1: 0.5, k2: 0.3, kMean: 0.4, kGauss: 0.15 };
-    } else {
-      // Default: small positive curvature
-      return { k1: 0.3, k2: 0.2, kMean: 0.25, kGauss: 0.06 };
+  // Initialize Principal Curvature WASM module
+  async function initPCModule() {
+    if (pcModule) return pcModule;
+    try {
+      if (typeof window.PrincipalCurvatureSolver === 'undefined') {
+        throw new Error('PrincipalCurvatureSolver not loaded');
+      }
+      pcModule = await window.PrincipalCurvatureSolver({
+        noInitialRun: true,
+        locateFile: (p) => './assets/wasm/' + p
+      });
+      return pcModule;
+    } catch (err) {
+      console.error('Failed to init PC module:', err);
+      return null;
     }
   }
 
-  // Get principal directions (simplified)
-  function getPrincipalDirections(normal, point) {
-    // Project tangent plane axes
-    const tangent = new THREE.Vector3(1, 0, 0);
-    if (Math.abs(normal.dot(tangent)) > 0.9) tangent.set(0, 1, 0);
+  /**
+   * Compute principal curvature via libigl WASM.
+   * Stores result in pcResult for rendering.
+   */
+  function computeCurvatureWASM(V_arr, F_arr, V_rows, F_rows) {
+    const mod = pcModule;
+    if (!mod) { pcResult = null; return; }
 
-    const bitangent = new THREE.Vector3().crossVectors(normal, tangent).normalize();
-    tangent.crossVectors(bitangent, normal).normalize();
+    // Allocate V (float)
+    const V_ptr = mod._malloc(V_rows * 3 * 4);
+    mod.HEAPF32.set(V_arr, V_ptr / 4);
 
-    return { tangent, bitangent };
+    // Allocate F (int32)
+    const F_ptr = mod._malloc(F_rows * 3 * 4);
+    mod.HEAPI32.set(F_arr, F_ptr / 4);
+
+    // Call C++ function
+    const resultPtr = mod._compute_principal_curvature(
+      V_ptr, V_rows,
+      F_ptr, F_rows
+    );
+
+    // Read header
+    const i32View = new Int32Array(mod.HEAPU8.buffer);
+    const f32View = new Float32Array(mod.HEAPU8.buffer);
+    const baseIdx = resultPtr / 4;  // float index
+
+    const magic = i32View[resultPtr / 4];
+    if (magic !== 0xDEADBEEF) {
+      console.error('PC compute failed: bad magic', magic);
+      pcResult = null;
+      mod._free(V_ptr); mod._free(F_ptr);
+      return;
+    }
+
+    const numV   = i32View[baseIdx + 1];
+    const numF   = i32View[baseIdx + 2];
+    const offPD1f = i32View[baseIdx + 3];
+    const offPD2f = i32View[baseIdx + 4];
+    const offPV1f = i32View[baseIdx + 5];
+    const offPV2f = i32View[baseIdx + 6];
+    const offPD1v = i32View[baseIdx + 7];
+    const offPD2v = i32View[baseIdx + 8];
+    const offPV1v = i32View[baseIdx + 9];
+    const offPV2v = i32View[baseIdx + 10];
+
+    // Extract arrays
+    pcResult = {
+      numV, numF,
+      PD1_face: new Float32Array(f32View.buffer, (resultPtr + offPD1f * 4), numF * 3),
+      PD2_face: new Float32Array(f32View.buffer, (resultPtr + offPD2f * 4), numF * 3),
+      PV1_face: new Float32Array(f32View.buffer, (resultPtr + offPV1f * 4), numF),
+      PV2_face: new Float32Array(f32View.buffer, (resultPtr + offPV2f * 4), numF),
+      PD1_vert: new Float32Array(f32View.buffer, (resultPtr + offPD1v * 4), numV * 3),
+      PD2_vert: new Float32Array(f32View.buffer, (resultPtr + offPD2v * 4), numV * 3),
+      PV1_vert: new Float32Array(f32View.buffer, (resultPtr + offPV1v * 4), numV),
+      PV2_vert: new Float32Array(f32View.buffer, (resultPtr + offPV2v * 4), numV)
+    };
+
+    // Copy data before freeing (the static buffer in C++ is reused on next call)
+    pcResult.PD1_face = new Float32Array(pcResult.PD1_face);
+    pcResult.PD2_face = new Float32Array(pcResult.PD2_face);
+    pcResult.PV1_face = new Float32Array(pcResult.PV1_face);
+    pcResult.PV2_face = new Float32Array(pcResult.PV2_face);
+    pcResult.PD1_vert = new Float32Array(pcResult.PD1_vert);
+    pcResult.PD2_vert = new Float32Array(pcResult.PD2_vert);
+    pcResult.PV1_vert = new Float32Array(pcResult.PV1_vert);
+    pcResult.PV2_vert = new Float32Array(pcResult.PV2_vert);
+
+    mod._free(V_ptr);
+    mod._free(F_ptr);
+
+    // Update curvature stat
+    if (pcResult.PV1_face.length > 0) {
+      let sumK = 0;
+      for (let i = 0; i < pcResult.PV1_face.length; i++) sumK += Math.abs(pcResult.PV1_face[i]);
+      document.getElementById('curvature').textContent = (sumK / pcResult.PV1_face.length).toFixed(4);
+    }
   }
 
-  // Generate arrows on surface
+  // Generate arrows on each face using libigl principal curvature data
   function generateArrows(geometry) {
     // Clear existing
     Object.keys(arrowGroups).forEach(key => {
@@ -518,69 +588,108 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
       }
     });
 
-    const positions = geometry.attributes.position;
     const groupK1 = new THREE.Group();
     const groupK2 = new THREE.Group();
     const groupAsymp = new THREE.Group();
 
-    // Sample points based on density
-    const step = Math.max(1, Math.floor(positions.count / (50 * density)));
-    const samples = [];
+    const posAttr = geometry.attributes.position;
+    const idxAttr = geometry.index;
+    const numFaces = idxAttr ? idxAttr.count / 3 : posAttr.count / 3;
 
-    for (let i = 0; i < positions.count; i += step) {
-      samples.push(i);
+    if (!pcResult || pcResult.numF !== numFaces || !pcResult.PD1_face) {
+      // No WASM data yet - skip rendering
+      document.getElementById('field-count').textContent = '-';
+      arrowGroups.k1 = groupK1; arrowGroups.k2 = groupK2; arrowGroups.asymp = groupAsymp;
+      scene.add(groupK1); scene.add(groupK2); scene.add(groupAsymp);
+      return;
     }
 
-    // Get positions and normals
-    const posAttr = geometry.attributes.position;
-    const normAttr = geometry.attributes.normal;
+    // Sample faces based on density (skip some for large meshes)
+    const step = Math.max(1, Math.floor(numFaces / (80 * density)));
+    let totalArrows = 0;
 
-    samples.forEach(i => {
-      const pos = new THREE.Vector3(
-        posAttr.array[i * 3],
-        posAttr.array[i * 3 + 1],
-        posAttr.array[i * 3 + 2]
-      );
-      const normal = new THREE.Vector3(
-        normAttr.array[i * 3],
-        normAttr.array[i * 3 + 1],
-        normAttr.array[i * 3 + 2]
-      ).normalize();
+    for (let fi = 0; fi < numFaces; fi += step) {
+      // Get face vertex indices
+      let i0, i1, i2;
+      if (idxAttr) {
+        i0 = idxAttr.getX(fi * 3);
+        i1 = idxAttr.getX(fi * 3 + 1);
+        i2 = idxAttr.getX(fi * 3 + 2);
+      } else {
+        i0 = fi * 3; i1 = fi * 3 + 1; i2 = fi * 3 + 2;
+      }
 
-      const curvatures = estimateCurvature(pos);
-      const { tangent, bitangent } = getPrincipalDirections(normal, pos);
+      // Face centroid
+      const cx = (posAttr.getX(i0) + posAttr.getX(i1) + posAttr.getX(i2)) / 3;
+      const cy = (posAttr.getY(i0) + posAttr.getY(i1) + posAttr.getY(i2)) / 3;
+      const cz = (posAttr.getZ(i0) + posAttr.getZ(i1) + posAttr.getZ(i2)) / 3;
+      const center = new THREE.Vector3(cx, cy, cz);
 
-      // Scale arrow length by curvature
-      const len = 0.08 * Math.min(2, Math.abs(curvatures.k1) * 3 + 0.5);
+      // Principal directions from libigl (per-face)
+      const pd1x = pcResult.PD1_face[fi * 3];
+      const pd1y = pcResult.PD1_face[fi * 3 + 1];
+      const pd1z = pcResult.PD1_face[fi * 3 + 2];
+      const pd2x = pcResult.PD2_face[fi * 3];
+      const pd2y = pcResult.PD2_face[fi * 3 + 1];
+      const pd2z = pcResult.PD2_face[fi * 3 + 2];
 
-      // k1 direction (red)
+      const k1val = Math.abs(pcResult.PV1_face[fi]);
+      const k2val = Math.abs(pcResult.PV2_face[fi]);
+
+      const dir1 = new THREE.Vector3(pd1x, pd1y, pd1z).normalize();
+      const dir2 = new THREE.Vector3(pd2x, pd2y, pd2z).normalize();
+
+      // Arrow length scaled by curvature magnitude
+      const baseLen = 0.06;
+      const len1 = baseLen * Math.min(2.5, k1val * 5 + 0.3);
+      const len2 = baseLen * Math.min(2.0, k2val * 5 + 0.3);
+
+      // k1 direction (red - maximal curvature)
       if (displayMode === 'principal' || displayMode === 'both') {
-        const dir1 = tangent.clone().normalize();
-        groupK1.add(createArrow(pos, dir1, 0xff4444, len));
+        if (dir1.lengthSq() > 0.001) {
+          groupK1.add(createArrow(center, dir1, 0xff4444, len1));
+          totalArrows++;
+        }
       }
 
-      // k2 direction (blue)
+      // k2 direction (blue - minimal curvature)
       if (displayMode === 'principal' || displayMode === 'both') {
-        const dir2 = bitangent.clone().normalize();
-        groupK2.add(createArrow(pos, dir2, 0x4444ff, len * 0.8));
+        if (dir2.lengthSq() > 0.001) {
+          groupK2.add(createArrow(center, dir2, 0x4444ff, len2));
+          totalArrows++;
+        }
       }
 
-      // Asymptotic directions (green) - only where Gaussian curvature is negative
-      if ((displayMode === 'asymptotic' || displayMode === 'both') && curvatures.kGauss < 0) {
-        const theta = Math.atan2(Math.sqrt(-curvatures.kGauss), curvatures.k1);
-        const dirAsym1 = tangent.clone().multiplyScalar(Math.cos(theta))
-          .add(bitangent.clone().multiplyScalar(Math.sin(theta))).normalize();
-        const dirAsym2 = tangent.clone().multiplyScalar(Math.cos(theta))
-          .add(bitangent.clone().multiplyScalar(-Math.sin(theta))).normalize();
+      // Asymptotic directions (green) where K < 0
+      if ((displayMode === 'asymptotic' || displayMode === 'both')) {
+        const K = pcResult.PV1_face[fi] * pcResult.PV2_face[fi];  // Gaussian curvature
+        if (K < 0 && k1val > 1e-6) {
+          const theta = Math.atan2(Math.sqrt(-K), k1val);
+          const cosT = Math.cos(theta), sinT = Math.sin(theta);
 
-        groupAsymp.add(createArrow(pos, dirAsym1, 0x44ff44, len * 0.6));
-        groupAsymp.add(createArrow(pos, dirAsym2, 0x44ff44, len * 0.6));
+          const dA1 = new THREE.Vector3(
+            dir1.x * cosT + dir2.x * sinT,
+            dir1.y * cosT + dir2.y * sinT,
+            dir1.z * cosT + dir2.z * sinT
+          ).normalize();
+
+          const dA2 = new THREE.Vector3(
+            dir1.x * cosT - dir2.x * sinT,
+            dir1.y * cosT - dir2.y * sinT,
+            dir1.z * cosT - dir2.z * sinT
+          ).normalize();
+
+          const aLen = baseLen * 0.7;
+          groupAsymp.add(createArrow(center, dA1, 0x44ff44, aLen));
+          groupAsymp.add(createArrow(center, dA2, 0x44ff44, aLen));
+          totalArrows += 2;
+        }
       }
-    });
+    }
 
     // Add wireframe for reference
     const wireGeo = new THREE.WireframeGeometry(geometry, 15);
-    const wireMat = new THREE.LineBasicMaterial({ color: 0x333355, transparent: true, opacity: 0.3 });
+    const wireMat = new THREE.LineBasicMaterial({ color: 0x333355, transparent: true, opacity: 0.25 });
     const wireframe = new THREE.LineSegments(wireGeo, wireMat);
     meshGroup.add(wireframe);
 
@@ -593,10 +702,10 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     scene.add(groupAsymp);
 
     // Update stats
-    document.getElementById('field-count').textContent = samples.length * (displayMode === 'both' ? 4 : 2);
+    document.getElementById('field-count').textContent = totalArrows.toLocaleString();
   }
 
-  // Generate streamlines
+  // Generate streamlines using libigl principal directions
   function generateStreamlines(geometry) {
     if (streamlineGroup) {
       scene.remove(streamlineGroup);
@@ -609,14 +718,11 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     streamlineGroup = new THREE.Group();
 
     const positions = geometry.attributes.position;
-    const normals = geometry.attributes.normal;
     const posAttr = positions.array;
-    const normAttr = normals.array;
 
     const step = Math.max(1, Math.floor(positions.count / (30 * density)));
     const curves = [];
 
-    // Generate streamlines using RK4 integration
     for (let i = 0; i < positions.count; i += step * 3) {
       if (curves.length > 30) break;
 
@@ -625,27 +731,36 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
         posAttr[i * 3 + 1],
         posAttr[i * 3 + 2]
       );
-      const normal = new THREE.Vector3(
-        normAttr[i * 3],
-        normAttr[i * 3 + 1],
-        normAttr[i * 3 + 2]
-      ).normalize();
 
-      const { tangent, bitangent } = getPrincipalDirections(normal, startPos);
+      // Use libigl per-vertex principal direction
+      let tangent, bitangent;
+      if (pcResult && pcResult.PD1_vert) {
+        tangent = new THREE.Vector3(
+          pcResult.PD1_vert[i * 3],
+          pcResult.PD1_vert[i * 3 + 1],
+          pcResult.PD1_vert[i * 3 + 2]
+        ).normalize();
+        bitangent = new THREE.Vector3(
+          pcResult.PD2_vert[i * 3],
+          pcResult.PD2_vert[i * 3 + 1],
+          pcResult.PD2_vert[i * 3 + 2]
+        ).normalize();
+      } else {
+        // Fallback
+        tangent = new THREE.Vector3(1, 0, 0);
+        bitangent = new THREE.Vector3(0, 1, 0);
+      }
 
-      // Follow tangent direction
+      // Follow k1 direction (red)
       const points = [startPos.clone()];
       let current = startPos.clone();
       const dt = 0.05;
       const maxSteps = 40;
 
       for (let s = 0; s < maxSteps; s++) {
-        // Move along tangent (simplified - doesn't track actual surface)
         current = current.clone().add(tangent.clone().multiplyScalar(dt));
         points.push(current.clone());
-
-        // Check bounds
-        if (current.length() > 3) break;
+        if (current.length() > 4) break;
       }
 
       if (points.length > 5) {
@@ -701,8 +816,8 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     armadillo: 'armadillo.obj'
   };
 
-  // Create model
-  function createModel(type) {
+  // Create model (async for WASM computation)
+  async function createModel(type) {
     // Clear existing
     meshGroup.clear();
     Object.values(arrowGroups).forEach(g => { if (g) scene.remove(g); });
@@ -721,9 +836,6 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
       case 'sphere':
         geometry = new THREE.SphereGeometry(1, 64, 64);
         break;
-      case 'torus':
-        geometry = new THREE.TorusGeometry(2, 0.6, 32, 64);
-        break;
       case 'torusKnot':
         geometry = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);
         break;
@@ -731,11 +843,11 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
         geometry = new THREE.SphereGeometry(1, 32, 32);
     }
 
-    setupMesh(geometry, vertCount, faceCount);
+    await setupMesh(geometry, vertCount, faceCount);
   }
 
   // Setup mesh with geometry
-  function setupMesh(geometry, vertCount, faceCount) {
+  async function setupMesh(geometry, vertCount, faceCount) {
     geometry.computeVertexNormals();
 
     const material = new THREE.MeshStandardMaterial({
@@ -755,8 +867,30 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     document.getElementById('vert-count').textContent = vertCount.toLocaleString();
     document.getElementById('face-count').textContent = Math.round(faceCount).toLocaleString();
 
-    const curvatures = estimateCurvature(new THREE.Vector3(1, 0, 0));
-    document.getElementById('curvature').textContent = curvatures.kMean.toFixed(3);
+    // ---- Extract V and F for libigl principal curvature ----
+    const posArr = geometry.attributes.position.array; // Float32Array
+    currentV = new Float32Array(vertCount * 3);
+    currentV.set(posArr);
+
+    if (geometry.index) {
+      currentF = new Int32Array(faceCount * 3);
+      for (let i = 0; i < faceCount * 3; i++) {
+        currentF[i] = geometry.index.array[i];
+      }
+    } else {
+      // Non-indexed geometry
+      currentF = new Int32Array(faceCount * 3);
+      for (let i = 0; i < faceCount; i++) {
+        currentF[i * 3] = i * 3;
+        currentF[i * 3 + 1] = i * 3 + 1;
+        currentF[i * 3 + 2] = i * 3 + 2;
+      }
+    }
+
+    // Initialize WASM module and compute principal curvature
+    pcResult = null;
+    await initPCModule();
+    computeCurvatureWASM(currentV, currentF, vertCount, faceCount);
 
     // Generate visualization based on mode
     updateVisualization();
@@ -769,7 +903,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     const loader = new OBJLoader();
 
     loader.load(url,
-      function(object) {
+      async function(object) {
         // Center and scale
         const box = new THREE.Box3().setFromObject(object);
         const center = box.getCenter(new THREE.Vector3());
@@ -789,7 +923,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
         if (foundMesh) {
           const geometry = foundMesh.geometry.clone();
           geometry.computeVertexNormals();
-          setupMesh(geometry, geometry.attributes.position.count,
+          await setupMesh(geometry, geometry.attributes.position.count,
             geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3);
         }
 
