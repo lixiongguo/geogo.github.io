@@ -503,13 +503,27 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     const mod = pcModule;
     if (!mod) { pcResult = null; return; }
 
+    // Get heap buffer - try multiple compatibility paths
+    let heapBuffer;
+    if (mod.HEAPU8) {
+      heapBuffer = mod.HEAPU8.buffer;
+    } else if (mod.wasmMemory) {
+      heapBuffer = mod.wasmMemory.buffer;
+    } else {
+      console.error('Cannot access WASM heap');
+      pcResult = null;
+      return;
+    }
+    const f32Heap = new Float32Array(heapBuffer);
+    const i32Heap = new Int32Array(heapBuffer);
+
     // Allocate V (float)
     const V_ptr = mod._malloc(V_rows * 3 * 4);
-    mod.HEAPF32.set(V_arr, V_ptr / 4);
+    f32Heap.set(V_arr, V_ptr / 4);
 
     // Allocate F (int32)
     const F_ptr = mod._malloc(F_rows * 3 * 4);
-    mod.HEAPI32.set(F_arr, F_ptr / 4);
+    i32Heap.set(F_arr, F_ptr / 4);
 
     // Call C++ function
     const resultPtr = mod._compute_principal_curvature(
@@ -517,12 +531,12 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
       F_ptr, F_rows
     );
 
-    // Read header
-    const i32View = new Int32Array(mod.HEAPU8.buffer);
-    const f32View = new Float32Array(mod.HEAPU8.buffer);
-    const baseIdx = resultPtr / 4;  // float index
+    // Read header using fresh views (buffer may have changed after malloc)
+    const f32View = new Float32Array(heapBuffer);
+    const i32View = new Int32Array(heapBuffer);
+    const baseIdx = resultPtr / 4;
 
-    const magic = i32View[resultPtr / 4];
+    const magic = i32View[baseIdx];
     if (magic !== 0xDEADBEEF) {
       console.error('PC compute failed: bad magic', magic);
       pcResult = null;
@@ -541,20 +555,20 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     const offPV1v = i32View[baseIdx + 9];
     const offPV2v = i32View[baseIdx + 10];
 
-    // Extract arrays
+    // Extract arrays with copy (static C++ buffer reused on next call)
     pcResult = {
       numV, numF,
-      PD1_face: new Float32Array(f32View.buffer, (resultPtr + offPD1f * 4), numF * 3),
-      PD2_face: new Float32Array(f32View.buffer, (resultPtr + offPD2f * 4), numF * 3),
-      PV1_face: new Float32Array(f32View.buffer, (resultPtr + offPV1f * 4), numF),
-      PV2_face: new Float32Array(f32View.buffer, (resultPtr + offPV2f * 4), numF),
-      PD1_vert: new Float32Array(f32View.buffer, (resultPtr + offPD1v * 4), numV * 3),
-      PD2_vert: new Float32Array(f32View.buffer, (resultPtr + offPD2v * 4), numV * 3),
-      PV1_vert: new Float32Array(f32View.buffer, (resultPtr + offPV1v * 4), numV),
-      PV2_vert: new Float32Array(f32View.buffer, (resultPtr + offPV2v * 4), numV)
+      PD1_face: new Float32Array(f32View.buffer, resultPtr + offPD1f * 4, numF * 3),
+      PD2_face: new Float32Array(f32View.buffer, resultPtr + offPD2f * 4, numF * 3),
+      PV1_face: new Float32Array(f32View.buffer, resultPtr + offPV1f * 4, numF),
+      PV2_face: new Float32Array(f32View.buffer, resultPtr + offPV2f * 4, numF),
+      PD1_vert: new Float32Array(f32View.buffer, resultPtr + offPD1v * 4, numV * 3),
+      PD2_vert: new Float32Array(f32View.buffer, resultPtr + offPD2v * 4, numV * 3),
+      PV1_vert: new Float32Array(f32View.buffer, resultPtr + offPV1v * 4, numV),
+      PV2_vert: new Float32Array(f32View.buffer, resultPtr + offPV2v * 4, numV)
     };
 
-    // Copy data before freeing (the static buffer in C++ is reused on next call)
+    // Copy data before freeing
     pcResult.PD1_face = new Float32Array(pcResult.PD1_face);
     pcResult.PD2_face = new Float32Array(pcResult.PD2_face);
     pcResult.PV1_face = new Float32Array(pcResult.PV1_face);
