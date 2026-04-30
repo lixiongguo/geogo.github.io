@@ -236,16 +236,18 @@
         <label>模型:</label>
         <select id="model-select">
           <option value="sphere">球面</option>
-          <option value="torus">环面</option>
           <option value="torusKnot">环面结</option>
-          <option value="armadillo">Armadillo</option>
-          <option value="beast">Beast</option>
-          <option value="bunny">Bunny</option>
-          <option value="cow">Cow</option>
-          <option value="fandisk">Fandisk</option>
-          <option value="happy">Happy Buddha</option>
-          <option value="lucy">Lucy</option>
-          <option value="rocker-arm">Rocker Arm</option>
+          <option value="cow">Cow (5.8K)</option>
+          <option value="double-torus">Double Torus (6.1K)</option>
+          <option value="3holes">3 Holes (7.2K)</option>
+          <option value="torus-obj">Torus (7.7K)</option>
+          <option value="fandisk">Fandisk (12.9K)</option>
+          <option value="rocker-arm">Rocker Arm (20K)</option>
+          <option value="bunny">Bunny (28.6K)</option>
+          <option value="beast">Beast (32.4K)</option>
+          <option value="happy">Happy Buddha (98.6K)</option>
+          <option value="lucy">Lucy (100K)</option>
+          <option value="armadillo">Armadillo (100K)</option>
         </select>
       </div>
       <div class="control-group">
@@ -686,14 +688,17 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
   // Model file mapping for OBJ models
   const MODEL_FILES = {
-    armadillo: 'armadillo.obj',
-    beast: 'beast.obj',
-    bunny: 'bunny.obj',
     cow: 'cow.obj',
+    'double-torus': 'double-torus.obj',
+    '3holes': '3holes.obj',
+    'torus-obj': 'torus.obj',
     fandisk: 'fandisk.obj',
+    'rocker-arm': 'rocker-arm.obj',
+    bunny: 'bunny.obj',
+    beast: 'beast.obj',
     happy: 'happy.obj',
     lucy: 'lucy.obj',
-    'rocker-arm': 'rocker-arm.obj'
+    armadillo: 'armadillo.obj'
   };
 
   // Create model
