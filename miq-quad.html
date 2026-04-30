@@ -7,6 +7,7 @@
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
+  <script src="./assets/wasm/quad_cover.js"></script>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -140,8 +141,7 @@
     <button id="upload-btn">上传OBJ</button>
     <label>参数化方式
       <select id="solver-select">
-        <option value="lscm">LSCM</option>
-        <option value="arap">ARAP</option>
+        <option value="quadcover">QuadCover (WASM)</option>
       </select>
     </label>
     <input id="obj-upload" class="hidden-input" type="file" accept=".obj,model/obj,text/plain">
@@ -180,13 +180,17 @@
   <script>
     (function () {
       const MODELS = {
-        armadillo: { label: "Armadillo", file: "armadillo.obj" },
-        cow: { label: "Cow", file: "cow.obj" },
-        fandisk: { label: "Fandisk", file: "fandisk.obj" },
-        happy: { label: "Happy Buddha", file: "happy.obj" },
-        lucy: { label: "Lucy", file: "lucy.obj" },
-        bunny: { label: "Bunny", file: "bunny.obj" },
-        beast: { label: "Beast", file: "beast.obj" }
+        cow:           { label: "Cow (5.8K)",          file: "cow.obj" },
+        "double-torus":{ label: "Double Torus (6.1K)", file:"double-torus.obj" },
+        "3holes":      { label: "3 Holes (7.2K)",      file:"3holes.obj" },
+        torus:         { label: "Torus (7.7K)",         file:"torus.obj" },
+        fandisk:       { label: "Fandisk (12.9K)",      file:"fandisk.obj" },
+        "rocker-arm":  { label: "Rocker Arm (20K)",     file:"rocker-arm.obj" },
+        bunny:         { label: "Bunny (28.6K)",        file:"bunny.obj" },
+        beast:         { label: "Beast (32.4K)",        file:"beast.obj" },
+        happy:         { label: "Happy Buddha (98.6K)", file:"happy.obj" },
+        lucy:          { label: "Lucy (100K)",          file:"lucy.obj" },
+        armadillo:     { label: "Armadillo (100K)",     file:"armadillo.obj" }
       };
       const MODEL_BASE_PATHS = ["assets/Models2", "../assets/Models2", "./assets/Models2"];
 
@@ -960,11 +964,9 @@
         }
         setBusy(true);
         const solverType = solverSelect.value;
-        setStatus(`正在执行 ${solverType === "arap" ? "ARAP" : "LSCM"} 参数化并提取四边形网格...`, "#9ecbff");
+        setStatus("正在执行 QuadCover 参数化并提取四边形网格...", "#9ecbff");
         try {
-          const uv = solverType === "arap"
-            ? solveARAP(currentMeshData)
-            : solveLSCM(currentMeshData);
+          const uv = await solveQuadCover(currentMeshData);
           currentUv = uv;
           quadVisible = false;
           showQuadBtn.textContent = "显示四边形网格化效果";
@@ -976,6 +978,92 @@
         } finally {
           setBusy(false);
         }
+      }
+
+      // ========== QuadCover WASM 集成 ==========
+      let quadCoverModule = null;
+
+      async function initQuadCoverModule() {
+        if (quadCoverModule) {
+          return quadCoverModule;
+        }
+        try {
+          setStatus("正在加载 QuadCover WASM 模块...", "#9ecbff");
+          // quad_cover.js 已在 <head> 中静态加载，直接调用全局工厂函数
+          if (typeof window.QuadCoverSolver === "undefined") {
+            throw new Error("QuadCoverSolver 未定义，请检查 quad_cover.js 是否加载成功");
+          }
+          quadCoverModule = await window.QuadCoverSolver({
+            noInitialRun: true,
+            locateFile: function(path) { return "./assets/wasm/" + path; }
+          });
+          setStatus("QuadCover 模块就绪", "#8ce6b0");
+          return quadCoverModule;
+        } catch (error) {
+          console.error("QuadCover WASM 加载失败:", error);
+          throw new Error("QuadCover WASM 模块加载失败: " + error.message);
+        }
+      }
+
+      function meshDataToOBJ(meshData) {
+        let obj = "";
+        for (let i = 0; i < meshData.positions.length; i++) {
+          const p = meshData.positions[i];
+          obj += "v " + p[0].toFixed(10) + " " + p[1].toFixed(10) + " " + p[2].toFixed(10) + "\n";
+        }
+        for (let i = 0; i < meshData.faces.length; i++) {
+          const f = meshData.faces[i];
+          // OBJ 索引从 1 开始
+          obj += "f " + (f[0] + 1) + " " + (f[1] + 1) + " " + (f[2] + 1) + "\n";
+        }
+        return obj;
+      }
+
+      async function solveQuadCover(meshData) {
+        const mod = await initQuadCoverModule();
+
+        // 1. 将网格数据写入 OBJ 格式
+        const objText = meshDataToOBJ(meshData);
+
+        // 2. 写入 Emscripten 虚拟文件系统
+        const FS = mod.FS;
+        FS.writeFile("/input.obj", objText);
+
+        // 3. 调用 C++ main 函数
+        try {
+          mod.callMain(["/input.obj", "/output"]);
+        } catch (e) {
+          // main 返回非零或调用 exit 时会抛异常，这是正常的
+          if (!(e instanceof mod.ExitStatus)) {
+            throw e;
+          }
+        }
+
+        // 4. 读取 UV 输出结果
+        if (!FS.analyzePath("/output_uv.txt").exists) {
+          throw new Error("QuadCover 未生成 UV 输出文件");
+        }
+        const uvText = FS.readFile("/output_uv.txt", { encoding: "utf8" });
+
+        // 5. 解析 UV 数据
+        const lines = uvText.trim().split("\n").filter(function (l) { return l && !l.startsWith("#"); });
+        if (lines.length < 1) {
+          throw new Error("UV 输出文件格式错误");
+        }
+        const header = lines[0].split(/\s+/).map(Number);
+        const nVerts = header[0];
+
+        const uv = [];
+        for (let i = 1; i <= nVerts && i < lines.length; i++) {
+          const parts = lines[i].trim().split(/\s+/).map(Number);
+          uv.push([parts[0], parts[1]]);
+        }
+
+        if (uv.length !== meshData.positions.length) {
+          console.warn("QuadCover UV 顶点数 (" + uv.length + ") 与输入网格顶点数 (" + meshData.positions.length + ") 不匹配");
+        }
+
+        return uv;
       }
 
       function applyCustomFile(file) {
@@ -1062,8 +1150,8 @@
         applyCustomFile(files[0]);
       });
 
-      loadPreview();
       animate();
+      loadPreview();
     })();
   </script>
 </body>
