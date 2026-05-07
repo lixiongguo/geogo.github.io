@@ -1,3 +1,41 @@
+
+
+### 高性能的C++线性代数库—Eigen库
+
+Eigen自带了如下一些求解器，适用于求解大规模稀疏系统
+
+| 求解器             | 适用矩阵 | 依赖 | 特点                     |
+| ------------------ | -------- | ---- | ------------------------ |
+| **SimplicialLDLT** | 对称正定 | 内置 | 轻量，适合 2D 问题       |
+| **SimplicialLLT**  | 对称正定 | 内置 | 比 LDLT 更快但更不稳定   |
+| **SparseLU**       | 任意方阵 | 内置 | 基于 SuperLU，支持非对称 |
+| **SparseQR**       | 任意矩阵 | 内置 | 用于最小二乘，内存高     |
+
+```C++
+#include <Eigen/Sparse>
+#include <Eigen/SparseLU>
+
+Eigen::SparseMatrix<double> A(n, n);
+// ... 矩阵装配 A ...
+
+Eigen::VectorXd b(n);
+// ... 矩阵装配 b ...
+
+Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+solver.compute(A);
+
+if (solver.info() != Eigen::Success) {
+    std::cerr << "Decomposition failed!" << std::endl;
+    return -1;
+}
+
+Eigen::VectorXd x = solver.solve(b);
+```
+
+## 
+
+
+
 ## Mosek 求解
 
 [MOSEK](https://www.mosek.com/) 是一个高性能的凸优化求解器，特别擅长求解 SOCP、SDP 等问题。以下展示如何用 MOSEK 的不同接口来求解上述参数化中出现的 SOCP 问题。
