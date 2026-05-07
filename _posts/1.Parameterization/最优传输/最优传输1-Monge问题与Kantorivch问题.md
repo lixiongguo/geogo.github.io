@@ -9,7 +9,7 @@ categories  : OT
 
 保面积映射与最优传输映射
 
-![image-20251114192612155](D:\MyDocs\geogo.github.io\imgs\弥勒佛_保面积最优传输.png)
+![image-20251114192612155](..\..\..\imgs\弥勒佛_保面积最优传输.png)
 
 Monge问题
 
