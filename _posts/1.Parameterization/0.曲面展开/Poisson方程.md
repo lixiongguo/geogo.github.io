@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "数学理论-线性方程组Ax=b"
+title: "数学理论-Poisson方程"
 category: Math
 ---
 ## Poisson方程
