@@ -368,6 +368,113 @@ $$\boxed{\text{点集 } P} \xrightarrow{\text{最近邻划分}} \boxed{\text{Vor
 | **Bowyer-Watson** | 构造 Delaunay 三角剖分 | $O(n \log n)$ 平均 | 增量插入 + 空腔重构 + Lawson Flip |
 | **对偶变换** | Voronoi ↔ Delaunay | $O(n)$ | 外心 = Voronoi 顶点 |
 
+---
+
+## 5. 交互式实现要点
+
+以上两种方法已实现为交互式 Web Demo（`voronoi.html`），基于 Canvas 渲染。以下是工程实现中的关键设计与简化。
+
+### 5.1 Bowyer-Watson 实现细节
+
+**超级三角形**：
+
+$$
+S_0 = (c_x - s,\, c_y - s), \quad S_1 = (c_x + s,\, c_y - s), \quad S_2 = (c_x,\, c_y + s)
+$$
+
+其中 $(c_x, c_y)$ 为点集包围盒中心，$s = 2 \cdot \max(\Delta x, \Delta y)$。插入完成后，删除所有包含超级三角形顶点的三角形。
+
+**空腔检测**：对每个新点 $p$，遍历所有已有三角形，用 $\|p - \text{外心}\| \leq \|a - \text{外心}\|$ 判断 $p$ 是否在外接圆内。标记为"坏三角形"。
+
+**空腔边界提取**：用 `Map` 统计每条边出现的次数——坏三角形的所有边计数后，恰好出现 1 次的边构成空腔的多边形边界。
+
+**Lawson Flip**：增量插入后通过翻转不满足空圆性的边进行局部修复。当四点共圆时，翻转对角线可在两个合法三角剖分间切换。 Demo 中为简化省略了此步骤——在随机点集上的影响通常很小。
+
+### 5.2 Fortune 扫描线实现细节
+
+**事件队列**：数组优先队列，按 $y$ 降序（扫描线自上而下），同 $y$ 时按 $x$ 升序。
+
+```js
+function push(ev) { pq.push(ev); pq.sort((a,b)=>b.y-a.y||b.x-a.x); }
+function pop()  { return pq.pop(); }
+```
+
+每次 $O(\log n)$（实际为 $O(n\log n)$ 建堆），此简化版直接使用 `sort` 实现。
+
+**海滩线**：由于完整 BST 实现较为复杂，Demo 中使用有序数组存储弧段，通过遍历所有抛物线求下包络来定位弧段：
+
+```js
+function findArcAbove(sx, ly) {
+    for (let arc of beach) {
+        const dy = arc.site.y - ly;
+        const val = (sx - arc.site.x)²/(2*dy) + (arc.site.y + ly)/2;
+        // 选 val 最小的弧段（即最下方的抛物线）
+    }
+}
+```
+
+这使得海滩线查找从 $O(\log n)$ 退化为 $O(n)$，但在 20 点的 Demo 中不可感知。
+
+**抛物线交点**：两个站点 $(x_1, y_1)$、$(x_2, y_2)$ 在扫描线 $y = y_L$ 处的抛物线交点的 $x$ 坐标通过解二次方程得到：
+
+$$
+a = (y_2 - y_L) - (y_1 - y_L),\quad b = 2(x_1(y_2 - y_L) - x_2(y_1 - y_L))
+$$
+$$
+c = (y_2 - y_L)(x_1^2+y_L^2-y_1^2) - (y_1 - y_L)(x_2^2+y_L^2-y_2^2)
+$$
+$$
+x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+$$
+
+取使 $x_1 < x_2$ 时较大的根（右侧交点）。
+
+**圆事件检测**：三个相邻弧段 $(a, b, c)$ 的外接圆最低点若在扫描线下方，则加入事件队列。若三点共线，外接圆退化为直线，不产生圆事件。
+
+**老化事件**：处理圆事件前检查 `arc.circleEvent === thisEvent`——若弧段在事件入队后被删除或分裂，则跳过该事件。
+
+### 5.3 Canvas 渲染
+
+**坐标映射**：
+
+$$
+x_{\text{screen}} = \text{MARGIN} + \Delta x_{\text{center}} + (x - x_{\min}) \cdot s
+$$
+
+其中 $s = \min(\frac{W - 2\cdot\text{MARGIN}}{\Delta x}, \frac{H - 2\cdot\text{MARGIN}}{\Delta y})$ 为自动拟合的缩放因子。
+
+**渲染分层**：
+1. Delaunay 三角形：半透明蓝色填充 + 细边线
+2. Voronoi 边：亮青色粗线（`#44aacc`，2px）
+3. Voronoi 顶点（外心）：橙色圆点（`#ff8844`，3px）
+4. 站点：粉红圆点（`#ff6688`，5px）；拖拽中高亮为黄色
+
+### 5.4 交互功能
+
+| 操作 | 行为 |
+|:---|:---|
+| 单击空白处 | 添加站点 |
+| 拖拽站点 | 移动站点（实时更新图） |
+| 选择算法 | Fortune 扫描线 / Bowyer-Watson 切换 |
+| 显示模式 | Voronoi+Delaunay / 仅 Voronoi / 仅 Delaunay |
+| 随机点 | 生成 20 个随机站点 |
+| 清除 | 清空所有站点 |
+| 导出 | 复制站点坐标 JSON 到剪贴板 |
+
+### 5.5 两种方法的对比
+
+| 维度 | Fortune 扫描线 | Bowyer-Watson + 对偶 |
+|:---|:---|:---|
+| **直接输出** | Voronoi 边 + 顶点 | Delaunay 三角形 |
+| **Voronoi 来源** | 扫描线过程中拼接 | 对偶变换（外心连线） |
+| **理论复杂度** | $O(n \log n)$（严格） | $O(n \log n)$ 平均（随机序） |
+| **边界处理** | 需额外处理射线 | 通过半边缘自动得到 |
+| **数值稳定性** | 对共圆/共线敏感 | 超级三角形策略较鲁棒 |
+| **实现难度** | 高（BST + 圆事件管理） | 中（增量插入逻辑清晰） |
+| **扩展至 3D** | 复杂 | Bowyer-Watson 可扩展到 $n$ 维 |
+
+> 在实际 Demo 中，Fortune 模式下的 Delaunay 三角剖分仍通过 Bowyer-Watson 单独计算以用于可视化对比。
+
 ## 参考
 
 - Fortune, S. (1987). "A sweepline algorithm for Voronoi diagrams." *Algorithmica*.

@@ -239,6 +239,7 @@
         <input id="obj-upload" class="hidden-input" type="file" accept=".obj,model/obj,text/plain">
         <button id="reload-btn">开始展开</button>
         <button id="texture-btn">纹理扭曲</button>
+        <button id="distortion-btn" title="用颜色显示每个面的准共形扭曲（1.0=无扭曲, >1.0=有扭曲）">显示扭曲</button>
         <div class="status" id="status-text">正在加载模型...</div>
       </div>
     </div>
@@ -341,6 +342,8 @@
       let currentTexturedMesh = null;
       let checkerTexture = null;
       let lastElapsedMs = 0;
+      let distortionEnabled = false;
+      let currentDistortionMesh = null;
 
       function setStatus(message, color) {
         statusText.textContent = message;
@@ -372,6 +375,7 @@
         modelSelect.disabled = nextBusy;
         uploadBtn.disabled = nextBusy;
         textureBtn.disabled = nextBusy;
+        document.getElementById('distortion-btn').disabled = nextBusy;
       }
 
       function initModelOptions() {
@@ -1170,6 +1174,142 @@
         }
       }
 
+      function clearDistortionMesh() {
+        if (currentDistortionMesh && currentDistortionMesh.parent) {
+          currentDistortionMesh.parent.remove(currentDistortionMesh);
+        }
+        currentDistortionMesh = null;
+      }
+
+      async function setDistortionEnabled(enabled) {
+        const btn = document.getElementById('distortion-btn');
+        if (!enabled) {
+          distortionEnabled = false;
+          clearDistortionMesh();
+          if (currentModelGroup) currentModelGroup.visible = true;
+          if (currentTexturedMesh && textureEnabled) currentTexturedMesh.visible = true;
+          btn.textContent = '显示扭曲';
+          return;
+        }
+
+        if (!currentMeshData || !currentUnwrapUv) {
+          setStatus('请先点击"开始展开"生成 UV', '#ffd38a');
+          return;
+        }
+
+        if (!taWasmReady && !taWasmLoadFailed) {
+          setStatus('正在加载 QC 引擎...', '#ffd38a');
+          await initTAWASMSolver();
+        }
+        if (!taWasmReady) {
+          setStatus('QC 引擎加载失败', '#ff9d9d');
+          return;
+        }
+
+        btn.textContent = '计算中...';
+        btn.disabled = true;
+
+        try {
+          // 1. load mesh + UV into WASM
+          const flatPos = new Float64Array(currentMeshData.positions.length * 3);
+          for (let i = 0; i < currentMeshData.positions.length; i++) {
+            flatPos[i*3]=currentMeshData.positions[i][0]; flatPos[i*3+1]=currentMeshData.positions[i][1]; flatPos[i*3+2]=currentMeshData.positions[i][2];
+          }
+          const flatFaces = new Int32Array(currentMeshData.faces.length * 3);
+          for (let i = 0; i < currentMeshData.faces.length; i++) {
+            flatFaces[i*3]=currentMeshData.faces[i][0]; flatFaces[i*3+1]=currentMeshData.faces[i][1]; flatFaces[i*3+2]=currentMeshData.faces[i][2];
+          }
+          const flatUV = new Float64Array(currentUnwrapUv.length * 2);
+          for (let i = 0; i < currentUnwrapUv.length; i++) {
+            flatUV[i*2]=currentUnwrapUv[i][0]; flatUV[i*2+1]=currentUnwrapUv[i][1];
+          }
+
+          const posPtr = taWasmModule._malloc(flatPos.length * 8);
+          for (let i = 0; i < flatPos.length; i++) taWasmModule.setValue(posPtr+i*8, flatPos[i], 'double');
+          const facePtr = taWasmModule._malloc(flatFaces.length * 4);
+          for (let i = 0; i < flatFaces.length; i++) taWasmModule.setValue(facePtr+i*4, flatFaces[i], 'i32');
+          const uvPtr = taWasmModule._malloc(flatUV.length * 8);
+          for (let i = 0; i < flatUV.length; i++) taWasmModule.setValue(uvPtr+i*8, flatUV[i], 'double');
+
+          // 2. load + compute QC
+          const loadRet = taWasmModule.ccall('load_mesh_with_uv', 'number',
+            ['number','number','number','number','number','number'],
+            [posPtr, flatPos.length, facePtr, flatFaces.length, uvPtr, flatUV.length]);
+          if (loadRet !== 0) throw new Error("load_mesh_with_uv failed");
+
+          const nFaces = taWasmModule.ccall('compute_qc_error', 'number', [], []);
+          if (nFaces <= 0) throw new Error("compute_qc_error returned " + nFaces);
+
+          // 3. read errors & colors
+          const errSize = taWasmModule.ccall('get_qc_errors_size', 'number', [], []);
+          const errPtr  = taWasmModule.ccall('get_qc_errors', 'number', [], []);
+          const colSize = taWasmModule.ccall('get_qc_colors_size', 'number', [], []);
+          const colPtr  = taWasmModule.ccall('get_qc_colors', 'number', [], []);
+
+          const errors = []; for (let i=0;i<errSize;i++) errors.push(taWasmModule.getValue(errPtr+i*8,'double'));
+          const colors = []; for (let i=0;i<colSize;i++) colors.push(taWasmModule.getValue(colPtr+i*8,'double'));
+
+          taWasmModule.ccall('ta_dispose', 'void', [], []);
+
+          // 4. free memory
+          taWasmModule._free(posPtr); taWasmModule._free(facePtr); taWasmModule._free(uvPtr);
+
+          // 5. compute stats
+          let avgErr = 0, maxErr = 0;
+          for (let i=0;i<errors.length;i++) { avgErr += errors[i]; if (errors[i]>maxErr) maxErr=errors[i]; }
+          avgErr /= errors.length;
+
+          // 6. build colored mesh (per-vertex colors averaged from adjacent faces)
+          const nV = currentMeshData.positions.length;
+          const vCol = new Float32Array(nV * 3);
+          const vCount = new Float32Array(nV);
+          const nF = currentMeshData.faces.length;
+          let fi = 0;
+          for (let i = 0; i < currentMeshData.faces.length; i++) {
+            const f = currentMeshData.faces[i];
+            const r = colors[fi*3] || 0.5, g = colors[fi*3+1] || 0.5, b = colors[fi*3+2] || 0.5;
+            fi++;
+            for (let k = 0; k < 3; k++) {
+              const vidx = f[k];
+              vCol[vidx*3] += r; vCol[vidx*3+1] += g; vCol[vidx*3+2] += b;
+              vCount[vidx] += 1;
+            }
+          }
+          for (let i=0;i<nV;i++) {
+            if (vCount[i] > 0) { vCol[i*3]/=vCount[i]; vCol[i*3+1]/=vCount[i]; vCol[i*3+2]/=vCount[i]; }
+            else { vCol[i*3]=0.5; vCol[i*3+1]=0.5; vCol[i*3+2]=0.5; }
+          }
+
+          const positions = [];
+          for (let i=0;i<currentMeshData.positions.length;i++) positions.push(currentMeshData.positions[i][0],currentMeshData.positions[i][1],currentMeshData.positions[i][2]);
+          const indices = [];
+          for (let i=0;i<currentMeshData.faces.length;i++) indices.push(currentMeshData.faces[i][0],currentMeshData.faces[i][1],currentMeshData.faces[i][2]);
+
+          const geom = new THREE.BufferGeometry();
+          geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+          geom.setAttribute('color', new THREE.Float32BufferAttribute(vCol, 3));
+          geom.setIndex(indices);
+          geom.computeVertexNormals();
+
+          const mat = new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: false, specular: 0x111111, shininess: 10 });
+          currentDistortionMesh = new THREE.Mesh(geom, mat);
+          modelScene.add(currentDistortionMesh);
+
+          // hide normal model
+          if (currentModelGroup) currentModelGroup.visible = false;
+          if (currentTexturedMesh) currentTexturedMesh.visible = false;
+
+          distortionEnabled = true;
+          btn.textContent = '隐藏扭曲';
+          setStatus('QC 扭曲: avg=' + avgErr.toFixed(4) + '  max=' + maxErr.toFixed(4) + '  (绿=1.0无扭曲, 红>1.5)', '#89f0b6');
+        } catch (err) {
+          console.error('QC error:', err);
+          setStatus('扭曲计算失败: ' + err.message, '#ff9d9d');
+          btn.textContent = '显示扭曲';
+        }
+        btn.disabled = false;
+      }
+
       function rebuildUvGrid() {
         const grid = new THREE.Group();
         const gridMaterial = new THREE.LineBasicMaterial({ color: 0x1a2947, transparent: true, opacity: 0.85 });
@@ -1240,6 +1380,9 @@
           clearGroup(uvScene, currentUvLines);
           clearGroup(uvScene, currentUvPins);
           clearTexturedMesh();
+          clearDistortionMesh();
+          distortionEnabled = false;
+          document.getElementById('distortion-btn').textContent = '显示扭曲';
           currentUvLines = null;
           currentUvPins = null;
           currentUnwrapUv = null;
@@ -1314,6 +1457,11 @@
 
           const elapsedMs = unwrapResult.timeMs > 0 ? unwrapResult.timeMs : (performance.now() - startTime);
           currentUnwrapUv = unwrapResult.uv;
+
+          // 清除旧的扭曲显示（UV 变了）
+          clearDistortionMesh();
+          distortionEnabled = false;
+          document.getElementById('distortion-btn').textContent = '显示扭曲';
 
           // 更新 UV 面板标签
           const methodNames = { lscm:'LSCM', bd_lscm:'BD-LSCM', tutte_circle:'Tutte(圆)', tutte_square:'Tutte(方)', arap:'ARAP' };
@@ -1415,6 +1563,9 @@
       reloadBtn.addEventListener("click", updateModel);
       textureBtn.addEventListener("click", function () {
         setTextureDistortionEnabled(!textureEnabled);
+      });
+      document.getElementById('distortion-btn').addEventListener('click', function () {
+        setDistortionEnabled(!distortionEnabled);
       });
       
       // 页面启动时预加载 WASM 求解器

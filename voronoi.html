@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voronoi 图生成 — Fortune 扫描线 + Bowyer-Watson</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#08081a;color:#c0c0e0;font-family:"Segoe UI",Arial,sans-serif}
+.app{display:flex;flex-direction:column;height:100vh}
+.header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:#0c0c24;border-bottom:1px solid #252550;flex-shrink:0;gap:12px}
+.header h1{font-size:18px;color:#e0e0ff;white-space:nowrap}
+.header .desc{font-size:12px;color:#8888bb;margin-left:8px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,select{border:1px solid #353580;background:#111133;color:#c0c0ff;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;transition:background .2s}
+button:hover{background:#1a1a55}
+button.active{background:#2a2a77;border-color:#5555cc}
+.main{flex:1;position:relative;min-height:0}
+canvas{display:block;width:100%;height:100%}
+.info-panel{position:absolute;bottom:10px;left:10px;background:rgba(12,12,36,.9);border:1px solid #252550;border-radius:8px;padding:8px 14px;font-size:12px;color:#8888bb;line-height:1.6;pointer-events:none}
+.info-panel span{color:#c0c0ff;font-weight:600}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <h1>Voronoi 图生成<span class="desc">— Fortune 扫描线 / Bowyer-Watson | 单击添加站点 · 拖拽移动</span></h1>
+    </div>
+    <div class="controls">
+      <select id="sel-method" title="算法选择">
+        <option value="fortune" selected>Fortune 扫描线</option>
+        <option value="watson">Bowyer-Watson</option>
+      </select>
+      <select id="sel-render" title="显示模式">
+        <option value="both">Voronoi + Delaunay</option>
+        <option value="voronoi" selected>仅 Voronoi</option>
+        <option value="delaunay">仅 Delaunay</option>
+      </select>
+      <button id="btn-random" title="随机生成 20 个站点">随机点</button>
+      <button id="btn-clear" title="清除所有站点">清除</button>
+      <button id="btn-export" title="复制站点坐标 JSON">导出</button>
+    </div>
+  </div>
+  <div class="main">
+    <canvas id="canvas"></canvas>
+    <div class="info-panel" id="info">
+      算法: <span id="stat-method">Fortune</span> &nbsp;
+      站点: <span id="stat-sites">0</span> &nbsp;
+      边: <span id="stat-edges">0</span> &nbsp;
+      顶点: <span id="stat-vv">0</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const MARGIN = 40;
+  const EPS = 1e-8;
+
+  let sites = [];
+  let dragIdx = -1, dragOffX = 0, dragOffY = 0;
+
+  // ==================== Geometry ====================
+  function dist2(a,b) { const dx=a.x-b.x,dy=a.y-b.y; return dx*dx+dy*dy; }
+  function eq(a,b) { return Math.abs(a-b) < EPS; }
+
+  function circumcenter(a, b, c) {
+    const d = 2*(a.x*(b.y-c.y) + b.x*(c.y-a.y) + c.x*(a.y-b.y));
+    if (Math.abs(d) < EPS) return null;
+    const ux = ((a.x*a.x+a.y*a.y)*(b.y-c.y)+(b.x*b.x+b.y*b.y)*(c.y-a.y)+(c.x*c.x+c.y*c.y)*(a.y-b.y))/d;
+    const uy = ((a.x*a.x+a.y*a.y)*(c.x-b.x)+(b.x*b.x+b.y*b.y)*(a.x-c.x)+(c.x*c.x+c.y*c.y)*(b.x-a.x))/d;
+    return {x:ux, y:uy};
+  }
+
+  function inCircumcircle(p, a, b, c) {
+    const cc = circumcenter(a, b, c);
+    if (!cc) return false;
+    return dist2(p, cc) <= dist2(a, cc) + EPS;
+  }
+
+  // ==================== Fortune's Algorithm ====================
+
+  // Parabola intersection x-coordinate: arcs with sites s1,s2 at sweepY ly
+  function parabolaX(s1, s2, ly) {
+    if (eq(s1.y, s2.y)) return (s1.x + s2.x) / 2;
+    const dy1 = s1.y - ly, dy2 = s2.y - ly;
+    if (dy1 <= 0 || dy2 <= 0) return null;
+    const a = dy2 - dy1;
+    const b = 2*(s1.x*dy2 - s2.x*dy1);
+    const c = dy2*s1.x*s1.x + dy2*ly*ly - dy2*s1.y*s1.y
+            - dy1*s2.x*s2.x - dy1*ly*ly + dy1*s2.y*s2.y;
+    const det = b*b - 4*a*c;
+    if (det < 0) return null;
+    const sqrtDet = Math.sqrt(det);
+    // Right intersection for s1 left of s2
+    if (s1.x < s2.x) return (-b + sqrtDet) / (2*a);
+    else             return (-b - sqrtDet) / (2*a);
+  }
+
+  function fortunesAlgorithm(pts) {
+    if (pts.length < 2) return {edges:[], verts:[]};
+
+    // Sort sites by y descending (sweep from top)
+    const sorted = pts.map((p,i)=>({...p, idx:i})).sort((a,b) => b.y-a.y || a.x-b.x);
+    if (sorted.length < 2) return {edges:[], verts:[]};
+
+    // Priority queue: events ordered by y descending
+    // Each event: {y, type:"site","circle", site/arc data}
+    const pq = [];
+    function push(ev) { pq.push(ev); pq.sort((a,b)=>b.y-a.y||(b.x||0)-(a.x||0)); }
+    function pop() { return pq.pop(); }
+
+    for (const s of sorted) push({y:s.y, type:'site', site:s});
+
+    // Beach line: array of arcs [{site, circleEventRef}]
+    let beach = [];
+
+    // Output
+    const edges = []; // [{a:{x,y}, b:{x,y}}]  Voronoi half-edges
+    const verts = []; // Voronoi vertices
+
+    function addEdge(a, b) {
+      if (a && b && !eq(a.x,b.x) || !eq(a.y,b.y)) edges.push({a:{x:a.x,y:a.y},b:{x:b.x,y:b.y}});
+    }
+
+    function removeCircleEvent(arc) {
+      if (arc.circleEvent) {
+        const idx = pq.indexOf(arc.circleEvent);
+        if (idx >= 0) { pq.splice(idx,1); pq.sort((a,b)=>b.y-a.y); }
+        arc.circleEvent = null;
+      }
+    }
+
+    function computeCircleEvent(i) {
+      if (i <= 0 || i >= beach.length-1) return null;
+      const a = beach[i-1].site, b = beach[i].site, c = beach[i+1].site;
+      // Three distinct sites needed
+      if (eq(a.x,b.x) && eq(a.y,b.y)) return null;
+      if (eq(b.x,c.x) && eq(b.y,c.y)) return null;
+      // Check if points are not collinear
+      const area = a.x*(b.y-c.y)+b.x*(c.y-a.y)+c.x*(a.y-b.y);
+      if (Math.abs(area) < EPS) return null;
+
+      const cc = circumcenter(a, b, c);
+      if (!cc) return null;
+      // Circle bottom = cc.y + radius (bottom of circumcircle)
+      const r = Math.sqrt(dist2(cc, a));
+      const bottomY = cc.y + r;
+
+      // Only valid if bottom is below or at current sweep (will be reached)
+      // and the middle arc is collapsing (converging)
+      const xTest = parabolaX(a, b, cc.y + r + 1);
+      const rightTest = parabolaX(b, c, cc.y + r + 1);
+      if (xTest === null || rightTest === null || xTest > rightTest + EPS) return null;
+
+      return {y:bottomY, x:cc.x, type:'circle', arcIdx:i, center:cc};
+    }
+
+    function checkCircle(i) {
+      const ev = computeCircleEvent(i);
+      if (ev) {
+        beach[i].circleEvent = ev;
+        push(ev);
+      }
+    }
+
+    // Process events
+    let lastBreakpoint = null; // for connecting Voronoi edges
+
+    while (pq.length > 0) {
+      const ev = pop();
+
+      if (ev.type === 'site') {
+        const s = ev.site;
+        // Handle site event
+
+        if (beach.length === 0) {
+          beach.push({site:s, circleEvent:null});
+          continue;
+        }
+
+        // Find the arc directly above s.x
+        let arcIdx = -1;
+        // Simple approach: find arc whose parabola is lowest at s.x
+        let minVal = Infinity;
+        const ly = s.y;
+        for (let i = 0; i < beach.length; i++) {
+          // Evaluate parabola at x = s.x
+          const si = beach[i].site;
+          if (eq(si.y, ly)) continue;
+          const dy = si.y - ly;
+          if (dy <= 0) continue;
+          const val = (s.x - si.x)*(s.x - si.x)/(2*dy) + (si.y + ly)/2;
+          if (val < minVal) { minVal = val; arcIdx = i; }
+        }
+        if (arcIdx < 0) { beach.push({site:s, circleEvent:null}); continue; }
+
+        const oldArc = beach[arcIdx];
+
+        // Remove old circle events involving this arc
+        removeCircleEvent(oldArc);
+
+        // Split the arc: insert new site's arc
+        const leftArc  = {site:oldArc.site, circleEvent:null};
+        const midArc   = {site:s, circleEvent:null};
+        const rightArc = {site:oldArc.site, circleEvent:null};
+
+        beach.splice(arcIdx, 1, leftArc, midArc, rightArc);
+
+        // Check for new circle events
+        if (arcIdx > 0) checkCircle(arcIdx - 1);
+        checkCircle(arcIdx);
+        checkCircle(arcIdx + 1);
+        if (arcIdx + 2 < beach.length) checkCircle(arcIdx + 2);
+
+      } else { // circle event
+        const evArcIdx = ev.arcIdx;
+        if (evArcIdx <= 0 || evArcIdx >= beach.length-1) continue;
+
+        const arc = beach[evArcIdx];
+        if (arc.circleEvent !== ev) continue; // stale event
+
+        const a = beach[evArcIdx-1].site;
+        const b = beach[evArcIdx].site;
+        const c = beach[evArcIdx+1].site;
+
+        // Create Voronoi vertex at circumcenter
+        const cc = circumcenter(a, b, c);
+        if (cc) verts.push(cc);
+
+        // Create Voronoi edges
+        if (cc) {
+          const ab = circumcenter(a, b, c);
+          if (ab) {
+            // Edge between a-b and b-c circumcenters? 
+            // Actually we just store the breakpoints as edges
+            const leftX = parabolaX(a, b, ev.y + 0.01);
+            const rightX = parabolaX(b, c, ev.y + 0.01);
+            if (leftX !== null) {
+              const ly2 = ev.y + 0.01;
+              const dyA = a.y - ly2;
+              const ya = dyA>0 ? (leftX-a.x)*(leftX-a.x)/(2*dyA)+(a.y+ly2)/2 : 0;
+              addEdge(cc, {x:leftX, y:ya});
+            }
+          }
+        }
+
+        // Remove circle events for adjacent arcs
+        if (evArcIdx-1 >= 0) removeCircleEvent(beach[evArcIdx-1]);
+        if (evArcIdx+1 < beach.length) removeCircleEvent(beach[evArcIdx+1]);
+
+        // Remove middle arc
+        beach.splice(evArcIdx, 1);
+
+        // Check new adjacencies
+        if (evArcIdx-1 >= 0 && evArcIdx-1 < beach.length-1) checkCircle(evArcIdx-1);
+        if (evArcIdx < beach.length-1) checkCircle(evArcIdx);
+      }
+    }
+
+    // Connect final edges from breakpoints
+    for (let i = 0; i < beach.length-1; i++) {
+      const a = beach[i].site, b = beach[i+1].site;
+      const cc = circumcenter(a, b, {x:(a.x+b.x)/2, y:Math.min(a.y,b.y)-1000});
+      const bx = parabolaX(a, b, Math.min(a.y,b.y)-100);
+      if (cc && bx !== null) {
+        const ly2 = Math.min(a.y,b.y)-100;
+        const dyA = a.y - ly2;
+        const ya = dyA>0 ? (bx-a.x)*(bx-a.x)/(2*dyA)+(a.y+ly2)/2 : cc.y;
+        addEdge(cc, {x:bx, y:ya});
+      }
+    }
+
+    return {edges, verts};
+  }
+
+  // ==================== Bowyer-Watson ====================
+  function bowyerWatson(pts) {
+    if (pts.length < 3) return {tris:[], ccMap:[]};
+    const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+    const mnX=Math.min(...xs), mxX=Math.max(...xs), mnY=Math.min(...ys), mxY=Math.max(...ys);
+    const dx=(mxX-mnX)||100, dy=(mxY-mnY)||100;
+    const mx=(mnX+mxX)/2, my=(mnY+mxY)/2;
+    const sc=Math.max(dx,dy)*2;
+    const S0={x:mx-sc,y:my-sc}, S1={x:mx+sc,y:my-sc}, S2={x:mx,y:my+sc};
+    const sV=[S0,S1,S2];
+    let tris=[{a:0,b:1,c:2,va:S0,vb:S1,vc:S2}];
+    for(let i=0;i<pts.length;i++){
+      const p=pts[i],bad=[];
+      for(let j=0;j<tris.length;j++) if(inCircumcircle(p,tris[j].va,tris[j].vb,tris[j].vc)) bad.push(j);
+      const ec=new Map();
+      function ek(ai,bi){return ai<bi?ai+','+bi:bi+','+ai}
+      for(const idx of bad){const t=tris[idx];for(const[ai,bi] of[[t.a,t.b],[t.b,t.c],[t.c,t.a]])ec.set(ek(ai,bi),(ec.get(ek(ai,bi))||0)+1)}
+      const bnd=[];for(const[k,cnt] of ec)if(cnt===1){const[a,b]=k.split(',').map(Number);bnd.push({a,b})}
+      tris=tris.filter((_,j)=>!bad.includes(j));
+      for(const{a,b}of bnd){const va=a>=0?pts[a]:sV[-a-1],vb=b>=0?pts[b]:sV[-b-1];tris.push({a,b,c:i,va,vb,vc:p})}
+    }
+    const si=new Set([-1,-2,-3]);
+    tris=tris.filter(t=>!si.has(t.a)&&!si.has(t.b)&&!si.has(t.c));
+    return {tris, ccMap:tris.map(t=>circumcenter(t.va,t.vb,t.vc)).filter(Boolean)};
+  }
+
+  // ==================== Voronoi from Delaunay Duality ====================
+  function buildVoronoiFromDT(tris) {
+    const em=new Map();
+    for(let ti=0;ti<tris.length;ti++){const t=tris[ti];for(const[a,b]of[[t.a,t.b],[t.b,t.c],[t.c,t.a]]){const k=a<b?a+','+b:b+','+a;if(!em.has(k))em.set(k,[]);em.get(k).push(ti)}}
+    const ccm=[];for(let ti=0;ti<tris.length;ti++)ccm.push(circumcenter(tris[ti].va,tris[ti].vb,tris[ti].vc));
+    const ve=[], vv=[];
+    for(const[,tl]of em){
+      if(tl.length===2){const c1=ccm[tl[0]],c2=ccm[tl[1]];if(c1&&c2){ve.push({a:c1,b:c2});vv.push(c1);vv.push(c2)}}
+    }
+    for(const[k,tl]of em){
+      if(tl.length===1){const t=tris[tl[0]];[ai,bi]=k.split(',').map(Number);const mid={x:(t.va.x+t.vb.x)/2,y:(t.va.y+t.vb.y)/2};const cc=ccm[tl[0]];if(!cc)continue;const dx=mid.x-cc.x,dy=mid.y-cc.y;const l=Math.hypot(dx,dy)||1;ve.push({a:cc,b:{x:cc.x+dx/l*5000,y:cc.y+dy/l*5000}})}
+    }
+    return {voronoiEdges:ve, ccMap:ccm};
+  }
+
+  // ==================== Rendering ====================
+  function fitView(){
+    if(sites.length===0) return {ox:0,oy:0,scale:.5};
+    const xs=sites.map(p=>p.x),ys=sites.map(p=>p.y);
+    const mnX=Math.min(...xs),mxX=Math.max(...xs),mnY=Math.min(...ys),mxY=Math.max(...ys);
+    const cw=canvas.clientWidth-MARGIN*2,ch=canvas.clientHeight-MARGIN*2;
+    const dx=mxX-mnX||1,dy=mxY-mnY||1;
+    const s=Math.min(cw/dx,ch/dy);
+    return {ox:MARGIN+(cw-s*dx)/2-mnX*s,oy:MARGIN+(ch-s*dy)/2-mnY*s,scale:s};
+  }
+  function toScr(p,v){return{x:v.ox+p.x*v.scale,y:v.oy+p.y*v.scale}}
+  function toWrld(sp,v){return{x:(sp.x-v.ox)/v.scale,y:(sp.y-v.oy)/v.scale}}
+
+  function draw(){
+    ctx.clearRect(0,0,canvas.clientWidth,canvas.clientHeight);
+    const v=fitView();
+    const method=document.getElementById('sel-method').value;
+    const renderMode=document.getElementById('sel-render').value;
+
+    let voronoiEdges=[], voronoiVerts=[], delTri=[];
+
+    if(sites.length>=3){
+      if(method==='fortune'){
+        const result=fortunesAlgorithm(sites);
+        voronoiEdges=result.edges;
+        voronoiVerts=result.verts;
+        // Also compute Delaunay via BW for display
+        if(renderMode!=='voronoi'){
+          const bwr=bowyerWatson(sites);
+          delTri=bwr.tris;
+        }
+      }else{
+        const bwr=bowyerWatson(sites);
+        delTri=bwr.tris;
+        const ve=buildVoronoiFromDT(bwr.tris);
+        voronoiEdges=ve.voronoiEdges;
+        voronoiVerts=ve.ccMap;
+      }
+
+      // --- Delaunay ---
+      if(renderMode!=='voronoi'&&delTri.length>0){
+        for(const t of delTri){
+          const sp=[toScr(t.va,v),toScr(t.vb,v),toScr(t.vc,v)];
+          ctx.beginPath();ctx.moveTo(sp[0].x,sp[0].y);ctx.lineTo(sp[1].x,sp[1].y);ctx.lineTo(sp[2].x,sp[2].y);ctx.closePath();
+          ctx.fillStyle='rgba(40,40,90,.15)';ctx.fill();
+          ctx.strokeStyle='rgba(60,60,140,.35)';ctx.lineWidth=1;ctx.stroke();
+        }
+      }
+
+      // --- Voronoi ---
+      if(renderMode!=='delaunay'){
+        ctx.strokeStyle='#44aacc';ctx.lineWidth=2;
+        for(const e of voronoiEdges){
+          const sa=toScr(e.a,v),sb=toScr(e.b,v);
+          ctx.beginPath();ctx.moveTo(sa.x,sa.y);ctx.lineTo(sb.x,sb.y);ctx.stroke();
+        }
+        for(const vt of voronoiVerts){
+          if(!vt)continue;
+          const sp=toScr(vt,v);
+          if(sp.x>-5000&&sp.y>-5000&&sp.x<canvas.clientWidth+5000&&sp.y<canvas.clientHeight+5000){
+            ctx.fillStyle='#ff8844';ctx.beginPath();ctx.arc(sp.x,sp.y,3,0,Math.PI*2);ctx.fill();
+          }
+        }
+      }
+    }
+
+    // Sites
+    for(let i=0;i<sites.length;i++){
+      const sp=toScr(sites[i],v);
+      ctx.fillStyle=i===dragIdx?'#ffcc00':'#ff6688';
+      ctx.beginPath();ctx.arc(sp.x,sp.y,5,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(sp.x,sp.y,5,0,Math.PI*2);ctx.stroke();
+    }
+
+    document.getElementById('stat-method').textContent=method==='fortune'?'Fortune':'Bowyer-Watson';
+    document.getElementById('stat-sites').textContent=sites.length;
+    document.getElementById('stat-edges').textContent=voronoiEdges.length;
+    document.getElementById('stat-vv').textContent=voronoiVerts.length;
+  }
+
+  // ==================== Init & Events ====================
+  function resize(){
+    canvas.width=canvas.clientWidth*devicePixelRatio;
+    canvas.height=canvas.clientHeight*devicePixelRatio;
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+    draw();
+  }
+
+  canvas.addEventListener('pointerdown',e=>{
+    const x=e.offsetX,y=e.offsetY;
+    const v=fitView();
+    for(let i=0;i<sites.length;i++){const sp=toScr(sites[i],v);if(Math.hypot(x-sp.x,y-sp.y)<10){dragIdx=i;dragOffX=sites[i].x-toWrld({x,y},v).x;dragOffY=sites[i].y-toWrld({x,y},v).y;draw();return}}
+    sites.push(toWrld({x,y},v));draw();
+  });
+  canvas.addEventListener('pointermove',e=>{if(dragIdx<0)return;const v=fitView();const wp=toWrld({x:e.offsetX,y:e.offsetY},v);sites[dragIdx]={x:wp.x+dragOffX,y:wp.y+dragOffY};draw()});
+  canvas.addEventListener('pointerup',()=>{dragIdx=-1;draw()});
+  canvas.addEventListener('pointerleave',()=>{dragIdx=-1;draw()});
+
+  document.getElementById('btn-random').addEventListener('click',()=>{
+    const w=canvas.clientWidth*.7,h=canvas.clientHeight*.7;
+    sites=[];for(let i=0;i<20;i++)sites.push({x:Math.random()*w-w/2+canvas.clientWidth/2,y:Math.random()*h-h/2+canvas.clientHeight/2});draw();
+  });
+  document.getElementById('btn-clear').addEventListener('click',()=>{sites=[];draw()});
+  document.getElementById('sel-method').addEventListener('change',draw);
+  document.getElementById('sel-render').addEventListener('change',draw);
+  document.getElementById('btn-export').addEventListener('click',()=>{
+    navigator.clipboard.writeText(JSON.stringify(sites,null,2)).then(()=>alert('Copied'));
+  });
+
+  window.addEventListener('resize',resize);
+
+  sites=[{x:150,y:200},{x:300,y:180},{x:450,y:220},{x:550,y:300},{x:200,y:400},{x:350,y:380},{x:500,y:420},{x:400,y:280},{x:250,y:300},{x:100,y:350},{x:600,y:150},{x:650,y:400}];
+  resize();
+})();
+</script>
+</body>
+</html>

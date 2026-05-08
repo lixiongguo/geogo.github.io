@@ -30,12 +30,5 @@ $\omega$连续
 
 之前的变形有cage-based方法已经ARAP方法
 
-Killing Energy
-
-![image-20251022171426875](..\..\..\imgs\image-20251022171426875.png)
-
-结合点约束
-
-![image-20251022171455827](..\..\..\imgs\image-20251022171455827.png)
 
 

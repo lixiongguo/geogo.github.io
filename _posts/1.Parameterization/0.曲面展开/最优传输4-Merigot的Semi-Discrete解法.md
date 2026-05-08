@@ -361,10 +361,12 @@ $$
 - 想真正写程序算图像/网格上的半离散 OT，Merigot 这套 multi-scale + L-BFGS 更直接；
 - 两篇结合起来看，会形成“几何理论 -> 优化模型 -> 工程算法”的完整链路。
 
-## 参考文献
+**Q. Mérigot的算法与顾险峰老师的算法都是通过变分法求解半离散最优传输算法，两者有什么区别？**
 
-- Villani, C. (2009). *Optimal Transport: Old and New*. Springer.
-- Peyre, G., & Cuturi, M. (2019). *Computational Optimal Transport*. Foundations and Trends in Machine Learning.
-- Brenier, Y. (1991). *Polar factorization and monotone rearrangement of vector-valued functions*.
-- Benamou, J.-D., & Brenier, Y. (2000). *A computational fluid mechanics solution to the Monge-Kantorovich mass transfer problem*.
-- Cuturi, M. (2013). *Sinkhorn distances: Lightspeed computation of optimal transport*.
+![image-20251204114809692](..\..\..\imgs\image-20251204114809692.png)
+
+![image-20251204114855878](..\..\..\imgs\image-20251204114855878.png)
+
+![image-20251204115012676](..\..\..\imgs\image-20251204115012676.png)
+
+
