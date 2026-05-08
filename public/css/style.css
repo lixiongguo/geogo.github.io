@@ -194,77 +194,71 @@ code {
 	font-size: 0.9em;
 }
 
-.gallery-nav {
+/* ========== 快捷入口（致邈围棋 / 晓梦 / Gallery） ========== */
+
+.quick-links {
 	display: flex;
 	flex-direction: column;
-	justify-content: flex-start;
-	align-items: flex-start;
-	margin-top: 4px;
-	padding-left: 0;
+	gap: 6px;
+	padding: 4px 0;
 }
 
-.gallery-link {
+.quick-link-card {
+	width: 100%;
+}
+
+.quick-link {
 	display: flex;
 	align-items: center;
-	gap: 1px;
+	gap: 10px;
 	text-decoration: none;
-	font-size: 2.6em;
-	font-family: 'Ma Shan Zheng', 'STKaiti', cursive;
-	font-weight: 700;
-	letter-spacing: 1px;
-	line-height: 1;
-	padding: 4px 0;
-	background: linear-gradient(90deg, #f39c12, #e74c3c, #9b59b6, #3498db, #2ecc71);
-	background-size: 200% auto;
-	-webkit-background-clip: text;
-	-webkit-text-fill-color: transparent;
-	background-clip: text;
-	animation: galleryShine 4s linear infinite;
-	text-shadow: 0 0 10px rgba(150, 120, 255, 0.35);
+	padding: 6px 0;
+	transition: color 0.2s;
 }
 
-@keyframes galleryShine {
-	0% { background-position: 0% center; }
-	100% { background-position: 200% center; }
-}
-
-.gallery-link:hover {
+.quick-link:hover {
 	color: #c0c0e0;
 }
 
-.gallery-icon {
-	width: 104px;
-	height: 104px;
-	vertical-align: middle;
-	fill: #bbb;
-	transition: fill 0.2s;
-}
-
-.gallery-link:hover .gallery-icon {
-	fill: #c0c0e0;
-}
-
-.gallery-logo {
-	width: 104px;
-	height: 104px;
-	vertical-align: middle;
-}
-
-.gallery-subtitle {
-	display: block;
-	font-size: 0.85em;
-	color: #707090;
-	text-align: center;
-	margin-top: 4px;
-	letter-spacing: 1px;
-}
-
-.xiaomeng-logo {
-	width: 26px;
-	height: 26px;
-	vertical-align: middle;
-	border-radius: 2px;
+.quick-link-icon {
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
 	object-fit: cover;
+	flex-shrink: 0;
+}
+
+.quick-link-icon.svg-icon {
+	border-radius: 6px;
+	background: #3a3a4a;
+	padding: 6px;
+	box-sizing: border-box;
+	fill: #bbb;
+	transition: fill 0.2s, background 0.2s;
+}
+
+.quick-link:hover .quick-link-icon.svg-icon {
+	fill: #c0c0e0;
+	background: #4a4a5a;
+}
+
+.quick-link-text {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.quick-link-title {
+	font-size: 0.95em;
+	font-weight: 500;
+	color: #c0c0d0;
+	line-height: 1.2;
+}
+
+.quick-link-subtitle {
+	font-size: 0.75em;
+	color: #707090;
+	font-style: italic;
 }
 
 .gallery-index {

@@ -8,13 +8,13 @@ categories: [扩散模型]
 
 本文是扩散模型系列的**总览**，详细内容请参阅以下三篇：
 
-- [**第一篇：DDPM——前向扩散与逆向去噪**]({% post_url 2.Machine Learning/Diffusion/2.1.DDPM-前向扩散与逆向去噪 %})  
+- [**第一篇：DDPM——前向扩散与逆向去噪**]({% post_url 2.Machine Learning/3.扩散模型/2022-10-01-DDPM：去噪扩散概率模型 %})  
   介绍 DDPM 的核心原理：前向马尔可夫加噪过程、逆向去噪过程、变分训练目标，以及其 VP-SDE 形式。
 
-- [**第二篇：DDIM——隐式确定性采样加速**]({% post_url 2.Machine Learning/Diffusion/2.2.DDIM-隐式确定性采样加速 %})  
+- [**第二篇：DDIM——隐式确定性采样加速**]({% post_url 2.Machine Learning/3.扩散模型/2022-11-01-DDIM：去噪扩散隐式模型 %})  
   介绍 DDIM 如何通过非马尔可夫前向过程和确定性采样，将 1000 步降至 50-100 步，并揭示其与概率流 ODE 的联系。
 
-- [**第三篇：Score Matching——基于得分的生成模型**]({% post_url 2.Machine Learning/Diffusion/2.3.ScoreMatching-基于得分的生成模型 %})  
+- [**第三篇：Score Matching——基于得分的生成模型**]({% post_url 2.Machine Learning/3.扩散模型/2022-12-01-Score-Matching：基于得分的生成模型 %})  
   介绍得分匹配的统一框架：得分函数、去噪得分匹配（DSM）、Langevin 动力学采样，以及 Score Matching ↔ DDPM ↔ EDM 的内在联系。
 
 ---

@@ -38,7 +38,7 @@ $$
 f(t) = \frac{d\log\alpha_t}{dt}, \quad g(t)^2 = \frac{d\sigma_t^2}{dt} - 2\frac{d\log\alpha_t}{dt}\sigma_t^2 \tag{2.3}
 $$
 
-> 详见 [EDM：扩散模型设计空间的统一框架]({% post_url 2.Machine Learning/Diffusion/4.1 EDM %}) 通用加噪公式。
+> 详见 [EDM：扩散模型设计空间的统一框架]({% post_url 2.Machine Learning/4.扩散模型补充/2023-07-01-扩散模型补充：EDM统一框架 %}) 通用加噪公式。
 
 ---
 

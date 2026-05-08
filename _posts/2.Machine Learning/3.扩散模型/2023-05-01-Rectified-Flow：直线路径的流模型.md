@@ -4,7 +4,7 @@ title: "Rectified Flow：直线路径的流模型"
 date: 2023-05-01
 categories: [扩散模型]
 ---
-> 本文是 Flow Matching 系列的第四篇，介绍 Rectified Flow——一种学习直线 ODE 路径以实现一步生成的简洁方法。建议先阅读[第三篇：条件流匹配]({% post_url 2.Machine Learning/Diffusion/3.3.条件流匹配-条件概率路径与边缘化 %})。
+> 本文是 Flow Matching 系列的第四篇，介绍 Rectified Flow——一种学习直线 ODE 路径以实现一步生成的简洁方法。建议先阅读[第三篇：条件流匹配]({% post_url 2.Machine Learning/3.扩散模型/2023-04-01-条件流匹配：条件概率路径与边缘化 %})。
 
 ## 1. Rectified Flow 的基本思路
 
@@ -74,4 +74,4 @@ $$v^*(z, t) = \mathbb{E}[\dot{X}_t \,|\, X_t = z], \quad \min_v \int_0^1 \mathbb
 
 ---
 
-> 至此，Flow Matching 系列四篇已全部完成。回顾整个体系：[第一篇]({% post_url 2.Machine Learning/Diffusion/3.1.标准化流基础-从离散流到连续流 %})建立了流的基础数学框架；[第二篇]({% post_url 2.Machine Learning/Diffusion/3.2.Flow Matching-仿真无关的连续流训练 %})提出了 FM 的仿真无关训练方案；[第三篇]({% post_url 2.Machine Learning/Diffusion/3.3.条件流匹配-条件概率路径与边缘化 %})通过条件化与边缘化解决了 FM 的可解性问题；本篇的 Rectified Flow 则将流路径简化为直线，实现了单步生成。
+> 至此，Flow Matching 系列四篇已全部完成。回顾整个体系：[第一篇]({% post_url 2.Machine Learning/3.扩散模型/2023-02-01-标准化流基础：从离散流到连续流 %})建立了流的基础数学框架；[第二篇]({% post_url 2.Machine Learning/3.扩散模型/2023-03-01-Flow-Matching：连续标准化流的仿真无关训练 %})提出了 FM 的仿真无关训练方案；[第三篇]({% post_url 2.Machine Learning/3.扩散模型/2023-04-01-条件流匹配：条件概率路径与边缘化 %})通过条件化与边缘化解决了 FM 的可解性问题；本篇的 Rectified Flow 则将流路径简化为直线，实现了单步生成。
