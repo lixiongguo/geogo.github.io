@@ -30,7 +30,7 @@
     }
     .timing-display {
       display: none;
-      padding: 12px 18px;
+      padding: 10px 18px;
       background: linear-gradient(90deg, rgba(16, 30, 61, 0.95), rgba(26, 46, 91, 0.95));
       border-bottom: 2px solid rgba(106, 132, 255, 0.35);
       text-align: center;
@@ -38,30 +38,60 @@
     .timing-display.visible {
       display: block;
     }
+    .timing-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+    }
+    .timing-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .timing-sep {
+      width: 1px;
+      height: 40px;
+      background: rgba(106, 132, 255, 0.25);
+    }
     .timing-display .timing-label {
-      font-size: 12px;
+      font-size: 11px;
       color: #8a9dd4;
       text-transform: uppercase;
       letter-spacing: 2px;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
     .timing-display .timing-value {
-      font-size: 32px;
+      font-size: 28px;
       font-weight: 700;
       color: #ffd700;
-      text-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 0 0 40px rgba(255, 215, 0, 0.25);
+      text-shadow: 0 0 16px rgba(255, 215, 0, 0.45), 0 0 32px rgba(255, 215, 0, 0.2);
       font-family: "SF Mono", "Consolas", monospace;
     }
     .timing-display .timing-unit {
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 400;
       color: #c9a227;
-      margin-left: 4px;
+      margin-left: 3px;
     }
     .timing-display .timing-details {
       font-size: 11px;
       color: #6a7db5;
       margin-top: 6px;
+    }
+    /* 翻转面数警示样式 */
+    #flip-value {
+      color: #52d681;
+      text-shadow: 0 0 16px rgba(82, 214, 129, 0.4), 0 0 32px rgba(82, 214, 129, 0.2);
+    }
+    #flip-value.has-flip {
+      color: #ff5252;
+      text-shadow: 0 0 18px rgba(255, 82, 82, 0.55), 0 0 36px rgba(255, 82, 82, 0.3);
+      animation: flipPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes flipPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
     }
     .toolbar {
       display: flex;
@@ -205,8 +235,17 @@
 <body>
   <div class="app">
     <div class="timing-display" id="timing-display">
-      <div class="timing-label">计算耗时</div>
-      <div class="timing-value"><span id="timing-ms">0</span><span class="timing-unit">ms</span></div>
+      <div class="timing-row">
+        <div class="timing-block">
+          <div class="timing-label">计算耗时</div>
+          <div class="timing-value"><span id="timing-ms">0</span><span class="timing-unit">ms</span></div>
+        </div>
+        <div class="timing-sep"></div>
+        <div class="timing-block" id="flip-block">
+          <div class="timing-label">翻转三角面</div>
+          <div class="timing-value" id="flip-value"><span id="flip-count">0</span><span class="timing-unit" id="flip-unit">个</span></div>
+        </div>
+      </div>
       <div class="timing-details" id="timing-details"></div>
     </div>
     <div class="toolbar">
@@ -350,18 +389,30 @@
         statusText.style.color = color || "#8cc4ff";
       }
 
-      function showTiming(ms, details) {
+      function showTiming(ms, details, flippedCount) {
         const display = document.getElementById("timing-display");
         const msSpan = document.getElementById("timing-ms");
         const detailsSpan = document.getElementById("timing-details");
+        const flipCountSpan = document.getElementById("flip-count");
+        const flipValue = document.getElementById("flip-value");
         display.classList.add("visible");
         msSpan.textContent = ms.toFixed(1);
         detailsSpan.textContent = details || "";
         lastElapsedMs = ms;
+        // 更新翻转面数显示
+        const fc = typeof flippedCount === 'number' ? flippedCount : 0;
+        if (flipCountSpan) flipCountSpan.textContent = fc;
+        if (flipValue) {
+          flipValue.classList.toggle("has-flip", fc > 0);
+        }
       }
 
       function hideTiming() {
         document.getElementById("timing-display").classList.remove("visible");
+        const flipCountSpan = document.getElementById("flip-count");
+        const flipValue = document.getElementById("flip-value");
+        if (flipCountSpan) flipCountSpan.textContent = "0";
+        if (flipValue) flipValue.classList.remove("has-flip");
       }
 
       function updateTimingProgress(current, total) {
@@ -1480,11 +1531,10 @@
             methodLabel +
             " / " + getCurrentSourceLabel() +
             " / " + currentMeshData.positions.length + " 顶点" +
-            " / " + currentMeshData.faces.length + " 三角形" +
-            " / 翻转面: " + unwrapResult.flippedFaceCount;
+            " / " + currentMeshData.faces.length + " 三角形";
           if (unwrapResult.C) details += " / C=" + unwrapResult.C.toFixed(1);
           if (unwrapResult.maxIter) details += " / 迭代=" + unwrapResult.maxIter;
-          showTiming(elapsedMs, details);
+          showTiming(elapsedMs, details, unwrapResult.flippedFaceCount);
 
           const color = unwrapResult.flippedFaceCount === 0 ? "#89f0b6" : "#ffd38a";
           setStatus(
