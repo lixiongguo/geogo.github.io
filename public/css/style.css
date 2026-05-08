@@ -232,6 +232,18 @@ code {
 	color: #c0c0e0;
 }
 
+.gallery-icon {
+	width: 104px;
+	height: 104px;
+	vertical-align: middle;
+	fill: #bbb;
+	transition: fill 0.2s;
+}
+
+.gallery-link:hover .gallery-icon {
+	fill: #c0c0e0;
+}
+
 .gallery-logo {
 	width: 104px;
 	height: 104px;
@@ -456,6 +468,34 @@ a.nav-item:hover { color: #777; }
 	display: inline-flex;
 	align-items: center;
 	gap: 7px;
+}
+
+.social-icon {
+	flex-shrink: 0;
+	vertical-align: middle;
+	margin-right: 2px;
+}
+
+.sidebar-social {
+	margin-top: 12px;
+}
+
+.sidebar-social .nav-item {
+	color: #bbb;
+	font-size: 0.85em;
+}
+
+.sidebar-social .nav-item:hover {
+	color: #fff;
+}
+
+.sidebar-social .social-icon {
+	fill: #bbb;
+	transition: fill 0.2s;
+}
+
+.sidebar-social .nav-item:hover .social-icon {
+	fill: #fff;
 }
 
 .algo-mini-icon {
