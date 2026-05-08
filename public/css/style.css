@@ -118,7 +118,7 @@ code {
 }
 
 .lead {
-	font-size: 120%;
+	font-size: 110%;
 	color: #aaa;
 }
 
@@ -249,7 +249,7 @@ code {
 }
 
 .quick-link-title {
-	font-size: 0.95em;
+	font-size: 0.88em;
 	font-weight: 500;
 	color: #c0c0d0;
 	line-height: 1.2;
@@ -426,7 +426,7 @@ code {
 	text-align: center;
 	margin-top: 12px;
 	font-family: 'Dancing Script', cursive;
-	font-size: 2.718em;
+	font-size: 2.2em;
 	color: #c8b88a;
 	text-decoration: none;
 	letter-spacing: 1px;
@@ -440,7 +440,7 @@ code {
 }
 
 .nav-title {
-	font-size: 135%;
+	font-size: 120%;
 	font-weight: 600;
 	letter-spacing: 0.5px;
 	font-family: "Noto Sans";
@@ -450,7 +450,7 @@ code {
 }
 
 a.nav-item {
-	font-size: 120%;
+	font-size: 110%;
 	font-family: "Noto Sans";
 	text-transform: capitalize;
 	color: #aaa;
