@@ -1,0 +1,226 @@
+---
+layout: default
+title: "凸多边形相交"
+---
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>凸多边形相交 - 计算几何实验</title>
+    <style>
+        body {
+            font-family: 'Gelasio', serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .controls {
+            margin: 20px 0;
+            text-align: center;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 0 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #canvas {
+            display: block;
+            margin: 20px auto;
+            border: 1px solid #ccc;
+            background: white;
+        }
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e7f3ff;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>凸多边形相交检测实验（扫描线算法）</h1>
+        
+        <div class="controls">
+            <button onclick="generatePolygons()">生成随机多边形</button>
+            <button onclick="detectIntersection()">检测相交</button>
+            <button onclick="clearCanvas()">清空</button>
+        </div>
+
+        <canvas id="canvas" width="800" height="600"></canvas>
+
+        <div class="info">
+            <h3>算法说明</h3>
+            <p><strong>扫描线算法（Sweep Line Algorithm）</strong> 用于检测多边形相交，核心思想是"降维"：将二维问题转化为一系列一维问题。</p>
+            <p>算法步骤：</p>
+            <ol>
+                <li>将多边形的所有边按端点排序</li>
+                <li>使用扫描线从上到下（或从左到右）扫描</li>
+                <li>维护当前扫描线与多边形边的交点列表</li>
+                <li>当扫描线遇到边的端点时，更新交点列表</li>
+                <li>检查相邻交点之间的区间是否来自不同多边形</li>
+            </ol>
+            <p>时间复杂度：O((n+k) log n)，其中 n 是边数，k 是交点数。</p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let polygon1 = [];
+        let polygon2 = [];
+        let intersectionPoints = [];
+
+        // 生成随机凸多边形
+        function generateRandomPolygon(centerX, centerY, radius, numVertices) {
+            let angles = [];
+            for (let i = 0; i < numVertices; i++) {
+                angles.push(Math.random() * 2 * Math.PI);
+            }
+            angles.sort((a, b) => a - b);
+            
+            let vertices = [];
+            for (let i = 0; i < numVertices; i++) {
+                const x = centerX + radius * Math.cos(angles[i]);
+                const y = centerY + radius * Math.sin(angles[i]);
+                vertices.push({ x, y });
+            }
+            return vertices;
+        }
+
+        // 生成两个随机多边形
+        function generatePolygons() {
+            polygon1 = generateRandomPolygon(300, 300, 150, 6 + Math.floor(Math.random() * 3));
+            polygon2 = generateRandomPolygon(500, 300, 150, 6 + Math.floor(Math.random() * 3));
+            intersectionPoints = [];
+            draw();
+        }
+
+        // 检测相交（简化版）
+        function detectIntersection() {
+            intersectionPoints = [];
+            
+            // 简化：检测边与边的交点
+            for (let i = 0; i < polygon1.length; i++) {
+                const p1 = polygon1[i];
+                const p2 = polygon1[(i + 1) % polygon1.length];
+                
+                for (let j = 0; j < polygon2.length; j++) {
+                    const q1 = polygon2[j];
+                    const q2 = polygon2[(j + 1) % polygon2.length];
+                    
+                    const intersect = lineIntersection(p1, p2, q1, q2);
+                    if (intersect) {
+                        intersectionPoints.push(intersect);
+                    }
+                }
+            }
+            
+            draw();
+        }
+
+        // 计算线段交点
+        function lineIntersection(p1, p2, q1, q2) {
+            const d1 = { x: p2.x - p1.x, y: p2.y - p1.y };
+            const d2 = { x: q2.x - q1.x, y: q2.y - q1.y };
+            
+            const cross = d1.x * d2.y - d1.y * d2.x;
+            
+            if (Math.abs(cross) < 1e-10) return null; // 平行
+            
+            const t = ((q1.x - p1.x) * d2.y - (q1.y - p1.y) * d2.x) / cross;
+            const u = ((q1.x - p1.x) * d1.y - (q1.y - p1.y) * d1.x) / cross;
+            
+            if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+                return {
+                    x: p1.x + t * d1.x,
+                    y: p1.y + t * d1.y
+                };
+            }
+            
+            return null;
+        }
+
+        // 绘制
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制多边形1
+            drawPolygon(polygon1, 'rgba(255, 107, 107, 0.3)', '#FF6B6B');
+            
+            // 绘制多边形2
+            drawPolygon(polygon2, 'rgba(78, 205, 196, 0.3)', '#4ECDC4');
+            
+            // 绘制交点
+            ctx.fillStyle = '#FFD700';
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            intersectionPoints.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            });
+        }
+
+        // 绘制多边形
+        function drawPolygon(vertices, fillColor, strokeColor) {
+            if (vertices.length < 3) return;
+            
+            ctx.fillStyle = fillColor;
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(vertices[0].x, vertices[0].y);
+            for (let i = 1; i < vertices.length; i++) {
+                ctx.lineTo(vertices[i].x, vertices[i].y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // 绘制顶点
+            ctx.fillStyle = strokeColor;
+            vertices.forEach(v => {
+                ctx.beginPath();
+                ctx.arc(v.x, v.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        // 清空画布
+        function clearCanvas() {
+            polygon1 = [];
+            polygon2 = [];
+            intersectionPoints = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // 初始化
+        generatePolygons();
+    </script>
+</body>
+</html>

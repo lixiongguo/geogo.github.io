@@ -1,0 +1,333 @@
+---
+layout: default
+title: "凸多边形三角剖分"
+---
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>凸多边形三角剖分 - 计算几何实验</title>
+<style>
+  body{font-family:'Gelasio',serif;margin:0;padding:20px;background:#f5f5f5;}
+  .container{max-width:1200px;margin:0 auto;background:white;padding:20px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,.1);}
+  h1{color:#333;text-align:center;margin-bottom:8px;}
+  .subtitle{text-align:center;color:#666;margin-bottom:20px;font-size:14px;}
+  .controls{margin:20px 0;text-align:center;}
+  button{padding:10px 20px;margin:0 5px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;}
+  button:hover{background:#0056b3;}
+  button.active{background:#dc3545;}
+  #canvas{display:block;margin:20px auto;border:1px solid #ccc;background:white;cursor:crosshair;}
+  .info{margin-top:20px;padding:15px;background:#e7f3ff;border-radius:4px;}
+  .legend{display:flex;gap:20px;justify-content:center;margin:10px 0;font-size:13px;}
+  .legend span{display:flex;align-items:center;gap:5px;}
+  .legend .box{display:inline-block;width:16px;height:16px;border-radius:3px;}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>凸多边形三角剖分</h1>
+  <p class="subtitle">割耳法（Ear Clipping）— 点击画布添加顶点，自动完成三角剖分</p>
+
+  <div class="legend">
+    <span><span class="box" style="background:#007bff;"></span> 多边形边</span>
+    <span><span class="box" style="background:rgba(0,123,255,.2);border:1px solid #007bff;"></span> 三角形</span>
+    <span><span class="box" style="background:#28a745;"></span> 耳朵（可切除）</span>
+    <span><span class="box" style="background:#ffc107;"></span> 当前切除的耳</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="generatePolygon()">🎲 随机凸多边形</button>
+    <button onclick="triangulateStep()" id="btnStep">👆 逐步剖分</button>
+    <button onclick="triangulateAll()" id="btnAll">⚡ 一键剖分</button>
+    <button onclick="clearCanvas()">🗑️ 清空</button>
+  </div>
+
+  <canvas id="canvas" width="900" height="560"></canvas>
+
+  <div class="info">
+    <h3>算法说明：割耳法（Ear Clipping）</h3>
+    <p><strong>耳朵（Ear）</strong>：对于凸多边形，如果三角形 △(v<sub>i-1</sub>, v<sub>i</sub>, v<sub>i+1</sub>) 完全在多边形内部，则 v<sub>i</sub> 是一个"耳朵"，对应的三角形可以被切除。</p>
+    <p><strong>算法步骤（O(n²)）：</strong></p>
+    <ol>
+      <li>将多边形顶点存入双向链表（或数组）；</li>
+      <li>重复以下步骤，直到只剩 3 个顶点：
+        <ul>
+          <li>遍历所有顶点，找到一只"耳朵"（内角 < 180° 且三角形内无其他顶点）；</li>
+          <li>切除该耳朵（输出三角形，从列表中移除中间顶点）；</li>
+        </ul>
+      </li>
+      <li>最后 3 个顶点构成一个三角形，输出。</li>
+    </ol>
+    <p>💡 对于凸多边形，<strong>每个顶点都是耳朵</strong>，因此剖分顺序可以任意。本实验展示逐步切除过程。</p>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  凸多边形三角剖分 — 割耳法（完整实现）
+// ══════════════════════════════════════════
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let vertices = [];       // [{x, y}]
+let triangles = [];       // [[{x,y},{x,y},{x,y}]]
+let ears = new Set();     // 耳朵顶点索引集合
+let currentEar = -1;    // 当前正在切除的耳朵
+let stepIndex = 0;      // 逐步剖分进度
+let isDone = false;
+
+// ── 工具函数 ──────────────────────────────
+
+// 叉积 (b-a) × (c-a)
+function cross(a, b, c) {
+  return (b.x - a.x)*(c.y - a.y) - (b.y - a.y)*(c.x - a.x);
+}
+
+// 点 p 是否在三角形 (a,b,c) 内部（含边界）
+function pointInTriangle(p, a, b, c) {
+  const d1 = cross(p, a, b);
+  const d2 = cross(p, b, c);
+  const d3 = cross(p, c, a);
+  const hasNeg = (d1 < -1e-10) || (d2 < -1e-10) || (d3 < -1e-10);
+  const hasPos = (d1 >  1e-10) || (d2 >  1e-10) || (d3 >  1e-10);
+  return !(hasNeg && hasPos);
+}
+
+// 顶点 i 是否是耳朵（凸多边形版：每个内角 < 180°）
+// 对于凸多边形，所有顶点都是耳朵；这里用转角方向判断
+function isEar(verts, i) {
+  const n = verts.length;
+  const a = verts[(i-1+n)%n];
+  const b = verts[i];
+  const c = verts[(i+1)%n];
+  // 凸多边形中，如果 (a,b,c) 是逆时针，则 b 是耳朵
+  return cross(a, b, c) > 1e-10;
+}
+
+// 找到所有耳朵
+function findEars(verts) {
+  const n = verts.length;
+  const e = new Set();
+  for (let i = 0; i < n; i++) {
+    if (isEar(verts, i)) e.add(i);
+  }
+  return e;
+}
+
+// ── 剖分逻辑 ──────────────────────────────
+
+function triangulateFull(verts) {
+  const result = [];
+  const list = [...verts]; // 拷贝
+
+  while (list.length > 3) {
+    // 找到第一个耳朵
+    let earIdx = -1;
+    for (let i = 0; i < list.length; i++) {
+      if (isEar(list, i)) { earIdx = i; break; }
+    }
+    if (earIdx === -1) break; // 安全退出
+
+    const a = list[(earIdx-1+list.length)%list.length];
+    const b = list[earIdx];
+    const c = list[(earIdx+1)%list.length];
+    result.push([a, b, c]);
+    list.splice(earIdx, 1); // 切除耳朵
+  }
+  if (list.length === 3) result.push([list[0], list[1], list[2]]);
+  return result;
+}
+
+// 逐步剖分
+function stepTriangulate(verts, step) {
+  const result = [];
+  const list = verts.map((v, i) => ({...v, idx: i}));
+  let cur = list.map(v => ({...v}));
+  let earIdx = -1;
+
+  for (let s = 0; s < step; s++) {
+    if (cur.length <= 3) break;
+    earIdx = -1;
+    for (let i = 0; i < cur.length; i++) {
+      if (isEar(cur, i)) { earIdx = i; break; }
+    }
+    if (earIdx === -1) break;
+    result.push([cur[(earIdx-1+cur.length)%cur.length],
+                cur[earIdx],
+                cur[(earIdx+1)%cur.length]]);
+    cur.splice(earIdx, 1);
+  }
+  return { triangles: result, remaining: cur, earIdx };
+}
+
+// ── 绘制 ──────────────────────────────
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 绘制已生成的三角形
+  triangles.forEach((tri, i) => {
+    ctx.fillStyle = i === currentEar
+      ? 'rgba(255,193,7,.35)'   // 当前切除的耳 — 黄色
+      : 'rgba(0,123,255,.15)';  // 已切除的耳 — 蓝色
+    ctx.strokeStyle = '#007bff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(tri[0].x, tri[0].y);
+    ctx.lineTo(tri[1].x, tri[1].y);
+    ctx.lineTo(tri[2].x, tri[2].y);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+  });
+
+  // 绘制剩余多边形
+  const rem = getRemainingVerts();
+  if (rem.length >= 3) {
+    ctx.strokeStyle = '#007bff';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(rem[0].x, rem[0].y);
+    for (let i = 1; i < rem.length; i++) ctx.lineTo(rem[i].x, rem[i].y);
+    ctx.closePath(); ctx.stroke();
+
+    // 标记耳朵（绿色圆点）
+   ears.forEach(i => {
+      if (i < rem.length) {
+        ctx.fillStyle = (i === currentEar) ? '#ffc107' : '#28a745';
+        ctx.beginPath();
+        ctx.arc(rem[i].x, rem[i].y, 7, 0, Math.PI*2);
+        ctx.fill();
+      }
+    });
+  }
+
+  // 绘制所有顶点
+  vertices.forEach((v, i) => {
+    ctx.fillStyle = ears.has(i) ? '#28a745' : '#007bff';
+    ctx.beginPath(); ctx.arc(v.x, v.y, 6, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+  });
+
+  // 完成后绘制最终三角形（覆盖）
+  if (isDone && rem.length === 3) {
+    ctx.fillStyle = 'rgba(0,123,255,.2)';
+    ctx.strokeStyle = '#007bff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(rem[0].x, rem[0].y);
+    ctx.lineTo(rem[1].x, rem[1].y);
+    ctx.lineTo(rem[2].x, rem[2].y);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+}
+
+function getRemainingVerts() {
+  if (stepIndex >= triangles.length) {
+    // 所有切除已完成，返回最后 3 个顶点
+    return vertices; // fallback
+  }
+  // 动态计算剩余顶点
+  let cur = vertices.map(v => ({...v}));
+  for (let s = 0; s < stepIndex; s++) {
+    if (cur.length <= 3) break;
+    let ei = -1;
+    for (let i = 0; i < cur.length; i++) {
+      if (isEar(cur, i)) { ei = i; break; }
+    }
+    if (ei === -1) break;
+    cur.splice(ei, 1);
+  }
+  return cur;
+}
+
+// ── 交互 ──────────────────────────────
+
+function generatePolygon() {
+  vertices = [];
+  triangles = [];
+  ears.clear();
+  currentEar = -1;
+  stepIndex = 0;
+  isDone = false;
+
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  const R = 200 + Math.random() * 80;
+  const n = 5 + Math.floor(Math.random() * 5);
+  let angles = [];
+  for (let i = 0; i < n; i++) angles.push(Math.random() * 2 * Math.PI);
+  angles.sort((a,b) => a - b);
+  for (let i = 0; i < n; i++) {
+    vertices.push({ x: cx + R*Math.cos(angles[i]), y: cy + R*Math.sin(angles[i]) });
+  }
+  // 确保逆时针
+  if (polygonArea(vertices) < 0) vertices.reverse();
+  ears = findEars(vertices);
+  draw();
+}
+
+function triangulateStep() {
+  if (isDone) return;
+  const n = getRemainingVerts().length;
+  if (n <= 3) { isDone = true; draw(); return; }
+
+  let rem = getRemainingVerts();
+  let ei = -1;
+  for (let i = 0; i < rem.length; i++) {
+    if (isEar(rem, i)) { ei = i; break; }
+  }
+  if (ei === -1) { isDone = true; return; }
+
+  const tri = [rem[(ei-1+rem.length)%rem.length], rem[ei], rem[(ei+1)%rem.length]];
+  triangles.push(tri);
+  currentEar = triangles.length - 1;
+  stepIndex++;
+  ears = findEars(getRemainingVerts());
+  draw();
+}
+
+function triangulateAll() {
+  triangles = triangulateFull(vertices);
+  isDone = true;
+  stepIndex = triangles.length;
+  draw();
+}
+
+function clearCanvas() {
+  vertices = []; triangles = []; ears.clear();
+  currentEar = -1; stepIndex = 0; isDone = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// 多边形有向面积（正 = 逆时针）
+function polygonArea(verts) {
+  let a = 0;
+  for (let i = 0; i < verts.length; i++) {
+    const j = (i+1) % verts.length;
+    a += verts[i].x * verts[j].y - verts[j].x * verts[i].y;
+  }
+  return a / 2;
+}
+
+// 点击添加顶点
+canvas.addEventListener('click', e => {
+  if (vertices.length > 0 && vertices.length < 3) {
+    // 允许继续添加，不清除
+  }
+  const r = canvas.getBoundingClientRect();
+  vertices.push({ x: e.clientX - r.left, y: e.clientY - r.top });
+  // 重新计算耳朵
+  if (vertices.length >= 3) {
+    if (polygonArea(vertices) < 0) vertices.reverse();
+    ears = findEars(vertices);
+  }
+  triangles = []; isDone = false; stepIndex = 0;
+  draw();
+});
+
+// 初始化
+generatePolygon();
+</script>
+</body>
+</html>

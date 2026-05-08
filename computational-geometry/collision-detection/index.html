@@ -1,0 +1,444 @@
+---
+layout: default
+title: "碰撞检测 SAT"
+---
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>碰撞检测 — SAT 分离轴定理</title>
+<style>
+  body{font-family:'Gelasio',serif;margin:0;padding:20px;background:#f5f5f5;}
+  .container{max-width:1200px;margin:0 auto;background:white;padding:20px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,.1);}
+  h1{color:#333;text-align:center;margin-bottom:8px;}
+  .subtitle{text-align:center;color:#666;margin-bottom:15px;font-size:14px;}
+  .controls{margin:20px 0;text-align:center;}
+  button{padding:10px 20px;margin:0 5px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;}
+  button:hover{background:#0056b3;}
+  button.active{background:#dc3545;}
+  #canvas{display:block;margin:20px auto;border:1px solid #ccc;background:#fafafa;cursor:move;}
+  .info{margin-top:20px;padding:15px;background:#e7f3ff;border-radius:4px;}
+  .legend{display:flex;gap:18px;justify-content:center;margin:10px 0;font-size:13px;flex-wrap:wrap;}
+  .legend span{display:flex;align-items:center;gap:5px;}
+  .legend .box{display:inline-block;width:14px;height:14px;border-radius:3px;}
+  .stats{text-align:center;font-size:13px;color:#555;margin:8px 0;}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>碰撞检测 — 分离轴定理（SAT）</h1>
+  <p class="subtitle">拖动物体移动 · 实时显示分离轴与重叠信息</p>
+
+  <div class="legend">
+    <span><span class="box" style="background:#007bff;"></span> 方块（AABB）</span>
+    <span><span class="box" style="background:#4ECDC4;"></span> 圆形</span>
+    <span><span class="box" style="background:#96CEB4;"></span> 凸多边形</span>
+    <span><span class="box" style="background:rgba(255,107,107,.5);border:1px solid #FF6B6B;"></span> 碰撞中</span>
+    <span><span class="box" style="background:#FFC107;"></span> 分离轴 / 投影</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="addBox()">⬜ 添加方块</button>
+    <button onclick="addCircle()">◯ 添加圆形</button>
+    <button onclick="addPolygon()">⬡ 添加多边形</button>
+    <button onclick="startSimulation()" id="btnSim">▶ 模拟</button>
+    <button onclick="clearShapes()">🗑 清空</button>
+  </div>
+
+  <canvas id="canvas" width="900" height="560"></canvas>
+
+  <div class="stats" id="stats">拖动物体查看碰撞检测结果</div>
+
+  <div class="info">
+    <h3>算法说明：分离轴定理（Separating Axis Theorem, SAT）</h3>
+    <p><strong>核心思想</strong>：如果两个凸形不碰撞，则存在一条直线（分离轴），使得两个形状在该轴上的投影不重叠。</p>
+    <p><strong>检测步骤</strong>：</p>
+    <ol>
+      <li>对两个形状的每一条边，取其<strong>法向量</strong>作为测试轴；</li>
+      <li>将两个形状的所有顶点投影到该轴上；</li>
+      <li>若任意轴上的投影<strong>不重叠</strong>，则两形状分离（无碰撞）；</li>
+      <li>若<strong>所有轴</strong>上的投影都重叠，则两形状碰撞。</li>
+    </ol>
+    <p><strong>最小重叠向量（MTV）</strong>：碰撞时，取重叠量最小的轴，其法向量 × 重叠量 = 最小平移向量，可用于碰撞响应。</p>
+    <p>💡 本实验实时绘制分离轴与投影区间，帮助理解 SAT 的工作原理。</p>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  碰撞检测 — SAT（分离轴定理）完整实现
+// ══════════════════════════════════════════
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const stats = document.getElementById('stats');
+
+let shapes = [];
+let selected = null;
+let isSimulating = false;
+let simId = null;
+
+// ── 工具函数 ──────────────────────────────
+
+function dot(a, b) { return a.x * b.x + a.y * b.y; }
+function vec(x, y) { return { x, y }; }
+function sub(a, b) { return { x: a.x-b.x, y: a.y-b.y }; }
+function cross(v) { return { x: -v.y, y: v.x }; } // 左法向量（垂直）
+
+// ── 形状类 ──────────────────────────────
+
+class Box {
+  constructor(x, y, w, h) {
+    this.x = x; this.y = y; this.w = w; this.h = h;
+    this.vx = 0; this.vy = 0;
+    this.color = '#007bff';
+    this.type = 'box';
+  }
+  // 获取顶点（逆时针）
+  getVerts() {
+    return [
+      {x:this.x, y:this.y},
+      {x:this.x+this.w, y:this.y},
+      {x:this.x+this.w, y:this.y+this.h},
+      {x:this.x, y:this.y+this.h}
+    ];
+  }
+  getAxes() {
+    const v = this.getVerts();
+    const axes = [];
+    for (let i = 0; i < 4; i++) {
+      const e = sub(v[(i+1)%4], v[i]);
+      axes.push(cross(e)); // 法向量
+    }
+    return axes;
+  }
+  containsPoint(px, py) {
+    return px >= this.x && px <= this.x+this.w && py >= this.y && py <= this.y+this.h;
+  }
+  draw(ctx, color) {
+    ctx.fillStyle = color || this.color;
+    ctx.fillRect(this.x, this.y, this.w, this.h);
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+    ctx.strokeRect(this.x, this.y, this.w, this.h);
+  }
+}
+
+class Circle {
+  constructor(x, y, r) {
+    this.x = x; this.y = y; this.r = r;
+    this.vx = 0; this.vy = 0;
+    this.color = '#4ECDC4';
+    this.type = 'circle';
+  }
+  containsPoint(px, py) {
+    const dx = px-this.x, dy = py-this.y;
+    return dx*dx+dy*dy <= this.r*this.r;
+  }
+  draw(ctx, color) {
+    ctx.fillStyle = color || this.color;
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.stroke();
+  }
+}
+
+class Polygon {
+  constructor(verts) {
+    this.verts = verts; // [{x,y}] 逆时针
+    this.vx = 0; this.vy = 0;
+    this.color = '#96CEB4';
+    this.type = 'polygon';
+  }
+  getAxes() {
+    const axes = [];
+    for (let i = 0; i < this.verts.length; i++) {
+      const e = sub(this.verts[(i+1)%this.verts.length], this.verts[i]);
+      axes.push(cross(e));
+    }
+    return axes;
+  }
+  containsPoint(px, py) {
+    // 射线法
+    let inside = false;
+    for (let i = 0, j = this.verts.length-1; i < this.verts.length; j = i++) {
+      const xi = this.verts[i].x, yi = this.verts[i].y;
+      const xj = this.verts[j].x, yj = this.verts[j].y;
+      if (((yi>py)!==(yj>py)) && (px < (xj-xi)*(py-yi)/(yj-yi) + xi)) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+  draw(ctx, color) {
+    ctx.fillStyle = color ? color.replace(')',',0.5)') : this.color + '80';
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(this.verts[0].x, this.verts[0].y);
+    for (let i = 1; i < this.verts.length; i++) ctx.lineTo(this.verts[i].x, this.verts[i].y);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+}
+
+// ── SAT 碰撞检测 ─────────────────────────
+
+// 投影区间
+function projectVerts(verts, axis) {
+  let min = dot(verts[0], axis), max = min;
+  for (let i = 1; i < verts.length; i++) {
+    const p = dot(verts[i], axis);
+    if (p < min) min = p;
+    if (p > max) max = p;
+  }
+  return { min, max };
+}
+
+function projectCircle(circle, axis) {
+  const p = dot(circle, axis);
+  return { min: p - circle.r, max: p + circle.r };
+}
+
+// 区间是否重叠
+function overlap(a, b) {
+  if (a.max < b.min || b.max < a.min) return 0;
+  const d1 = a.max - b.min;
+  const d2 = b.max - a.min;
+  return Math.min(d1, d2);
+}
+
+// SAT 检测：返回 {collided, mtv} 或 null
+function satCollision(a, b) {
+  let minOverlap = Infinity;
+  let smallestAxis = null;
+
+  // 收集所有测试轴
+  let axes = [];
+  if (a.getAxes) axes = axes.concat(a.getAxes());
+  if (b.getAxes) axes = axes.concat(b.getAxes());
+
+  // 圆形特殊处理：增加圆心到多边形最近顶点的方向轴
+  if (a.type === 'circle' && b.getVerts) {
+    const c = a;
+    const verts = b.getVerts ? b.getVerts() : b.verts;
+    let minD = Infinity, closest = null;
+    verts.forEach(v => { const d = distSq(c,v); if(d<minD){minD=d; closest=v;}});
+    axes.push(sub(closest, {x:c.x, y:c.y}));
+  }
+  if (b.type === 'circle' && a.getVerts) {
+    const c = b;
+    const verts = a.getVerts ? a.getVerts() : a.verts;
+    let minD = Infinity, closest = null;
+    verts.forEach(v => { const d = distSq(c,v); if(d<minD){minD=d; closest=v;}});
+    axes.push(sub(closest, {x:c.x, y:c.y}));
+  }
+
+  for (const axis of axes) {
+    const len = Math.sqrt(axis.x*axis.x + axis.y*axis.y);
+    if (len < 1e-10) continue;
+    const norm = { x: axis.x/len, y: axis.y/len };
+
+    let projA, projB;
+    if (a.type === 'circle') projA = projectCircle(a, norm);
+    else projA = projectVerts(a.getVerts ? a.getVerts() : a.verts, norm);
+
+    if (b.type === 'circle') projB = projectCircle(b, norm);
+    else projB = projectVerts(b.getVerts ? b.getVerts() : b.verts, norm);
+
+    const o = overlap(projA, projB);
+    if (o === 0) return null; // 分离 → 无碰撞
+    if (o < minOverlap) {
+      minOverlap = o;
+      smallestAxis = norm;
+    }
+  }
+
+  return { collided: true, mtv: smallestAxis, overlap: minOverlap };
+}
+
+function distSq(a,b) { return (a.x-b.x)**2 + (a.y-b.y)**2; }
+
+// ── 绘制投影（辅助理解） ──────────────────
+
+function drawProjection(axis, projA, projB, cx, cy) {
+  // 在轴线上绘制投影区间
+  const len = 80;
+  const dx = axis.x * len;
+  const dy = axis.y * len;
+  const mx = cx, my = cy;
+
+  ctx.strokeStyle = 'rgba(255,193,7,0.6)';
+  ctx.lineWidth = 1;
+  // A 投影
+  const aCen = (projA.min + projA.max)/2;
+  const aHalf = (projA.max - projA.min)/2;
+  ctx.beginPath();
+  ctx.moveTo(mx + dx*projA.min - dy*0.2, my + dy*projA.min + dx*0.2);
+  ctx.lineTo(mx + dx*projA.max - dy*0.2, my + dy*projA.max + dx*0.2);
+  ctx.stroke();
+
+  // B 投影
+  ctx.strokeStyle = 'rgba(255,193,7,0.4)';
+  ctx.beginPath();
+  ctx.moveTo(mx + dx*projB.min + dy*0.2, my + dy*projB.min - dx*0.2);
+  ctx.lineTo(mx + dx*projB.max + dy*0.2, my + dy*projB.max - dx*0.2);
+  ctx.stroke();
+}
+
+// ── 检测所有碰撞 ──────────────────────
+
+let currentCollisions = [];
+
+function detectAllCollisions() {
+  currentCollisions = [];
+  for (let i = 0; i < shapes.length; i++) {
+    shapes[i]._colliding = false;
+    shapes[i]._mtv = null;
+  }
+  for (let i = 0; i < shapes.length; i++) {
+    for (let j = i+1; j < shapes.length; j++) {
+      const r = satCollision(shapes[i], shapes[j]);
+      if (r) {
+        shapes[i]._colliding = true;
+        shapes[j]._colliding = true;
+        shapes[i]._mtv = r.mtv;
+        currentCollisions.push([i, j, r]);
+      }
+    }
+  }
+}
+
+// ── 绘制 ──────────────────────────────
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 地面
+  ctx.fillStyle = '#8B572A';
+  ctx.fillRect(0, canvas.height-20, canvas.width, 20);
+
+  // 绘制所有形状
+  shapes.forEach(s => {
+    const c = s._colliding ? 'rgba(255,107,107,0.5)' : s.color;
+    s.draw(ctx, c);
+  });
+
+  // 绘制碰撞信息（第一个碰撞对的分离轴）
+  if (currentCollisions.length > 0) {
+    const [i,j,r] = currentCollisions[0];
+    const s1 = shapes[i], s2 = shapes[j];
+    // 绘制 MTV 向量
+    const mx = (s1.x + s2.x)/2 || 400;
+    const my = (s1.y + s2.y)/2 || 300;
+    ctx.strokeStyle = '#FFC107';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(mx, my);
+    ctx.lineTo(mx + r.mtv.x * r.overlap * 20, my + r.mtv.y * r.overlap * 20);
+    ctx.stroke();
+  }
+
+  // 状态文字
+  if (currentCollisions.length > 0) {
+    stats.textContent = `⚠️ 检测到 ${currentCollisions.length} 对碰撞！`;
+    stats.style.color = '#d32f2f';
+  } else {
+    stats.textContent = '✅ 无碰撞 — 存在分离轴';
+    stats.style.color = '#2e7d32';
+  }
+}
+
+// ── 交互 ──────────────────────────────
+
+function addBox() {
+  const b = new Box(
+    100 + Math.random()*(canvas.width-300),
+    50 + Math.random()*150,
+    40 + Math.random()*40,
+    40 + Math.random()*40
+  );
+  shapes.push(b); draw();
+}
+
+function addCircle() {
+  const c = new Circle(
+    100 + Math.random()*(canvas.width-300),
+    50 + Math.random()*150,
+    20 + Math.random()*20
+  );
+  shapes.push(c); draw();
+}
+
+function addPolygon() {
+  const cx = 200 + Math.random()*(canvas.width-400);
+  const cy = 100 + Math.random()*200;
+  const n = 3 + Math.floor(Math.random()*4);
+  const R = 25 + Math.random()*20;
+  const verts = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i/n)*Math.PI*2 - Math.PI/2;
+    verts.push({ x: cx + R*Math.cos(a), y: cy + R*Math.sin(a) });
+  }
+  shapes.push(new Polygon(verts)); draw();
+}
+
+function startSimulation() {
+  if (isSimulating) {
+    isSimulating = false;
+    cancelAnimationFrame(simId);
+    document.getElementById('btnSim').textContent = '▶ 模拟';
+    return;
+  }
+  isSimulating = true;
+  document.getElementById('btnSim').textContent = '⏸ 停止';
+
+  function animate() {
+    shapes.forEach(s => {
+      s.vy += 0.35;
+      s.x += s.vx; s.y += s.vy;
+      // 地面
+      if (s.type === 'circle') {
+        if (s.y + s.r > canvas.height-20) { s.y = canvas.height-20-s.r; s.vy *= -0.7; }
+      } else {
+        const h = s.h || (s.verts ? Math.max(...s.verts.map(v=>v.y)) - Math.min(...s.verts.map(v=>v.y)) : 40);
+        if (s.y + h > canvas.height-20) { s.y = canvas.height-20-h; s.vy *= -0.7; }
+      }
+    });
+    detectAllCollisions();
+    draw();
+    if (isSimulating) simId = requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+function clearShapes() {
+  shapes = []; isSimulating = false; cancelAnimationFrame(simId);
+  document.getElementById('btnSim').textContent = '▶ 模拟';
+  draw();
+}
+
+// 鼠标
+canvas.addEventListener('mousedown', e => {
+  const r = canvas.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  for (let i = shapes.length-1; i >= 0; i--) {
+    if (shapes[i].containsPoint(x,y)) { selected = { shape: shapes[i], sx: x, sy: y }; break; }
+  }
+});
+canvas.addEventListener('mousemove', e => {
+  if (!selected) return;
+  const r = canvas.getBoundingClientRect();
+  selected.shape.x += e.clientX - r.left - selected.sx;
+  selected.shape.y += e.clientY - r.top - selected.sy;
+  selected.sx = e.clientX - r.left;
+  selected.sy = e.clientY - r.top;
+  detectAllCollisions(); draw();
+});
+canvas.addEventListener('mouseup', () => { selected = null; });
+
+// 初始化
+addBox(); addCircle(); addPolygon();
+detectAllCollisions();
+draw();
+</script>
+</body>
+</html>
