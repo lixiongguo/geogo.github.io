@@ -8,3 +8,4 @@ vendor/
 .DS_Store
 wechat/
 node_modules/
+cpp/Libigl-Discrete-Geometry

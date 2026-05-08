@@ -25,7 +25,7 @@
 				<span class="name">全部文章</span>
 	    	</a>
  		</li> -->
-    {% assign param_cats = "Parameterization|Parameterization-Preface|Parameterization-Intro|Parameterization-ConformalMapping|Parameterization-QuadRemeshing|Parameterization-ComputationalConformalGeometry|Parameterization-OptimalTransport|Parameterization-Appendix|QuadRemeshing|Math" | split: "|" %}
+    {% assign param_cats = "Parameterization|Parameterization-Preface|Parameterization-BasicParameterization|Parameterization-ConformalMapping|Parameterization-QuadRemeshing|Parameterization-ComputationalConformalGeometry|Parameterization-OptimalTransport|Parameterization-Appendix|QuadRemeshing|Math" | split: "|" %}
     {% for category in site.categories %}
     {% assign cat_name = category | first %}
     {% assign cat_count = category | last | size %}
@@ -33,7 +33,7 @@
     {% case cat_name %}
 		  {% when 'Parameterization' %}{% assign cat_display = '曲面展开' %}
 		  {% when 'Parameterization-Preface' %}{% assign cat_display = '前言' %}
-		  {% when 'Parameterization-Intro' %}{% assign cat_display = '曲面展开介绍' %}
+		  {% when 'Parameterization-BasicParameterization' %}{% assign cat_display = '基础曲面展开方法' %}
 		  {% when 'Parameterization-ConformalMapping' %}{% assign cat_display = '共形映射方法' %}
 		  {% when 'Parameterization-QuadRemeshing' %}{% assign cat_display = '四边形网格化' %}
 		  {% when 'QuadRemeshing' %}{% assign cat_display = '四边形网格化' %}
