@@ -7,7 +7,9 @@
 
   <link href="/public/css/style.css" rel="stylesheet">
   <body>
+  	{% unless page.date %}
   	<canvas id="particle-canvas"></canvas>
+  	{% endunless %}
   	<div class="container"> 
 		<div class="sidebar">
 			{% include sidebar.html %}
@@ -62,7 +64,9 @@
     typeWriterLoop("学中有乐玩中有学", "typewriter", 180, 1300);
   });
 	  </script>
+    {% unless page.date %}
     <script src="/assets/js/particles.js"></script>
+    {% endunless %}
     <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 	  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 
