@@ -1,3 +1,9 @@
+---
+layout: post
+title: "扩散模型补充：Sinkhorn算法与DSB"
+date: 2023-09-01
+categories: [扩散模型补充]
+---
 Sinkhorn 算法与薛定谔桥
 
 Sinkhorn 算法和薛定谔桥（Schrodinger Bridge, SB）可以看成同一条思想链上的两个层次：

@@ -56,22 +56,21 @@
 	</ul>
 </div>
 
-<!-- 文章分类2: 已隐藏
+<!-- 机器学习 -->
 <div class="sidebar-item sidebar-nav">
   	<ul class="nav">
-			<li class="nav-title">文章分类2</li>
-    {% assign ml_cg_cats = "DL&ML|OT|RL|Computational_Geometry|Caustics|TechSharing" | split: "|" %}
+			<li class="nav-title">机器学习</li>
+    {% assign ml_cats = "概率图模型|基础生成模型|扩散模型|扩散模型补充|强化学习" | split: "|" %}
     {% for category in site.categories %}
     {% assign cat_name = category | first %}
     {% assign cat_count = category | last | size %}
-    {% if ml_cg_cats contains cat_name %}
+    {% if ml_cats contains cat_name %}
     {% case cat_name %}
-	      {% when 'RL' %}{% assign cat_display = '强化学习' %}
-		  {% when 'OT' %}{% assign cat_display = '最优传输' %}
-		  {% when 'DL&ML' %}{% assign cat_display = '深度学习与机器学习' %}
-		  {% when 'Computational_Geometry' %}{% assign cat_display = '计算几何' %}
-		  {% when 'Caustics' %}{% assign cat_display = '焦散' %}
-		  {% when 'TechSharing' %}{% assign cat_display = '技术笔记' %}
+	      {% when '概率图模型' %}{% assign cat_display = '1. 概率图模型' %}
+		  {% when '基础生成模型' %}{% assign cat_display = '2. 基础生成模型' %}
+		  {% when '扩散模型' %}{% assign cat_display = '3. 扩散模型' %}
+		  {% when '扩散模型补充' %}{% assign cat_display = '4. 扩散模型补充' %}
+		  {% when '强化学习' %}{% assign cat_display = '5. 强化学习' %}
 		  {% else %}{% assign cat_display = cat_name %}
     {% endcase %}
 	    <li>
@@ -86,7 +85,6 @@
 	  </nav>
 	</ul>
 </div>
--->
 
 <!-- 算法测试: 静态链接 + 图形学 Demo -->
 <div class="sidebar-item sidebar-nav algo-section">
