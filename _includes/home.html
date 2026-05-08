@@ -1,6 +1,6 @@
 <article class="post">
   <header class="post-header home">
-    <div class="post-title" id="typewriter">曲面展开</div>
+    <div class="post-title" id="typewriter"></div>
   </header>
 
   <div class="post-content">
@@ -36,6 +36,28 @@
   {%- endif -%}
   </div>
 </article>
+
+<script>
+// 打字机效果
+(function() {
+  const text = "学中有乐玩中有学";
+  const element = document.getElementById('typewriter');
+  let index = 0;
+  
+  function typeWriter() {
+    if (index < text.length) {
+      element.innerHTML += text.charAt(index);
+      index++;
+      setTimeout(typeWriter, 200);
+    }
+  }
+  
+  // 页面加载后开始打字效果
+  if (element) {
+    typeWriter();
+  }
+})();
+</script>
 
 <!-- 文章分类2：已隐藏
 <article class="post">
