@@ -2,7 +2,7 @@
 layout: post
 title: "扩散模型补充：DPM-Solver高阶求解器"
 date: 2023-08-01
-categories: [扩散模型补充]
+categories: [DiffusionSupplement]
 ---
 > DPM-Solver（Lu et al. 2022）最明显的优点就是快——比 DDIM 还要快。DDIM 需要 100 步的效果，DPM-Solver 只需约 10 步即可达到。
 

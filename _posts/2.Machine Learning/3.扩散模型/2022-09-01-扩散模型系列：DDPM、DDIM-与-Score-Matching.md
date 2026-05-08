@@ -2,7 +2,7 @@
 layout: post
 title: "扩散模型系列：DDPM、DDIM 与 Score Matching"
 date: 2022-09-01
-categories: [扩散模型]
+categories: [DiffusionModel]
 ---
 扩散模型是当前生成式 AI 的核心技术之一。从 DDPM 的马尔可夫链去噪，到 DDIM 的确定性加速采样，再到 Score Matching 的统一得分框架——这些方法共享相同的数学内核，但各有侧重。
 

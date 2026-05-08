@@ -2,7 +2,7 @@
 layout: post
 title: "扩散模型补充：Sinkhorn算法与DSB"
 date: 2023-09-01
-categories: [扩散模型补充]
+categories: [DiffusionSupplement]
 ---
 Sinkhorn 算法与薛定谔桥
 

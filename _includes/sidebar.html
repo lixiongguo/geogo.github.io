@@ -18,7 +18,7 @@
 <!-- 文章分类: 仅索引 1.Parameterization 文件夹 (Parameterization, QuadRemeshing, Math) -->
 <div class="sidebar-item sidebar-nav">
   	<ul class="nav">
-		<li class="nav-title">文章分类</li>
+		<li class="nav-title">曲面展开</li>
 		<!-- <li>
 	    	<a class="nav-item algo-link-with-icon" href="{{ '/' | relative_url }}">
 				<span class="algo-mini-icon" aria-hidden="true"></span>
@@ -60,17 +60,17 @@
 <div class="sidebar-item sidebar-nav">
   	<ul class="nav">
 			<li class="nav-title">机器学习</li>
-    {% assign ml_cats = "概率图模型|基础生成模型|扩散模型|扩散模型补充|强化学习" | split: "|" %}
+    {% assign ml_cats = "ProbabilityGraphModel|BasicGenerativeModel|DiffusionModel|DiffusionSupplement|ReinforcementLearning" | split: "|" %}
     {% for category in site.categories %}
     {% assign cat_name = category | first %}
     {% assign cat_count = category | last | size %}
     {% if ml_cats contains cat_name %}
     {% case cat_name %}
-	      {% when '概率图模型' %}{% assign cat_display = '1. 概率图模型' %}
-		  {% when '基础生成模型' %}{% assign cat_display = '2. 基础生成模型' %}
-		  {% when '扩散模型' %}{% assign cat_display = '3. 扩散模型' %}
-		  {% when '扩散模型补充' %}{% assign cat_display = '4. 扩散模型补充' %}
-		  {% when '强化学习' %}{% assign cat_display = '5. 强化学习' %}
+	      {% when 'ProbabilityGraphModel' %}{% assign cat_display = '1. 概率图模型' %}
+		  {% when 'BasicGenerativeModel' %}{% assign cat_display = '2. 基础生成模型' %}
+		  {% when 'DiffusionModel' %}{% assign cat_display = '3. 扩散模型' %}
+		  {% when 'DiffusionSupplement' %}{% assign cat_display = '4. 扩散模型补充' %}
+		  {% when 'ReinforcementLearning' %}{% assign cat_display = '5. 强化学习' %}
 		  {% else %}{% assign cat_display = cat_name %}
     {% endcase %}
 	    <li>

@@ -2,7 +2,7 @@
 layout: post
 title: "Rectified Flow：直线路径的流模型"
 date: 2023-05-01
-categories: [扩散模型]
+categories: [DiffusionModel]
 ---
 > 本文是 Flow Matching 系列的第四篇，介绍 Rectified Flow——一种学习直线 ODE 路径以实现一步生成的简洁方法。建议先阅读[第三篇：条件流匹配]({% post_url 2.Machine Learning/3.扩散模型/2023-04-01-条件流匹配：条件概率路径与边缘化 %})。
 

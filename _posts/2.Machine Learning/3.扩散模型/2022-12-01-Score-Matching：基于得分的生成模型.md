@@ -2,7 +2,7 @@
 layout: post
 title: "Score Matching：基于得分的生成模型"
 date: 2022-12-01
-categories: [扩散模型]
+categories: [DiffusionModel]
 ---
 > 本文介绍 Score Matching（得分匹配，Song & Ermon 2019），它是 DDPM 和扩散模型背后的核心数学框架——通过学习数据分布的得分函数（score function）来实现生成。建议先阅读前两篇 [DDPM]({% post_url 2.Machine Learning/3.扩散模型/2022-10-01-DDPM：去噪扩散概率模型 %}) 和 [DDIM]({% post_url 2.Machine Learning/3.扩散模型/2022-11-01-DDIM：去噪扩散隐式模型 %})。
 
