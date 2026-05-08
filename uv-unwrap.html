@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UV展开 - LSCM / BD-LSCM</title>
+  <title>UV展开 - LSCM / Tutte / ARAP</title>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
@@ -12,6 +12,8 @@
   <script src="assets/wasm/lscm_solver.js"></script>
   <!-- WASM BD-LSCM Solver (Bounded Distortion + LSCM) -->
   <script src="assets/wasm/bd_lscm_solver.js"></script>
+  <!-- WASM Tutte + ARAP Solver -->
+  <script src="assets/wasm/tutte_arap_solver.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
@@ -211,19 +213,27 @@
       <div class="toolbar-left">
         <div>
           <h1>UV展开</h1>
-          <div class="desc">LSCM · BD-LSCM · WebAssembly + Eigen</div>
+          <div class="desc">LSCM · Tutte · ARAP · BD-LSCM · WebAssembly + Eigen</div>
         </div>
       </div>
       <div class="toolbar-right">
         <select id="model-select"></select>
         <select id="method-select" title="展开算法">
           <option value="lscm">LSCM</option>
+          <option value="tutte_circle">Tutte (圆形)</option>
+          <option value="tutte_square">Tutte (正方形)</option>
+          <option value="arap">ARAP</option>
           <option value="bd_lscm" selected>BD-LSCM (C=10)</option>
         </select>
-        <label style="font-size:12px;color:#8a9dd4;display:flex;align-items:center;gap:4px;">
+        <label id="bd-c-label" style="font-size:12px;color:#8a9dd4;display:flex;align-items:center;gap:4px;">
           C:<input id="bd-c-input" type="number" value="10" min="1.1" max="100" step="1"
             style="width:50px;padding:4px 6px;border-radius:6px;text-align:center"
             title="共形扭曲上限 σ₁/σ₂ ≤ C（越小越保角）">
+        </label>
+        <label id="arap-iter-label" style="font-size:12px;color:#8a9dd4;display:none;">
+          迭代:<input id="arap-iter-input" type="number" value="30" min="5" max="200" step="5"
+            style="width:48px;padding:4px 6px;border-radius:6px;text-align:center"
+            title="ARAP Local/Global 迭代次数">
         </label>
         <button id="upload-btn">上传OBJ</button>
         <input id="obj-upload" class="hidden-input" type="file" accept=".obj,model/obj,text/plain">
@@ -247,13 +257,13 @@
 
       <section class="panel">
         <div class="panel-header">
-          <span id="uv-panel-label">LSCM / BD-LSCM UV 网格</span>
+          <span id="uv-panel-label">UV 网格</span>
           <span>边界归一化到 0..1</span>
         </div>
         <div class="canvas-wrap">
           <canvas id="uv-canvas"></canvas>
         </div>
-        <div class="footer-note">右侧展示展开后的线框结果，便于直接观察参数化畸变。</div>
+        <div class="footer-note">右侧展示展开后的线框 UV 结果。</div>
       </section>
     </div>
   </div>
@@ -552,6 +562,10 @@
       let bdWasmReady = false;
       let bdWasmLoadFailed = false;
 
+      let taWasmModule = null;        // Tutte+ARAP WASM 模块实例
+      let taWasmReady = false;
+      let taWasmLoadFailed = false;
+
       /**
        * 异步加载 LSCM WASM 求解器
        */
@@ -596,6 +610,28 @@
         }
       }
 
+      /**
+       * 异步加载 Tutte + ARAP WASM 求解器
+       */
+      async function initTAWASMSolver() {
+        if (taWasmReady) return true;
+        if (taWasmLoadFailed) return false;
+
+        try {
+          if (typeof TutteARAPSolver === 'undefined') {
+            throw new Error('Tutte+ARAP WASM 胶水代码未加载');
+          }
+          taWasmModule = await TutteARAPSolver();
+          taWasmReady = true;
+          console.log('WASM Tutte+ARAP 求解器加载成功');
+          return true;
+        } catch (err) {
+          console.error('Tutte+ARAP WASM 加载失败:', err);
+          taWasmLoadFailed = true;
+          return false;
+        }
+      }
+
       /** 当前选中的算法 */
       function getCurrentMethod() {
         return document.getElementById('method-select').value;
@@ -617,27 +653,31 @@
         const method = getCurrentMethod();
         const lscmFailed = (method === 'lscm' && wasmLoadFailed);
         const bdFailed   = (method === 'bd_lscm' && bdWasmLoadFailed);
+        const taFailed   = ((method === 'tutte_circle' || method === 'tutte_square' || method === 'arap') && taWasmLoadFailed);
         const lscmLoading = (method === 'lscm' && !wasmReady && !wasmLoadFailed);
         const bdLoading   = (method === 'bd_lscm' && !bdWasmReady && !bdWasmLoadFailed);
+        const taLoading   = ((method === 'tutte_circle' || method === 'tutte_square' || method === 'arap') && !taWasmReady && !taWasmLoadFailed);
 
-        if (lscmFailed || bdFailed) {
+        if (lscmFailed || bdFailed || taFailed) {
           btn.textContent = '引擎加载失败';
           btn.disabled = true;
-        } else if (lscmLoading || bdLoading) {
+        } else if (lscmLoading || bdLoading || taLoading) {
           btn.textContent = '引擎加载中...';
           btn.disabled = true;
         } else {
           btn.textContent = '开始展开';
           btn.disabled = false;
-          btn.title = method === 'bd_lscm' ? '执行 BD-LSCM 有界扭曲展开' : '执行 LSCM UV 展开';
         }
       }
 
       // 方法切换时更新 UI
       document.getElementById('method-select').addEventListener('change', function() {
         const isBD = this.value === 'bd_lscm';
+        const isARAP = this.value === 'arap';
+        document.getElementById('bd-c-label').style.display = isBD ? 'flex' : 'none';
         document.getElementById('bd-c-input').disabled = !isBD;
         document.getElementById('bd-c-input').style.opacity = isBD ? '1' : '0.4';
+        document.getElementById('arap-iter-label').style.display = isARAP ? 'flex' : 'none';
         updateStartButtonState();
       });
 
@@ -818,6 +858,112 @@
         if (onProgress) onProgress(faces.length, faces.length);
 
         return { uv: uv, anchors: anchors, flippedFaceCount: countFlippedFaces(uv, faces), timeMs: result.time_ms || 0, method: 'bd_lscm', C: C };
+      }
+
+      // ==================== WASM 驱动的 Tutte + ARAP 求解 ====================
+
+      async function solveTutteCircleAsync(meshData, onProgress) {
+        if (!taWasmReady) { const ok = await initTAWASMSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
+
+        const flatPositions = new Float64Array(meshData.positions.length * 3);
+        for (let i = 0; i < meshData.positions.length; i++) {
+          flatPositions[i*3]=meshData.positions[i][0]; flatPositions[i*3+1]=meshData.positions[i][1]; flatPositions[i*3+2]=meshData.positions[i][2];
+        }
+        const flatFaces = new Int32Array(meshData.faces.length * 3);
+        for (let i = 0; i < meshData.faces.length; i++) {
+          flatFaces[i*3]=meshData.faces[i][0]; flatFaces[i*3+1]=meshData.faces[i][1]; flatFaces[i*3+2]=meshData.faces[i][2];
+        }
+        if (onProgress) onProgress(0, 1);
+
+        const posPtr = taWasmModule._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) taWasmModule.setValue(posPtr+i*8, flatPositions[i], 'double');
+        const facePtr = taWasmModule._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) taWasmModule.setValue(facePtr+i*4, flatFaces[i], 'i32');
+
+        try {
+          const ret = taWasmModule.ccall('solve_tutte_circle', 'number',
+            ['number','number','number','number'],[posPtr,flatPositions.length,facePtr,flatFaces.length]);
+          if (ret !== 0) throw new Error("solve_tutte_circle 返回错误码: " + ret);
+          const uvSize = taWasmModule.ccall('get_ta_uv_result_size','number',[],[]);
+          const uvPtr = taWasmModule.ccall('get_ta_uv_result','number',[],[]);
+          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(taWasmModule.getValue(uvPtr+i*8,'double'));
+          taWasmModule.ccall('ta_dispose','void',[],[]);
+          const timeMs = taWasmModule.ccall('get_ta_last_time_ms','number',[],[]);
+          if (onProgress) onProgress(1,1);
+          const n = meshData.positions.length;
+          const uv = []; for (let i=0;i<n;i++) uv.push([uvs[i*2],uvs[i*2+1]]);
+          return { uv, anchors: chooseAnchorPair(meshData.positions), flippedFaceCount: countFlippedFaces(uv,meshData.faces), timeMs, method:'tutte_circle' };
+        } finally { taWasmModule._free(posPtr); taWasmModule._free(facePtr); }
+      }
+
+      async function solveTutteSquareAsync(meshData, onProgress) {
+        if (!taWasmReady) { const ok = await initTAWASMSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
+
+        const flatPositions = new Float64Array(meshData.positions.length * 3);
+        for (let i = 0; i < meshData.positions.length; i++) {
+          flatPositions[i*3]=meshData.positions[i][0]; flatPositions[i*3+1]=meshData.positions[i][1]; flatPositions[i*3+2]=meshData.positions[i][2];
+        }
+        const flatFaces = new Int32Array(meshData.faces.length * 3);
+        for (let i = 0; i < meshData.faces.length; i++) {
+          flatFaces[i*3]=meshData.faces[i][0]; flatFaces[i*3+1]=meshData.faces[i][1]; flatFaces[i*3+2]=meshData.faces[i][2];
+        }
+        if (onProgress) onProgress(0, 1);
+
+        const posPtr = taWasmModule._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) taWasmModule.setValue(posPtr+i*8, flatPositions[i], 'double');
+        const facePtr = taWasmModule._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) taWasmModule.setValue(facePtr+i*4, flatFaces[i], 'i32');
+
+        try {
+          const ret = taWasmModule.ccall('solve_tutte_square', 'number',
+            ['number','number','number','number'],[posPtr,flatPositions.length,facePtr,flatFaces.length]);
+          if (ret !== 0) throw new Error("solve_tutte_square 返回错误码: " + ret);
+          const uvSize = taWasmModule.ccall('get_ta_uv_result_size','number',[],[]);
+          const uvPtr = taWasmModule.ccall('get_ta_uv_result','number',[],[]);
+          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(taWasmModule.getValue(uvPtr+i*8,'double'));
+          taWasmModule.ccall('ta_dispose','void',[],[]);
+          const timeMs = taWasmModule.ccall('get_ta_last_time_ms','number',[],[]);
+          if (onProgress) onProgress(1,1);
+          const n = meshData.positions.length;
+          const uv = []; for (let i=0;i<n;i++) uv.push([uvs[i*2],uvs[i*2+1]]);
+          return { uv, anchors: chooseAnchorPair(meshData.positions), flippedFaceCount: countFlippedFaces(uv,meshData.faces), timeMs, method:'tutte_square' };
+        } finally { taWasmModule._free(posPtr); taWasmModule._free(facePtr); }
+      }
+
+      async function solveARAPAsync(meshData, onProgress) {
+        if (!taWasmReady) { const ok = await initTAWASMSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
+
+        const flatPositions = new Float64Array(meshData.positions.length * 3);
+        for (let i = 0; i < meshData.positions.length; i++) {
+          flatPositions[i*3]=meshData.positions[i][0]; flatPositions[i*3+1]=meshData.positions[i][1]; flatPositions[i*3+2]=meshData.positions[i][2];
+        }
+        const flatFaces = new Int32Array(meshData.faces.length * 3);
+        for (let i = 0; i < meshData.faces.length; i++) {
+          flatFaces[i*3]=meshData.faces[i][0]; flatFaces[i*3+1]=meshData.faces[i][1]; flatFaces[i*3+2]=meshData.faces[i][2];
+        }
+        if (onProgress) onProgress(0, 1);
+
+        const maxIter = parseInt(document.getElementById('arap-iter-input').value) || 30;
+
+        const posPtr = taWasmModule._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) taWasmModule.setValue(posPtr+i*8, flatPositions[i], 'double');
+        const facePtr = taWasmModule._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) taWasmModule.setValue(facePtr+i*4, flatFaces[i], 'i32');
+
+        try {
+          const ret = taWasmModule.ccall('solve_arap', 'number',
+            ['number','number','number','number','number'],[posPtr,flatPositions.length,facePtr,flatFaces.length,maxIter]);
+          if (ret !== 0) throw new Error("solve_arap 返回错误码: " + ret);
+          const uvSize = taWasmModule.ccall('get_ta_uv_result_size','number',[],[]);
+          const uvPtr = taWasmModule.ccall('get_ta_uv_result','number',[],[]);
+          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(taWasmModule.getValue(uvPtr+i*8,'double'));
+          taWasmModule.ccall('ta_dispose','void',[],[]);
+          const timeMs = taWasmModule.ccall('get_ta_last_time_ms','number',[],[]);
+          if (onProgress) onProgress(1,1);
+          const n = meshData.positions.length;
+          const uv = []; for (let i=0;i<n;i++) uv.push([uvs[i*2],uvs[i*2+1]]);
+          return { uv, anchors: chooseAnchorPair(meshData.positions), flippedFaceCount: countFlippedFaces(uv,meshData.faces), timeMs, method:'arap', maxIter };
+        } finally { taWasmModule._free(posPtr); taWasmModule._free(facePtr); }
       }
 
       function countFlippedFaces(uv, faces) {
@@ -1136,7 +1282,11 @@
         }
 
         const method = getCurrentMethod();
-        const methodLabel = method === 'bd_lscm' ? 'BD-LSCM (C=' + getBDCParam().toFixed(1) + ')' : 'LSCM';
+        let methodLabel = 'LSCM';
+        if (method === 'bd_lscm') methodLabel = 'BD-LSCM (C=' + getBDCParam().toFixed(1) + ')';
+        else if (method === 'tutte_circle') methodLabel = 'Tutte (圆形)';
+        else if (method === 'tutte_square') methodLabel = 'Tutte (正方形)';
+        else if (method === 'arap') methodLabel = 'ARAP';
 
         setBusy(true);
         setStatus("正在执行 " + methodLabel + " 求解...");
@@ -1150,6 +1300,12 @@
             unwrapResult = await solveBDLSCMAsync(currentMeshData, function(progress, total) {
               updateTimingProgress(progress, total);
             });
+          } else if (method === 'tutte_circle') {
+            unwrapResult = await solveTutteCircleAsync(currentMeshData, function() {});
+          } else if (method === 'tutte_square') {
+            unwrapResult = await solveTutteSquareAsync(currentMeshData, function() {});
+          } else if (method === 'arap') {
+            unwrapResult = await solveARAPAsync(currentMeshData, function() {});
           } else {
             unwrapResult = await solveLSCMAsync(currentMeshData, function(progress, total) {
               updateTimingProgress(progress, total);
@@ -1160,8 +1316,9 @@
           currentUnwrapUv = unwrapResult.uv;
 
           // 更新 UV 面板标签
+          const methodNames = { lscm:'LSCM', bd_lscm:'BD-LSCM', tutte_circle:'Tutte(圆)', tutte_square:'Tutte(方)', arap:'ARAP' };
           document.getElementById('uv-panel-label').textContent =
-            (unwrapResult.method === 'bd_lscm' ? 'BD-LSCM' : 'LSCM') + ' UV 网格';
+            (methodNames[unwrapResult.method] || unwrapResult.method) + ' UV 网格';
 
           clearGroup(uvScene, currentUvLines);
           clearGroup(uvScene, currentUvPins);
@@ -1178,6 +1335,7 @@
             " / " + currentMeshData.faces.length + " 三角形" +
             " / 翻转面: " + unwrapResult.flippedFaceCount;
           if (unwrapResult.C) details += " / C=" + unwrapResult.C.toFixed(1);
+          if (unwrapResult.maxIter) details += " / 迭代=" + unwrapResult.maxIter;
           showTiming(elapsedMs, details);
 
           const color = unwrapResult.flippedFaceCount === 0 ? "#89f0b6" : "#ffd38a";
@@ -1261,12 +1419,10 @@
       
       // 页面启动时预加载 WASM 求解器
       updateStartButtonState();
-      Promise.all([initWASMSolver(), initBDWASMSolver()]).then(([lscmOk, bdOk]) => {
+      Promise.all([initWASMSolver(), initBDWASMSolver(), initTAWASMSolver()]).then(([lscmOk, bdOk, taOk]) => {
         updateStartButtonState();
-        if (!lscmOk && !bdOk) {
+        if (!lscmOk && !bdOk && !taOk) {
           setStatus("所有 WASM 引擎加载失败", "#ff9d9d");
-        } else if (!bdOk) {
-          console.warn("BD-LSCM WASM 未加载，仅 LSCM 可用");
         }
       });
       
