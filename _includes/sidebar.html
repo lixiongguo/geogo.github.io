@@ -110,6 +110,35 @@
 	</ul>
 </div>
 
+<!-- 相关文章 -->
+<div class="sidebar-item sidebar-nav">
+  	<ul class="nav">
+			<li class="nav-title">相关文章</li>
+    {% assign tech_cats = "TechRelated|TechOther|TechSharing|Engineering" | split: "|" %}
+    {% for category in site.categories %}
+    {% assign cat_name = category | first %}
+    {% assign cat_count = category | last | size %}
+    {% if tech_cats contains cat_name %}
+    {% case cat_name %}
+		  {% when 'TechRelated' %}{% assign cat_display = '1. 相关文章' %}
+		  {% when 'TechOther' %}{% assign cat_display = '2. 其他文章' %}
+		  {% when 'TechSharing' %}{% assign cat_display = '3. 技术分享' %}
+		  {% when 'Engineering' %}{% assign cat_display = '4. 工程记录' %}
+		  {% else %}{% assign cat_display = cat_name %}
+    {% endcase %}
+	    <li>
+	    	<a class="nav-item algo-link-with-icon" href="{{ root_url }}/{{ site.category_dir }}#{{ cat_name }}">
+				<span class="algo-mini-icon" aria-hidden="true"></span>
+				<span class="name">{{ cat_display }}</span>
+				<span class="cat-count">({{ cat_count }})</span>
+	    	</a>
+ 		</li>
+    {% endif %}
+    {% endfor %}
+	  </nav>
+	</ul>
+</div>
+
 <!-- 算法测试: 静态链接 + 图形学 Demo -->
 <div class="sidebar-item sidebar-nav algo-section">
   	<ul class="nav">
@@ -140,7 +169,7 @@
 <div class="sidebar-item sidebar-nav">
   	<ul class="nav">
 			<li class="nav-title">阅读与生活</li>
-    {% assign life_cats = "Others|Humanities|Life" | split: "|" %}
+    {% assign life_cats = "Others|Humanities|Life|LifeReading|ProblemTech|AboutResume" | split: "|" %}
     {% for category in site.categories %}
     {% assign cat_name = category | first %}
     {% assign cat_count = category | last | size %}
@@ -149,6 +178,9 @@
 		  {% when 'Humanities' %}{% assign cat_display = '阅读与生活' %}
 		  {% when 'Life' %}{% assign cat_display = '生活随笔' %}
 		  {% when 'Others' %}{% assign cat_display = '其他' %}
+		  {% when 'LifeReading' %}{% assign cat_display = '生活与读书笔记' %}
+		  {% when 'ProblemTech' %}{% assign cat_display = 'Problems与技术笔记' %}
+		  {% when 'AboutResume' %}{% assign cat_display = '简历与关于' %}
 		  {% else %}{% assign cat_display = cat_name %}
     {% endcase %}
 	    <li>
