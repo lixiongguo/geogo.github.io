@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UV展开 - LSCM / Tutte / ARAP</title>
+  <title>UV展开 - QuadCover / LSCM / Tutte / ARAP / CETM / Ricci / CP</title>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
@@ -14,6 +14,14 @@
   <script src="assets/wasm/bd_lscm_solver.js"></script>
   <!-- WASM Tutte + ARAP Solver -->
   <script src="assets/wasm/tutte_arap_solver.js"></script>
+  <!-- WASM CETM Solver (共形因子方法) -->
+  <script src="assets/wasm/cetm_solver.js"></script>
+  <!-- WASM RicciFlow Solver (离散Ricci流) -->
+  <script src="assets/wasm/ricci_solver.js"></script>
+  <!-- WASM CirclePatterns Solver (圆填充) -->
+  <script src="assets/wasm/cp_solver.js"></script>
+  <!-- WASM QuadCover Solver -->
+  <script src="assets/wasm/quadcover_solver.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
@@ -252,7 +260,7 @@
       <div class="toolbar-left">
         <div>
           <h1>UV展开</h1>
-          <div class="desc">LSCM · Tutte · ARAP · BD-LSCM · WebAssembly + Eigen</div>
+          <div class="desc">LSCM · Tutte · ARAP · BD-LSCM · CETM · Ricci · CirclePat · WebAssembly+Eigen</div>
         </div>
       </div>
       <div class="toolbar-right">
@@ -262,6 +270,10 @@
           <option value="tutte_circle">Tutte (圆形)</option>
           <option value="tutte_square">Tutte (正方形)</option>
           <option value="arap">ARAP</option>
+          <option value="cetm">CETM (共形因子)</option>
+          <option value="ricci">Ricci 流 (圆填充)</option>
+          <option value="cp">Circle Pattern (圆图案)</option>
+          <option value="quadcover">QuadCover (四边形)</option>
           <option value="bd_lscm" selected>BD-LSCM (C=10)</option>
         </select>
         <label id="bd-c-label" style="font-size:12px;color:#8a9dd4;display:flex;align-items:center;gap:4px;">
@@ -273,6 +285,30 @@
           迭代:<input id="arap-iter-input" type="number" value="30" min="5" max="200" step="5"
             style="width:48px;padding:4px 6px;border-radius:6px;text-align:center"
             title="ARAP Local/Global 迭代次数">
+        </label>
+        <label id="cetm-opt-label" style="font-size:12px;color:#8a9dd4;display:none;align-items:center;gap:4px;">
+          优化:<select id="cetm-opt-select" style="width:70px;padding:4px 6px;border-radius:6px;font-size:11px;"
+            title="CETM 优化方法">
+            <option value="1" selected>牛顿法</option>
+            <option value="0">梯度下降</option>
+            <option value="3">LBFGS</option>
+          </select>
+        </label>
+        <label id="ricci-opt-label" style="font-size:12px;color:#8a9dd4;display:none;align-items:center;gap:4px;">
+          优化:<select id="ricci-opt-select" style="width:70px;padding:4px 6px;border-radius:6px;font-size:11px;"
+            title="Ricci Flow 优化方法">
+            <option value="1" selected>牛顿法</option>
+            <option value="0">梯度下降</option>
+            <option value="3">LBFGS</option>
+          </select>
+        </label>
+        <label id="cp-opt-label" style="font-size:12px;color:#8a9dd4;display:none;align-items:center;gap:4px;">
+          优化:<select id="cp-opt-select" style="width:70px;padding:4px 6px;border-radius:6px;font-size:11px;"
+            title="Circle Patterns 优化方法">
+            <option value="1" selected>牛顿法</option>
+            <option value="0">梯度下降</option>
+            <option value="3">LBFGS</option>
+          </select>
         </label>
         <button id="upload-btn">上传OBJ</button>
         <input id="obj-upload" class="hidden-input" type="file" accept=".obj,model/obj,text/plain">
@@ -621,6 +657,22 @@
       let taWasmReady = false;
       let taWasmLoadFailed = false;
 
+      let cetmWasmModule = null;     // CETM WASM 模块实例
+      let cetmWasmReady = false;
+      let cetmWasmLoadFailed = false;
+
+      let ricciWasmModule = null;    // RicciFlow WASM 模块实例
+      let ricciWasmReady = false;
+      let ricciWasmLoadFailed = false;
+
+      let cpWasmModule = null;       // CirclePatterns WASM 模块实例
+      let cpWasmReady = false;
+      let cpWasmLoadFailed = false;
+
+      let qcWasmModule = null;       // QuadCover WASM 模块实例
+      let qcWasmReady = false;
+      let qcWasmLoadFailed = false;
+
       /**
        * 异步加载 LSCM WASM 求解器
        */
@@ -666,6 +718,80 @@
       }
 
       /**
+       * 异步加载 CETM WASM 求解器
+       */
+      async function initCETMWASMSolver() {
+        if (cetmWasmReady) return true;
+        if (cetmWasmLoadFailed) return false;
+
+        try {
+          if (typeof CETMSolver === 'undefined') {
+            throw new Error('CETM WASM 胶水代码未加载，请确保 assets/wasm/cetm_solver.js 已部署');
+          }
+          cetmWasmModule = await CETMSolver();
+          cetmWasmReady = true;
+          console.log('WASM CETM 求解器加载成功');
+          return true;
+        } catch (err) {
+          console.error('CETM WASM 加载失败:', err);
+          cetmWasmLoadFailed = true;
+          return false;
+        }
+      }
+
+      /**
+       * 异步加载 QuadCover WASM 求解器
+       */
+      async function initQCWASMSolver() {
+        if (qcWasmReady) return true;
+        if (qcWasmLoadFailed) return false;
+        try {
+          if (typeof QuadCoverSolver === 'undefined') throw new Error('QC WASM 未加载');
+          qcWasmModule = await QuadCoverSolver();
+          qcWasmReady = true;
+          console.log('WASM QuadCover 求解器加载成功');
+          return true;
+        } catch (err) { console.error('QC WASM 加载失败:', err); qcWasmLoadFailed = true; return false; }
+      }
+
+      /**
+       * 异步加载 Circle Patterns WASM 求解器
+       */
+      async function initCPWASMSolver() {
+        if (cpWasmReady) return true;
+        if (cpWasmLoadFailed) return false;
+        try {
+          if (typeof CPSolver === 'undefined') throw new Error('CP WASM 未加载');
+          cpWasmModule = await CPSolver();
+          cpWasmReady = true;
+          console.log('WASM CirclePatterns 求解器加载成功');
+          return true;
+        } catch (err) { console.error('CP WASM 加载失败:', err); cpWasmLoadFailed = true; return false; }
+      }
+
+      /**
+       * 异步加载 Ricci Flow WASM 求解器
+       */
+      async function initRicciWASMSolver() {
+        if (ricciWasmReady) return true;
+        if (ricciWasmLoadFailed) return false;
+
+        try {
+          if (typeof RicciFlowSolver === 'undefined') {
+            throw new Error('RicciFlow WASM 胶水代码未加载');
+          }
+          ricciWasmModule = await RicciFlowSolver();
+          ricciWasmReady = true;
+          console.log('WASM RicciFlow 求解器加载成功');
+          return true;
+        } catch (err) {
+          console.error('RicciFlow WASM 加载失败:', err);
+          ricciWasmLoadFailed = true;
+          return false;
+        }
+      }
+
+      /**
        * 异步加载 Tutte + ARAP WASM 求解器
        */
       async function initTAWASMSolver() {
@@ -698,6 +824,24 @@
         return (isNaN(v) || v < 1.01) ? 10.0 : v;
       }
 
+      /** 获取 CETM 优化方法参数 */
+      function getCETMOptScheme() {
+        const v = parseInt(document.getElementById('cetm-opt-select').value);
+        return (v === 0 || v === 1 || v === 3) ? v : 1;
+      }
+
+      /** 获取 Ricci Flow 优化方法参数 */
+      function getRicciOptScheme() {
+        const v = parseInt(document.getElementById('ricci-opt-select').value);
+        return (v === 0 || v === 1 || v === 3) ? v : 1;
+      }
+
+      /** 获取 Circle Patterns 优化方法参数 */
+      function getCPOptScheme() {
+        const v = parseInt(document.getElementById('cp-opt-select').value);
+        return (v === 0 || v === 1 || v === 3) ? v : 1;
+      }
+
       /**
        * 更新按钮状态，显示 WASM 引擎加载状态
        */
@@ -709,14 +853,22 @@
         const lscmFailed = (method === 'lscm' && wasmLoadFailed);
         const bdFailed   = (method === 'bd_lscm' && bdWasmLoadFailed);
         const taFailed   = ((method === 'tutte_circle' || method === 'tutte_square' || method === 'arap') && taWasmLoadFailed);
+        const cetmFailed = (method === 'cetm' && cetmWasmLoadFailed);
+        const ricciFailed = (method === 'ricci' && ricciWasmLoadFailed);
+        const cpFailed = (method === 'cp' && cpWasmLoadFailed);
+        const qcFailed = (method === 'quadcover' && qcWasmLoadFailed);
         const lscmLoading = (method === 'lscm' && !wasmReady && !wasmLoadFailed);
         const bdLoading   = (method === 'bd_lscm' && !bdWasmReady && !bdWasmLoadFailed);
         const taLoading   = ((method === 'tutte_circle' || method === 'tutte_square' || method === 'arap') && !taWasmReady && !taWasmLoadFailed);
+        const cetmLoading = (method === 'cetm' && !cetmWasmReady && !cetmWasmLoadFailed);
+        const ricciLoading = (method === 'ricci' && !ricciWasmReady && !ricciWasmLoadFailed);
+        const cpLoading = (method === 'cp' && !cpWasmReady && !cpWasmLoadFailed);
+        const qcLoading = (method === 'quadcover' && !qcWasmReady && !qcWasmLoadFailed);
 
-        if (lscmFailed || bdFailed || taFailed) {
+        if (lscmFailed || bdFailed || taFailed || cetmFailed || ricciFailed || cpFailed || qcFailed) {
           btn.textContent = '引擎加载失败';
           btn.disabled = true;
-        } else if (lscmLoading || bdLoading || taLoading) {
+        } else if (lscmLoading || bdLoading || taLoading || cetmLoading || ricciLoading || cpLoading || qcLoading) {
           btn.textContent = '引擎加载中...';
           btn.disabled = true;
         } else {
@@ -729,10 +881,16 @@
       document.getElementById('method-select').addEventListener('change', function() {
         const isBD = this.value === 'bd_lscm';
         const isARAP = this.value === 'arap';
+        const isCETM = this.value === 'cetm';
+        const isRicci = this.value === 'ricci';
+        const isCP = this.value === 'cp';
         document.getElementById('bd-c-label').style.display = isBD ? 'flex' : 'none';
         document.getElementById('bd-c-input').disabled = !isBD;
         document.getElementById('bd-c-input').style.opacity = isBD ? '1' : '0.4';
         document.getElementById('arap-iter-label').style.display = isARAP ? 'flex' : 'none';
+        document.getElementById('cetm-opt-label').style.display = isCETM ? 'flex' : 'none';
+        document.getElementById('ricci-opt-label').style.display = isRicci ? 'flex' : 'none';
+        document.getElementById('cp-opt-label').style.display = isCP ? 'flex' : 'none';
         updateStartButtonState();
       });
 
@@ -913,6 +1071,266 @@
         if (onProgress) onProgress(faces.length, faces.length);
 
         return { uv: uv, anchors: anchors, flippedFaceCount: countFlippedFaces(uv, faces), timeMs: result.time_ms || 0, method: 'bd_lscm', C: C };
+      }
+
+      // ==================== WASM 驱动的 CETM 求解 ====================
+
+      async function solveCETMAsync(meshData, onProgress) {
+        const vertices = meshData.positions;
+        const faces = meshData.faces;
+        if (vertices.length < 3 || faces.length < 1) {
+          throw new Error("模型顶点或三角形数量不足");
+        }
+
+        if (!cetmWasmReady) {
+          const loaded = await initCETMWASMSolver();
+          if (!loaded) throw new Error("CETM WASM 求解器初始化失败");
+        }
+
+        if (onProgress) onProgress(0, faces.length);
+
+        const flatPositions = new Float64Array(vertices.length * 3);
+        for (let i = 0; i < vertices.length; i++) {
+          flatPositions[i * 3] = vertices[i][0];
+          flatPositions[i * 3 + 1] = vertices[i][1];
+          flatPositions[i * 3 + 2] = vertices[i][2];
+        }
+
+        const flatFaces = new Int32Array(faces.length * 3);
+        for (let i = 0; i < faces.length; i++) {
+          flatFaces[i * 3] = faces[i][0];
+          flatFaces[i * 3 + 1] = faces[i][1];
+          flatFaces[i * 3 + 2] = faces[i][2];
+        }
+
+        if (onProgress) onProgress(faces.length * 0.1, faces.length);
+
+        const optScheme = getCETMOptScheme();
+
+        let result;
+        try {
+          const posPtr = cetmWasmModule._malloc(flatPositions.length * 8);
+          for (let i = 0; i < flatPositions.length; i++) {
+            cetmWasmModule.setValue(posPtr + i * 8, flatPositions[i], 'double');
+          }
+
+          const facePtr = cetmWasmModule._malloc(flatFaces.length * 4);
+          for (let i = 0; i < flatFaces.length; i++) {
+            cetmWasmModule.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+          }
+
+          try {
+            const ret = cetmWasmModule.ccall('solve_cetm', 'number',
+              ['number', 'number', 'number', 'number', 'number'],
+              [posPtr, flatPositions.length, facePtr, flatFaces.length, optScheme]
+            );
+
+            if (ret !== 0) throw new Error("WASM solve_cetm 返回错误码: " + ret);
+
+            const uvSize = cetmWasmModule.ccall('get_cetm_uv_result_size', 'number', [], []);
+            const uvPtr = cetmWasmModule.ccall('get_cetm_uv_result', 'number', [], []);
+
+            const uvs = [];
+            for (let i = 0; i < uvSize; i++) {
+              uvs.push(cetmWasmModule.getValue(uvPtr + i * 8, 'double'));
+            }
+
+            cetmWasmModule.ccall('cetm_dispose', 'void', [], []);
+
+            result = { uv: uvs, time_ms: cetmWasmModule.ccall('get_cetm_last_time_ms', 'number', [], []) };
+          } finally {
+            cetmWasmModule._free(posPtr);
+            cetmWasmModule._free(facePtr);
+          }
+        } catch (err) {
+          console.error('CETM WASM 调用失败:', err.message, err.stack);
+          throw new Error("WASM CETM 求解失败: " + err.message);
+        }
+
+        if (onProgress) onProgress(faces.length * 0.9, faces.length);
+
+        const uvArray = result.uv;
+        const n = vertices.length;
+        const uv = new Array(n);
+        for (let i = 0; i < n; i++) {
+          uv[i] = [uvArray[i * 2], uvArray[i * 2 + 1]];
+        }
+
+        if (onProgress) onProgress(faces.length, faces.length);
+
+        const anchors = chooseAnchorPair(vertices);
+        const optNames = { 0: '梯度下降', 1: '牛顿法', 3: 'LBFGS' };
+        return { uv: uv, anchors: anchors, flippedFaceCount: countFlippedFaces(uv, faces), timeMs: result.time_ms || 0, method: 'cetm', optScheme: optNames[optScheme] || '牛顿法' };
+      }
+
+      // ==================== WASM 驱动的 Ricci Flow 求解 ====================
+
+      async function solveRicciAsync(meshData, onProgress) {
+        const vertices = meshData.positions;
+        const faces = meshData.faces;
+        if (vertices.length < 3 || faces.length < 1) {
+          throw new Error("模型顶点或三角形数量不足");
+        }
+
+        if (!ricciWasmReady) {
+          const loaded = await initRicciWASMSolver();
+          if (!loaded) throw new Error("RicciFlow WASM 求解器初始化失败");
+        }
+
+        if (onProgress) onProgress(0, faces.length);
+
+        const flatPositions = new Float64Array(vertices.length * 3);
+        for (let i = 0; i < vertices.length; i++) {
+          flatPositions[i * 3] = vertices[i][0];
+          flatPositions[i * 3 + 1] = vertices[i][1];
+          flatPositions[i * 3 + 2] = vertices[i][2];
+        }
+
+        const flatFaces = new Int32Array(faces.length * 3);
+        for (let i = 0; i < faces.length; i++) {
+          flatFaces[i * 3] = faces[i][0];
+          flatFaces[i * 3 + 1] = faces[i][1];
+          flatFaces[i * 3 + 2] = faces[i][2];
+        }
+
+        if (onProgress) onProgress(faces.length * 0.1, faces.length);
+
+        const optScheme = getRicciOptScheme();
+
+        let result;
+        try {
+          const posPtr = ricciWasmModule._malloc(flatPositions.length * 8);
+          for (let i = 0; i < flatPositions.length; i++) {
+            ricciWasmModule.setValue(posPtr + i * 8, flatPositions[i], 'double');
+          }
+
+          const facePtr = ricciWasmModule._malloc(flatFaces.length * 4);
+          for (let i = 0; i < flatFaces.length; i++) {
+            ricciWasmModule.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+          }
+
+          try {
+            const ret = ricciWasmModule.ccall('solve_ricci', 'number',
+              ['number', 'number', 'number', 'number', 'number'],
+              [posPtr, flatPositions.length, facePtr, flatFaces.length, optScheme]
+            );
+
+            if (ret !== 0) throw new Error("WASM solve_ricci 返回错误码: " + ret);
+
+            const uvSize = ricciWasmModule.ccall('get_ricci_uv_result_size', 'number', [], []);
+            const uvPtr = ricciWasmModule.ccall('get_ricci_uv_result', 'number', [], []);
+
+            const uvs = [];
+            for (let i = 0; i < uvSize; i++) {
+              uvs.push(ricciWasmModule.getValue(uvPtr + i * 8, 'double'));
+            }
+
+            ricciWasmModule.ccall('ricci_dispose', 'void', [], []);
+
+            result = { uv: uvs, time_ms: ricciWasmModule.ccall('get_ricci_last_time_ms', 'number', [], []) };
+          } finally {
+            ricciWasmModule._free(posPtr);
+            ricciWasmModule._free(facePtr);
+          }
+        } catch (err) {
+          console.error('RicciFlow WASM 调用失败:', err.message, err.stack);
+          throw new Error("WASM RicciFlow 求解失败: " + err.message);
+        }
+
+        if (onProgress) onProgress(faces.length * 0.9, faces.length);
+
+        const uvArray = result.uv;
+        const n = vertices.length;
+        const uv = new Array(n);
+        for (let i = 0; i < n; i++) {
+          uv[i] = [uvArray[i * 2], uvArray[i * 2 + 1]];
+        }
+
+        if (onProgress) onProgress(faces.length, faces.length);
+
+        const anchors = chooseAnchorPair(vertices);
+        const optNames = { 0: '梯度下降', 1: '牛顿法', 3: 'LBFGS' };
+        return { uv: uv, anchors: anchors, flippedFaceCount: countFlippedFaces(uv, faces), timeMs: result.time_ms || 0, method: 'ricci', optScheme: optNames[optScheme] || '牛顿法' };
+      }
+
+      // ==================== WASM 驱动的 Circle Patterns 求解 ====================
+
+      async function solveCPAsync(meshData, onProgress) {
+        const vertices = meshData.positions, faces = meshData.faces;
+        if (vertices.length < 3 || faces.length < 1) throw new Error("顶点或三角形不足");
+        if (!cpWasmReady) { const ok = await initCPWASMSolver(); if (!ok) throw new Error("CP WASM 初始化失败"); }
+        if (onProgress) onProgress(0, faces.length);
+
+        const flatPos = new Float64Array(vertices.length*3);
+        for (let i=0;i<vertices.length;i++){flatPos[i*3]=vertices[i][0];flatPos[i*3+1]=vertices[i][1];flatPos[i*3+2]=vertices[i][2];}
+        const flatF = new Int32Array(faces.length*3);
+        for (let i=0;i<faces.length;i++){flatF[i*3]=faces[i][0];flatF[i*3+1]=faces[i][1];flatF[i*3+2]=faces[i][2];}
+        if (onProgress) onProgress(faces.length*0.1, faces.length);
+
+        const opt = getCPOptScheme();
+
+        let result;
+        try {
+          const pp = cpWasmModule._malloc(flatPos.length*8);
+          for (let i=0;i<flatPos.length;i++) cpWasmModule.setValue(pp+i*8,flatPos[i],'double');
+          const fp = cpWasmModule._malloc(flatF.length*4);
+          for (let i=0;i<flatF.length;i++) cpWasmModule.setValue(fp+i*4,flatF[i],'i32');
+          try {
+            const ret = cpWasmModule.ccall('solve_cp','number',
+              ['number','number','number','number','number','number','number','number','number'],
+              [pp,flatPos.length,fp,flatF.length,opt,0,0,0,0]);
+            if (ret!==0) throw new Error("solve_cp 错误: "+ret);
+            const sz=cpWasmModule.ccall('get_cp_uv_result_size','number',[],[]);
+            const uvp=cpWasmModule.ccall('get_cp_uv_result','number',[],[]);
+            const uvs=[];for(let i=0;i<sz;i++)uvs.push(cpWasmModule.getValue(uvp+i*8,'double'));
+            cpWasmModule.ccall('cp_dispose','void',[],[]);
+            result={uv:uvs,time_ms:cpWasmModule.ccall('get_cp_last_time_ms','number',[],[])};
+          }finally{cpWasmModule._free(pp);cpWasmModule._free(fp);}
+        }catch(err){throw new Error("CP WASM 失败: "+err.message);}
+
+        if(onProgress)onProgress(faces.length*0.9,faces.length);
+        const uvA=result.uv,n=vertices.length,uv=new Array(n);
+        for(let i=0;i<n;i++)uv[i]=[uvA[i*2],uvA[i*2+1]];
+        if(onProgress)onProgress(faces.length,faces.length);
+        const anchors=chooseAnchorPair(vertices);
+        const optNames={0:'梯度下降',1:'牛顿法',3:'LBFGS'};
+        return{uv,anchors,flippedFaceCount:countFlippedFaces(uv,faces),timeMs:result.time_ms||0,method:'cp',optScheme:optNames[opt]||'牛顿法'};
+      }
+
+      // ==================== WASM 驱动的 QuadCover 求解 ====================
+
+      async function solveQCAsync(meshData, onProgress) {
+        const vertices=meshData.positions,faces=meshData.faces;
+        if(vertices.length<3||faces.length<1)throw new Error("顶点或三角形不足");
+        if(!qcWasmReady){const ok=await initQCWASMSolver();if(!ok)throw new Error("QC WASM 初始化失败");}
+        if(onProgress)onProgress(0,faces.length);
+        const flatPos=new Float64Array(vertices.length*3);
+        for(let i=0;i<vertices.length;i++){flatPos[i*3]=vertices[i][0];flatPos[i*3+1]=vertices[i][1];flatPos[i*3+2]=vertices[i][2];}
+        const flatF=new Int32Array(faces.length*3);
+        for(let i=0;i<faces.length;i++){flatF[i*3]=faces[i][0];flatF[i*3+1]=faces[i][1];flatF[i*3+2]=faces[i][2];}
+        if(onProgress)onProgress(faces.length*0.2,faces.length);
+        let result;
+        try{
+          const pp=qcWasmModule._malloc(flatPos.length*8);
+          for(let i=0;i<flatPos.length;i++)qcWasmModule.setValue(pp+i*8,flatPos[i],'double');
+          const fp=qcWasmModule._malloc(flatF.length*4);
+          for(let i=0;i<flatF.length;i++)qcWasmModule.setValue(fp+i*4,flatF[i],'i32');
+          try{
+            const ret=qcWasmModule.ccall('solve_qc','number',['number','number','number','number'],[pp,flatPos.length,fp,flatF.length]);
+            if(ret!==0)throw new Error("solve_qc 错误: "+ret);
+            const sz=qcWasmModule.ccall('get_qc_uv_result_size','number',[],[]);
+            const uvp=qcWasmModule.ccall('get_qc_uv_result','number',[],[]);
+            const uvs=[];for(let i=0;i<sz;i++)uvs.push(qcWasmModule.getValue(uvp+i*8,'double'));
+            qcWasmModule.ccall('qc_dispose','void',[],[]);
+            result={uv:uvs,time_ms:qcWasmModule.ccall('get_qc_last_time_ms','number',[],[])};
+          }finally{qcWasmModule._free(pp);qcWasmModule._free(fp);}
+        }catch(err){throw new Error("QuadCover WASM 失败: "+err.message);}
+        if(onProgress)onProgress(faces.length*0.9,faces.length);
+        const uvA=result.uv,n=vertices.length,uv=new Array(n);
+        for(let i=0;i<n;i++)uv[i]=[uvA[i*2],uvA[i*2+1]];
+        if(onProgress)onProgress(faces.length,faces.length);
+        const anchors=chooseAnchorPair(vertices);
+        return{uv,anchors,flippedFaceCount:countFlippedFaces(uv,faces),timeMs:result.time_ms||0,method:'quadcover'};
       }
 
       // ==================== WASM 驱动的 Tutte + ARAP 求解 ====================
@@ -1481,6 +1899,10 @@
         else if (method === 'tutte_circle') methodLabel = 'Tutte (圆形)';
         else if (method === 'tutte_square') methodLabel = 'Tutte (正方形)';
         else if (method === 'arap') methodLabel = 'ARAP';
+        else if (method === 'cetm') methodLabel = 'CETM (共形因子)';
+        else if (method === 'ricci') methodLabel = 'Ricci 流 (圆填充)';
+        else if (method === 'cp') methodLabel = 'Circle Pattern (圆图案)';
+        else if (method === 'quadcover') methodLabel = 'QuadCover (四边形)';
 
         setBusy(true);
         setStatus("正在执行 " + methodLabel + " 求解...");
@@ -1500,6 +1922,22 @@
             unwrapResult = await solveTutteSquareAsync(currentMeshData, function() {});
           } else if (method === 'arap') {
             unwrapResult = await solveARAPAsync(currentMeshData, function() {});
+          } else if (method === 'cetm') {
+            unwrapResult = await solveCETMAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
+          } else if (method === 'ricci') {
+            unwrapResult = await solveRicciAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
+          } else if (method === 'cp') {
+            unwrapResult = await solveCPAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
+          } else if (method === 'quadcover') {
+            unwrapResult = await solveQCAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
           } else {
             unwrapResult = await solveLSCMAsync(currentMeshData, function(progress, total) {
               updateTimingProgress(progress, total);
@@ -1515,7 +1953,7 @@
           document.getElementById('distortion-btn').textContent = '显示扭曲';
 
           // 更新 UV 面板标签
-          const methodNames = { lscm:'LSCM', bd_lscm:'BD-LSCM', tutte_circle:'Tutte(圆)', tutte_square:'Tutte(方)', arap:'ARAP' };
+          const methodNames = { lscm:'LSCM', bd_lscm:'BD-LSCM', tutte_circle:'Tutte(圆)', tutte_square:'Tutte(方)', arap:'ARAP', cetm:'CETM', ricci:'Ricci', cp:'CirclePat', quadcover:'QuadCover' };
           document.getElementById('uv-panel-label').textContent =
             (methodNames[unwrapResult.method] || unwrapResult.method) + ' UV 网格';
 
@@ -1534,6 +1972,7 @@
             " / " + currentMeshData.faces.length + " 三角形";
           if (unwrapResult.C) details += " / C=" + unwrapResult.C.toFixed(1);
           if (unwrapResult.maxIter) details += " / 迭代=" + unwrapResult.maxIter;
+          if (unwrapResult.optScheme) details += " / " + unwrapResult.optScheme;
           showTiming(elapsedMs, details, unwrapResult.flippedFaceCount);
 
           const color = unwrapResult.flippedFaceCount === 0 ? "#89f0b6" : "#ffd38a";
@@ -1620,9 +2059,9 @@
       
       // 页面启动时预加载 WASM 求解器
       updateStartButtonState();
-      Promise.all([initWASMSolver(), initBDWASMSolver(), initTAWASMSolver()]).then(([lscmOk, bdOk, taOk]) => {
+      Promise.all([initWASMSolver(), initBDWASMSolver(), initTAWASMSolver(), initCETMWASMSolver(), initRicciWASMSolver(), initCPWASMSolver(), initQCWASMSolver()]).then(([lscmOk, bdOk, taOk, cetmOk, ricciOk, cpOk, qcOk]) => {
         updateStartButtonState();
-        if (!lscmOk && !bdOk && !taOk) {
+        if (!lscmOk && !bdOk && !taOk && !cetmOk && !ricciOk && !cpOk && !qcOk) {
           setStatus("所有 WASM 引擎加载失败", "#ff9d9d");
         }
       });
