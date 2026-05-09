@@ -22,6 +22,10 @@
   <script src="assets/wasm/cp_solver.js"></script>
   <!-- WASM QuadCover Solver -->
   <script src="assets/wasm/quadcover_solver.js"></script>
+  <!-- WASM MIQ Solver -->
+  <script src="assets/wasm/miq_solver.js"></script>
+  <!-- WASM Holomorphic 1-Form Solver -->
+  <script src="assets/wasm/holo_solver.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
@@ -274,6 +278,8 @@
           <option value="ricci">Ricci 流 (圆填充)</option>
           <option value="cp">Circle Pattern (圆图案)</option>
           <option value="quadcover">QuadCover (四边形)</option>
+          <option value="miq">MIQ (混合整数四边形)</option>
+          <option value="holo">全纯1-形式 (共形)</option>
           <option value="bd_lscm" selected>BD-LSCM (C=10)</option>
         </select>
         <label id="bd-c-label" style="font-size:12px;color:#8a9dd4;display:flex;align-items:center;gap:4px;">
@@ -673,6 +679,14 @@
       let qcWasmReady = false;
       let qcWasmLoadFailed = false;
 
+      let miqWasmModule = null;      // MIQ WASM 模块实例
+      let miqWasmReady = false;
+      let miqWasmLoadFailed = false;
+
+      let holoWasmModule = null;     // Holomorphic 1-Form WASM
+      let holoWasmReady = false;
+      let holoWasmLoadFailed = false;
+
       /**
        * 异步加载 LSCM WASM 求解器
        */
@@ -739,6 +753,18 @@
         }
       }
 
+      async function initMIQWASMSolver() {
+        if(miqWasmReady)return true;if(miqWasmLoadFailed)return false;
+        try{if(typeof MIQSolver==='undefined')throw new Error('MIQ WASM未加载');
+        miqWasmModule=await MIQSolver();miqWasmReady=true;return true;
+        }catch(e){miqWasmLoadFailed=true;return false;}
+      }
+      async function initHoloWASMSolver() {
+        if(holoWasmReady)return true;if(holoWasmLoadFailed)return false;
+        try{if(typeof HoloSolver==='undefined')throw new Error('Holo WASM未加载');
+        holoWasmModule=await HoloSolver();holoWasmReady=true;return true;
+        }catch(e){holoWasmLoadFailed=true;return false;}
+      }
       /**
        * 异步加载 QuadCover WASM 求解器
        */
@@ -857,6 +883,7 @@
         const ricciFailed = (method === 'ricci' && ricciWasmLoadFailed);
         const cpFailed = (method === 'cp' && cpWasmLoadFailed);
         const qcFailed = (method === 'quadcover' && qcWasmLoadFailed);
+        const miqFailed = (method === 'miq' && miqWasmLoadFailed);
         const lscmLoading = (method === 'lscm' && !wasmReady && !wasmLoadFailed);
         const bdLoading   = (method === 'bd_lscm' && !bdWasmReady && !bdWasmLoadFailed);
         const taLoading   = ((method === 'tutte_circle' || method === 'tutte_square' || method === 'arap') && !taWasmReady && !taWasmLoadFailed);
@@ -864,11 +891,12 @@
         const ricciLoading = (method === 'ricci' && !ricciWasmReady && !ricciWasmLoadFailed);
         const cpLoading = (method === 'cp' && !cpWasmReady && !cpWasmLoadFailed);
         const qcLoading = (method === 'quadcover' && !qcWasmReady && !qcWasmLoadFailed);
+        const miqLoading = (method === 'miq' && !miqWasmReady && !miqWasmLoadFailed);
 
-        if (lscmFailed || bdFailed || taFailed || cetmFailed || ricciFailed || cpFailed || qcFailed) {
+        if (lscmFailed || bdFailed || taFailed || cetmFailed || ricciFailed || cpFailed || qcFailed || miqFailed) {
           btn.textContent = '引擎加载失败';
           btn.disabled = true;
-        } else if (lscmLoading || bdLoading || taLoading || cetmLoading || ricciLoading || cpLoading || qcLoading) {
+        } else if (lscmLoading || bdLoading || taLoading || cetmLoading || ricciLoading || cpLoading || qcLoading || miqLoading) {
           btn.textContent = '引擎加载中...';
           btn.disabled = true;
         } else {
@@ -1331,6 +1359,40 @@
         if(onProgress)onProgress(faces.length,faces.length);
         const anchors=chooseAnchorPair(vertices);
         return{uv,anchors,flippedFaceCount:countFlippedFaces(uv,faces),timeMs:result.time_ms||0,method:'quadcover'};
+      }
+
+      // ==================== WASM 驱动的 MIQ 求解 ====================
+      async function solveMIQAsync(meshData,onProgress){
+        const v=meshData.positions,f=meshData.faces;
+        if(v.length<3||f.length<1)throw new Error("顶点或三角形不足");
+        if(!miqWasmReady){if(!await initMIQWASMSolver())throw new Error("MIQ WASM失败");}
+        if(onProgress)onProgress(0,f.length);
+        const fp=new Float64Array(v.length*3);
+        for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2];}
+        const ff=new Int32Array(f.length*3);
+        for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2];}
+        if(onProgress)onProgress(f.length*0.2,f.length);
+        let r;
+        try{
+          const pp=miqWasmModule._malloc(fp.length*8);
+          for(let i=0;i<fp.length;i++)miqWasmModule.setValue(pp+i*8,fp[i],'double');
+          const fpt=miqWasmModule._malloc(ff.length*4);
+          for(let i=0;i<ff.length;i++)miqWasmModule.setValue(fpt+i*4,ff[i],'i32');
+          try{
+            if(miqWasmModule.ccall('solve_miq','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length])!==0)
+              throw new Error("MIQ solve失败");
+            const sz=miqWasmModule.ccall('get_miq_uv_result_size','number',[],[]);
+            const up=miqWasmModule.ccall('get_miq_uv_result','number',[],[]);
+            const us=[];for(let i=0;i<sz;i++)us.push(miqWasmModule.getValue(up+i*8,'double'));
+            miqWasmModule.ccall('miq_dispose','void',[],[]);
+            r={uv:us,time_ms:miqWasmModule.ccall('get_miq_last_time_ms','number',[],[])};
+          }finally{miqWasmModule._free(pp);miqWasmModule._free(fpt);}
+        }catch(e){throw new Error("MIQ WASM失败: "+e.message);}
+        if(onProgress)onProgress(f.length*0.9,f.length);
+        const ua=r.uv,n=v.length,uv=new Array(n);
+        for(let i=0;i<n;i++)uv[i]=[ua[i*2],ua[i*2+1]];
+        if(onProgress)onProgress(f.length,f.length);
+        return{uv,anchors:chooseAnchorPair(v),flippedFaceCount:countFlippedFaces(uv,f),timeMs:r.time_ms||0,method:'miq'};
       }
 
       // ==================== WASM 驱动的 Tutte + ARAP 求解 ====================
@@ -1903,6 +1965,7 @@
         else if (method === 'ricci') methodLabel = 'Ricci 流 (圆填充)';
         else if (method === 'cp') methodLabel = 'Circle Pattern (圆图案)';
         else if (method === 'quadcover') methodLabel = 'QuadCover (四边形)';
+        else if (method === 'miq') methodLabel = 'MIQ (混合整数四边形)';
 
         setBusy(true);
         setStatus("正在执行 " + methodLabel + " 求解...");
@@ -1938,6 +2001,10 @@
             unwrapResult = await solveQCAsync(currentMeshData, function(p, t) {
               updateTimingProgress(p, t);
             });
+          } else if (method === 'miq') {
+            unwrapResult = await solveMIQAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
           } else {
             unwrapResult = await solveLSCMAsync(currentMeshData, function(progress, total) {
               updateTimingProgress(progress, total);
@@ -1953,7 +2020,7 @@
           document.getElementById('distortion-btn').textContent = '显示扭曲';
 
           // 更新 UV 面板标签
-          const methodNames = { lscm:'LSCM', bd_lscm:'BD-LSCM', tutte_circle:'Tutte(圆)', tutte_square:'Tutte(方)', arap:'ARAP', cetm:'CETM', ricci:'Ricci', cp:'CirclePat', quadcover:'QuadCover' };
+          const methodNames = { lscm:'LSCM', bd_lscm:'BD-LSCM', tutte_circle:'Tutte(圆)', tutte_square:'Tutte(方)', arap:'ARAP', cetm:'CETM', ricci:'Ricci', cp:'CirclePat', quadcover:'QuadCover', miq:'MIQ' };
           document.getElementById('uv-panel-label').textContent =
             (methodNames[unwrapResult.method] || unwrapResult.method) + ' UV 网格';
 
@@ -2059,9 +2126,9 @@
       
       // 页面启动时预加载 WASM 求解器
       updateStartButtonState();
-      Promise.all([initWASMSolver(), initBDWASMSolver(), initTAWASMSolver(), initCETMWASMSolver(), initRicciWASMSolver(), initCPWASMSolver(), initQCWASMSolver()]).then(([lscmOk, bdOk, taOk, cetmOk, ricciOk, cpOk, qcOk]) => {
+      Promise.all([initWASMSolver(), initBDWASMSolver(), initTAWASMSolver(), initCETMWASMSolver(), initRicciWASMSolver(), initCPWASMSolver(), initQCWASMSolver(), initMIQWASMSolver()]).then(([lscmOk, bdOk, taOk, cetmOk, ricciOk, cpOk, qcOk, miqOk]) => {
         updateStartButtonState();
-        if (!lscmOk && !bdOk && !taOk && !cetmOk && !ricciOk && !cpOk && !qcOk) {
+        if (!lscmOk && !bdOk && !taOk && !cetmOk && !ricciOk && !cpOk && !qcOk && !miqOk) {
           setStatus("所有 WASM 引擎加载失败", "#ff9d9d");
         }
       });
