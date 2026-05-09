@@ -6,17 +6,17 @@ categories: [TechOther]
 
 ### 几何变形
 
-![image-20251218193137414](..\..\..\imgs\image-20251218193137414.png)
+![image-20251218193137414](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251218193137414.png)
 
-![image-20251218193200146](..\..\..\imgs\image-20251218193200146.png)
+![image-20251218193200146](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251218193200146.png)
 
-![image-20251218195349928](..\..\..\imgs\image-20251218195349928.png)
+![image-20251218195349928](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251218195349928.png)
 
 
 
 **Thin-Shell 能量**
 
-![image-20251218193348048](..\..\..\imgs\image-20251218193348048.png)
+![image-20251218193348048](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251218193348048.png)
 
 
 

@@ -19,7 +19,7 @@ categories: [Parameterization, TechOther]
 
 下图给出了整篇方法的整体流程：
 
-![image-20250923104719017](..\..\..\imgs\image-20250923104719017.png)
+![image-20250923104719017](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250923104719017.png)
 
 图中的流程可以概括为：
 
@@ -64,7 +64,7 @@ categories: [Parameterization, TechOther]
 
 这一点由下面这个引理给出：
 
-![image-20250923105418255](..\..\..\imgs\image-20250923105418255.png)
+![image-20250923105418255](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250923105418255.png)
 
 图中的结论可以直观理解为：
 
@@ -110,7 +110,7 @@ $$
 
 一旦我们把问题转移到变形域上的 cross field，就需要定义“什么样的 cross field 是平滑的”。
 
-![image-20250923105930362](..\..\..\imgs\image-20250923105930362.png)
+![image-20250923105930362](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250923105930362.png)
 
 这张图表达的核心是：  
 如果两个相邻三角形上的 cross 在统一参考系下差异很小，那么这个离散 cross field 就是 smooth 的。
@@ -133,7 +133,7 @@ $$
 
 下面这张图给出了核心能量：
 
-![image-20250923110416518](..\..\..\imgs\image-20250923110416518.png)
+![image-20250923110416518](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250923110416518.png)
 
 这个能量的形式和 ARAP 一类形变能量非常接近。  
 其目标是让每个三角形的变形 Jacobian
@@ -186,7 +186,7 @@ $$
 
 这类能量通常不能一步直接解出，所以文中采用了 `BCD`，也就是 `block coordinate descent`。
 
-![image-20250923110121214](..\..\..\imgs\image-20250923110121214.png)
+![image-20250923110121214](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250923110121214.png)
 
 图中给出的意思是：
 

@@ -39,13 +39,13 @@ OUTPUT_MANIFEST = PROJECT_ROOT / "scripts" / "oss_upload_manifest.txt"
 # Markdown 图片：![alt](path)
 # 匹配不以 http 开头的路径，且包含 imgs/ 的引用
 MD_IMG_PATTERN = re.compile(
-    r'(!\[[^\]]*\])\(([^)]*imgs/[^)]+)\)',
+    r'(!\[[^\]]*\])\(([^)]*imgs[/\\][^)]+)\)',
     re.IGNORECASE
 )
 
 # HTML <img> 标签：src 属性包含本地路径
 HTML_IMG_PATTERN = re.compile(
-    r'(<img\s[^>]*src=["\'])([^"\']*imgs/[^"\']+)(["\'][^>]*>)',
+    r'(<img\s[^>]*src=["\'])([^"\']*imgs[/\\][^"\']+)(["\'][^>]*>)',
     re.IGNORECASE
 )
 

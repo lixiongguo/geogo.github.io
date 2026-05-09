@@ -1,107 +1,291 @@
 #!/usr/bin/env python3
-"""参数化专著 .md → PDF（matplotlib 渲染数学公式 + 缓存）"""
-import os, re, io, hashlib
+"""参数化专著 .md → PDF（pandoc + tectonic，LaTeX 数学渲染 + 图片）
+
+用法：
+    python3 build_monograph_pdf.py             # 含图片（会下载/缓存到 _pdf_images/）
+    python3 build_monograph_pdf.py --no-img    # 不含图片，快速生成
+"""
+import os, re, subprocess, sys, hashlib, urllib.request, time
 from pathlib import Path
-from markdown import markdown
-from weasyprint import HTML
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 ROOT = Path(__file__).resolve().parent.parent
 POSTS_DIR = ROOT / "_posts" / "1.Parameterization"
 OUTPUT = ROOT / "参数化算法专著.pdf"
-CACHE_DIR = ROOT / "scripts" / ".math_cache"
-CACHE_DIR.mkdir(exist_ok=True)
+TMP = ROOT / "scripts" / "_monograph_combined.md"
+IMG_DIR = ROOT / "scripts" / "_pdf_images"
 
-# 全局重用单个 figure
-_fig = None
+# ═══════════════════════════════════════════════════════════════
+# 图片下载
+# ═══════════════════════════════════════════════════════════════
 
-def _get_fig():
-    global _fig
-    if _fig is None:
-        _fig = plt.figure(figsize=(0.01, 0.01))
-    return _fig
+def extract_all_image_urls(files):
+    """从所有 md 文件中提取远程图片 URL"""
+    urls = set()
+    for fp in files:
+        text = fp.read_text('utf-8')
+        text = re.sub(r'^---.*?\n---\n', '', text, flags=re.DOTALL, count=1)
+        for m in re.finditer(r'!\[([^\]]*)\]\((https?://[^)]+)\)', text):
+            urls.add(m.group(2))
+    return sorted(urls)
 
-def render_svg(latex, display=False):
-    """渲染单个 LaTeX 公式 → SVG 字符串（带缓存）"""
-    key = hashlib.md5(f"{latex}|{display}".encode()).hexdigest()
-    cf = CACHE_DIR / f"{key}.svg"
-    if cf.exists():
-        return cf.read_text()
-    
+def url_to_fname(url):
+    """将 URL 映射为安全的本地文件名"""
+    # 取 URL 路径最后一段
+    path_part = url.rsplit('/', 1)[-1]
+    # URL 解码
+    from urllib.parse import unquote
+    fname = unquote(path_part)
+    # 特殊字符替换
+    fname = re.sub(r'[^\w.\-]', '_', fname)
+    # 补充扩展名
+    if '.' not in fname[-6:]:
+        fname += '.png'
+    # 太长则哈希
+    if len(fname) > 120:
+        ext = fname.rsplit('.', 1)[-1] if '.' in fname else 'png'
+        fname = hashlib.md5(url.encode()).hexdigest()[:12] + '.' + ext
+    return fname
+
+def download_image(url, local_path):
+    """下载单张图片，返回 (url, local_path, success)"""
+    if local_path.exists() and local_path.stat().st_size > 100:
+        return (url, str(local_path), True)
     try:
-        fig = _get_fig()
-        fig.clf()
-        fs = 13 if display else 11
-        
-        # 先测尺寸
-        ax = fig.add_axes([0, 0, 1, 1])
-        ax.axis('off')
-        t = ax.text(0, 0.5, f"${latex}$", fontsize=fs, va='center')
-        fig.canvas.draw()
-        bb = t.get_window_extent()
-        fig.clf()
-        
-        w, h = bb.width / 100, bb.height / 100
-        margin = 0.05
-        dpi_out = 120
-        
-        fig2 = plt.figure(figsize=(w + margin, h + margin), dpi=dpi_out)
-        ax2 = fig2.add_axes([0, 0, 1, 1])
-        ax2.axis('off')
-        ax2.text(0.5, 0.5, f"${latex}$", fontsize=fs, va='center', ha='center',
-                 transform=ax2.transAxes)
-        
-        buf = io.BytesIO()
-        fig2.savefig(buf, format='svg', bbox_inches='tight', pad_inches=0.02,
-                     transparent=True)
-        plt.close(fig2)
-        
-        svg = buf.getvalue().decode()
-        m = re.search(r'<svg.*?</svg>', svg, re.DOTALL)
-        result = m.group(0) if m else f'<i>${latex}$</i>'
-        cf.write_text(result)
-        return result
-    except:
-        return f'<span style="font-family:serif;font-style:italic">${latex}$</span>'
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = resp.read()
+        local_path.write_bytes(data)
+        return (url, str(local_path), True)
+    except Exception as e:
+        print(f"  ⚠ 下载失败: {url} — {e}")
+        return (url, None, False)
 
-def process_math(md_text):
-    """替换 $...$ 和 $$...$$ 为 SVG"""
-    # 保护代码块
-    codes = []
-    def save_code(m):
-        codes.append(m.group(0))
-        return f'%%CODEBLOCK{len(codes)-1}%%'
-    md_text = re.sub(r'```.*?```', save_code, md_text, flags=re.DOTALL)
+def download_all_images(urls, max_workers=8):
+    """并行下载所有图片，返回 url→本地路径 映射"""
+    IMG_DIR.mkdir(parents=True, exist_ok=True)
     
-    # 行间公式 $$...$$
-    def repl_block(m):
-        svg = render_svg(m.group(1).strip(), display=True)
-        if svg.startswith('<svg'):
-            return f'<div style="text-align:center;margin:10pt 0;">{svg}</div>'
-        return f'<p style="text-align:center;">${m.group(1).strip()}$</p>'
+    tasks = []
+    for url in urls:
+        local_path = (IMG_DIR / url_to_fname(url)).resolve()
+        tasks.append((url, local_path))
     
-    md_text = re.sub(r'\$\$\s*(.+?)\s*\$\$', repl_block, md_text, flags=re.DOTALL)
+    url_map = {}
+    total = len(tasks)
+    done = 0
+    print(f"  共 {total} 张图片，并行下载 (workers={max_workers})...")
     
-    # 行内公式 $...$
-    def repl_inline(m):
-        svg = render_svg(m.group(1).strip(), display=False)
-        if svg.startswith('<svg'):
-            return f'<span style="display:inline-block;vertical-align:middle;">{svg}</span>'
-        return f'<span class="math-inline">\\( {m.group(1).strip()} \\)</span>'
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {}
+        for url, local_path in tasks:
+            f = pool.submit(download_image, url, local_path)
+            futures[f] = url
+        
+        for f in as_completed(futures):
+            done += 1
+            url, local, ok = f.result()
+            url_map[url] = local if ok else None
+            if done % 50 == 0 or done == total:
+                succeeded = sum(1 for v in url_map.values() if v is not None)
+                print(f"  [{done}/{total}] 已下载，成功 {succeeded} 张")
     
-    md_text = re.sub(r'(?<!\\)\$([^\$]+?)(?<!\\)\$', repl_inline, md_text)
+    succeeded = sum(1 for v in url_map.values() if v is not None)
+    failed = total - succeeded
+    print(f"  完成: {succeeded} 成功, {failed} 失败")
+    return url_map
+
+# ═══════════════════════════════════════════════════════════════
+# 数学公式预处理
+# ═══════════════════════════════════════════════════════════════
+
+CJK_RANGE = r'\u4e00-\u9fff\u3000-\u303f\uff00-\uffef\u3400-\u4dbf'
+CJK_CONT_RE = re.compile(f'[{CJK_RANGE}，。；：！？、（）【】《》""''…—]+')
+
+def wrap_chinese_in_math(math_body):
+    """将数学表达式中的中文片段用 \\text{...} 包裹"""
+    result = []
+    i = 0
+    while i < len(math_body):
+        if math_body[i:].startswith(r'\text{') or math_body[i:].startswith(r'\mbox{'):
+            brace_start = math_body.index('{', i) + 1
+            depth = 1
+            j = brace_start
+            while j < len(math_body) and depth > 0:
+                if math_body[j] == '{': depth += 1
+                elif math_body[j] == '}': depth -= 1
+                j += 1
+            result.append(math_body[i:j])
+            i = j
+            continue
+        
+        if math_body[i] == '\\':
+            j = i + 1
+            if j < len(math_body) and math_body[j] in r'{}$%&_^~# ':
+                result.append(math_body[i:j+1])
+                i = j + 1
+                continue
+            while j < len(math_body) and math_body[j].isalpha():
+                j += 1
+            if j < len(math_body) and math_body[j] == '{':
+                depth = 1
+                j += 1
+                while j < len(math_body) and depth > 0:
+                    if math_body[j] == '{': depth += 1
+                    elif math_body[j] == '}': depth -= 1
+                    j += 1
+            result.append(math_body[i:j])
+            i = j
+            continue
+        
+        m = CJK_CONT_RE.match(math_body, i)
+        if m:
+            result.append(r'\text{' + m.group(0) + '}')
+            i = m.end()
+            continue
+        
+        result.append(math_body[i])
+        i += 1
     
-    # 恢复代码块
-    for i, code in enumerate(codes):
-        md_text = md_text.replace(f'%%CODEBLOCK{i}%%', code)
+    return ''.join(result)
+
+def preprocess_math(text):
+    """预处理所有数学环境中的中文"""
+    # 1. \[...\]
+    def fix_display_math(m):
+        body = m.group(1)
+        body = wrap_chinese_in_math(body)
+        return r'\[' + body + r'\]'
+    text = re.sub(r'\\\[(.+?)\\\]', fix_display_math, text, flags=re.DOTALL)
     
-    return md_text
+    # 2. $$...$$ (去空行，包裹中文)
+    def fix_display_dollar(m):
+        body = m.group(1)
+        body = re.sub(r'\n\s*\n', '\n', body)
+        body = wrap_chinese_in_math(body)
+        return '$$' + body + '$$'
+    text = re.sub(r'\$\$(.+?)\$\$', fix_display_dollar, text, flags=re.DOTALL)
+    
+    # 3. $...$ 行内数学
+    def fix_inline_math(m):
+        body = m.group(1)
+        if r'\begin{cases}' in body or '\\begin{cases}' in body:
+            body = wrap_chinese_in_math(body)
+            return '\n$$' + body + '$$\n'
+        body = wrap_chinese_in_math(body)
+        return '$' + body + '$'
+    text = re.sub(r'(?<!\$)\$(?!\$)((?:[^$]|\\\$)+?)\$(?!\$)', fix_inline_math, text)
+    
+    return text
 
 def strip_frontmatter(text):
     text = re.sub(r'^---\s*\n.*?\n---\s*\n', '', text, flags=re.DOTALL, count=1)
-    return text.replace('{% raw %}', '').replace('{% endraw %}', '')
+    text = text.replace('{% raw %}', '').replace('{% endraw %}', '')
+    return text
+
+def markdown_table_to_text(content):
+    """将 markdown 表格转为纯文本代码块"""
+    lines = content.split('\n')
+    result = []
+    in_table = False
+    table_lines = []
+    
+    for i in range(len(lines)):
+        line = lines[i]
+        stripped = line.strip()
+        is_table_line = bool(re.match(r'^\|.*\|$', stripped))
+        is_separator = bool(re.match(r'^\|[\s\-:|]+\|$', stripped))
+        prev_is_table = (i > 0 and bool(re.match(r'^\|.*\|$', lines[i-1].strip())))
+        
+        if is_table_line or (is_separator and prev_is_table):
+            if not in_table:
+                in_table = True
+                table_lines = []
+            table_lines.append(line)
+        else:
+            if in_table:
+                result.append(_render_table_as_text(table_lines))
+                table_lines = []
+                in_table = False
+            result.append(line)
+    
+    if in_table and table_lines:
+        result.append(_render_table_as_text(table_lines))
+    
+    return '\n'.join(result)
+
+def _render_table_as_text(lines):
+    data_lines = [l for l in lines if not re.match(r'^\|[\s\-:|]+\|$', l.strip())]
+    if not data_lines:
+        return ''
+    text_lines = ['', '```text']
+    for dl in data_lines:
+        cells = [c.strip() for c in dl.strip().strip('|').split('|')]
+        text_lines.append('  ' + ' | '.join(cells))
+    text_lines.append('```')
+    text_lines.append('')
+    return '\n'.join(text_lines)
+
+def preprocess_content(content, url_map=None):
+    """综合预处理
+    
+    Args:
+        content: markdown 文本
+        url_map: {远程URL: 本地路径} 映射，为 None 则移除图片
+    """
+    # 图片处理
+    if url_map is not None:
+        def _replace_img(m):
+            alt = m.group(1) or ''
+            url = m.group(2)
+            local = url_map.get(url)
+            if local:
+                return f'![{alt}]({local})'
+            else:
+                return f'[图: {alt}]'
+        content = re.sub(r'!\[([^\]]*)\]\((https?://[^)]+)\)', _replace_img, content)
+    else:
+        content = re.sub(r'!\[([^\]]*)\]\([^)]+\)', r'[图: \1]', content)
+    
+    # 移除不兼容 HTML
+    content = re.sub(r'<details[^>]*>.*?</details>', '', content, flags=re.DOTALL)
+    content = re.sub(r'<summary[^>]*>.*?</summary>', '', content, flags=re.DOTALL)
+    content = re.sub(r'</?br\s*/?>', '\\\\', content)
+    
+    # markdown 表格 → 代码块
+    content = markdown_table_to_text(content)
+    
+    # 破折号
+    content = content.replace('------', '——')
+    content = content.replace('-----', '——')
+    
+    # \sub → \subset
+    content = re.sub(r'\\sub(?![a-zA-Z])', r'\\subset', content)
+    
+    # \($...$\) 双包裹修复
+    content = re.sub(r'\\\(\$([^$]+?)\$\\\)', r'\\(\1\\)', content)
+    content = re.sub(r'\$\\\(([^)]+?)\\\)\$', r'\\(\1\\)', content)
+    
+    # 去掉 $ 内部首尾空格
+    def _strip_inner(m):
+        body = m.group(1).strip()
+        return '$' + body + '$'
+    for _ in range(3):
+        content = re.sub(r'(?<!\$)\$ ([^$]+?)\$(?!\$)', _strip_inner, content)
+        content = re.sub(r'(?<!\$)\$([^$]+?) \$(?!\$)', _strip_inner, content)
+    
+    # 数学公式中文 → \text{}
+    content = preprocess_math(content)
+    
+    # 为 $...$ 添加外部空格（避免 pandoc 列表环境 $ 转义）
+    def _wrap(m):
+        return ' $' + m.group(1) + '$ '
+    content = re.sub(r'(?<!\$)\$([^\n$]+?)\$(?!\$)', _wrap, content)
+    
+    return content
+
+# ═══════════════════════════════════════════════════════════════
+# 合并与编译
+# ═══════════════════════════════════════════════════════════════
 
 def collect_files():
     files = []
@@ -112,41 +296,36 @@ def collect_files():
     files.sort(key=lambda p: p.relative_to(POSTS_DIR).parts)
     return files
 
-def build_html():
+def build_combined_md(url_map=None):
     files = collect_files()
     
-    css = """<style>
-@page{size:A4;margin:2.2cm 2.5cm}
-body{font-family:"PingFang SC","STSong","Songti SC",serif;font-size:12pt;line-height:1.9;color:#222}
-h1{font-size:21pt;text-align:center;margin:50pt 0 24pt;page-break-before:always}
-h2{font-size:16pt;margin:30pt 0 14pt;border-bottom:1px solid #ddd;padding-bottom:5pt}
-h3{font-size:13pt;margin:22pt 0 10pt}
-h4{font-size:11.5pt;margin:16pt 0 8pt}
-p{margin:7pt 0;text-indent:2em}
-blockquote{margin:10pt 24pt;padding:8pt 18pt;border-left:3px solid #4a90d9;background:#f5f7fa}
-blockquote p{text-indent:0}
-pre{background:#f4f4f4;padding:12pt;border-radius:4pt;font-size:9pt;font-family:"SF Mono","Menlo",monospace;overflow-x:auto;margin:10pt 0;line-height:1.5}
-code{font-family:"SF Mono","Menlo",monospace;font-size:9.5pt;background:#f0f0f0;padding:1pt 4pt;border-radius:2pt}
-pre code{background:none;padding:0}
-table{border-collapse:collapse;margin:14pt auto;font-size:10pt}
-table th,td{border:1px solid #ccc;padding:6pt 12pt}
-table th{background:#eee}
-.math-inline{font-family:"Times New Roman","STIX Two Math",serif;font-style:italic;font-size:11pt;color:#333}
-.chapter-title{font-size:23pt;text-align:center;margin:90pt 0 35pt;page-break-before:always}
-.toc-item{margin:3pt 0;text-indent:0}
-.toc-h2{font-weight:bold;margin-top:10pt}
-img{max-width:95%;height:auto;margin:12pt auto;display:block}
-strong{color:#333}
-</style>"""
+    dn = {
+        "0.前言": "前言",
+        "1.基础曲面展开方法": "第一章 基础曲面展开方法",
+        "2.基础共形映射方法": "第二章 基础共形映射方法",
+        "3.基于几何优化的方法": "第三章 基于几何优化的方法",
+        "4.全局参数化方法": "第四章 全局参数化方法",
+        "5.最优传输": "第五章 最优传输",
+        "6.附录": "附录",
+    }
     
-    chapters, toc = [], []
-    cur_dir, ch = None, 0
-    dn = {"0.前言":"前言","1.基础曲面展开方法":"第一章 基础曲面展开方法",
-          "2.基础共形映射方法":"第二章 基础共形映射方法",
-          "3.基于几何优化的方法":"第三章 基于几何优化的方法",
-          "4.计算共形几何":"第四章 计算共形几何",
-          "5.最优传输":"第五章 最优传输","6.附录":"附录"}
+    lines = [
+        "---",
+        "title: 参数化算法：从理论到实现",
+        'author: "李雄国"',
+        "documentclass: ctexart",
+        "toc: true",
+        "toc-depth: 2",
+        "numbersections: true",
+        "papersize: a4",
+        "fontsize: 12pt",
+        "linestretch: 1.5",
+        "geometry: margin=2.5cm",
+        "---",
+        "",
+    ]
     
+    cur_dir = None
     for idx, fp in enumerate(files):
         rel = fp.relative_to(POSTS_DIR)
         dk = rel.parts[0] if len(rel.parts) > 1 else ""
@@ -154,36 +333,71 @@ strong{color:#333}
         tm = re.search(r'title:\s*"([^"]*)"', raw)
         title = tm.group(1) if tm else rel.stem
         content = strip_frontmatter(raw)
-        content = process_math(content)
+        content = preprocess_content(content, url_map)
         
         if dk != cur_dir:
-            cur_dir = dk; ch += 1
+            cur_dir = dk
             label = dn.get(dk, dk)
-            chapters.append(f'<h1 class="chapter-title">{label}</h1>')
-            toc.append(f'<p class="toc-item toc-h2">{ch}. {label}</p>')
+            lines.append(f"\\newpage")
+            lines.append(f"# {label}")
         
-        body = markdown(content, extensions=['tables', 'fenced_code', 'nl2br'])
-        chapters.append(f'<h2>{title}</h2>\n{body}')
-        toc.append(f'<p class="toc-item">&nbsp;&nbsp;{title}</p>')
+        lines.append(f"## {title}")
+        lines.append("")
+        lines.append(content)
+        lines.append("")
+        
         print(f"  [{idx+1}/{len(files)}] {title}")
     
-    return f"""<!DOCTYPE html><html lang="zh-CN">
-<head><meta charset="utf-8"><title>参数化算法专著</title>{css}</head>
-<body>
-<h1>参数化算法：从理论到实现</h1>
-<p style="text-align:center;margin-bottom:30pt;text-indent:0"><em>——三角网格曲面展开、共形映射、四边形网格化与最优传输</em></p>
-<h2>目录</h2>
-{''.join(toc)}
-<div style="page-break-before:always"></div>
-{''.join(chapters)}
-</body></html>"""
+    combined = '\n'.join(lines)
+    TMP.write_text(combined, encoding='utf-8')
+    print(f"合并 Markdown: {TMP} ({len(combined):,} 字符)")
+    return TMP
+
+def run_pandoc(md_file, output):
+    """运行 pandoc + tectonic"""
+    cmd = [
+        'pandoc', str(md_file),
+        '--pdf-engine=tectonic',
+        '--from=markdown+tex_math_dollars+tex_math_single_backslash+raw_tex',
+        '-V', 'colorlinks=true',
+        '-V', 'linkcolor=blue',
+        '-o', str(output),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    if result.returncode != 0:
+        print("\npandoc stderr (末尾 2000 字):")
+        print(result.stderr[-2000:])
+        raise RuntimeError(f"pandoc 失败 (exit {result.returncode})")
+    return True
 
 def main():
-    print("生成专著（公式 SVG 渲染 + 缓存）...")
-    html = build_html()
-    print(f"渲染 PDF → {OUTPUT.name} ...")
-    HTML(string=html).write_pdf(str(OUTPUT))
-    print(f"✅ {OUTPUT}  ({OUTPUT.stat().st_size/1024/1024:.1f} MB)")
+    no_img = '--no-img' in sys.argv
+    
+    if no_img:
+        print("【模式: 无图片版】仅文字与公式\n")
+        url_map = None
+    else:
+        print("【模式: 完整版】含图片（首次需下载，后续从缓存读取）\n")
+    
+    # 第一步：合并 markdown（先生成无图版收集 URL，或先下载再合并）
+    files = collect_files()
+    
+    if not no_img:
+        print("步骤 0: 提取并下载图片...")
+        all_urls = extract_all_image_urls(files)
+        print(f"  发现 {len(all_urls)} 张远程图片")
+        url_map = download_all_images(all_urls)
+    else:
+        url_map = None
+    
+    print("\n步骤 1: 合并专著 Markdown（预处理公式 + 替换图片路径）...")
+    md_file = build_combined_md(url_map)
+    
+    print(f"\n步骤 2: pandoc + tectonic 渲染 PDF → {OUTPUT.name} ...")
+    run_pandoc(md_file, OUTPUT)
+    
+    size_mb = OUTPUT.stat().st_size / 1024 / 1024
+    print(f"\n✅ {OUTPUT}  ({size_mb:.1f} MB)")
 
 if __name__ == '__main__':
     main()

@@ -278,7 +278,7 @@ Sinkhorn 的核心不是“一个巧妙的数值技巧”，而是把 OT 放入�
 
 
 
-![image-20260130092804084](..\..\..\imgs\image-20260130092804084.png)
+![image-20260130092804084](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260130092804084.png)
 
 *图：DSB 的 Forward-Backward 迭代结构。Markov 链 $p_{n}^{\ell}$ 从数据分布 $p_{\text{data}}$ 出发向前扩散，$q_{n}^{\ell}$ 从先验分布 $p_{\text{prior}}$ 反向生成，经 5 轮 DSB 迭代后收敛。*
 
@@ -297,7 +297,7 @@ Schrödinger 桥 (Schrödinger Bridge, SB) 起源于**统计物理**和**最优�
 
 SB实际上是一个熵正则最优传输（entropy-regularized optimal transport）
 
-![image-20251013204038462](..\..\..\imgs\image-20251013204038462.png)
+![image-20251013204038462](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251013204038462.png)
 
 *Figure 1: 初始参考前向扩散无法收敛到高斯先验（$N=20$ 步），反向扩散也无法收敛到数据分布；但经 5 次 DSB 迭代后收敛。*
 
@@ -310,7 +310,7 @@ $$
 \quad \text{s.t.} \quad \pi_0 = p_{\text{data}},\; \pi_N = p_{\text{prior}}
 $$
 
-![image-20251013192504630](..\..\..\imgs\image-20251013192504630.png)
+![image-20251013192504630](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251013192504630.png)
 
 *薛定谔桥问题的动态形式定义。*
 
@@ -330,19 +330,19 @@ $$
 
 其中 $p_t$ 是 $X_t$ 的边缘密度。
 
-![image-20251013205646061](..\..\..\imgs\image-20251013205646061.png)
+![image-20251013205646061](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251013205646061.png)
 
 定理
 
 > **Theorem 1.** 假设存在 $H > 0$ 使得对任意 $n$，有 $\operatorname{KL}(p_{\text{data}} \otimes p_{\text{prior}} \| p_{0,N}) \leq H$。则 DSB 迭代良定义，且 KL 散度单调递减。
 
-![image-20251013205251119](..\..\..\imgs\image-20251013205251119.png)
+![image-20251013205251119](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251013205251119.png)
 
 通过薛定谔桥实现生成模型
 
 假设 $\pi^\star$ 已知，生成模型可通过从 $X_N \sim p_{\text{prior}}$ 采样，沿反向转移 $\{\pi_{k\|k+1}^\star\}$ 传播得到 $X_0$。
 
-![image-20251013192655633](..\..\..\imgs\image-20251013192655633.png)
+![image-20251013192655633](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251013192655633.png)
 
 通过IPF方法进行迭代求解
 
@@ -355,14 +355,14 @@ $$
 \pi^{2n+2} = \arg\min \operatorname{KL}(\pi \| \pi^{2n+1}) \quad\text{s.t. } \pi_N = p_{\text{prior}}
 $$
 
-![image-20251013193650843](..\..\..\imgs\image-20251013193650843.png)
+![image-20251013193650843](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251013193650843.png)
 
 
 IPF方法与原问题的等价性
 
 > **Proposition 2.** 假设 $\operatorname{KL}(p_{\text{data}} \otimes p_{\text{prior}} \| p_{0,N}) < \infty$。则 IPF 序列收敛到 SB 解。
 
-![image-20251013194053850](..\..\..\imgs\image-20251013194053850.png)
+![image-20251013194053850](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251013194053850.png)
 
 本文提出的方法实际是对IPF方法的一个近似。
 
@@ -370,13 +370,13 @@ IPF方法与原问题的等价性
 
 DSB 将 IPF 的每步投影转化为 **mean-matching** 损失：
 
-![image-20251013194138454](..\..\..\imgs\image-20251013194138454.png)
+![image-20251013194138454](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251013194138454.png)
 
 *"Diffusion Schrödinger Bridge as Iterative Mean-Matching Proportional Fitting"*
 
 > **Proposition 3.** 最大似然估计等价于最小化条件路径上的均值匹配损失。
 
-![image-20251013194156449](..\..\..\imgs\image-20251013194156449.png)
+![image-20251013194156449](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251013194156449.png)
 
 算法
 
@@ -398,7 +398,7 @@ DSB 将 IPF 的每步投影转化为 **mean-matching** 损失：
 
 </div>
 
-![image-20251013193907404](..\..\..\imgs\image-20251013193907404.png)
+![image-20251013193907404](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251013193907404.png)
 
 证明该过程的收敛性
 
@@ -407,11 +407,11 @@ DSB 将 IPF 的每步投影转化为 **mean-matching** 损失：
 > \operatorname{KL}(\pi^{2n+2} \| \pi^{2n+1}) \leq \operatorname{KL}(\pi^{2n} \| \pi^{2n+1}) < \operatorname{KL}(\pi^{2n} \| \pi^{2n-1})
 > $$
 
-![image-20251013194002903](..\..\..\imgs\image-20251013194002903.png)
+![image-20251013194002903](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251013194002903.png)
 
 > **Proposition 5.** 假设存在 $M > 0$ 使 $h = d(p_0 \otimes p_N)/d(p_{0,N}) \in L^\infty$。则存在 SB 解 $\pi^\star$，且 $\pi^n \to \pi^\star$。
 
-![image-20251013194014601](..\..\..\imgs\image-20251013194014601.png)
+![image-20251013194014601](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251013194014601.png)
 
 **SB 与最优输运的关系**
 
@@ -433,7 +433,7 @@ SB 可被视作**熵正则化的 OT**，在无噪声极限下 SB 收敛到 OT。
 
 传统扩散往往需要几十甚至上百步采样，SB 的优势在于，通过**最优传输的路径匹配**，理论上可在更少步数下完成分布转换，意味着更快的视频生成速度。
 
-![image-20260130093434937](..\..\..\imgs\image-20260130093434937.png)
+![image-20260130093434937](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260130093434937.png)
 
 *图：SDE 形式下的三种路径。从上到下：(1) 参考 SDE $dX_t = u_0 dt + g\,dB_t$；(2) 带 score 修正的反向 SDE $dX_t = [g^2\nabla\log p_0 - u_0]dt + g\,d\widetilde{B}_t$；(3) DSB 修正的漂移 SDE $dX_t = S_0\,dt + g\,dB_t$，其中 $S_0(t,x) = u_0(t,x) + g(t)^2\nabla\log\phi_0(t,x) + g(t)^2\nabla\log\bar{\phi}_0(t,\bar{x})$。*
 

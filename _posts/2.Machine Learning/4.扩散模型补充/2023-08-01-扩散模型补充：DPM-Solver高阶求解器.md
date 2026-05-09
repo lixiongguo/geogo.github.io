@@ -6,7 +6,7 @@ categories: [DiffusionSupplement]
 ---
 > DPM-Solver（Lu et al. 2022）最明显的优点就是快——比 DDIM 还要快。DDIM 需要 100 步的效果，DPM-Solver 只需约 10 步即可达到。
 
-![image-20250701195952902](..\..\..\imgs\image-20250701195952902.png)
+![image-20250701195952902](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701195952902.png)
 
 ---
 
@@ -14,7 +14,7 @@ categories: [DiffusionSupplement]
 
 扩散概率模型（DPMs）定义了一个前向过程 $\{x_t\}_{t \in [0,T]}$（$T > 0$），对于任意 $t \in [0, T]$，$x_t$ 关于 $x_0$ 的条件分布满足：
 
-![image-20250701201155950](..\..\..\imgs\image-20250701201155950.png)
+![image-20250701201155950](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701201155950.png)
 
 $$
 q_{0t}(x_t | x_0) = \mathcal{N}(x_t | \alpha_t x_0, \sigma_t^2 I) \tag{2.1}
@@ -22,15 +22,15 @@ $$
 
 以下 SDE 拥有与 (2.1) 相同的转移分布，对任意 $t \in [0, T]$：
 
-![image-20250701201508237](..\..\..\imgs\image-20250701201508237.png)
+![image-20250701201508237](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701201508237.png)
 
-![image-20250701200631387](..\..\..\imgs\image-20250701200631387.png)
+![image-20250701200631387](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701200631387.png)
 
 $$
 dx_t = f(t) x_t dt + g(t) dw_t, \quad x_0 \sim q_0(x_0)
 $$
 
-![image-20250701201541019](..\..\..\imgs\image-20250701201541019.png)
+![image-20250701201541019](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701201541019.png)
 
 其中 $w_t \in \mathbb{R}^d$ 为标准维纳过程，且：
 
@@ -48,13 +48,13 @@ $$
 
 上述 SDE 具有如下逆向过程（reverse-time SDE）：
 
-![image-20250701201806780](..\..\..\imgs\image-20250701201806780.png)
+![image-20250701201806780](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701201806780.png)
 
 $$
 dx_t = [f(t)x_t - g(t)^2 \nabla_x \log q_t(x_t)] dt + g(t) d\bar{w}_t, \quad x_T \sim q_T(x_T) \tag{2.4}
 $$
 
-![image-20250701201833515](..\..\..\imgs\image-20250701201833515.png)
+![image-20250701201833515](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701201833515.png)
 
 其中 $\bar{w}_t$ 为反向时间的标准维纳过程。
 
@@ -68,13 +68,13 @@ $$
 
 其训练目标为：
 
-![image-20250701202218396](..\..\..\imgs\image-20250701202218396.png)
+![image-20250701202218396](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701202218396.png)
 
 $$
 \mathcal{L}(\theta) = \int_0^T \lambda(t) \, \mathbb{E}_{q_0(x_0)} \mathbb{E}_{q(\epsilon)} \left[\|\epsilon_\theta(x_t, t) - \epsilon\|^2\right] dt + C
 $$
 
-![image-20250701202231679](..\..\..\imgs\image-20250701202231679.png)
+![image-20250701202231679](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701202231679.png)
 
 其中 $\lambda(t)$ 为权重函数，$\epsilon \sim \mathcal{N}(0, I)$，$x_t = \alpha_t x_0 + \sigma_t \epsilon$，$C$ 为与 $\theta$ 无关的常数。
 
@@ -82,7 +82,7 @@ $$
 
 代入噪声预测后，逆向 SDE 变为：
 
-![image-20250701202505703](..\..\..\imgs\image-20250701202505703.png)
+![image-20250701202505703](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701202505703.png)
 
 $$
 dx_t = \left[f(t)x_t + \frac{g(t)^2}{\sigma_t}\epsilon_\theta(x_t, t)\right] dt + g(t) d\bar{w}_t, \quad x_T \sim \mathcal{N}(0, \tilde{\sigma}^2 I) \tag{2.5}
@@ -96,11 +96,11 @@ $$
 
 当离散化 SDE 时，步长受维纳过程随机性限制——大步长（少量步数）常导致不收敛，尤其在高维空间。为加速采样，可考虑关联的概率流 ODE（PF-ODE）：
 
-![image-20250701202619215](..\..\..\imgs\image-20250701202619215.png)
+![image-20250701202619215](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701202619215.png)
 
 Song 等人证明如下概率流 ODE 与 (2.4) 具有一致的边缘分布：
 
-![image-20250701202805329](..\..\..\imgs\image-20250701202805329.png)
+![image-20250701202805329](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701202805329.png)
 
 $$
 \frac{dx_t}{dt} = f(t)x_t - \frac{1}{2}g(t)^2 \nabla_x \log q_t(x_t), \quad x_T \sim q_T(x_T) \tag{2.6}
@@ -110,7 +110,7 @@ $$
 
 进一步代入噪声预测网络：
 
-![image-20250701203003063](..\..\..\imgs\image-20250701203003063.png)
+![image-20250701203003063](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701203003063.png)
 
 $$
 \frac{dx_t}{dt} = h_\theta(x_t, t) = f(t)x_t + \frac{g(t)^2}{2\sigma_t}\epsilon_\theta(x_t, t), \quad x_T \sim \mathcal{N}(0, \tilde{\sigma}^2 I) \tag{2.7}
@@ -118,7 +118,7 @@ $$
 
 ODE 可以采用更大的步长且有更高效的采样器：
 
-![image-20250701203113347](..\..\..\imgs\image-20250701203113347.png)
+![image-20250701203113347](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701203113347.png)
 
 > 通过求解从 $T$ 到 $0$ 的 ODE 即可采样。Song 等人使用 RK45 ODE 求解器，约需 60 次函数评估达到可比质量。
 
@@ -130,7 +130,7 @@ ODE 可以采用更大的步长且有更高效的采样器：
 
 本文的核心 Insight：将 (2.7) 式分成两个部分——一个线性部分，一个非线性部分，统称**半线性 ODE**（semi-linear ODE）。
 
-![image-20250701203652430](..\..\..\imgs\image-20250701203652430.png)
+![image-20250701203652430](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701203652430.png)
 
 > $f(t)x_t$ 关于 $x_t$ 是线性的，而 $\frac{g(t)^2}{2\sigma_t}\epsilon_\theta(x_t, t)$ 由于神经网络 $\epsilon_\theta$ 一般是非线性的。以往的黑箱 ODE 求解器忽视了这种半线性结构，把整个 $h_\theta$ 当作输入，引入了不必要的离散化误差。
 
@@ -138,13 +138,13 @@ ODE 可以采用更大的步长且有更高效的采样器：
 
 定义 $\lambda_t = \log(\alpha_t / \sigma_t)$（log-SNR 的一半），则 $\lambda_t$ 是 $t$ 的严格递减函数。利用 $g(t)$ 和 $\lambda_t$ 的关系，可重写 ODE：
 
-![image-20250701203816371](..\..\..\imgs\image-20250701203816371.png)
+![image-20250701203816371](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701203816371.png)
 
-![image-20250701204043817](..\..\..\imgs\image-20250701204043817.png)
+![image-20250701204043817](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701204043817.png)
 
 结合 $f(t) = d\log\alpha_t / dt$，半线性 ODE 可化为：
 
-![image-20250701204140248](..\..\..\imgs\image-20250701204140248.png)
+![image-20250701204140248](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701204140248.png)
 
 $$
 x_t = \frac{\alpha_t}{\alpha_s}x_s - \alpha_t \int_{\lambda_s}^{\lambda_t} e^{-\lambda} \epsilon_\theta(x_\lambda, \lambda) d\lambda \tag{3.3}
@@ -152,7 +152,7 @@ $$
 
 ### 4.3 精确解（命题 3.1）
 
-![image-20250701204236363](..\..\..\imgs\image-20250701204236363.png)
+![image-20250701204236363](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701204236363.png)
 
 > **命题 3.1（扩散 ODE 的精确解）**：给定初始值 $x_s$（$s > 0$），扩散 ODE 在时刻 $t \in [0, s]$ 的解 $x_t$ 为：
 
@@ -168,7 +168,7 @@ $$
 
 要计算 $\tilde{x}_{t_{i-1}}$ 作为 $x_{t_i}$ 的近似，需逼近 $\epsilon_\theta$ 从 $\lambda_{t_{i-1}}$ 到 $\lambda_{t_i}$ 的指数加权积分。
 
-![image-20250701204435443](..\..\..\imgs\image-20250701204435443.png)
+![image-20250701204435443](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701204435443.png)
 
 $$
 \tilde{x}_{t_{i-1}} = \frac{\alpha_{t_{i-1}}}{\alpha_{t_i}} x_{t_i} - \alpha_{t_{i-1}} \int_{\lambda_{t_i}}^{\lambda_{t_{i-1}}} e^{-\lambda} \epsilon_\theta(x_\lambda, \lambda) d\lambda \tag{3.5}
@@ -176,7 +176,7 @@ $$
 
 记 $h_i = \lambda_{t_{i-1}} - \lambda_{t_i}$，对 $\epsilon_\theta(x_\lambda, \lambda)$ 在 $\lambda_{t_i}$ 处做 $(k-1)$ 阶 Taylor 展开：
 
-![image-20250701204637390](..\..\..\imgs\image-20250701204637390.png)
+![image-20250701204637390](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701204637390.png)
 
 $$
 \epsilon_\theta(x_\lambda, \lambda) = \sum_{n=0}^{k-1} \frac{(\lambda - \lambda_{t_i})^n}{n!} \epsilon_\theta^{(n)}(x_{\lambda_{t_i}}, \lambda_{t_i}) + \mathcal{O}((\lambda - \lambda_{t_i})^k)
@@ -184,7 +184,7 @@ $$
 
 代入积分得到 DPM-Solver-k 的更新公式：
 
-![image-20250701204513319](..\..\..\imgs\image-20250701204513319.png)
+![image-20250701204513319](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701204513319.png)
 
 ### 5.2 DPM-Solver-1
 
@@ -196,7 +196,7 @@ $$
 
 ### 5.3 DPM-Solver-2
 
-![image-20250701204523100](..\..\..\imgs\image-20250701204523100.png)
+![image-20250701204523100](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701204523100.png)
 
 **Algorithm 1: DPM-Solver-2**
 
@@ -210,7 +210,7 @@ $$
 
 ### 5.4 DPM-Solver 中心定理
 
-![image-20250701210313219](..\..\..\imgs\image-20250701210313219.png)
+![image-20250701210313219](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701210313219.png)
 
 > **定理 3.2（DPM-Solver-k 为 k 阶求解器）**：假设 $\epsilon_\theta(x_t, t)$ 满足正则性条件，则对 $k = 1, 2, 3$，DPM-Solver-k 是扩散 ODE 的 k 阶求解器。即对 DPM-Solver-k 计算的序列 $\{\tilde{x}_{t_i}\}_{i=0}^M$，在 $t=0$ 处的逼近误差满足：
 >
@@ -220,7 +220,7 @@ $$
 
 ## 6. 步长选择
 
-![image-20250701210341426](..\..\..\imgs\image-20250701210341426.png)
+![image-20250701210341426](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701210341426.png)
 
 提出两种时间步长策略：
 
@@ -231,7 +231,7 @@ $$
 
 ## 7. DDIM 是 DPM-Solver-1 的特例
 
-![image-20250701210452860](..\..\..\imgs\image-20250701210452860.png)
+![image-20250701210452860](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250701210452860.png)
 
 DDIM 的一步更新为（从 $t_{i-1}$ 到 $t_i$）：
 

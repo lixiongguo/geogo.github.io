@@ -16,3 +16,5 @@ scripts/oss_credentials.md
 # PDF 专著（体积大，不应提交）
 参数化算法专著.pdf
 scripts/_monograph_temp.html
+scripts/.math_cache
+scripts/_pdf_images

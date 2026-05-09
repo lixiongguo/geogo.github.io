@@ -6,7 +6,7 @@ categories: [TechRelated]
 
 本文给出了一种**自动寻找奇异点**的方法，以减少全局参数化的扭曲。
 
-![image-20251107134929739](..\..\..\imgs\image-20251107134929739.png)
+![image-20251107134929739](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107134929739.png)
 
 这篇工作的核心不是先固定奇异点、再去解参数化，而是直接对曲面的**度量(metric)**做优化：不断扩大零高斯曲率区域的占比，最后把曲率压缩到少量锥奇异点上。  
 因此它是在“先把曲面变成尽量 flat 的度量，再从这个度量恢复无缝参数化”。
@@ -23,11 +23,11 @@ categories: [TechRelated]
 
 原始三角网格为 $M$，沿割缝切开后的网格记为 $M_c$。原始网格 $M$ 的割缝上的一个顶点 $p$ 会在切开后分裂成两个边界点 $p_1,p_2$，如图中的两个绿色点。
 
-![image-20251107151137430](..\..\..\imgs\image-20251107151137430.png)
+![image-20251107151137430](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107151137430.png)
 
 一个全局参数化会诱导出一个平面度量：
 
-![image-20251107154351591](..\..\..\imgs\image-20251107154351591.png)
+![image-20251107154351591](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107154351591.png)
 
 除了锥奇异点与接缝端点外，这个度量应当是 flat 的。  
 因此，接缝两侧在参数域中的像不能随意错开，而必须只差一个**刚性变换(rigid transform)**。  
@@ -35,7 +35,7 @@ categories: [TechRelated]
 
 无缝全局参数化的要求如下：
 
-![image-20251107170622714](..\..\..\imgs\image-20251107170622714.png)
+![image-20251107170622714](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107170622714.png)
 
 跨边时两个局部 Jacobian 必须相差一个 $\frac{\pi}{2}$ 的整数倍旋转：
 
@@ -45,13 +45,13 @@ $$
 
 也就是说，相邻两个三角形 $T_i,T_j$ 的局部参数坐标系只能发生 quarter-turn 对齐。
 
-![image-20251107170756014](..\..\..\imgs\image-20251107170756014.png)
+![image-20251107170756014](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107170756014.png)
 
 如果目标不仅是无缝纹理参数化，而是要进一步做**四边形网格化**，那么还需要跨边的平移量 $t_{ij}$ 也是整数。
 
-![image-20251107170834395](..\..\..\imgs\image-20251107170834395.png)
+![image-20251107170834395](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107170834395.png)
 
-![image-20251107170910784](..\..\..\imgs\image-20251107170910784.png)
+![image-20251107170910784](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107170910784.png)
 
 这点很关键：  
 “无缝”不只是视觉上的连续，而是要求参数线在穿过三角形边界之后，仍然落在同一套整数格结构上。  
@@ -59,13 +59,13 @@ $$
 
 ## 和乐性(holonomy)
 
-![image-20251109172609603](..\..\..\imgs\image-20251109172609603.png)
+![image-20251109172609603](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251109172609603.png)
 
 一条闭链的 holonomy，记录的是局部坐标沿闭环平行移动一圈以后，累计获得了多少旋转和位移。
 
-![image-20251107171257260](..\..\..\imgs\image-20251107171257260.png)
+![image-20251107171257260](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107171257260.png)
 
-![image-20251107171701999](..\..\..\imgs\image-20251107171701999.png)
+![image-20251107171701999](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107171701999.png)
 
 对无缝参数化来说，holonomy 是全局一致性的核心约束：
 
@@ -74,7 +74,7 @@ $$
 
 更进一步，
 
-![image-20251107171823887](..\..\..\imgs\image-20251107171823887.png)
+![image-20251107171823887](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107171823887.png)
 
 可以把这件事理解成：  
 局部 flat 只保证“每一小块都像平面”，但是否能把这些小块**全局无缝地拼回去**，要看所有闭环上的 holonomy 是否满足离散约束。  
@@ -85,7 +85,7 @@ $$
 
 ## 算法
 
-![image-20251107171847753](..\..\..\imgs\image-20251107171847753.png)
+![image-20251107171847753](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107171847753.png)
 
 ### Flatten 和 Rounding
 
@@ -93,15 +93,15 @@ $$
 
 Flatten 的思想和 Ben-Chen 一类的“度量平展化”方法接近：逐步调整度量，把分散的曲率集中到少数点上。
 
-![image-20251107172009324](..\..\..\imgs\image-20251107172009324.png)
+![image-20251107172009324](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107172009324.png)
 
 Flatten 的过程会把曲率逐渐集中：黄色正曲率区域收缩到红色正曲率点上，青色负曲率区域收缩到蓝色负曲率点上。
 
-![image-20251107175302658](..\..\..\imgs\image-20251107175302658.png)
+![image-20251107175302658](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107175302658.png)
 
 对于离散三角网格，这一步最终会落成一个 Poisson 型方程：
 
-![image-20251107175529244](..\..\..\imgs\image-20251107175529244.png)
+![image-20251107175529244](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107175529244.png)
 
 它的几何意义是：  
 不是直接优化 UV 坐标，而是在优化一个更底层的对象，即曲面的局部尺度分布。  
@@ -115,7 +115,7 @@ Rounding 主要是对 holonomy 施加离散控制，从而实现无缝参数化�
 
 对锥奇异点的处理，是把旋转 holonomy 调整到 $\frac{\pi}{2}$ 的整数倍上：
 
-![image-20251107172058288](..\..\..\imgs\image-20251107172058288.png)
+![image-20251107172058288](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107172058288.png)
 
 这一步可以理解为：  
 Flatten 先给出一个“连续的、近似 flat 的”度量；  
@@ -123,7 +123,7 @@ Flatten 先给出一个“连续的、近似 flat 的”度量；
 
 对 homology loop 的处理如下：
 
-![image-20251107180455682](..\..\..\imgs\image-20251107180455682.png)
+![image-20251107180455682](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107180455682.png)
 
 这里控制的是拓扑环上的平移周期。  
 因为局部可积还不够，参数在线性空间里闭合，不代表它在曲面拓扑上也能闭合成无缝结构。  
@@ -135,19 +135,19 @@ Flatten 先给出一个“连续的、近似 flat 的”度量；
 
 Rotation field：
 
-![image-20251107190904459](..\..\..\imgs\image-20251107190904459.png)
+![image-20251107190904459](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107190904459.png)
 
 cross field 可以用每个面上的一个角度 $\theta$ 来表达：
 
-![image-20251107181215621](..\..\..\imgs\image-20251107181215621.png)
+![image-20251107181215621](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107181215621.png)
 
 求得 $\theta$ 后，就能恢复相应的旋转矩阵 $R$：
 
-![image-20251107191121676](..\..\..\imgs\image-20251107191121676.png)
+![image-20251107191121676](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107191121676.png)
 
 最后进行 global optimization：
 
-![image-20251107191353231](..\..\..\imgs\image-20251107191353231.png)
+![image-20251107191353231](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107191353231.png)
 
 这一阶段做的事情，可以理解为：  
 在已经满足离散拓扑约束的前提下，寻找一个尽量贴合这些旋转关系、同时扭曲更小的具体参数化。  
@@ -214,7 +214,7 @@ QuadCover 的重点，是从一个给定的 4-RoSy/frame field 出发，处理�
 前者强调如何把一个已有方向场无缝地积分成参数化；后者强调如何主动调整度量与奇异点配置，使最终参数化更容易既无缝又低扭曲。
 本文给出了一种**自动寻找奇异点**的方法，以减少全局参数化的扭曲
 
-![image-20251107134929739](..\..\..\imgs\image-20251107134929739.png)
+![image-20251107134929739](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107134929739.png)
 
 本文的方法也是对度量进行优化，从曲面的原始度量不断增加零高斯曲率区域的占比，最终将高斯曲率集中在几个锥奇异点上。
 
@@ -228,88 +228,88 @@ QuadCover 的重点，是从一个给定的 4-RoSy/frame field 出发，处理�
 
 原始三角网格为M，沿割缝割开后的网格记为$M_c$，原始网格M的割缝上的一个顶点p被分为两个点p1和p2,如图中的两个绿色点
 
-![image-20251107151137430](..\..\..\imgs\image-20251107151137430.png)
+![image-20251107151137430](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107151137430.png)
 
 全局参数化诱导出映射的度量
 
-![image-20251107154351591](..\..\..\imgs\image-20251107154351591.png)
+![image-20251107154351591](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107154351591.png)
 
 并且这个度量除了接缝的两端外也都是flat，这要求接缝在参数域种的两条像曲线是一个刚性变换(rigid transform)。反过来说，一个平展度量(flat metric)也能唯一确定参数化f
 
 无缝全局参数化的要求
 
-![image-20251107170622714](..\..\..\imgs\image-20251107170622714.png)
+![image-20251107170622714](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107170622714.png)
 
 $J_j e_{ij} = r_{ij} J_ie_{ij}$,满足$\frac {\pi} 2$的整数倍旋转
 
 ,如图两个三角形Ti，Tj
 
-![image-20251107170756014](..\..\..\imgs\image-20251107170756014.png)
+![image-20251107170756014](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107170756014.png)
 
 如果是需要四边形网格化，还需要$t_{ij}$是整数
 
-![image-20251107170834395](..\..\..\imgs\image-20251107170834395.png)
+![image-20251107170834395](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107170834395.png)
 
-![image-20251107170910784](..\..\..\imgs\image-20251107170910784.png)
+![image-20251107170910784](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107170910784.png)
 
 ## 和乐性(holonomy)
 
-![image-20251109172609603](..\..\..\imgs\image-20251109172609603.png)
+![image-20251109172609603](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251109172609603.png)
 
 一条闭链的和乐
 
-![image-20251107171257260](..\..\..\imgs\image-20251107171257260.png)
+![image-20251107171257260](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107171257260.png)
 
-![image-20251107171701999](..\..\..\imgs\image-20251107171701999.png)
+![image-20251107171701999](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107171701999.png)
 
 更进一步
 
-![image-20251107171823887](..\..\..\imgs\image-20251107171823887.png)
+![image-20251107171823887](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107171823887.png)
 
 ## 算法
 
-![image-20251107171847753](..\..\..\imgs\image-20251107171847753.png)
+![image-20251107171847753](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107171847753.png)
 
 ### 先是Flatten和Rounding
 
 1.Flatten，类似于Benchen
 
-![image-20251107172009324](..\..\..\imgs\image-20251107172009324.png)
+![image-20251107172009324](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107172009324.png)
 
 Flatten的过程将曲率逐渐集中(黄色正曲率面积集中到红色的正曲率点上，青色负曲率面积集中到蓝色的负曲率点上)
 
-![image-20251107175302658](..\..\..\imgs\image-20251107175302658.png)
+![image-20251107175302658](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107175302658.png)
 
 对于离散的三角网格，这个过程相当于一个Poisson方程
 
-![image-20251107175529244](..\..\..\imgs\image-20251107175529244.png)
+![image-20251107175529244](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107175529244.png)
 
 2.Rounding，主要是对和乐角施加控制，从而实现无缝的参数化。分两个部分，一个是Rounding锥奇异点，一个是Rounding同调环
 
 对$\frac {\pi} 2$的整数倍旋转的条件进行贪心选择
 
-![image-20251107172058288](..\..\..\imgs\image-20251107172058288.png)
+![image-20251107172058288](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107172058288.png)
 
 对homology loop的处理
 
-![image-20251107180455682](..\..\..\imgs\image-20251107180455682.png)
+![image-20251107180455682](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107180455682.png)
 
 最后ARAP参数化
 
 Rotation filed
 
-![image-20251107190904459](..\..\..\imgs\image-20251107190904459.png)
+![image-20251107190904459](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107190904459.png)
 
 cross_field的表达，每个面assign一个角度$\theta$
 
 
 
-![image-20251107181215621](..\..\..\imgs\image-20251107181215621.png)
+![image-20251107181215621](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107181215621.png)
 
 求得$\theta$后进而求得R
 
-![image-20251107191121676](..\..\..\imgs\image-20251107191121676.png)
+![image-20251107191121676](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107191121676.png)
 
 最后进行Global优化
 
-![image-20251107191353231](..\..\..\imgs\image-20251107191353231.png)
+![image-20251107191353231](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107191353231.png)
