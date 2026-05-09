@@ -9,3 +9,6 @@ vendor/
 wechat/
 node_modules/
 cpp/Libigl-Discrete-Geometry
+
+# OSS 凭证说明文档（含敏感信息，禁止提交）
+scripts/oss_credentials.md
