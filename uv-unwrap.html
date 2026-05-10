@@ -137,6 +137,7 @@
       gap: 10px;
       flex-wrap: wrap;
     }
+    input[type="radio"] { accent-color: #6a84ff; }
     select, button {
       border: 1px solid rgba(106, 132, 255, 0.25);
       background: #121b31;
@@ -270,21 +271,24 @@
         </div>
       </div>
       <div class="toolbar-right">
-        <select id="model-select"></select>
-        <select id="method-select" title="展开算法">
-          <option value="lscm">LSCM</option>
-          <option value="tutte_circle">Tutte (圆形)</option>
-          <option value="tutte_square">Tutte (正方形)</option>
-          <option value="arap">ARAP</option>
-          <option value="cetm">CETM (共形因子)</option>
-          <option value="ricci">Ricci 流 (圆填充)</option>
-          <option value="cp">Circle Pattern (圆图案)</option>
-          <option value="quadcover">QuadCover (四边形)</option>
-          <option value="bff">BFF (边界优先展平)</option>
-          <option value="miq">MIQ (混合整数四边形)</option>
-          <option value="holo">全纯1-形式 (共形)</option>
-          <option value="bd_lscm" selected>BD-LSCM (C=10)</option>
-        </select>
+        <select id="model-select1" title="Models" style="width:130px"></select>
+        <select id="model-select2" title="Models2" style="width:130px"></select>
+        <select id="model-select3" title="Models3" style="width:130px"></select>
+        <fieldset id="method-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:8px 12px;margin:0;display:flex;flex-wrap:wrap;gap:6px 14px;">
+          <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开算法</legend>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="lscm"> LSCM</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte_circle"> Tutte(圆)</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte_square"> Tutte(方)</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="arap"> ARAP</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cetm"> CETM</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="ricci"> Ricci流</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cp"> CirclePat</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover"> QuadCover</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="bff"> BFF</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="miq"> MIQ</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="holo"> 全纯1-形式</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="bd_lscm" checked> BD-LSCM</label>
+        </fieldset>
         <label id="bd-c-label" style="font-size:12px;color:#8a9dd4;display:flex;align-items:center;gap:4px;">
           C:<input id="bd-c-input" type="number" value="10" min="1.1" max="100" step="1"
             style="width:50px;padding:4px 6px;border-radius:6px;text-align:center"
@@ -361,24 +365,61 @@
 
   <script>
     (function () {
-      const MODELS = {
+      const MODELS1 = {
         balls: { label: "Balls", file: "Balls.obj" },
         nefertiti: { label: "Nefertiti Face", file: "Nefertiti_face.obj" },
-        cathead: { label: "Cat Head", file: "cathead.obj" },
+        beetle: { label: "Beetle", file: "beetle.obj" },
         bunnyhead: { label: "Bunny Head", file: "bunnyhead.obj" },
         camelhead: { label: "Camel Head", file: "camelhead.obj" },
+        cathead: { label: "Cat Head", file: "cathead.obj" },
         cow_head: { label: "Cow Head", file: "cow_head.obj" },
         spot_cowhead: { label: "Spot Cow Head", file: "spot_cowhead.obj" },
-        beetle: { label: "Beetle", file: "beetle.obj" },
         hand: { label: "Hand (5K)", file: "hand_1_i_f5000.obj" },
         hencky: { label: "Hencky (20K)", file: "hencky_f20000.obj" },
         maxplanck: { label: "Max Planck", file: "max-planck.obj" }
       };
-      const MODEL_BASE_PATHS = ["assets/Models", "../assets/Models", "./assets/Models"];
+      const MODELS2 = {
+        holes3: { label: "3 Holes", file: "3holes.obj" },
+        armadillo: { label: "Armadillo", file: "armadillo.obj" },
+        beast: { label: "Beast", file: "beast.obj" },
+        botijo: { label: "Botijo", file: "botijo.obj" },
+        bunny: { label: "Bunny", file: "bunny.obj" },
+        cow: { label: "Cow", file: "cow.obj" },
+        doubletorus: { label: "Double Torus", file: "double-torus.obj" },
+        fandisk: { label: "Fandisk", file: "fandisk.obj" },
+        happy: { label: "Happy Buddha", file: "happy.obj" },
+        lucy: { label: "Lucy", file: "lucy.obj" },
+        rocker: { label: "Rocker Arm", file: "rocker-arm.obj" },
+        torus: { label: "Torus", file: "torus.obj" }
+      };
+      const MODELS3 = {
+        tri2: { label: "2 Triangles", file: "2triangles.obj" },
+        holes3b: { label: "3 Holes", file: "3holes.obj" },
+        alligator: { label: "Alligator", file: "alligator.obj" },
+        armadillob: { label: "Armadillo", file: "armadillo.obj" },
+        bimba: { label: "Bimba", file: "bimba.obj" },
+        camel_b: { label: "Camel B", file: "camel_b.obj" },
+        doubletorusb: { label: "Double Torus", file: "double-torus.obj" },
+        dragon: { label: "Dragon (87K)", file: "dragon_87k.obj" },
+        elephant: { label: "Elephant", file: "elephant.obj" },
+        fertility: { label: "Fertility", file: "fertility.obj" },
+        gargoyle: { label: "Gargoyle", file: "gargoyle.obj" },
+        kitten: { label: "Kitten", file: "kitten.obj" },
+        soccerball: { label: "Soccer Ball", file: "soccerball.obj" },
+        vaselion: { label: "Vase Lion", file: "vase_lion.obj" }
+      };
+      const MODEL_BASES = ["assets/Models", "assets/Models2", "assets/Models3"];
+      const MIRROR_BASE_PATHS = [
+        ["assets/Models", "../assets/Models", "./assets/Models"],
+        ["assets/Models2", "../assets/Models2", "./assets/Models2"],
+        ["assets/Models3", "../assets/Models3", "./assets/Models3"]
+      ];
 
       const modelCanvas = document.getElementById("model-canvas");
       const uvCanvas = document.getElementById("uv-canvas");
-      const modelSelect = document.getElementById("model-select");
+      const modelSelect1 = document.getElementById("model-select1");
+      const modelSelect2 = document.getElementById("model-select2");
+      const modelSelect3 = document.getElementById("model-select3");
       const uploadBtn = document.getElementById("upload-btn");
       const objUpload = document.getElementById("obj-upload");
       const reloadBtn = document.getElementById("reload-btn");
@@ -468,25 +509,39 @@
       function setBusy(nextBusy) {
         busy = nextBusy;
         reloadBtn.disabled = nextBusy;
-        modelSelect.disabled = nextBusy;
+        modelSelect1.disabled = nextBusy;
+        modelSelect2.disabled = nextBusy;
+        modelSelect3.disabled = nextBusy;
         uploadBtn.disabled = nextBusy;
         textureBtn.disabled = nextBusy;
         document.getElementById('distortion-btn').disabled = nextBusy;
       }
 
-      function initModelOptions() {
-        const keys = Object.keys(MODELS);
-        modelSelect.innerHTML = "";
+      function populateSelect(sel, models) {
+        const keys = Object.keys(models);
+        sel.innerHTML = "";
         for (let i = 0; i < keys.length; i++) {
-          const key = keys[i];
-          const option = document.createElement("option");
-          option.value = key;
-          option.textContent = MODELS[key].label;
-          modelSelect.appendChild(option);
+          const opt = document.createElement("option");
+          opt.value = keys[i];
+          opt.textContent = models[keys[i]].label;
+          sel.appendChild(opt);
         }
-        if (keys.length > 0) {
-          modelSelect.value = keys[0];
-        }
+        if (keys.length > 0) sel.value = keys[0];
+      }
+      function initModelOptions() {
+        populateSelect(modelSelect1, MODELS1);
+        populateSelect(modelSelect2, MODELS2);
+        populateSelect(modelSelect3, MODELS3);
+      }
+      function setModelSource(source) {
+        currentModelSource = source;
+        // Reset custom model when switching sources
+        customModelFile = null;
+        objUpload.value = "";
+        currentMeshData = null;
+        currentSourcePath = "";
+        setStatus("已切换到 " + source + "，正在加载模型预览...", "#8cc4ff");
+        loadModelPreview();
       }
 
       function resize() {
@@ -525,18 +580,15 @@
       }
 
       function getModelCandidateUrls(modelKey) {
-        const model = MODELS[modelKey];
-        if (!model) {
-          return [];
-        }
+        const model = getCurrentModelObj();
+        if (!model) return [];
+        const srcIdx = currentModelSource === "assets/Models" ? 0 : (currentModelSource === "assets/Models2" ? 1 : 2);
+        const paths = MIRROR_BASE_PATHS[srcIdx];
         const urls = [];
         const seen = new Set();
-        for (let i = 0; i < MODEL_BASE_PATHS.length; i++) {
-          const url = MODEL_BASE_PATHS[i] + "/" + model.file;
-          if (!seen.has(url)) {
-            seen.add(url);
-            urls.push(url);
-          }
+        for (let i = 0; i < paths.length; i++) {
+          const url = paths[i] + "/" + model.file;
+          if (!seen.has(url)) { seen.add(url); urls.push(url); }
         }
         return urls;
       }
@@ -862,7 +914,21 @@
 
       /** 当前选中的算法 */
       function getCurrentMethod() {
-        return document.getElementById('method-select').value;
+        const checked = document.querySelector('input[name="method"]:checked');
+        return checked ? checked.value : 'bd_lscm';
+      }
+      /** 当前选中的模型源 (Models/Models2/Models3) */
+      let currentModelSource = "assets/Models";
+      function getCurrentModelKey() {
+        if (currentModelSource === "assets/Models") return modelSelect1.value;
+        if (currentModelSource === "assets/Models2") return modelSelect2.value;
+        return modelSelect3.value;
+      }
+      function getCurrentModelObj() {
+        const key = getCurrentModelKey();
+        if (currentModelSource === "assets/Models") return MODELS1[key];
+        if (currentModelSource === "assets/Models2") return MODELS2[key];
+        return MODELS3[key];
       }
 
       /** 获取 BD C 参数值 */
@@ -928,21 +994,22 @@
         }
       }
 
-      // 方法切换时更新 UI
-      document.getElementById('method-select').addEventListener('change', function() {
-        const isBD = this.value === 'bd_lscm';
-        const isARAP = this.value === 'arap';
-        const isCETM = this.value === 'cetm';
-        const isRicci = this.value === 'ricci';
-        const isCP = this.value === 'cp';
-        document.getElementById('bd-c-label').style.display = isBD ? 'flex' : 'none';
-        document.getElementById('bd-c-input').disabled = !isBD;
-        document.getElementById('bd-c-input').style.opacity = isBD ? '1' : '0.4';
-        document.getElementById('arap-iter-label').style.display = isARAP ? 'flex' : 'none';
-        document.getElementById('cetm-opt-label').style.display = isCETM ? 'flex' : 'none';
-        document.getElementById('ricci-opt-label').style.display = isRicci ? 'flex' : 'none';
-        document.getElementById('cp-opt-label').style.display = isCP ? 'flex' : 'none';
-        updateStartButtonState();
+      // 方法切换时更新 UI（为所有 radio 绑定 change）
+      document.querySelectorAll('input[name="method"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+          const m = this.value;
+          const isBD = m === 'bd_lscm';
+          const isARAP = m === 'arap';
+          const isCETM = m === 'cetm';
+          const isRicci = m === 'ricci';
+          const isCP = m === 'cp';
+          document.getElementById('bd-c-label').style.display = isBD ? 'flex' : 'none';
+          document.getElementById('arap-iter-label').style.display = isARAP ? 'flex' : 'none';
+          document.getElementById('cetm-opt-label').style.display = isCETM ? 'flex' : 'none';
+          document.getElementById('ricci-opt-label').style.display = isRicci ? 'flex' : 'none';
+          document.getElementById('cp-opt-label').style.display = isCP ? 'flex' : 'none';
+          updateStartButtonState();
+        });
       });
 
       // ==================== WASM 驱动的 LSCM 求解 ====================
@@ -1942,14 +2009,13 @@
           const root = await loadOBJFromFile(customModelFile);
           return { root: root, sourcePath: customModelFile.name };
         }
-        return loadBuiltinModel(modelSelect.value);
+        return loadBuiltinModel(getCurrentModelKey());
       }
 
       function getCurrentSourceLabel() {
-        if (customModelFile) {
-          return customModelFile.name;
-        }
-        return MODELS[modelSelect.value].label;
+        if (customModelFile) return customModelFile.name;
+        const m = getCurrentModelObj();
+        return m ? m.label : "未知模型";
       }
 
       async function loadModelPreview() {
@@ -2134,14 +2200,9 @@
       resize();
       setStatus("正在加载默认模型 3D 预览...", "#8cc4ff");
       window.addEventListener("resize", resize);
-      modelSelect.addEventListener("change", function () {
-        customModelFile = null;
-        objUpload.value = "";
-        currentMeshData = null;
-        currentSourcePath = "";
-        setStatus("已选择模型: " + getCurrentSourceLabel() + "，正在加载 3D 预览...", "#8cc4ff");
-        loadModelPreview();
-      });
+      modelSelect1.addEventListener("change", function () { setModelSource("assets/Models"); });
+      modelSelect2.addEventListener("change", function () { setModelSource("assets/Models2"); });
+      modelSelect3.addEventListener("change", function () { setModelSource("assets/Models3"); });
       uploadBtn.addEventListener("click", function () {
         objUpload.click();
       });
