@@ -117,20 +117,7 @@
       border-bottom: 1px solid rgba(106, 132, 255, 0.18);
     }
     .toolbar-left {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-    .toolbar h1 {
-      margin: 0;
-      font-size: 20px;
-      color: #eef2ff;
-    }
-    .toolbar .desc {
-      color: #91a0c7;
-      font-size: 13px;
-    }
+         }
     .toolbar-right {
       display: flex;
       align-items: center;
@@ -155,32 +142,6 @@
     }
     .hidden-input {
       display: none;
-    }
-    .drop-overlay {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(6, 11, 21, 0.78);
-      border: 2px dashed rgba(132, 175, 255, 0.55);
-      color: #dce7ff;
-      font-size: 24px;
-      letter-spacing: 1px;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease;
-      z-index: 20;
-    }
-    .drop-overlay.active {
-      opacity: 1;
-    }
-    .drop-overlay small {
-      display: block;
-      margin-top: 10px;
-      color: #9eb4df;
-      font-size: 14px;
-      text-align: center;
     }
     .status {
       min-width: 240px;
@@ -245,6 +206,42 @@
         grid-template-rows: 1fr 1fr;
       }
     }
+      #reload-btn {
+        padding: 9px 22px;
+        background: linear-gradient(135deg, #ff6b35 0%, #ff8f5e 100%);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 3px 10px rgba(255, 107, 53, 0.4);
+        letter-spacing: 1px;
+      }
+      #reload-btn .btn-text {
+        display: inline-block;
+      }
+      #reload-btn .btn-excl {
+        color: #ffd700;
+        margin-left: 3px;
+        font-size: 17px;
+        filter: drop-shadow(0 0 2px rgba(255,215,0,0.6));
+      }
+      #reload-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none !important;
+      }
+      #reload-btn:not(:disabled):hover {
+        transform: translateY(-2px) scale(1.04);
+        box-shadow: 0 6px 18px rgba(255, 107, 53, 0.6);
+      }
+      #reload-btn:not(:disabled):active {
+        transform: translateY(0) scale(0.97);
+        box-shadow: 0 2px 6px rgba(255, 107, 53, 0.4);
+      }
   </style>
 </head>
 <body>
@@ -264,35 +261,42 @@
       <div class="timing-details" id="timing-details"></div>
     </div>
     <div class="toolbar">
-      <div class="toolbar-left">
-        <div>
-          <h1>UV展开</h1>
-          <div class="desc">LSCM · Tutte · ARAP · BD-LSCM · CETM · Ricci · CirclePat · WebAssembly+Eigen</div>
-        </div>
-      </div>
       <div class="toolbar-right">
-        <select id="model-select1" title="Models" style="width:155px;font-size:15px;padding:10px 14px"></select>
-        <select id="model-select2" title="Models2" style="width:155px;font-size:15px;padding:10px 14px"></select>
-        <select id="model-select3" title="Models3" style="width:155px;font-size:15px;padding:10px 14px"></select>
-        <fieldset id="method-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:8px 12px;margin:0;display:flex;flex-wrap:wrap;gap:6px 14px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="radio" name="model-source" value="assets/Models" id="model-radio1" style="accent-color:#6a84ff;cursor:pointer;">
+          <select id="model-select1" title="Models" style="width:155px;font-size:15px;padding:10px 14px;"></select>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="radio" name="model-source" value="assets/Models2" id="model-radio2" style="accent-color:#6a84ff;cursor:pointer;">
+          <select id="model-select2" title="Models2" style="width:155px;font-size:15px;padding:10px 14px;"></select>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="radio" name="model-source" value="assets/Models3" id="model-radio3" style="accent-color:#6a84ff;cursor:pointer;">
+          <select id="model-select3" title="Models3" style="width:155px;font-size:15px;padding:10px 14px;"></select>
+        </div>
+        <fieldset id="method-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:8px 12px;margin:0;">
           <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开算法</legend>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="lscm"> LSCM</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte_circle"> Tutte(圆)</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte_square"> Tutte(方)</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="arap"> ARAP</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cetm"> CETM</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="ricci"> Ricci流</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cp"> CirclePat</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover"> QuadCover</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="bff"> BFF</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="miq"> MIQ</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="holo"> 全纯1-形式</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="bd_lscm" checked> BD-LSCM</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:4px;">
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="lscm" checked> LSCM</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte_circle"> Tutte(圆)</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte_square"> Tutte(方)</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="arap"> ARAP</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cetm"> CETM</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="ricci"> Ricci流</label>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cp"> CirclePat</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover"> QuadCover</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="bff"> BFF</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="miq"> MIQ</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="holo"> 全纯1-形式</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="bd_lscm"> BD-LSCM</label>
+          </div>
         </fieldset>
-        <label id="bd-c-label" style="font-size:12px;color:#8a9dd4;display:flex;align-items:center;gap:4px;">
-          C:<input id="bd-c-input" type="number" value="10" min="1.1" max="100" step="1"
-            style="width:50px;padding:4px 6px;border-radius:6px;text-align:center"
-            title="共形扭曲上限 σ₁/σ₂ ≤ C（越小越保角）">
+        <label id="bd-c-label" style="font-size:13px;color:#c6d1f4;display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(106,132,255,0.25);border-radius:10px;background:#121b31;">
+          上限c:<input id="bd-c-input" type="number" value="10" min="1.1" max="100" step="1"
+            style="width:54px;padding:5px 7px;border-radius:6px;text-align:center;font-size:13px;border:1px solid rgba(106,132,255,0.3);background:#0d1528;color:#eef2ff;"
+            title="共形扭曲上限 σ₁/σ₂ ≤ c（越小越保角，c≥1）">
         </label>
         <label id="arap-iter-label" style="font-size:12px;color:#8a9dd4;display:none;">
           迭代:<input id="arap-iter-input" type="number" value="30" min="5" max="200" step="5"
@@ -323,11 +327,16 @@
             <option value="3">LBFGS</option>
           </select>
         </label>
-        <button id="upload-btn">上传OBJ</button>
-        <input id="obj-upload" class="hidden-input" type="file" accept=".obj,model/obj,text/plain">
-        <button id="reload-btn">开始展开</button>
-        <button id="texture-btn">纹理扭曲</button>
-        <button id="distortion-btn" title="用颜色显示每个面的准共形扭曲（1.0=无扭曲, >1.0=有扭曲）">显示扭曲</button>
+        <button id="reload-btn"><span class="btn-text">展开</span><span class="btn-excl">!</span></button>
+        <fieldset id="texture-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:6px 10px;margin:0;display:flex;gap:12px;align-items:center;">
+          <legend style="color:#8a9dd4;font-size:11px;padding:0 4px;">纹理显示</legend>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;">
+            <input type="radio" name="texture-display" value="checkerboard" id="radio-checkerboard" disabled> 棋盘格
+          </label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;">
+            <input type="radio" name="texture-display" value="distortion" id="radio-distortion" disabled> 共形扭曲
+          </label>
+        </fieldset>
         <div class="status" id="status-text">正在加载模型...</div>
       </div>
     </div>
@@ -354,12 +363,6 @@
         </div>
         <div class="footer-note">右侧展示展开后的线框 UV 结果。</div>
       </section>
-    </div>
-  </div>
-  <div id="drop-overlay" class="drop-overlay">
-    <div>
-      拖拽 OBJ 文件到这里
-      <small>松开鼠标后立即开始解析与 LSCM 展开</small>
     </div>
   </div>
 
@@ -393,9 +396,7 @@
         torus: { label: "Torus", file: "torus.obj" }
       };
       const MODELS3 = {
-        tri2: { label: "2 Triangles", file: "2triangles.obj" },
         holes3b: { label: "3 Holes", file: "3holes.obj" },
-        alligator: { label: "Alligator", file: "alligator.obj" },
         armadillob: { label: "Armadillo", file: "armadillo.obj" },
         bimba: { label: "Bimba", file: "bimba.obj" },
         camel_b: { label: "Camel B", file: "camel_b.obj" },
@@ -420,12 +421,14 @@
       const modelSelect1 = document.getElementById("model-select1");
       const modelSelect2 = document.getElementById("model-select2");
       const modelSelect3 = document.getElementById("model-select3");
-      const uploadBtn = document.getElementById("upload-btn");
-      const objUpload = document.getElementById("obj-upload");
+      const modelRadio1 = document.getElementById("model-radio1");
+      const modelRadio2 = document.getElementById("model-radio2");
+      const modelRadio3 = document.getElementById("model-radio3");
       const reloadBtn = document.getElementById("reload-btn");
-      const textureBtn = document.getElementById("texture-btn");
+      const textureBtn = null;
+      const radioCheckerboard = document.getElementById("radio-checkerboard");
+      const radioDistortion = document.getElementById("radio-distortion");
       const statusText = document.getElementById("status-text");
-      const dropOverlay = document.getElementById("drop-overlay");
       const objLoader = new THREE.OBJLoader();
 
       const modelRenderer = new THREE.WebGLRenderer({ canvas: modelCanvas, antialias: true, alpha: true });
@@ -458,8 +461,6 @@
       let currentUvLines = null;
       let currentUvPins = null;
       let busy = false;
-      let customModelFile = null;
-      let dragDepth = 0;
       let currentMeshData = null;
       let currentSourcePath = "";
       let currentUnwrapUv = null;
@@ -512,9 +513,17 @@
         modelSelect1.disabled = nextBusy;
         modelSelect2.disabled = nextBusy;
         modelSelect3.disabled = nextBusy;
-        uploadBtn.disabled = nextBusy;
-        textureBtn.disabled = nextBusy;
-        document.getElementById('distortion-btn').disabled = nextBusy;
+        modelRadio1.disabled = nextBusy;
+        modelRadio2.disabled = nextBusy;
+        modelRadio3.disabled = nextBusy;
+        // 单选框在展开完成前保持禁用
+        if (!nextBusy && currentUnwrapUv) {
+          radioCheckerboard.disabled = false;
+          radioDistortion.disabled = false;
+        } else if (nextBusy) {
+          radioCheckerboard.disabled = true;
+          radioDistortion.disabled = true;
+        }
       }
 
       function populateSelect(sel, models) {
@@ -535,9 +544,6 @@
       }
       function setModelSource(source) {
         currentModelSource = source;
-        // Reset custom model when switching sources
-        customModelFile = null;
-        objUpload.value = "";
         currentMeshData = null;
         currentSourcePath = "";
         currentRawFaces = null;
@@ -577,14 +583,7 @@
 
       function loadOBJ(url) {
         return new Promise(function (resolve, reject) {
-          // 先 fetch 文本解析原始面，再加载几何
-          fetch(url).then(function(r) {
-            if (!r.ok) throw new Error("HTTP " + r.status);
-            return r.text();
-          }).then(function(text) {
-            currentRawFaces = parseOBJRawFaces(text);
-            objLoader.load(url, resolve, undefined, reject);
-          }).catch(reject);
+          objLoader.load(url, resolve, undefined, reject);
         });
       }
 
@@ -619,45 +618,8 @@
         throw new Error("内置模型加载失败，尝试路径: " + candidateUrls.join(" | ") + "；最后错误: " + detail);
       }
 
-      // 解析 OBJ 文件的原始面数据（保留 quad 结构，不三角化）
-      function parseOBJRawFaces(text) {
-        const rawFaces = [];
-        const lines = text.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (line.startsWith('f ')) {
-            const parts = line.split(/\s+/).slice(1);
-            const indices = [];
-            for (let j = 0; j < parts.length; j++) {
-              const idx = parseInt(parts[j].split('/')[0]) - 1;
-              if (!isNaN(idx)) indices.push(idx);
-            }
-            if (indices.length >= 3) rawFaces.push(indices);
-          }
-        }
-        return rawFaces;
-      }
       let currentRawFaces = null; // 原始 OBJ 面数据（可能含 quad）
       let isQuadMesh = false;     // 是否为四边形网格
-
-      function loadOBJFromFile(file) {
-        return new Promise(function (resolve, reject) {
-          const reader = new FileReader();
-          reader.onload = function () {
-            try {
-              const text = typeof reader.result === "string" ? reader.result : "";
-              currentRawFaces = parseOBJRawFaces(text);
-              resolve(objLoader.parse(text));
-            } catch (error) {
-              reject(error);
-            }
-          };
-          reader.onerror = function () {
-            reject(new Error("读取本地 OBJ 文件失败"));
-          };
-          reader.readAsText(file);
-        });
-      }
 
       function collectMeshData(root) {
         root.updateMatrixWorld(true);
@@ -946,7 +908,7 @@
       /** 当前选中的算法 */
       function getCurrentMethod() {
         const checked = document.querySelector('input[name="method"]:checked');
-        return checked ? checked.value : 'bd_lscm';
+        return checked ? checked.value : 'lscm';
       }
       /** 当前选中的模型源 (Models/Models2/Models3) */
       let currentModelSource = "assets/Models";
@@ -1020,7 +982,7 @@
           btn.textContent = '引擎加载中...';
           btn.disabled = true;
         } else {
-          btn.textContent = '开始展开';
+          btn.textContent = '展开!';
           btn.disabled = false;
         }
       }
@@ -1875,7 +1837,8 @@
 
       function setTextureDistortionEnabled(enabled) {
         if (enabled && (!currentMeshData || !currentUnwrapUv)) {
-          setStatus("请先点击“开始展开”生成 UV，再开启纹理扭曲", "#ffd38a");
+          setStatus("请先点击"开始展开"生成 UV，再开启纹理扭曲", "#ffd38a");
+          if (radioCheckerboard) radioCheckerboard.checked = false;
           return;
         }
 
@@ -1887,14 +1850,13 @@
           if (currentModelGroup) {
             currentModelGroup.visible = false;
           }
-          textureBtn.textContent = "关闭纹理扭曲";
+          if (currentDistortionMesh) currentDistortionMesh.visible = false;
           setStatus("已开启纹理扭曲（棋盘格贴图）", "#89f0b6");
         } else {
           clearTexturedMesh();
           if (currentModelGroup) {
             currentModelGroup.visible = true;
           }
-          textureBtn.textContent = "纹理扭曲";
           setStatus("已关闭纹理扭曲", "#8cc4ff");
         }
       }
@@ -1907,18 +1869,18 @@
       }
 
       async function setDistortionEnabled(enabled) {
-        const btn = document.getElementById('distortion-btn');
         if (!enabled) {
           distortionEnabled = false;
           clearDistortionMesh();
           if (currentModelGroup) currentModelGroup.visible = true;
           if (currentTexturedMesh && textureEnabled) currentTexturedMesh.visible = true;
-          btn.textContent = '显示扭曲';
           return;
         }
 
         if (!currentMeshData || !currentUnwrapUv) {
           setStatus('请先点击"开始展开"生成 UV', '#ffd38a');
+          if (radioDistortion) radioDistortion.checked = false;
+          if (radioCheckerboard) { radioCheckerboard.checked = true; setTextureDistortionEnabled(true); }
           return;
         }
 
@@ -1928,11 +1890,12 @@
         }
         if (!taWasmReady) {
           setStatus('QC 引擎加载失败', '#ff9d9d');
+          if (radioDistortion) radioDistortion.checked = false;
+          if (radioCheckerboard) { radioCheckerboard.checked = true; setTextureDistortionEnabled(true); }
           return;
         }
 
-        btn.textContent = '计算中...';
-        btn.disabled = true;
+        setStatus('共形扭曲计算中...', '#ffd38a');
 
         try {
           // 1. load mesh + UV into WASM
@@ -2020,19 +1983,18 @@
           currentDistortionMesh = new THREE.Mesh(geom, mat);
           modelScene.add(currentDistortionMesh);
 
-          // hide normal model
+          // hide normal model and checkerboard
           if (currentModelGroup) currentModelGroup.visible = false;
           if (currentTexturedMesh) currentTexturedMesh.visible = false;
 
           distortionEnabled = true;
-          btn.textContent = '隐藏扭曲';
           setStatus('QC 扭曲: avg=' + avgErr.toFixed(4) + '  max=' + maxErr.toFixed(4) + '  (绿=1.0无扭曲, 红>1.5)', '#89f0b6');
         } catch (err) {
           console.error('QC error:', err);
           setStatus('扭曲计算失败: ' + err.message, '#ff9d9d');
-          btn.textContent = '显示扭曲';
+          if (radioDistortion) radioDistortion.checked = false;
+          if (radioCheckerboard) { radioCheckerboard.checked = true; setTextureDistortionEnabled(true); }
         }
-        btn.disabled = false;
       }
 
       function rebuildUvGrid() {
@@ -2056,33 +2018,11 @@
         }
       }
 
-      function setDropOverlay(active) {
-        dropOverlay.classList.toggle("active", active);
-      }
-
-      function applyCustomFile(file) {
-        if (!file) {
-          return;
-        }
-        if (!/\.obj$/i.test(file.name)) {
-          setStatus("仅支持上传 .obj 文件", "#ff9d9d");
-          return;
-        }
-        customModelFile = file;
-        setStatus("已选择本地文件: " + file.name + "，正在加载 3D 预览...", "#ffd38a");
-        loadModelPreview();
-      }
-
       async function resolveSourceObject() {
-        if (customModelFile) {
-          const root = await loadOBJFromFile(customModelFile);
-          return { root: root, sourcePath: customModelFile.name };
-        }
         return loadBuiltinModel(getCurrentModelKey());
       }
 
       function getCurrentSourceLabel() {
-        if (customModelFile) return customModelFile.name;
         const m = getCurrentModelObj();
         return m ? m.label : "未知模型";
       }
@@ -2106,12 +2046,13 @@
           clearTexturedMesh();
           clearDistortionMesh();
           distortionEnabled = false;
-          document.getElementById('distortion-btn').textContent = '显示扭曲';
           currentUvLines = null;
           currentUvPins = null;
           currentUnwrapUv = null;
           textureEnabled = false;
-          textureBtn.textContent = "纹理扭曲";
+          // 重置纹理显示单选框为未选中
+          if (radioCheckerboard) radioCheckerboard.checked = false;
+          if (radioDistortion) radioDistortion.checked = false;
 
           setStatus("正在提取三角网格...");
           const meshData = collectMeshData(root);
@@ -2143,7 +2084,7 @@
 
           setStatus(
             "3D 预览: " + getCurrentSourceLabel() + " / " + meshData.positions.length + " 顶点 / " +
-            currentRawFaces.length + " " + faceType + "，点击"开始展开"执行 UV",
+            currentRawFaces.length + " " + faceType + "，点击「开始展开」执行 UV",
             "#89f0b6"
           );
         } catch (error) {
@@ -2229,7 +2170,13 @@
           // 清除旧的扭曲显示（UV 变了）
           clearDistortionMesh();
           distortionEnabled = false;
-          document.getElementById('distortion-btn').textContent = '显示扭曲';
+          // 展开完成后启用纹理显示单选框，默认选中"棋盘格"
+          if (radioCheckerboard && radioDistortion) {
+            radioCheckerboard.disabled = false;
+            radioDistortion.disabled = false;
+            radioCheckerboard.checked = true;
+            setTextureDistortionEnabled(true);
+          }
 
           // 更新 UV 面板标签
           const methodNames = { lscm:'LSCM', bd_lscm:'BD-LSCM', tutte_circle:'Tutte(圆)', tutte_square:'Tutte(方)', arap:'ARAP', cetm:'CETM', ricci:'Ricci', cp:'CirclePat', quadcover:'QuadCover', bff:'BFF', miq:'MIQ' };
@@ -2259,9 +2206,6 @@
             methodLabel + " 展开完成，翻转面 " + unwrapResult.flippedFaceCount + " 个",
             color
           );
-          if (textureEnabled) {
-            setTextureDistortionEnabled(true);
-          }
         } catch (error) {
           console.error('展开失败:', error.message, error.stack);
           hideTiming();
@@ -2283,53 +2227,35 @@
       resize();
       setStatus("正在加载默认模型 3D 预览...", "#8cc4ff");
       window.addEventListener("resize", resize);
-      modelSelect1.addEventListener("change", function () { setModelSource("assets/Models"); });
-      modelSelect2.addEventListener("change", function () { setModelSource("assets/Models2"); });
-      modelSelect3.addEventListener("change", function () { setModelSource("assets/Models3"); });
-      uploadBtn.addEventListener("click", function () {
-        objUpload.click();
-      });
-      objUpload.addEventListener("change", function () {
-        const file = objUpload.files && objUpload.files[0];
-        applyCustomFile(file);
-        objUpload.value = "";
-      });
-      window.addEventListener("dragenter", function (event) {
-        event.preventDefault();
-        dragDepth += 1;
-        setDropOverlay(true);
-      });
-      window.addEventListener("dragover", function (event) {
-        event.preventDefault();
-        if (event.dataTransfer) {
-          event.dataTransfer.dropEffect = "copy";
-        }
-        setDropOverlay(true);
-      });
-      window.addEventListener("dragleave", function (event) {
-        event.preventDefault();
-        dragDepth = Math.max(0, dragDepth - 1);
-        if (dragDepth === 0) {
-          setDropOverlay(false);
-        }
-      });
-      window.addEventListener("drop", function (event) {
-        event.preventDefault();
-        dragDepth = 0;
-        setDropOverlay(false);
-        const files = event.dataTransfer && event.dataTransfer.files;
-        if (!files || !files.length) {
-          return;
-        }
-        applyCustomFile(files[0]);
-      });
+      function onModelRadioChange() {
+        const src = document.querySelector('input[name="model-source"]:checked');
+        if (src) setModelSource(src.value);
+      }
+      modelSelect1.addEventListener("change", function () { if (modelRadio1.checked) setModelSource("assets/Models"); });
+      modelSelect2.addEventListener("change", function () { if (modelRadio2.checked) setModelSource("assets/Models2"); });
+      modelSelect3.addEventListener("change", function () { if (modelRadio3.checked) setModelSource("assets/Models3"); });
+      modelRadio1.addEventListener("change", onModelRadioChange);
+      modelRadio2.addEventListener("change", onModelRadioChange);
+      modelRadio3.addEventListener("change", onModelRadioChange);
       reloadBtn.addEventListener("click", updateModel);
-      textureBtn.addEventListener("click", function () {
-        setTextureDistortionEnabled(!textureEnabled);
-      });
-      document.getElementById('distortion-btn').addEventListener('click', function () {
-        setDistortionEnabled(!distortionEnabled);
-      });
+
+      // 纹理显示单选框切换
+      if (radioCheckerboard) {
+        radioCheckerboard.addEventListener("change", function () {
+          if (this.checked) {
+            setTextureDistortionEnabled(true);
+            if (radioDistortion) radioDistortion.checked = false;
+          }
+        });
+      }
+      if (radioDistortion) {
+        radioDistortion.addEventListener("change", async function () {
+          if (this.checked) {
+            setTextureDistortionEnabled(false);
+            await setDistortionEnabled(true);
+          }
+        });
+      }
       
       // 页面启动时预加载 WASM 求解器
       updateStartButtonState();
@@ -2340,7 +2266,13 @@
         }
       });
       
-      loadModelPreview();
+      // 启动时随机选择一个模型源加载
+      (function(){
+        const radios = [modelRadio1, modelRadio2, modelRadio3];
+        const idx = Math.floor(Math.random() * 3);
+        radios[idx].checked = true;
+        setModelSource(radios[idx].value);
+      })();
       animate();
     })();
   </script>
