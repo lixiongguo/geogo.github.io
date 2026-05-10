@@ -271,9 +271,9 @@
         </div>
       </div>
       <div class="toolbar-right">
-        <select id="model-select1" title="Models" style="width:130px"></select>
-        <select id="model-select2" title="Models2" style="width:130px"></select>
-        <select id="model-select3" title="Models3" style="width:130px"></select>
+        <select id="model-select1" title="Models" style="width:155px;font-size:15px;padding:10px 14px"></select>
+        <select id="model-select2" title="Models2" style="width:155px;font-size:15px;padding:10px 14px"></select>
+        <select id="model-select3" title="Models3" style="width:155px;font-size:15px;padding:10px 14px"></select>
         <fieldset id="method-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:8px 12px;margin:0;display:flex;flex-wrap:wrap;gap:6px 14px;">
           <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开算法</legend>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="lscm"> LSCM</label>
@@ -540,6 +540,8 @@
         objUpload.value = "";
         currentMeshData = null;
         currentSourcePath = "";
+        currentRawFaces = null;
+        isQuadMesh = false;
         setStatus("已切换到 " + source + "，正在加载模型预览...", "#8cc4ff");
         loadModelPreview();
       }
@@ -575,7 +577,14 @@
 
       function loadOBJ(url) {
         return new Promise(function (resolve, reject) {
-          objLoader.load(url, resolve, undefined, reject);
+          // 先 fetch 文本解析原始面，再加载几何
+          fetch(url).then(function(r) {
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r.text();
+          }).then(function(text) {
+            currentRawFaces = parseOBJRawFaces(text);
+            objLoader.load(url, resolve, undefined, reject);
+          }).catch(reject);
         });
       }
 
@@ -610,12 +619,34 @@
         throw new Error("内置模型加载失败，尝试路径: " + candidateUrls.join(" | ") + "；最后错误: " + detail);
       }
 
+      // 解析 OBJ 文件的原始面数据（保留 quad 结构，不三角化）
+      function parseOBJRawFaces(text) {
+        const rawFaces = [];
+        const lines = text.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (line.startsWith('f ')) {
+            const parts = line.split(/\s+/).slice(1);
+            const indices = [];
+            for (let j = 0; j < parts.length; j++) {
+              const idx = parseInt(parts[j].split('/')[0]) - 1;
+              if (!isNaN(idx)) indices.push(idx);
+            }
+            if (indices.length >= 3) rawFaces.push(indices);
+          }
+        }
+        return rawFaces;
+      }
+      let currentRawFaces = null; // 原始 OBJ 面数据（可能含 quad）
+      let isQuadMesh = false;     // 是否为四边形网格
+
       function loadOBJFromFile(file) {
         return new Promise(function (resolve, reject) {
           const reader = new FileReader();
           reader.onload = function () {
             try {
               const text = typeof reader.result === "string" ? reader.result : "";
+              currentRawFaces = parseOBJRawFaces(text);
               resolve(objLoader.parse(text));
             } catch (error) {
               reject(error);
@@ -1648,21 +1679,49 @@
         });
 
         root.traverse(function (child) {
-          if (!child.isMesh || !child.geometry) {
-            return;
-          }
-          const mesh = new THREE.Mesh(child.geometry, meshMaterial);
+          if (!child.isMesh || !child.geometry) return;
+          const geom = child.geometry;
+          const mesh = new THREE.Mesh(geom, meshMaterial);
           mesh.matrixAutoUpdate = false;
           mesh.matrix.copy(child.matrixWorld);
           group.add(mesh);
 
-          const wire = new THREE.LineSegments(
-            new THREE.WireframeGeometry(child.geometry),
-            new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent: true, opacity: 0.65 })
-          );
-          wire.matrixAutoUpdate = false;
-          wire.matrix.copy(child.matrixWorld);
-          group.add(wire);
+          // 四边形网格：用四边形边界渲染，不显示三角形对角线
+          if (isQuadMesh && currentRawFaces && currentRawFaces.length > 0) {
+            const posArr = geom.attributes.position;
+            const lineSegs = [];
+            const added = new Set();
+            function addEdge(a, b) {
+              const key = a < b ? a + '_' + b : b + '_' + a;
+              if (added.has(key)) return;
+              added.add(key);
+              lineSegs.push(posArr.getX(a), posArr.getY(a), posArr.getZ(a),
+                           posArr.getX(b), posArr.getY(b), posArr.getZ(b));
+            }
+            for (let i = 0; i < currentRawFaces.length; i++) {
+              const f = currentRawFaces[i];
+              // 画多边形的外部环（不画对角线）
+              for (let k = 0; k < f.length; k++) {
+                addEdge(f[k], f[(k + 1) % f.length]);
+              }
+            }
+            const lineGeom = new THREE.BufferGeometry();
+            lineGeom.setAttribute('position', new THREE.Float32BufferAttribute(lineSegs, 3));
+            const wire = new THREE.LineSegments(lineGeom,
+              new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent: true, opacity: 0.65 }));
+            wire.matrixAutoUpdate = false;
+            wire.matrix.copy(child.matrixWorld);
+            group.add(wire);
+          } else {
+            // 三角网格：用三角线框
+            const wire = new THREE.LineSegments(
+              new THREE.WireframeGeometry(geom),
+              new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent: true, opacity: 0.65 })
+            );
+            wire.matrixAutoUpdate = false;
+            wire.matrix.copy(child.matrixWorld);
+            group.add(wire);
+          }
         });
 
         const pinPositions = [];
@@ -1699,10 +1758,20 @@
           segments.push(pa[0], pa[1], pa[2], pb[0], pb[1], pb[2]);
         }
 
-        for (let i = 0; i < faces.length; i++) {
-          addEdge(faces[i][0], faces[i][1]);
-          addEdge(faces[i][1], faces[i][2]);
-          addEdge(faces[i][2], faces[i][0]);
+        // 四边形网格用四边形边界，三角网格用三角边界
+        if (isQuadMesh && currentRawFaces && currentRawFaces.length > 0) {
+          for (let i = 0; i < currentRawFaces.length; i++) {
+            const f = currentRawFaces[i];
+            for (let k = 0; k < f.length; k++) {
+              addEdge(f[k], f[(k + 1) % f.length]);
+            }
+          }
+        } else {
+          for (let i = 0; i < faces.length; i++) {
+            addEdge(faces[i][0], faces[i][1]);
+            addEdge(faces[i][1], faces[i][2]);
+            addEdge(faces[i][2], faces[i][0]);
+          }
         }
 
         const lineGeom = new THREE.BufferGeometry();
@@ -2059,8 +2128,22 @@
           currentMeshData = meshData;
           currentSourcePath = resolved.sourcePath;
 
+          // 检测是否为四边形网格（原始面至少有 3/4 是四边面）
+          if (currentRawFaces && currentRawFaces.length > 0) {
+            let quadCount = 0;
+            for (let i = 0; i < currentRawFaces.length; i++) {
+              if (currentRawFaces[i].length === 4) quadCount++;
+            }
+            isQuadMesh = (quadCount >= currentRawFaces.length * 0.75);
+          } else {
+            isQuadMesh = false;
+          }
+
+          const faceType = isQuadMesh ? "四边面" : "三角形";
+
           setStatus(
-            "3D 预览已加载: " + getCurrentSourceLabel() + " / " + meshData.positions.length + " 顶点 / " + meshData.faces.length + " 三角形，点击“开始展开”执行 UV",
+            "3D 预览: " + getCurrentSourceLabel() + " / " + meshData.positions.length + " 顶点 / " +
+            currentRawFaces.length + " " + faceType + "，点击"开始展开"执行 UV",
             "#89f0b6"
           );
         } catch (error) {

@@ -476,7 +476,7 @@ a.nav-item:hover { color: #777; }
 
 .sidebar-social .nav-item {
 	color: #bbb;
-	font-size: 0.85em;
+	font-size: 0.95em;
 }
 
 .sidebar-social .nav-item:hover {
@@ -485,6 +485,8 @@ a.nav-item:hover { color: #777; }
 
 .sidebar-social .social-icon {
 	fill: #bbb;
+	width: 20px;
+	height: 20px;
 	transition: fill 0.2s;
 }
 
