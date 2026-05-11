@@ -1837,7 +1837,7 @@
 
       function setTextureDistortionEnabled(enabled) {
         if (enabled && (!currentMeshData || !currentUnwrapUv)) {
-          setStatus("请先点击"开始展开"生成 UV，再开启纹理扭曲", "#ffd38a");
+          setStatus('请先点击"展开!"生成 UV，再开启纹理扭曲', '#ffd38a');
           if (radioCheckerboard) radioCheckerboard.checked = false;
           return;
         }
@@ -1878,7 +1878,7 @@
         }
 
         if (!currentMeshData || !currentUnwrapUv) {
-          setStatus('请先点击"开始展开"生成 UV', '#ffd38a');
+          setStatus('请先点击"展开!"生成 UV', '#ffd38a');
           if (radioDistortion) radioDistortion.checked = false;
           if (radioCheckerboard) { radioCheckerboard.checked = true; setTextureDistortionEnabled(true); }
           return;
