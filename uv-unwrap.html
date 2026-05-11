@@ -8,26 +8,8 @@
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
   
-  <!-- WASM LSCM Solver (Eigen 稀疏 Cholesky) -->
-  <script src="assets/wasm/lscm_solver.js"></script>
-  <!-- WASM BD-LSCM Solver (Bounded Distortion + LSCM) -->
-  <script src="assets/wasm/bd_lscm_solver.js"></script>
-  <!-- WASM Tutte + ARAP Solver -->
-  <script src="assets/wasm/tutte_arap_solver.js"></script>
-  <!-- WASM CETM Solver (共形因子方法) -->
-  <script src="assets/wasm/cetm_solver.js"></script>
-  <!-- WASM RicciFlow Solver (离散Ricci流) -->
-  <script src="assets/wasm/ricci_solver.js"></script>
-  <!-- WASM CirclePatterns Solver (圆填充) -->
-  <script src="assets/wasm/cp_solver.js"></script>
-  <!-- WASM QuadCover Solver -->
-  <script src="assets/wasm/quadcover_solver.js"></script>
-  <!-- WASM BFF Solver -->
-  <script src="assets/wasm/bff_solver.js"></script>
-  <!-- WASM MIQ Solver -->
-  <script src="assets/wasm/miq_solver.js"></script>
-  <!-- WASM Holomorphic 1-Form Solver -->
-  <script src="assets/wasm/holo_solver.js"></script>
+  <!-- WASM Unified Solver (LSCM / BD-LSCM / Tutte+ARAP / CETM / RicciFlow / CirclePatterns / QuadCover / BFF / MIQ / Holomorphic1Form / PrincipalCurvature) -->
+  <script src="assets/wasm/unified_solver.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
@@ -748,208 +730,28 @@
       }
 
       // ==================== WASM 求解器初始化 ====================
-      let wasmModule = null;          // LSCM WASM 模块实例
-      let wasmReady = false;          // LSCM WASM 是否已就绪
+      let wasmInstance = null;         // Unified WASM 模块实例（包含所有算法）
+      let wasmReady = false;           // WASM 是否已就绪
       let wasmLoadFailed = false;
 
-      let bdWasmModule = null;        // BD-LSCM WASM 模块实例
-      let bdWasmReady = false;
-      let bdWasmLoadFailed = false;
-
-      let taWasmModule = null;        // Tutte+ARAP WASM 模块实例
-      let taWasmReady = false;
-      let taWasmLoadFailed = false;
-
-      let cetmWasmModule = null;     // CETM WASM 模块实例
-      let cetmWasmReady = false;
-      let cetmWasmLoadFailed = false;
-
-      let ricciWasmModule = null;    // RicciFlow WASM 模块实例
-      let ricciWasmReady = false;
-      let ricciWasmLoadFailed = false;
-
-      let cpWasmModule = null;       // CirclePatterns WASM 模块实例
-      let cpWasmReady = false;
-      let cpWasmLoadFailed = false;
-
-      let qcWasmModule = null;       // QuadCover WASM 模块实例
-      let qcWasmReady = false;
-      let qcWasmLoadFailed = false;
-
-      let bffWasmModule = null;      // BFF WASM 模块实例
-      let bffWasmReady = false;
-      let bffWasmLoadFailed = false;
-
-      let miqWasmModule = null;      // MIQ WASM 模块实例
-      let miqWasmReady = false;
-      let miqWasmLoadFailed = false;
-
-      let holoWasmModule = null;     // Holomorphic 1-Form WASM
-      let holoWasmReady = false;
-      let holoWasmLoadFailed = false;
-
       /**
-       * 异步加载 LSCM WASM 求解器
+       * 异步加载 Unified WASM 求解器（包含全部 11 个算法）
        */
-      async function initWASMSolver() {
+      async function initUnifiedSolver() {
         if (wasmReady) return true;
         if (wasmLoadFailed) return false;
         
         try {
-          if (typeof LSCMSolver === 'undefined') {
-            throw new Error('WASM 胶水代码未加载，请确保 assets/wasm/lscm_solver.js 已部署');
+          if (typeof UnifiedSolver === 'undefined') {
+            throw new Error('WASM 胶水代码未加载，请确保 assets/wasm/unified_solver.js 已部署');
           }
-          wasmModule = await LSCMSolver();
+          wasmInstance = await UnifiedSolver();
           wasmReady = true;
-          console.log('WASM LSCM 求解器加载成功');
+          console.log('WASM Unified Solver (11 algorithms) 加载成功');
           return true;
         } catch (err) {
-          console.error('LSCM WASM 加载失败:', err);
+          console.error('Unified WASM 加载失败:', err);
           wasmLoadFailed = true;
-          return false;
-        }
-      }
-
-      /**
-       * 异步加载 BD-LSCM WASM 求解器
-       */
-      async function initBDWASMSolver() {
-        if (bdWasmReady) return true;
-        if (bdWasmLoadFailed) return false;
-
-        try {
-          if (typeof BDLSCMSolver === 'undefined') {
-            throw new Error('BD-LSCM WASM 胶水代码未加载，请确保 assets/wasm/bd_lscm_solver.js 已部署');
-          }
-          bdWasmModule = await BDLSCMSolver();
-          bdWasmReady = true;
-          console.log('WASM BD-LSCM 求解器加载成功');
-          return true;
-        } catch (err) {
-          console.error('BD-LSCM WASM 加载失败:', err);
-          bdWasmLoadFailed = true;
-          return false;
-        }
-      }
-
-      /**
-       * 异步加载 CETM WASM 求解器
-       */
-      async function initCETMWASMSolver() {
-        if (cetmWasmReady) return true;
-        if (cetmWasmLoadFailed) return false;
-
-        try {
-          if (typeof CETMSolver === 'undefined') {
-            throw new Error('CETM WASM 胶水代码未加载，请确保 assets/wasm/cetm_solver.js 已部署');
-          }
-          cetmWasmModule = await CETMSolver();
-          cetmWasmReady = true;
-          console.log('WASM CETM 求解器加载成功');
-          return true;
-        } catch (err) {
-          console.error('CETM WASM 加载失败:', err);
-          cetmWasmLoadFailed = true;
-          return false;
-        }
-      }
-
-      async function initMIQWASMSolver() {
-        if(miqWasmReady)return true;if(miqWasmLoadFailed)return false;
-        try{if(typeof MIQSolver==='undefined')throw new Error('MIQ WASM未加载');
-        miqWasmModule=await MIQSolver();miqWasmReady=true;return true;
-        }catch(e){miqWasmLoadFailed=true;return false;}
-      }
-      async function initHoloWASMSolver() {
-        if(holoWasmReady)return true;if(holoWasmLoadFailed)return false;
-        try{if(typeof HoloSolver==='undefined')throw new Error('Holo WASM未加载');
-        holoWasmModule=await HoloSolver();holoWasmReady=true;return true;
-        }catch(e){holoWasmLoadFailed=true;return false;}
-      }
-      /**
-       * 异步加载 QuadCover WASM 求解器
-       */
-      async function initQCWASMSolver() {
-        if (qcWasmReady) return true;
-        if (qcWasmLoadFailed) return false;
-        try {
-          if (typeof QuadCoverSolver === 'undefined') throw new Error('QC WASM 未加载');
-          qcWasmModule = await QuadCoverSolver();
-          qcWasmReady = true;
-          console.log('WASM QuadCover 求解器加载成功');
-          return true;
-        } catch (err) { console.error('QC WASM 加载失败:', err); qcWasmLoadFailed = true; return false; }
-      }
-      /**
-       * 异步加载 BFF WASM 求解器
-       */
-      async function initBFFWASMSolver() {
-        if (bffWasmReady) return true;
-        if (bffWasmLoadFailed) return false;
-        try {
-          if (typeof BFFSolver === 'undefined') throw new Error('BFF WASM 未加载');
-          bffWasmModule = await BFFSolver();
-          bffWasmReady = true;
-          console.log('WASM BFF 求解器加载成功');
-          return true;
-        } catch (err) { console.error('BFF WASM 加载失败:', err); bffWasmLoadFailed = true; return false; }
-      }
-
-      /**
-       * 异步加载 Circle Patterns WASM 求解器
-       */
-      async function initCPWASMSolver() {
-        if (cpWasmReady) return true;
-        if (cpWasmLoadFailed) return false;
-        try {
-          if (typeof CPSolver === 'undefined') throw new Error('CP WASM 未加载');
-          cpWasmModule = await CPSolver();
-          cpWasmReady = true;
-          console.log('WASM CirclePatterns 求解器加载成功');
-          return true;
-        } catch (err) { console.error('CP WASM 加载失败:', err); cpWasmLoadFailed = true; return false; }
-      }
-
-      /**
-       * 异步加载 Ricci Flow WASM 求解器
-       */
-      async function initRicciWASMSolver() {
-        if (ricciWasmReady) return true;
-        if (ricciWasmLoadFailed) return false;
-
-        try {
-          if (typeof RicciFlowSolver === 'undefined') {
-            throw new Error('RicciFlow WASM 胶水代码未加载');
-          }
-          ricciWasmModule = await RicciFlowSolver();
-          ricciWasmReady = true;
-          console.log('WASM RicciFlow 求解器加载成功');
-          return true;
-        } catch (err) {
-          console.error('RicciFlow WASM 加载失败:', err);
-          ricciWasmLoadFailed = true;
-          return false;
-        }
-      }
-
-      /**
-       * 异步加载 Tutte + ARAP WASM 求解器
-       */
-      async function initTAWASMSolver() {
-        if (taWasmReady) return true;
-        if (taWasmLoadFailed) return false;
-
-        try {
-          if (typeof TutteARAPSolver === 'undefined') {
-            throw new Error('Tutte+ARAP WASM 胶水代码未加载');
-          }
-          taWasmModule = await TutteARAPSolver();
-          taWasmReady = true;
-          console.log('WASM Tutte+ARAP 求解器加载成功');
-          return true;
-        } catch (err) {
-          console.error('Tutte+ARAP WASM 加载失败:', err);
-          taWasmLoadFailed = true;
           return false;
         }
       }
@@ -1047,39 +849,10 @@
         const btn = document.getElementById('reloadBtn');
         if (!btn) return;
 
-        const method = getCurrentMethod();
-        const bd = isBDEnabled();
-        const needBD = (method === 'lscm' || method === 'arap') && bd;
-        const needTA = (method === 'tutte' || (method === 'arap' && !bd));
-
-        const failed =
-          (method === 'lscm' && !bd && wasmLoadFailed) ||
-          (needBD && bdWasmLoadFailed) ||
-          (needTA && taWasmLoadFailed) ||
-          (method === 'cetm' && cetmWasmLoadFailed) ||
-          (method === 'ricci' && ricciWasmLoadFailed) ||
-          (method === 'cp' && cpWasmLoadFailed) ||
-          (method === 'quadcover' && qcWasmLoadFailed) ||
-          (method === 'bff' && bffWasmLoadFailed) ||
-          (method === 'miq' && miqWasmLoadFailed) ||
-          (method === 'holo' && holoWasmLoadFailed);
-
-        const loading =
-          (method === 'lscm' && !bd && !wasmReady && !wasmLoadFailed) ||
-          (needBD && !bdWasmReady && !bdWasmLoadFailed) ||
-          (needTA && !taWasmReady && !taWasmLoadFailed) ||
-          (method === 'cetm' && !cetmWasmReady && !cetmWasmLoadFailed) ||
-          (method === 'ricci' && !ricciWasmReady && !ricciWasmLoadFailed) ||
-          (method === 'cp' && !cpWasmReady && !cpWasmLoadFailed) ||
-          (method === 'quadcover' && !qcWasmReady && !qcWasmLoadFailed) ||
-          (method === 'bff' && !bffWasmReady && !bffWasmLoadFailed) ||
-          (method === 'miq' && !miqWasmReady && !miqWasmLoadFailed) ||
-          (method === 'holo' && !holoWasmReady && !holoWasmLoadFailed);
-
-        if (failed) {
+        if (wasmLoadFailed) {
           btn.textContent = '引擎加载失败';
           btn.disabled = true;
-        } else if (loading) {
+        } else if (!wasmReady) {
           btn.textContent = '引擎加载中...';
           btn.disabled = true;
         } else {
@@ -1105,8 +878,8 @@
         const anchors = chooseAnchorPair(vertices);
 
         if (!wasmReady) {
-          const loaded = await initWASMSolver();
-          if (!loaded) throw new Error("LSCM WASM 求解器初始化失败");
+          const loaded = await initUnifiedSolver();
+          if (!loaded) throw new Error("WASM 统一求解器初始化失败");
         }
 
         if (onProgress) onProgress(0, faces.length);
@@ -1129,38 +902,38 @@
 
         let result;
         try {
-          const posPtr = wasmModule._malloc(flatPositions.length * 8);
+          const posPtr = wasmInstance._malloc(flatPositions.length * 8);
           for (let i = 0; i < flatPositions.length; i++) {
-            wasmModule.setValue(posPtr + i * 8, flatPositions[i], 'double');
+            wasmInstance.setValue(posPtr + i * 8, flatPositions[i], 'double');
           }
 
-          const facePtr = wasmModule._malloc(flatFaces.length * 4);
+          const facePtr = wasmInstance._malloc(flatFaces.length * 4);
           for (let i = 0; i < flatFaces.length; i++) {
-            wasmModule.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+            wasmInstance.setValue(facePtr + i * 4, flatFaces[i], 'i32');
           }
 
           try {
-            const ret = wasmModule.ccall('solve_lscm', 'number', 
+            const ret = wasmInstance.ccall('solve_lscm', 'number', 
               ['number', 'number', 'number', 'number', 'number', 'number'],
               [posPtr, flatPositions.length, facePtr, flatFaces.length, anchors[0], anchors[1]]
             );
 
             if (ret !== 0) throw new Error("WASM solve_lscm 返回错误码: " + ret);
 
-            const uvSize = wasmModule.ccall('get_uv_result_size', 'number', [], []);
-            const uvPtr = wasmModule.ccall('get_uv_result', 'number', [], []);
+            const uvSize = wasmInstance.ccall('get_uv_result_size', 'number', [], []);
+            const uvPtr = wasmInstance.ccall('get_uv_result', 'number', [], []);
 
             const uvs = [];
             for (let i = 0; i < uvSize; i++) {
-              uvs.push(wasmModule.getValue(uvPtr + i * 8, 'double'));
+              uvs.push(wasmInstance.getValue(uvPtr + i * 8, 'double'));
             }
 
-            wasmModule.ccall('dispose', 'void', [], []);
+            wasmInstance.ccall('dispose', 'void', [], []);
 
-            result = { uv: uvs, time_ms: wasmModule.ccall('get_last_time_ms', 'number', [], []) };
+            result = { uv: uvs, time_ms: wasmInstance.ccall('get_last_time_ms', 'number', [], []) };
           } finally {
-            wasmModule._free(posPtr);
-            wasmModule._free(facePtr);
+            wasmInstance._free(posPtr);
+            wasmInstance._free(facePtr);
           }
         } catch (err) {
           throw new Error("WASM LSCM 求解失败: " + err.message);
@@ -1189,8 +962,8 @@
           throw new Error("模型顶点或三角形数量不足");
         }
 
-        if (!bdWasmReady) {
-          const loaded = await initBDWASMSolver();
+        if (!wasmReady) {
+          const loaded = await initUnifiedSolver();
           if (!loaded) throw new Error("BD-LSCM WASM 求解器初始化失败");
         }
 
@@ -1219,39 +992,39 @@
 
         let result;
         try {
-          const posPtr = bdWasmModule._malloc(flatPositions.length * 8);
+          const posPtr = wasmInstance._malloc(flatPositions.length * 8);
           for (let i = 0; i < flatPositions.length; i++) {
-            bdWasmModule.setValue(posPtr + i * 8, flatPositions[i], 'double');
+            wasmInstance.setValue(posPtr + i * 8, flatPositions[i], 'double');
           }
 
-          const facePtr = bdWasmModule._malloc(flatFaces.length * 4);
+          const facePtr = wasmInstance._malloc(flatFaces.length * 4);
           for (let i = 0; i < flatFaces.length; i++) {
-            bdWasmModule.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+            wasmInstance.setValue(facePtr + i * 4, flatFaces[i], 'i32');
           }
 
           try {
             // solve_bd_lscm(posPtr, posLen, facePtr, faceLen, C, maxIter) -> int
-            const ret = bdWasmModule.ccall('solve_bd_lscm', 'number',
+            const ret = wasmInstance.ccall('solve_bd_lscm', 'number',
               ['number', 'number', 'number', 'number', 'number', 'number'],
               [posPtr, flatPositions.length, facePtr, flatFaces.length, C, maxIter]
             );
 
             if (ret !== 0) throw new Error("WASM solve_bd_lscm 返回错误码: " + ret);
 
-            const uvSize = bdWasmModule.ccall('get_bd_uv_result_size', 'number', [], []);
-            const uvPtr = bdWasmModule.ccall('get_bd_uv_result', 'number', [], []);
+            const uvSize = wasmInstance.ccall('get_bd_uv_result_size', 'number', [], []);
+            const uvPtr = wasmInstance.ccall('get_bd_uv_result', 'number', [], []);
 
             const uvs = [];
             for (let i = 0; i < uvSize; i++) {
-              uvs.push(bdWasmModule.getValue(uvPtr + i * 8, 'double'));
+              uvs.push(wasmInstance.getValue(uvPtr + i * 8, 'double'));
             }
 
-            bdWasmModule.ccall('bd_dispose', 'void', [], []);
+            wasmInstance.ccall('bd_dispose', 'void', [], []);
 
-            result = { uv: uvs, time_ms: bdWasmModule.ccall('get_bd_last_time_ms', 'number', [], []) };
+            result = { uv: uvs, time_ms: wasmInstance.ccall('get_bd_last_time_ms', 'number', [], []) };
           } finally {
-            bdWasmModule._free(posPtr);
-            bdWasmModule._free(facePtr);
+            wasmInstance._free(posPtr);
+            wasmInstance._free(facePtr);
           }
         } catch (err) {
           console.error('BD-LSCM WASM 调用失败:', err.message, err.stack);
@@ -1281,8 +1054,8 @@
           throw new Error("模型顶点或三角形数量不足");
         }
 
-        if (!cetmWasmReady) {
-          const loaded = await initCETMWASMSolver();
+        if (!wasmReady) {
+          const loaded = await initUnifiedSolver();
           if (!loaded) throw new Error("CETM WASM 求解器初始化失败");
         }
 
@@ -1308,38 +1081,38 @@
 
         let result;
         try {
-          const posPtr = cetmWasmModule._malloc(flatPositions.length * 8);
+          const posPtr = wasmInstance._malloc(flatPositions.length * 8);
           for (let i = 0; i < flatPositions.length; i++) {
-            cetmWasmModule.setValue(posPtr + i * 8, flatPositions[i], 'double');
+            wasmInstance.setValue(posPtr + i * 8, flatPositions[i], 'double');
           }
 
-          const facePtr = cetmWasmModule._malloc(flatFaces.length * 4);
+          const facePtr = wasmInstance._malloc(flatFaces.length * 4);
           for (let i = 0; i < flatFaces.length; i++) {
-            cetmWasmModule.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+            wasmInstance.setValue(facePtr + i * 4, flatFaces[i], 'i32');
           }
 
           try {
-            const ret = cetmWasmModule.ccall('solve_cetm', 'number',
+            const ret = wasmInstance.ccall('solve_cetm', 'number',
               ['number', 'number', 'number', 'number', 'number'],
               [posPtr, flatPositions.length, facePtr, flatFaces.length, optScheme]
             );
 
             if (ret !== 0) throw new Error("WASM solve_cetm 返回错误码: " + ret);
 
-            const uvSize = cetmWasmModule.ccall('get_cetm_uv_result_size', 'number', [], []);
-            const uvPtr = cetmWasmModule.ccall('get_cetm_uv_result', 'number', [], []);
+            const uvSize = wasmInstance.ccall('get_cetm_uv_result_size', 'number', [], []);
+            const uvPtr = wasmInstance.ccall('get_cetm_uv_result', 'number', [], []);
 
             const uvs = [];
             for (let i = 0; i < uvSize; i++) {
-              uvs.push(cetmWasmModule.getValue(uvPtr + i * 8, 'double'));
+              uvs.push(wasmInstance.getValue(uvPtr + i * 8, 'double'));
             }
 
-            cetmWasmModule.ccall('cetm_dispose', 'void', [], []);
+            wasmInstance.ccall('cetm_dispose', 'void', [], []);
 
-            result = { uv: uvs, time_ms: cetmWasmModule.ccall('get_cetm_last_time_ms', 'number', [], []) };
+            result = { uv: uvs, time_ms: wasmInstance.ccall('get_cetm_last_time_ms', 'number', [], []) };
           } finally {
-            cetmWasmModule._free(posPtr);
-            cetmWasmModule._free(facePtr);
+            wasmInstance._free(posPtr);
+            wasmInstance._free(facePtr);
           }
         } catch (err) {
           console.error('CETM WASM 调用失败:', err.message, err.stack);
@@ -1371,8 +1144,8 @@
           throw new Error("模型顶点或三角形数量不足");
         }
 
-        if (!ricciWasmReady) {
-          const loaded = await initRicciWASMSolver();
+        if (!wasmReady) {
+          const loaded = await initUnifiedSolver();
           if (!loaded) throw new Error("RicciFlow WASM 求解器初始化失败");
         }
 
@@ -1398,38 +1171,38 @@
 
         let result;
         try {
-          const posPtr = ricciWasmModule._malloc(flatPositions.length * 8);
+          const posPtr = wasmInstance._malloc(flatPositions.length * 8);
           for (let i = 0; i < flatPositions.length; i++) {
-            ricciWasmModule.setValue(posPtr + i * 8, flatPositions[i], 'double');
+            wasmInstance.setValue(posPtr + i * 8, flatPositions[i], 'double');
           }
 
-          const facePtr = ricciWasmModule._malloc(flatFaces.length * 4);
+          const facePtr = wasmInstance._malloc(flatFaces.length * 4);
           for (let i = 0; i < flatFaces.length; i++) {
-            ricciWasmModule.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+            wasmInstance.setValue(facePtr + i * 4, flatFaces[i], 'i32');
           }
 
           try {
-            const ret = ricciWasmModule.ccall('solve_ricci', 'number',
+            const ret = wasmInstance.ccall('solve_ricci', 'number',
               ['number', 'number', 'number', 'number', 'number'],
               [posPtr, flatPositions.length, facePtr, flatFaces.length, optScheme]
             );
 
             if (ret !== 0) throw new Error("WASM solve_ricci 返回错误码: " + ret);
 
-            const uvSize = ricciWasmModule.ccall('get_ricci_uv_result_size', 'number', [], []);
-            const uvPtr = ricciWasmModule.ccall('get_ricci_uv_result', 'number', [], []);
+            const uvSize = wasmInstance.ccall('get_ricci_uv_result_size', 'number', [], []);
+            const uvPtr = wasmInstance.ccall('get_ricci_uv_result', 'number', [], []);
 
             const uvs = [];
             for (let i = 0; i < uvSize; i++) {
-              uvs.push(ricciWasmModule.getValue(uvPtr + i * 8, 'double'));
+              uvs.push(wasmInstance.getValue(uvPtr + i * 8, 'double'));
             }
 
-            ricciWasmModule.ccall('ricci_dispose', 'void', [], []);
+            wasmInstance.ccall('ricci_dispose', 'void', [], []);
 
-            result = { uv: uvs, time_ms: ricciWasmModule.ccall('get_ricci_last_time_ms', 'number', [], []) };
+            result = { uv: uvs, time_ms: wasmInstance.ccall('get_ricci_last_time_ms', 'number', [], []) };
           } finally {
-            ricciWasmModule._free(posPtr);
-            ricciWasmModule._free(facePtr);
+            wasmInstance._free(posPtr);
+            wasmInstance._free(facePtr);
           }
         } catch (err) {
           console.error('RicciFlow WASM 调用失败:', err.message, err.stack);
@@ -1457,7 +1230,7 @@
       async function solveCPAsync(meshData, onProgress) {
         const vertices = meshData.positions, faces = meshData.faces;
         if (vertices.length < 3 || faces.length < 1) throw new Error("顶点或三角形不足");
-        if (!cpWasmReady) { const ok = await initCPWASMSolver(); if (!ok) throw new Error("CP WASM 初始化失败"); }
+        if (!wasmReady) { const ok = await initUnifiedSolver(); if (!ok) throw new Error("CP WASM 初始化失败"); }
         if (onProgress) onProgress(0, faces.length);
 
         const flatPos = new Float64Array(vertices.length*3);
@@ -1470,21 +1243,21 @@
 
         let result;
         try {
-          const pp = cpWasmModule._malloc(flatPos.length*8);
-          for (let i=0;i<flatPos.length;i++) cpWasmModule.setValue(pp+i*8,flatPos[i],'double');
-          const fp = cpWasmModule._malloc(flatF.length*4);
-          for (let i=0;i<flatF.length;i++) cpWasmModule.setValue(fp+i*4,flatF[i],'i32');
+          const pp = wasmInstance._malloc(flatPos.length*8);
+          for (let i=0;i<flatPos.length;i++) wasmInstance.setValue(pp+i*8,flatPos[i],'double');
+          const fp = wasmInstance._malloc(flatF.length*4);
+          for (let i=0;i<flatF.length;i++) wasmInstance.setValue(fp+i*4,flatF[i],'i32');
           try {
-            const ret = cpWasmModule.ccall('solve_cp','number',
+            const ret = wasmInstance.ccall('solve_cp','number',
               ['number','number','number','number','number','number','number','number','number'],
               [pp,flatPos.length,fp,flatF.length,opt,0,0,0,0]);
             if (ret!==0) throw new Error("solve_cp 错误: "+ret);
-            const sz=cpWasmModule.ccall('get_cp_uv_result_size','number',[],[]);
-            const uvp=cpWasmModule.ccall('get_cp_uv_result','number',[],[]);
-            const uvs=[];for(let i=0;i<sz;i++)uvs.push(cpWasmModule.getValue(uvp+i*8,'double'));
-            cpWasmModule.ccall('cp_dispose','void',[],[]);
-            result={uv:uvs,time_ms:cpWasmModule.ccall('get_cp_last_time_ms','number',[],[])};
-          }finally{cpWasmModule._free(pp);cpWasmModule._free(fp);}
+            const sz=wasmInstance.ccall('get_cp_uv_result_size','number',[],[]);
+            const uvp=wasmInstance.ccall('get_cp_uv_result','number',[],[]);
+            const uvs=[];for(let i=0;i<sz;i++)uvs.push(wasmInstance.getValue(uvp+i*8,'double'));
+            wasmInstance.ccall('cp_dispose','void',[],[]);
+            result={uv:uvs,time_ms:wasmInstance.ccall('get_cp_last_time_ms','number',[],[])};
+          }finally{wasmInstance._free(pp);wasmInstance._free(fp);}
         }catch(err){throw new Error("CP WASM 失败: "+err.message);}
 
         if(onProgress)onProgress(faces.length*0.9,faces.length);
@@ -1501,7 +1274,7 @@
       async function solveQCAsync(meshData, onProgress) {
         const vertices=meshData.positions,faces=meshData.faces;
         if(vertices.length<3||faces.length<1)throw new Error("顶点或三角形不足");
-        if(!qcWasmReady){const ok=await initQCWASMSolver();if(!ok)throw new Error("QC WASM 初始化失败");}
+        if(!wasmReady){const ok=await initUnifiedSolver();if(!ok)throw new Error("QC WASM 初始化失败");}
         if(onProgress)onProgress(0,faces.length);
         const flatPos=new Float64Array(vertices.length*3);
         for(let i=0;i<vertices.length;i++){flatPos[i*3]=vertices[i][0];flatPos[i*3+1]=vertices[i][1];flatPos[i*3+2]=vertices[i][2];}
@@ -1510,19 +1283,19 @@
         if(onProgress)onProgress(faces.length*0.2,faces.length);
         let result;
         try{
-          const pp=qcWasmModule._malloc(flatPos.length*8);
-          for(let i=0;i<flatPos.length;i++)qcWasmModule.setValue(pp+i*8,flatPos[i],'double');
-          const fp=qcWasmModule._malloc(flatF.length*4);
-          for(let i=0;i<flatF.length;i++)qcWasmModule.setValue(fp+i*4,flatF[i],'i32');
+          const pp=wasmInstance._malloc(flatPos.length*8);
+          for(let i=0;i<flatPos.length;i++)wasmInstance.setValue(pp+i*8,flatPos[i],'double');
+          const fp=wasmInstance._malloc(flatF.length*4);
+          for(let i=0;i<flatF.length;i++)wasmInstance.setValue(fp+i*4,flatF[i],'i32');
           try{
-            const ret=qcWasmModule.ccall('solve_qc','number',['number','number','number','number'],[pp,flatPos.length,fp,flatF.length]);
+            const ret=wasmInstance.ccall('solve_qc','number',['number','number','number','number'],[pp,flatPos.length,fp,flatF.length]);
             if(ret!==0)throw new Error("solve_qc 错误: "+ret);
-            const sz=qcWasmModule.ccall('get_qc_uv_result_size','number',[],[]);
-            const uvp=qcWasmModule.ccall('get_qc_uv_result','number',[],[]);
-            const uvs=[];for(let i=0;i<sz;i++)uvs.push(qcWasmModule.getValue(uvp+i*8,'double'));
-            qcWasmModule.ccall('qc_dispose','void',[],[]);
-            result={uv:uvs,time_ms:qcWasmModule.ccall('get_qc_last_time_ms','number',[],[])};
-          }finally{qcWasmModule._free(pp);qcWasmModule._free(fp);}
+            const sz=wasmInstance.ccall('get_qc_uv_result_size','number',[],[]);
+            const uvp=wasmInstance.ccall('get_qc_uv_result','number',[],[]);
+            const uvs=[];for(let i=0;i<sz;i++)uvs.push(wasmInstance.getValue(uvp+i*8,'double'));
+            wasmInstance.ccall('qc_dispose','void',[],[]);
+            result={uv:uvs,time_ms:wasmInstance.ccall('get_qc_last_time_ms','number',[],[])};
+          }finally{wasmInstance._free(pp);wasmInstance._free(fp);}
         }catch(err){throw new Error("QuadCover WASM 失败: "+err.message);}
         if(onProgress)onProgress(faces.length*0.9,faces.length);
         const uvA=result.uv,n=vertices.length,uv=new Array(n);
@@ -1537,7 +1310,7 @@
       async function solveBFFAsync(meshData, onProgress) {
         const vertices=meshData.positions,faces=meshData.faces;
         if(vertices.length<3||faces.length<1)throw new Error("顶点或三角形不足");
-        if(!bffWasmReady){const ok=await initBFFWASMSolver();if(!ok)throw new Error("BFF WASM 初始化失败");}
+        if(!wasmReady){const ok=await initUnifiedSolver();if(!ok)throw new Error("BFF WASM 初始化失败");}
         if(onProgress)onProgress(0,faces.length);
         const flatPos=new Float64Array(vertices.length*3);
         const flatFaces=new Int32Array(faces.length*3);
@@ -1545,19 +1318,19 @@
         for(let i=0;i<faces.length;i++){flatFaces[i*3]=faces[i][0];flatFaces[i*3+1]=faces[i][1];flatFaces[i*3+2]=faces[i][2];}
         let result;
         try{
-          const pp=bffWasmModule._malloc(flatPos.length*8);
-          const fp=bffWasmModule._malloc(flatFaces.length*4);
-          bffWasmModule.HEAPF64.set(flatPos,pp>>3);
-          bffWasmModule.HEAP32.set(flatFaces,(fp>>2)+flatFaces.length);
+          const pp=wasmInstance._malloc(flatPos.length*8);
+          const fp=wasmInstance._malloc(flatFaces.length*4);
+          wasmInstance.HEAPF64.set(flatPos,pp>>3);
+          wasmInstance.HEAP32.set(flatFaces,(fp>>2)+flatFaces.length);
           try{
-            const rc=bffWasmModule.ccall('solve_bff','number',['number','number','number','number','number'],[pp,flatPos.length,fp,flatFaces.length,0]);
+            const rc=wasmInstance.ccall('solve_bff','number',['number','number','number','number','number'],[pp,flatPos.length,fp,flatFaces.length,0]);
             if(rc!==0)throw new Error("BFF solve returned "+rc);
-            const uvSize=bffWasmModule.ccall('get_bff_uv_result_size','number',[],[]);
-            const uvPtr=bffWasmModule.ccall('get_bff_uv_result','number',[],[]);
-            const uvs=new Float64Array(bffWasmModule.HEAPF64.buffer,uvPtr,uvSize);
-            bffWasmModule.ccall('bff_dispose','void',[],[]);
-            result={uv:Array.from(uvs),time_ms:bffWasmModule.ccall('get_bff_last_time_ms','number',[],[])};
-          }finally{bffWasmModule._free(pp);bffWasmModule._free(fp);}
+            const uvSize=wasmInstance.ccall('get_bff_uv_result_size','number',[],[]);
+            const uvPtr=wasmInstance.ccall('get_bff_uv_result','number',[],[]);
+            const uvs=new Float64Array(wasmInstance.HEAPF64.buffer,uvPtr,uvSize);
+            wasmInstance.ccall('bff_dispose','void',[],[]);
+            result={uv:Array.from(uvs),time_ms:wasmInstance.ccall('get_bff_last_time_ms','number',[],[])};
+          }finally{wasmInstance._free(pp);wasmInstance._free(fp);}
         }catch(err){throw new Error("BFF WASM 失败: "+err.message);}
         if(onProgress)onProgress(faces.length*0.9,faces.length);
         const uvA=result.uv,n=vertices.length,uv=new Array(n);
@@ -1571,7 +1344,7 @@
       async function solveMIQAsync(meshData,onProgress){
         const v=meshData.positions,f=meshData.faces;
         if(v.length<3||f.length<1)throw new Error("顶点或三角形不足");
-        if(!miqWasmReady){if(!await initMIQWASMSolver())throw new Error("MIQ WASM失败");}
+        if(!wasmReady){if(!await initUnifiedSolver())throw new Error("MIQ WASM失败");}
         if(onProgress)onProgress(0,f.length);
         const fp=new Float64Array(v.length*3);
         for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2];}
@@ -1580,19 +1353,19 @@
         if(onProgress)onProgress(f.length*0.2,f.length);
         let r;
         try{
-          const pp=miqWasmModule._malloc(fp.length*8);
-          for(let i=0;i<fp.length;i++)miqWasmModule.setValue(pp+i*8,fp[i],'double');
-          const fpt=miqWasmModule._malloc(ff.length*4);
-          for(let i=0;i<ff.length;i++)miqWasmModule.setValue(fpt+i*4,ff[i],'i32');
+          const pp=wasmInstance._malloc(fp.length*8);
+          for(let i=0;i<fp.length;i++)wasmInstance.setValue(pp+i*8,fp[i],'double');
+          const fpt=wasmInstance._malloc(ff.length*4);
+          for(let i=0;i<ff.length;i++)wasmInstance.setValue(fpt+i*4,ff[i],'i32');
           try{
-            if(miqWasmModule.ccall('solve_miq','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length])!==0)
+            if(wasmInstance.ccall('solve_miq','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length])!==0)
               throw new Error("MIQ solve失败");
-            const sz=miqWasmModule.ccall('get_miq_uv_result_size','number',[],[]);
-            const up=miqWasmModule.ccall('get_miq_uv_result','number',[],[]);
-            const us=[];for(let i=0;i<sz;i++)us.push(miqWasmModule.getValue(up+i*8,'double'));
-            miqWasmModule.ccall('miq_dispose','void',[],[]);
-            r={uv:us,time_ms:miqWasmModule.ccall('get_miq_last_time_ms','number',[],[])};
-          }finally{miqWasmModule._free(pp);miqWasmModule._free(fpt);}
+            const sz=wasmInstance.ccall('get_miq_uv_result_size','number',[],[]);
+            const up=wasmInstance.ccall('get_miq_uv_result','number',[],[]);
+            const us=[];for(let i=0;i<sz;i++)us.push(wasmInstance.getValue(up+i*8,'double'));
+            wasmInstance.ccall('miq_dispose','void',[],[]);
+            r={uv:us,time_ms:wasmInstance.ccall('get_miq_last_time_ms','number',[],[])};
+          }finally{wasmInstance._free(pp);wasmInstance._free(fpt);}
         }catch(e){throw new Error("MIQ WASM失败: "+e.message);}
         if(onProgress)onProgress(f.length*0.9,f.length);
         const ua=r.uv,n=v.length,uv=new Array(n);
@@ -1604,7 +1377,7 @@
       // ==================== WASM 驱动的 Tutte + ARAP 求解 ====================
 
       async function solveTutteCircleAsync(meshData, onProgress) {
-        if (!taWasmReady) { const ok = await initTAWASMSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
+        if (!wasmReady) { const ok = await initUnifiedSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
 
         const flatPositions = new Float64Array(meshData.positions.length * 3);
         for (let i = 0; i < meshData.positions.length; i++) {
@@ -1616,29 +1389,29 @@
         }
         if (onProgress) onProgress(0, 1);
 
-        const posPtr = taWasmModule._malloc(flatPositions.length * 8);
-        for (let i = 0; i < flatPositions.length; i++) taWasmModule.setValue(posPtr+i*8, flatPositions[i], 'double');
-        const facePtr = taWasmModule._malloc(flatFaces.length * 4);
-        for (let i = 0; i < flatFaces.length; i++) taWasmModule.setValue(facePtr+i*4, flatFaces[i], 'i32');
+        const posPtr = wasmInstance._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) wasmInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
+        const facePtr = wasmInstance._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) wasmInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
 
         try {
-          const ret = taWasmModule.ccall('solve_tutte_circle', 'number',
+          const ret = wasmInstance.ccall('solve_tutte_circle', 'number',
             ['number','number','number','number'],[posPtr,flatPositions.length,facePtr,flatFaces.length]);
           if (ret !== 0) throw new Error("solve_tutte_circle 返回错误码: " + ret);
-          const uvSize = taWasmModule.ccall('get_ta_uv_result_size','number',[],[]);
-          const uvPtr = taWasmModule.ccall('get_ta_uv_result','number',[],[]);
-          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(taWasmModule.getValue(uvPtr+i*8,'double'));
-          taWasmModule.ccall('ta_dispose','void',[],[]);
-          const timeMs = taWasmModule.ccall('get_ta_last_time_ms','number',[],[]);
+          const uvSize = wasmInstance.ccall('get_ta_uv_result_size','number',[],[]);
+          const uvPtr = wasmInstance.ccall('get_ta_uv_result','number',[],[]);
+          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(wasmInstance.getValue(uvPtr+i*8,'double'));
+          wasmInstance.ccall('ta_dispose','void',[],[]);
+          const timeMs = wasmInstance.ccall('get_ta_last_time_ms','number',[],[]);
           if (onProgress) onProgress(1,1);
           const n = meshData.positions.length;
           const uv = []; for (let i=0;i<n;i++) uv.push([uvs[i*2],uvs[i*2+1]]);
           return { uv, anchors: chooseAnchorPair(meshData.positions), flippedFaceCount: countFlippedFaces(uv,meshData.faces), timeMs, method:'tutte_circle' };
-        } finally { taWasmModule._free(posPtr); taWasmModule._free(facePtr); }
+        } finally { wasmInstance._free(posPtr); wasmInstance._free(facePtr); }
       }
 
       async function solveTutteSquareAsync(meshData, onProgress) {
-        if (!taWasmReady) { const ok = await initTAWASMSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
+        if (!wasmReady) { const ok = await initUnifiedSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
 
         const flatPositions = new Float64Array(meshData.positions.length * 3);
         for (let i = 0; i < meshData.positions.length; i++) {
@@ -1650,29 +1423,29 @@
         }
         if (onProgress) onProgress(0, 1);
 
-        const posPtr = taWasmModule._malloc(flatPositions.length * 8);
-        for (let i = 0; i < flatPositions.length; i++) taWasmModule.setValue(posPtr+i*8, flatPositions[i], 'double');
-        const facePtr = taWasmModule._malloc(flatFaces.length * 4);
-        for (let i = 0; i < flatFaces.length; i++) taWasmModule.setValue(facePtr+i*4, flatFaces[i], 'i32');
+        const posPtr = wasmInstance._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) wasmInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
+        const facePtr = wasmInstance._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) wasmInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
 
         try {
-          const ret = taWasmModule.ccall('solve_tutte_square', 'number',
+          const ret = wasmInstance.ccall('solve_tutte_square', 'number',
             ['number','number','number','number'],[posPtr,flatPositions.length,facePtr,flatFaces.length]);
           if (ret !== 0) throw new Error("solve_tutte_square 返回错误码: " + ret);
-          const uvSize = taWasmModule.ccall('get_ta_uv_result_size','number',[],[]);
-          const uvPtr = taWasmModule.ccall('get_ta_uv_result','number',[],[]);
-          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(taWasmModule.getValue(uvPtr+i*8,'double'));
-          taWasmModule.ccall('ta_dispose','void',[],[]);
-          const timeMs = taWasmModule.ccall('get_ta_last_time_ms','number',[],[]);
+          const uvSize = wasmInstance.ccall('get_ta_uv_result_size','number',[],[]);
+          const uvPtr = wasmInstance.ccall('get_ta_uv_result','number',[],[]);
+          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(wasmInstance.getValue(uvPtr+i*8,'double'));
+          wasmInstance.ccall('ta_dispose','void',[],[]);
+          const timeMs = wasmInstance.ccall('get_ta_last_time_ms','number',[],[]);
           if (onProgress) onProgress(1,1);
           const n = meshData.positions.length;
           const uv = []; for (let i=0;i<n;i++) uv.push([uvs[i*2],uvs[i*2+1]]);
           return { uv, anchors: chooseAnchorPair(meshData.positions), flippedFaceCount: countFlippedFaces(uv,meshData.faces), timeMs, method:'tutte_square' };
-        } finally { taWasmModule._free(posPtr); taWasmModule._free(facePtr); }
+        } finally { wasmInstance._free(posPtr); wasmInstance._free(facePtr); }
       }
 
       async function solveARAPAsync(meshData, onProgress) {
-        if (!taWasmReady) { const ok = await initTAWASMSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
+        if (!wasmReady) { const ok = await initUnifiedSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
 
         const flatPositions = new Float64Array(meshData.positions.length * 3);
         for (let i = 0; i < meshData.positions.length; i++) {
@@ -1686,25 +1459,25 @@
 
         const maxIter = parseInt(document.getElementById('arap-iter-input').value) || 30;
 
-        const posPtr = taWasmModule._malloc(flatPositions.length * 8);
-        for (let i = 0; i < flatPositions.length; i++) taWasmModule.setValue(posPtr+i*8, flatPositions[i], 'double');
-        const facePtr = taWasmModule._malloc(flatFaces.length * 4);
-        for (let i = 0; i < flatFaces.length; i++) taWasmModule.setValue(facePtr+i*4, flatFaces[i], 'i32');
+        const posPtr = wasmInstance._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) wasmInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
+        const facePtr = wasmInstance._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) wasmInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
 
         try {
-          const ret = taWasmModule.ccall('solve_arap', 'number',
+          const ret = wasmInstance.ccall('solve_arap', 'number',
             ['number','number','number','number','number'],[posPtr,flatPositions.length,facePtr,flatFaces.length,maxIter]);
           if (ret !== 0) throw new Error("solve_arap 返回错误码: " + ret);
-          const uvSize = taWasmModule.ccall('get_ta_uv_result_size','number',[],[]);
-          const uvPtr = taWasmModule.ccall('get_ta_uv_result','number',[],[]);
-          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(taWasmModule.getValue(uvPtr+i*8,'double'));
-          taWasmModule.ccall('ta_dispose','void',[],[]);
-          const timeMs = taWasmModule.ccall('get_ta_last_time_ms','number',[],[]);
+          const uvSize = wasmInstance.ccall('get_ta_uv_result_size','number',[],[]);
+          const uvPtr = wasmInstance.ccall('get_ta_uv_result','number',[],[]);
+          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(wasmInstance.getValue(uvPtr+i*8,'double'));
+          wasmInstance.ccall('ta_dispose','void',[],[]);
+          const timeMs = wasmInstance.ccall('get_ta_last_time_ms','number',[],[]);
           if (onProgress) onProgress(1,1);
           const n = meshData.positions.length;
           const uv = []; for (let i=0;i<n;i++) uv.push([uvs[i*2],uvs[i*2+1]]);
           return { uv, anchors: chooseAnchorPair(meshData.positions), flippedFaceCount: countFlippedFaces(uv,meshData.faces), timeMs, method:'arap', maxIter };
-        } finally { taWasmModule._free(posPtr); taWasmModule._free(facePtr); }
+        } finally { wasmInstance._free(posPtr); wasmInstance._free(facePtr); }
       }
 
       function countFlippedFaces(uv, faces) {
@@ -1972,11 +1745,11 @@
           return;
         }
 
-        if (!taWasmReady && !taWasmLoadFailed) {
+        if (!wasmReady && !wasmLoadFailed) {
           setStatus('正在加载 QC 引擎...', '#ffd38a');
-          await initTAWASMSolver();
+          await initUnifiedSolver();
         }
-        if (!taWasmReady) {
+        if (!wasmReady) {
           setStatus('QC 引擎加载失败', '#ff9d9d');
           if (radioDistortion) radioDistortion.checked = false;
           if (radioCheckerboard) { radioCheckerboard.checked = true; setTextureDistortionEnabled(true); }
@@ -2000,35 +1773,35 @@
             flatUV[i*2]=currentUnwrapUv[i][0]; flatUV[i*2+1]=currentUnwrapUv[i][1];
           }
 
-          const posPtr = taWasmModule._malloc(flatPos.length * 8);
-          for (let i = 0; i < flatPos.length; i++) taWasmModule.setValue(posPtr+i*8, flatPos[i], 'double');
-          const facePtr = taWasmModule._malloc(flatFaces.length * 4);
-          for (let i = 0; i < flatFaces.length; i++) taWasmModule.setValue(facePtr+i*4, flatFaces[i], 'i32');
-          const uvPtr = taWasmModule._malloc(flatUV.length * 8);
-          for (let i = 0; i < flatUV.length; i++) taWasmModule.setValue(uvPtr+i*8, flatUV[i], 'double');
+          const posPtr = wasmInstance._malloc(flatPos.length * 8);
+          for (let i = 0; i < flatPos.length; i++) wasmInstance.setValue(posPtr+i*8, flatPos[i], 'double');
+          const facePtr = wasmInstance._malloc(flatFaces.length * 4);
+          for (let i = 0; i < flatFaces.length; i++) wasmInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
+          const uvPtr = wasmInstance._malloc(flatUV.length * 8);
+          for (let i = 0; i < flatUV.length; i++) wasmInstance.setValue(uvPtr+i*8, flatUV[i], 'double');
 
           // 2. load + compute QC
-          const loadRet = taWasmModule.ccall('load_mesh_with_uv', 'number',
+          const loadRet = wasmInstance.ccall('load_mesh_with_uv', 'number',
             ['number','number','number','number','number','number'],
             [posPtr, flatPos.length, facePtr, flatFaces.length, uvPtr, flatUV.length]);
           if (loadRet !== 0) throw new Error("load_mesh_with_uv failed");
 
-          const nFaces = taWasmModule.ccall('compute_qc_error', 'number', [], []);
+          const nFaces = wasmInstance.ccall('compute_qc_error', 'number', [], []);
           if (nFaces <= 0) throw new Error("compute_qc_error returned " + nFaces);
 
           // 3. read errors & colors
-          const errSize = taWasmModule.ccall('get_qc_errors_size', 'number', [], []);
-          const errPtr  = taWasmModule.ccall('get_qc_errors', 'number', [], []);
-          const colSize = taWasmModule.ccall('get_qc_colors_size', 'number', [], []);
-          const colPtr  = taWasmModule.ccall('get_qc_colors', 'number', [], []);
+          const errSize = wasmInstance.ccall('get_qc_errors_size', 'number', [], []);
+          const errPtr  = wasmInstance.ccall('get_qc_errors', 'number', [], []);
+          const colSize = wasmInstance.ccall('get_qc_colors_size', 'number', [], []);
+          const colPtr  = wasmInstance.ccall('get_qc_colors', 'number', [], []);
 
-          const errors = []; for (let i=0;i<errSize;i++) errors.push(taWasmModule.getValue(errPtr+i*8,'double'));
-          const colors = []; for (let i=0;i<colSize;i++) colors.push(taWasmModule.getValue(colPtr+i*8,'double'));
+          const errors = []; for (let i=0;i<errSize;i++) errors.push(wasmInstance.getValue(errPtr+i*8,'double'));
+          const colors = []; for (let i=0;i<colSize;i++) colors.push(wasmInstance.getValue(colPtr+i*8,'double'));
 
-          taWasmModule.ccall('ta_dispose', 'void', [], []);
+          wasmInstance.ccall('ta_dispose', 'void', [], []);
 
           // 4. free memory
-          taWasmModule._free(posPtr); taWasmModule._free(facePtr); taWasmModule._free(uvPtr);
+          wasmInstance._free(posPtr); wasmInstance._free(facePtr); wasmInstance._free(uvPtr);
 
           // 5. compute stats
           let avgErr = 0, maxErr = 0;
@@ -2260,27 +2033,27 @@
               updateTimingProgress(p, t);
             });
           } else if (method === 'holo') {
-            await initHoloWASMSolver();
+            await initUnifiedSolver();
             const fv = currentMeshData.positions, ff = currentMeshData.faces;
             const fp = new Float64Array(fv.length*3);
             for(let i=0;i<fv.length;i++){fp[i*3]=fv[i][0];fp[i*3+1]=fv[i][1];fp[i*3+2]=fv[i][2];}
             const ffi = new Int32Array(ff.length*3);
             for(let i=0;i<ff.length;i++){ffi[i*3]=ff[i][0];ffi[i*3+1]=ff[i][1];ffi[i*3+2]=ff[i][2];}
-            const pp = holoWasmModule._malloc(fp.length*8);
-            for(let i=0;i<fp.length;i++)holoWasmModule.setValue(pp+i*8,fp[i],'double');
-            const fpt = holoWasmModule._malloc(ffi.length*4);
-            for(let i=0;i<ffi.length;i++)holoWasmModule.setValue(fpt+i*4,ffi[i],'i32');
-            const rc = holoWasmModule.ccall('solve_holo','number',['number','number','number','number'],[pp,fp.length,fpt,ffi.length]);
+            const pp = wasmInstance._malloc(fp.length*8);
+            for(let i=0;i<fp.length;i++)wasmInstance.setValue(pp+i*8,fp[i],'double');
+            const fpt = wasmInstance._malloc(ffi.length*4);
+            for(let i=0;i<ffi.length;i++)wasmInstance.setValue(fpt+i*4,ffi[i],'i32');
+            const rc = wasmInstance.ccall('solve_holo','number',['number','number','number','number'],[pp,fp.length,fpt,ffi.length]);
             if(rc!==0)throw new Error("Holo solve failed");
-            const sz = holoWasmModule.ccall('get_holo_uv_result_size','number',[],[]);
-            const up = holoWasmModule.ccall('get_holo_uv_result','number',[],[]);
-            const us=[];for(let i=0;i<sz;i++)us.push(holoWasmModule.getValue(up+i*8,'double'));
-            holoWasmModule.ccall('holo_dispose','void',[],[]);
-            holoWasmModule._free(pp);holoWasmModule._free(fpt);
+            const sz = wasmInstance.ccall('get_holo_uv_result_size','number',[],[]);
+            const up = wasmInstance.ccall('get_holo_uv_result','number',[],[]);
+            const us=[];for(let i=0;i<sz;i++)us.push(wasmInstance.getValue(up+i*8,'double'));
+            wasmInstance.ccall('holo_dispose','void',[],[]);
+            wasmInstance._free(pp);wasmInstance._free(fpt);
             const nv = fv.length, uvs = new Array(nv);
             for(let i=0;i<nv;i++)uvs[i]=[us[i*2],us[i*2+1]];
             unwrapResult = {uv:uvs, anchors:chooseAnchorPair(fv), flippedFaceCount:countFlippedFaces(uvs,ff),
-              timeMs:holoWasmModule.ccall('get_holo_last_time_ms','number',[],[]), method:'holo'};
+              timeMs:wasmInstance.ccall('get_holo_last_time_ms','number',[],[]), method:'holo'};
           } else {
             unwrapResult = await solveLSCMAsync(currentMeshData, function(progress, total) {
               updateTimingProgress(progress, total);
@@ -2380,12 +2153,12 @@
         });
       }
       
-      // 页面启动时预加载 WASM 求解器
+      // 页面启动时预加载 WASM 统一求解器
       updateStartButtonState();
-      Promise.all([initWASMSolver(), initBDWASMSolver(), initTAWASMSolver(), initCETMWASMSolver(), initRicciWASMSolver(), initCPWASMSolver(), initQCWASMSolver(), initBFFWASMSolver(), initMIQWASMSolver()]).then(([lscmOk, bdOk, taOk, cetmOk, ricciOk, cpOk, qcOk, bffOk, miqOk]) => {
+      initUnifiedSolver().then((ok) => {
         updateStartButtonState();
-        if (!lscmOk && !bdOk && !taOk && !cetmOk && !ricciOk && !cpOk && !qcOk && !bffOk && !miqOk) {
-          setStatus("所有 WASM 引擎加载失败", "#ff9d9d");
+        if (!ok) {
+          setStatus("WASM 引擎加载失败", "#ff9d9d");
         }
       });
       
