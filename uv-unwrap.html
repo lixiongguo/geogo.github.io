@@ -278,9 +278,10 @@
           <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开算法</legend>
           <div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:4px;">
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="lscm" checked> LSCM</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte_circle"> Tutte(圆)</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte_square"> Tutte(方)</label>
+            <label id="lscm-bd-chk" style="color:#8a9dd4;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;margin-right:8px;"><input type="checkbox" id="bd-chk-lscm" onchange="onParamChange()"><span style="line-height:1">BD</span></label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte"> Tutte</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="arap"> ARAP</label>
+            <label id="arap-bd-chk" style="color:#8a9dd4;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;margin-right:8px;"><input type="checkbox" id="bd-chk-arap" onchange="onParamChange()"><span style="line-height:1">BD</span></label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cetm"> CETM</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="ricci"> Ricci流</label>
           </div>
@@ -290,43 +291,41 @@
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="bff"> BFF</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="miq"> MIQ</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="holo"> 全纯1-形式</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="bd_lscm"> BD-LSCM</label>
           </div>
         </fieldset>
-        <label id="bd-c-label" style="font-size:13px;color:#c6d1f4;display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(106,132,255,0.25);border-radius:10px;background:#121b31;">
-          上限c:<input id="bd-c-input" type="number" value="10" min="1.1" max="100" step="1"
-            style="width:54px;padding:5px 7px;border-radius:6px;text-align:center;font-size:13px;border:1px solid rgba(106,132,255,0.3);background:#0d1528;color:#eef2ff;"
-            title="共形扭曲上限 σ₁/σ₂ ≤ c（越小越保角，c≥1）">
-        </label>
-        <label id="arap-iter-label" style="font-size:12px;color:#8a9dd4;display:none;">
-          迭代:<input id="arap-iter-input" type="number" value="30" min="5" max="200" step="5"
-            style="width:48px;padding:4px 6px;border-radius:6px;text-align:center"
-            title="ARAP Local/Global 迭代次数">
-        </label>
-        <label id="cetm-opt-label" style="font-size:12px;color:#8a9dd4;display:none;align-items:center;gap:4px;">
-          优化:<select id="cetm-opt-select" style="width:70px;padding:4px 6px;border-radius:6px;font-size:11px;"
-            title="CETM 优化方法">
-            <option value="1" selected>牛顿法</option>
-            <option value="0">梯度下降</option>
-            <option value="3">LBFGS</option>
-          </select>
-        </label>
-        <label id="ricci-opt-label" style="font-size:12px;color:#8a9dd4;display:none;align-items:center;gap:4px;">
-          优化:<select id="ricci-opt-select" style="width:70px;padding:4px 6px;border-radius:6px;font-size:11px;"
-            title="Ricci Flow 优化方法">
-            <option value="1" selected>牛顿法</option>
-            <option value="0">梯度下降</option>
-            <option value="3">LBFGS</option>
-          </select>
-        </label>
-        <label id="cp-opt-label" style="font-size:12px;color:#8a9dd4;display:none;align-items:center;gap:4px;">
-          优化:<select id="cp-opt-select" style="width:70px;padding:4px 6px;border-radius:6px;font-size:11px;"
-            title="Circle Patterns 优化方法">
-            <option value="1" selected>牛顿法</option>
-            <option value="0">梯度下降</option>
-            <option value="3">LBFGS</option>
-          </select>
-        </label>
+
+        <!-- 固定算法参数区 -->
+        <fieldset id="param-panel" style="display:none;border:1px solid rgba(255,180,70,0.35);border-radius:10px;padding:8px 12px;margin:0;background:rgba(20,25,45,0.7);">
+          <legend style="color:#ffb446;font-size:11px;padding:0 6px;">算法参数</legend>
+          <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;">
+            <!-- Tutte 边界选择 -->
+            <span id="param-tutte-boundary" style="display:none;font-size:12px;color:#c6d1f4;">
+              边界:
+              <label style="cursor:pointer;margin:0 4px;" title="映射到圆形边界"><input type="radio" name="tutte-boundary" value="circle" checked> 圆</label>
+              <label style="cursor:pointer;margin:0 4px;" title="映射到正方形边界"><input type="radio" name="tutte-boundary" value="square"> 方</label>
+            </span>
+            <!-- BD C 值 -->
+            <span id="param-bd-c" style="display:none;font-size:12px;color:#ffb446;">
+              共形上界c:<input id="bd-c-input" type="number" value="10" min="1.1" max="100" step="1"
+                style="width:50px;padding:3px 5px;border-radius:6px;text-align:center;font-size:12px;border:1px solid rgba(255,180,70,0.4);background:#0d1528;color:#ffd700;margin-left:4px;"
+                title="共形扭曲上限 σ₁/σ₂ ≤ c（越小越保角，1=共形）">
+            </span>
+            <!-- ARAP 迭代 -->
+            <span id="param-arap-iter" style="display:none;font-size:12px;color:#c6d1f4;">
+              迭代:<input id="arap-iter-input" type="number" value="30" min="5" max="200" step="5"
+                style="width:44px;padding:3px 5px;border-radius:6px;text-align:center;font-size:12px;border:1px solid rgba(106,132,255,0.3);background:#0d1528;color:#eef2ff;margin-left:4px;"
+                title="ARAP Local/Global 迭代次数">
+            </span>
+            <!-- 优化方法选择 -->
+            <span id="param-opt-scheme" style="display:none;font-size:12px;color:#c6d1f4;">
+              优化:<select id="opt-scheme-select" style="width:75px;padding:3px 5px;border-radius:6px;font-size:11px;border:1px solid rgba(106,132,255,0.3);background:#0d1528;color:#eef2ff;margin-left:4px;">
+                <option value="1" selected>牛顿法</option>
+                <option value="0">梯度下降</option>
+                <option value="3">LBFGS</option>
+              </select>
+            </span>
+          </div>
+        </fieldset>
         <button id="reload-btn"><span class="btn-text">展开</span><span class="btn-excl">!</span></button>
         <fieldset id="texture-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:6px 10px;margin:0;display:flex;gap:12px;align-items:center;">
           <legend style="color:#8a9dd4;font-size:11px;padding:0 4px;">纹理显示</legend>
@@ -955,11 +954,6 @@
         }
       }
 
-      /** 当前选中的算法 */
-      function getCurrentMethod() {
-        const checked = document.querySelector('input[name="method"]:checked');
-        return checked ? checked.value : 'lscm';
-      }
       /** 当前选中的模型源 (Models/Models2/Models3) */
       let currentModelSource = "assets/Models";
       function getCurrentModelKey() {
@@ -974,29 +968,77 @@
         return MODELS3[key];
       }
 
+      /** 当前选中的算法 */
+      function getCurrentMethod() {
+        const checked = document.querySelector('input[name="method"]:checked');
+        return checked ? checked.value : 'lscm';
+      }
+
+      /** BD 是否启用（LSCM 或 ARAP 的 BD 复选框选中） */
+      function isBDEnabled() {
+        const m = getCurrentMethod();
+        if (m === 'lscm') return document.getElementById('bd-chk-lscm').checked;
+        if (m === 'arap') return document.getElementById('bd-chk-arap').checked;
+        return false;
+      }
+
+      /** 获取 Tutte 边界类型 */
+      function getTutteBoundary() {
+        const r = document.querySelector('input[name="tutte-boundary"]:checked');
+        return r ? r.value : 'circle';
+      }
+
       /** 获取 BD C 参数值 */
       function getBDCParam() {
         const v = parseFloat(document.getElementById('bd-c-input').value);
         return (isNaN(v) || v < 1.01) ? 10.0 : v;
       }
 
-      /** 获取 CETM 优化方法参数 */
-      function getCETMOptScheme() {
-        const v = parseInt(document.getElementById('cetm-opt-select').value);
+      /** 获取 ARAP 迭代次数 */
+      function getARAPIter() {
+        const v = parseInt(document.getElementById('arap-iter-input').value);
+        return (isNaN(v) || v < 5) ? 30 : v;
+      }
+
+      /** 获取优化方法 */
+      function getOptScheme() {
+        const v = parseInt(document.getElementById('opt-scheme-select').value);
         return (v === 0 || v === 1 || v === 3) ? v : 1;
       }
 
-      /** 获取 Ricci Flow 优化方法参数 */
-      function getRicciOptScheme() {
-        const v = parseInt(document.getElementById('ricci-opt-select').value);
-        return (v === 0 || v === 1 || v === 3) ? v : 1;
+      /** 算法切换 + BD复选框切换 + Tutte边界切换 → 统一更新参数面板 */
+      function onParamChange() {
+        const m = getCurrentMethod();
+        const panel = document.getElementById('param-panel');
+        const bdLscm = document.getElementById('bd-chk-lscm').checked && m === 'lscm';
+        const bdArap = document.getElementById('bd-chk-arap').checked && m === 'arap';
+        const showBD = bdLscm || bdArap;
+
+        // 显隐参数面板
+        const hasParams = (m === 'tutte' || showBD || m === 'arap' || m === 'cetm' || m === 'ricci' || m === 'cp');
+        panel.style.display = hasParams ? '' : 'none';
+
+        // Tutte 边界
+        document.getElementById('param-tutte-boundary').style.display = (m === 'tutte') ? '' : 'none';
+        // BD C 值
+        document.getElementById('param-bd-c').style.display = showBD ? '' : 'none';
+        // ARAP 迭代（ARAP 时始终显示）
+        document.getElementById('param-arap-iter').style.display = (m === 'arap') ? '' : 'none';
+        // 优化方法
+        const showOpt = (m === 'cetm' || m === 'ricci' || m === 'cp');
+        document.getElementById('param-opt-scheme').style.display = showOpt ? '' : 'none';
+        if (showOpt) {
+          const sel = document.getElementById('opt-scheme-select');
+          sel.value = '1';  // 默认牛顿法
+        }
+        // BD 复选框只在 LSCM/ARAP 时可见
+        document.getElementById('lscm-bd-chk').style.display = (m === 'lscm') ? '' : 'none';
+        document.getElementById('arap-bd-chk').style.display = (m === 'arap') ? '' : 'none';
+
+        updateStartButtonState();
       }
 
-      /** 获取 Circle Patterns 优化方法参数 */
-      function getCPOptScheme() {
-        const v = parseInt(document.getElementById('cp-opt-select').value);
-        return (v === 0 || v === 1 || v === 3) ? v : 1;
-      }
+      window.onParamChange = onParamChange;  // 暴露到全局以便 HTML onchange 调用
 
       /**
        * 更新按钮状态，显示 WASM 引擎加载状态
@@ -1004,31 +1046,40 @@
       function updateStartButtonState() {
         const btn = document.getElementById('reloadBtn');
         if (!btn) return;
-        
-        const method = getCurrentMethod();
-        const lscmFailed = (method === 'lscm' && wasmLoadFailed);
-        const bdFailed   = (method === 'bd_lscm' && bdWasmLoadFailed);
-        const taFailed   = ((method === 'tutte_circle' || method === 'tutte_square' || method === 'arap') && taWasmLoadFailed);
-        const cetmFailed = (method === 'cetm' && cetmWasmLoadFailed);
-        const ricciFailed = (method === 'ricci' && ricciWasmLoadFailed);
-        const cpFailed = (method === 'cp' && cpWasmLoadFailed);
-        const qcFailed = (method === 'quadcover' && qcWasmLoadFailed);
-        const bffFailed = (method === 'bff' && bffWasmLoadFailed);
-        const miqFailed = (method === 'miq' && miqWasmLoadFailed);
-        const lscmLoading = (method === 'lscm' && !wasmReady && !wasmLoadFailed);
-        const bdLoading   = (method === 'bd_lscm' && !bdWasmReady && !bdWasmLoadFailed);
-        const taLoading   = ((method === 'tutte_circle' || method === 'tutte_square' || method === 'arap') && !taWasmReady && !taWasmLoadFailed);
-        const cetmLoading = (method === 'cetm' && !cetmWasmReady && !cetmWasmLoadFailed);
-        const ricciLoading = (method === 'ricci' && !ricciWasmReady && !ricciWasmLoadFailed);
-        const cpLoading = (method === 'cp' && !cpWasmReady && !cpWasmLoadFailed);
-        const qcLoading = (method === 'quadcover' && !qcWasmReady && !qcWasmLoadFailed);
-        const bffLoading = (method === 'bff' && !bffWasmReady && !bffWasmLoadFailed);
-        const miqLoading = (method === 'miq' && !miqWasmReady && !miqWasmLoadFailed);
 
-        if (lscmFailed || bdFailed || taFailed || cetmFailed || ricciFailed || cpFailed || qcFailed || bffFailed || miqFailed) {
+        const method = getCurrentMethod();
+        const bd = isBDEnabled();
+        const needBD = (method === 'lscm' || method === 'arap') && bd;
+        const needTA = (method === 'tutte' || (method === 'arap' && !bd));
+
+        const failed =
+          (method === 'lscm' && !bd && wasmLoadFailed) ||
+          (needBD && bdWasmLoadFailed) ||
+          (needTA && taWasmLoadFailed) ||
+          (method === 'cetm' && cetmWasmLoadFailed) ||
+          (method === 'ricci' && ricciWasmLoadFailed) ||
+          (method === 'cp' && cpWasmLoadFailed) ||
+          (method === 'quadcover' && qcWasmLoadFailed) ||
+          (method === 'bff' && bffWasmLoadFailed) ||
+          (method === 'miq' && miqWasmLoadFailed) ||
+          (method === 'holo' && holoWasmLoadFailed);
+
+        const loading =
+          (method === 'lscm' && !bd && !wasmReady && !wasmLoadFailed) ||
+          (needBD && !bdWasmReady && !bdWasmLoadFailed) ||
+          (needTA && !taWasmReady && !taWasmLoadFailed) ||
+          (method === 'cetm' && !cetmWasmReady && !cetmWasmLoadFailed) ||
+          (method === 'ricci' && !ricciWasmReady && !ricciWasmLoadFailed) ||
+          (method === 'cp' && !cpWasmReady && !cpWasmLoadFailed) ||
+          (method === 'quadcover' && !qcWasmReady && !qcWasmLoadFailed) ||
+          (method === 'bff' && !bffWasmReady && !bffWasmLoadFailed) ||
+          (method === 'miq' && !miqWasmReady && !miqWasmLoadFailed) ||
+          (method === 'holo' && !holoWasmReady && !holoWasmLoadFailed);
+
+        if (failed) {
           btn.textContent = '引擎加载失败';
           btn.disabled = true;
-        } else if (lscmLoading || bdLoading || taLoading || cetmLoading || ricciLoading || cpLoading || qcLoading || bffLoading || miqLoading) {
+        } else if (loading) {
           btn.textContent = '引擎加载中...';
           btn.disabled = true;
         } else {
@@ -1037,22 +1088,9 @@
         }
       }
 
-      // 方法切换时更新 UI（为所有 radio 绑定 change）
+      // 方法切换 + BD/Tutte 参数变化时更新 UI
       document.querySelectorAll('input[name="method"]').forEach(function(radio) {
-        radio.addEventListener('change', function() {
-          const m = this.value;
-          const isBD = m === 'bd_lscm';
-          const isARAP = m === 'arap';
-          const isCETM = m === 'cetm';
-          const isRicci = m === 'ricci';
-          const isCP = m === 'cp';
-          document.getElementById('bd-c-label').style.display = isBD ? 'flex' : 'none';
-          document.getElementById('arap-iter-label').style.display = isARAP ? 'flex' : 'none';
-          document.getElementById('cetm-opt-label').style.display = isCETM ? 'flex' : 'none';
-          document.getElementById('ricci-opt-label').style.display = isRicci ? 'flex' : 'none';
-          document.getElementById('cp-opt-label').style.display = isCP ? 'flex' : 'none';
-          updateStartButtonState();
-        });
+        radio.addEventListener('change', onParamChange);
       });
 
       // ==================== WASM 驱动的 LSCM 求解 ====================
@@ -2156,17 +2194,23 @@
         }
 
         const method = getCurrentMethod();
-        let methodLabel = 'LSCM';
-        if (method === 'bd_lscm') methodLabel = 'BD-LSCM (C=' + getBDCParam().toFixed(1) + ')';
-        else if (method === 'tutte_circle') methodLabel = 'Tutte (圆形)';
-        else if (method === 'tutte_square') methodLabel = 'Tutte (正方形)';
-        else if (method === 'arap') methodLabel = 'ARAP';
+        const bd = isBDEnabled();
+        const C = getBDCParam();
+
+        // 构建方法标签
+        let methodLabel;
+        if (bd) methodLabel = 'BD-LSCM (C=' + C.toFixed(1) + ')';
+        else if (method === 'lscm') methodLabel = 'LSCM';
+        else if (method === 'tutte') methodLabel = 'Tutte (' + (getTutteBoundary() === 'circle' ? '圆' : '方') + ')';
+        else if (method === 'arap') methodLabel = 'ARAP (iter=' + getARAPIter() + ')';
         else if (method === 'cetm') methodLabel = 'CETM (共形因子)';
-        else if (method === 'ricci') methodLabel = 'Ricci 流 (圆填充)';
-        else if (method === 'cp') methodLabel = 'Circle Pattern (圆图案)';
-        else if (method === 'quadcover') methodLabel = 'QuadCover (四边形)';
-        else if (method === 'bff') methodLabel = 'BFF (边界优先展平)';
-        else if (method === 'miq') methodLabel = 'MIQ (混合整数四边形)';
+        else if (method === 'ricci') methodLabel = 'Ricci 流';
+        else if (method === 'cp') methodLabel = 'Circle Pattern';
+        else if (method === 'quadcover') methodLabel = 'QuadCover';
+        else if (method === 'bff') methodLabel = 'BFF';
+        else if (method === 'miq') methodLabel = 'MIQ';
+        else if (method === 'holo') methodLabel = '全纯1-形式';
+        else methodLabel = 'LSCM';
 
         setBusy(true);
         setStatus("正在执行 " + methodLabel + " 求解...");
@@ -2176,14 +2220,19 @@
           const startTime = performance.now();
 
           let unwrapResult;
-          if (method === 'bd_lscm') {
+          if (bd) {
+            // LSCM+BD 或 ARAP+BD → 统一使用 BD-LSCM 求解器
             unwrapResult = await solveBDLSCMAsync(currentMeshData, function(progress, total) {
               updateTimingProgress(progress, total);
             });
-          } else if (method === 'tutte_circle') {
-            unwrapResult = await solveTutteCircleAsync(currentMeshData, function() {});
-          } else if (method === 'tutte_square') {
-            unwrapResult = await solveTutteSquareAsync(currentMeshData, function() {});
+          } else if (method === 'lscm') {
+            unwrapResult = await solveLSCMAsync(currentMeshData, function(progress, total) {
+              updateTimingProgress(progress, total);
+            });
+          } else if (method === 'tutte') {
+            unwrapResult = (getTutteBoundary() === 'circle')
+              ? await solveTutteCircleAsync(currentMeshData, function() {})
+              : await solveTutteSquareAsync(currentMeshData, function() {});
           } else if (method === 'arap') {
             unwrapResult = await solveARAPAsync(currentMeshData, function() {});
           } else if (method === 'cetm') {
@@ -2210,6 +2259,28 @@
             unwrapResult = await solveMIQAsync(currentMeshData, function(p, t) {
               updateTimingProgress(p, t);
             });
+          } else if (method === 'holo') {
+            await initHoloWASMSolver();
+            const fv = currentMeshData.positions, ff = currentMeshData.faces;
+            const fp = new Float64Array(fv.length*3);
+            for(let i=0;i<fv.length;i++){fp[i*3]=fv[i][0];fp[i*3+1]=fv[i][1];fp[i*3+2]=fv[i][2];}
+            const ffi = new Int32Array(ff.length*3);
+            for(let i=0;i<ff.length;i++){ffi[i*3]=ff[i][0];ffi[i*3+1]=ff[i][1];ffi[i*3+2]=ff[i][2];}
+            const pp = holoWasmModule._malloc(fp.length*8);
+            for(let i=0;i<fp.length;i++)holoWasmModule.setValue(pp+i*8,fp[i],'double');
+            const fpt = holoWasmModule._malloc(ffi.length*4);
+            for(let i=0;i<ffi.length;i++)holoWasmModule.setValue(fpt+i*4,ffi[i],'i32');
+            const rc = holoWasmModule.ccall('solve_holo','number',['number','number','number','number'],[pp,fp.length,fpt,ffi.length]);
+            if(rc!==0)throw new Error("Holo solve failed");
+            const sz = holoWasmModule.ccall('get_holo_uv_result_size','number',[],[]);
+            const up = holoWasmModule.ccall('get_holo_uv_result','number',[],[]);
+            const us=[];for(let i=0;i<sz;i++)us.push(holoWasmModule.getValue(up+i*8,'double'));
+            holoWasmModule.ccall('holo_dispose','void',[],[]);
+            holoWasmModule._free(pp);holoWasmModule._free(fpt);
+            const nv = fv.length, uvs = new Array(nv);
+            for(let i=0;i<nv;i++)uvs[i]=[us[i*2],us[i*2+1]];
+            unwrapResult = {uv:uvs, anchors:chooseAnchorPair(fv), flippedFaceCount:countFlippedFaces(uvs,ff),
+              timeMs:holoWasmModule.ccall('get_holo_last_time_ms','number',[],[]), method:'holo'};
           } else {
             unwrapResult = await solveLSCMAsync(currentMeshData, function(progress, total) {
               updateTimingProgress(progress, total);
@@ -2231,7 +2302,7 @@
           }
 
           // 更新 UV 面板标签
-          const methodNames = { lscm:'LSCM', bd_lscm:'BD-LSCM', tutte_circle:'Tutte(圆)', tutte_square:'Tutte(方)', arap:'ARAP', cetm:'CETM', ricci:'Ricci', cp:'CirclePat', quadcover:'QuadCover', bff:'BFF', miq:'MIQ' };
+          const methodNames = { lscm:'LSCM', tutte:'Tutte', arap:'ARAP', cetm:'CETM', ricci:'Ricci', cp:'CirclePat', quadcover:'QuadCover', bff:'BFF', miq:'MIQ', holo:'Holo' };
           document.getElementById('uv-panel-label').textContent =
             (methodNames[unwrapResult.method] || unwrapResult.method) + ' UV 网格';
 
