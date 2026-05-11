@@ -587,6 +587,47 @@
         });
       }
 
+      /**
+       * 从 OBJ 文本中解析原始面数据（保留四边形等多边形，不三角化）
+       */
+      function parseRawFaces(objText) {
+        const faces = [];
+        const lines = objText.split(/\r?\n/);
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line.startsWith('f ') && !line.startsWith('f\t')) continue;
+          const indices = [];
+          // 处理换行续行
+          let full = line;
+          while (i + 1 < lines.length && lines[i + 1].trim() && !lines[i + 1].trim().match(/^[vf#]/)) {
+            i++;
+            full += ' ' + lines[i].trim();
+          }
+          const parts = full.slice(1).trim().split(/\s+/);
+          for (let j = 0; j < parts.length; j++) {
+            const idx = parseInt(parts[j].split('/')[0], 10);
+            if (!isNaN(idx)) indices.push(idx - 1); // 转为 0-based
+          }
+          if (indices.length >= 3) faces.push(indices);
+        }
+        return faces;
+      }
+
+      /**
+       * 尝试多个路径加载原始 OBJ 文本
+       */
+      async function fetchObjText(urls) {
+        let lastError = null;
+        for (let i = 0; i < urls.length; i++) {
+          try {
+            const resp = await fetch(urls[i]);
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            return await resp.text();
+          } catch (e) { lastError = e; }
+        }
+        throw lastError || new Error('无法加载 OBJ 文本');
+      }
+
       function getModelCandidateUrls(modelKey) {
         const model = getCurrentModelObj();
         if (!model) return [];
@@ -604,18 +645,27 @@
       async function loadBuiltinModel(modelKey) {
         const candidateUrls = getModelCandidateUrls(modelKey);
         let lastError = null;
+
+        // 先加载 Three.js 几何（和之前一样）
+        let root = null, loadedUrl = null;
         for (let i = 0; i < candidateUrls.length; i++) {
-          const url = candidateUrls[i];
           try {
-            const root = await loadOBJ(url);
-            return { root: root, sourcePath: url };
-          } catch (error) {
-            lastError = error;
-          }
+            root = await loadOBJ(candidateUrls[i]);
+            loadedUrl = candidateUrls[i];
+            break;
+          } catch (error) { lastError = error; }
+        }
+        if (!root) {
+          const detail = lastError && lastError.message ? lastError.message : String(lastError || "unknown");
+          throw new Error("内置模型加载失败，尝试路径: " + candidateUrls.join(" | ") + "；最后错误: " + detail);
         }
 
-        const detail = lastError && lastError.message ? lastError.message : String(lastError || "unknown");
-        throw new Error("内置模型加载失败，尝试路径: " + candidateUrls.join(" | ") + "；最后错误: " + detail);
+        // 模型加载成功后，再获取原始 OBJ 文本解析四边形数据
+        let rawFaces = null;
+        try { rawFaces = parseRawFaces(await fetchObjText(candidateUrls)); }
+        catch (e) { /* 文本加载失败不影响渲染 */ }
+
+        return { root: root, sourcePath: loadedUrl, rawFaces: rawFaces };
       }
 
       let currentRawFaces = null; // 原始 OBJ 面数据（可能含 quad）
@@ -2068,6 +2118,7 @@
 
           currentMeshData = meshData;
           currentSourcePath = resolved.sourcePath;
+          currentRawFaces = resolved.rawFaces;  // 原始 OBJ 面数据（含四边形）
 
           // 检测是否为四边形网格（原始面至少有 3/4 是四边面）
           if (currentRawFaces && currentRawFaces.length > 0) {
