@@ -2082,9 +2082,10 @@
 
           const faceType = isQuadMesh ? "四边面" : "三角形";
 
+          const faceCount = currentRawFaces ? currentRawFaces.length : meshData.faces.length;
           setStatus(
             "3D 预览: " + getCurrentSourceLabel() + " / " + meshData.positions.length + " 顶点 / " +
-            currentRawFaces.length + " " + faceType + "，点击「开始展开」执行 UV",
+            faceCount + " " + faceType + "，点击「开始展开」执行 UV",
             "#89f0b6"
           );
         } catch (error) {
