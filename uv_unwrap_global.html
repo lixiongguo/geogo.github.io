@@ -338,7 +338,7 @@
   window.toggleGaussCurvature=toggleGaussCurvature;
 
   // ============ 主曲率场（libigl WASM） ============
-  let principalCurvOn=false,principalFieldGroup=null,pcInst=null,pcReady=false,pcFailed=false;
+  let principalCurvOn=false,principalFieldGroup=null,umbilicMarkers=null,pcInst=null,pcReady=false,pcFailed=false;
   async function initPC(){
     if(pcReady)return true;if(pcFailed)return false;
     try{if(typeof PrincipalCurvatureSolver!=='function')throw new Error('PrincipalCurvatureSolver 未加载');pcInst=await PrincipalCurvatureSolver();pcReady=true;return true}
@@ -363,9 +363,10 @@
     return{pd1,pd2,pv1,pv2};
   }
   function clearPrincipalCurvatureField(){
-    if(!principalFieldGroup)return;modelScene.remove(principalFieldGroup);
+    if(principalFieldGroup){modelScene.remove(principalFieldGroup);
     principalFieldGroup.traverse(function(o){if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose()});
-    principalFieldGroup=null;
+    principalFieldGroup=null}
+    if(umbilicMarkers){modelScene.remove(umbilicMarkers);if(umbilicMarkers.geometry)umbilicMarkers.geometry.dispose();if(umbilicMarkers.material)umbilicMarkers.material.dispose();umbilicMarkers=null}
   }
   function averagedPrincipalDirection(field,face,normal){
     const base=[field[face[0]*3]||0,field[face[0]*3+1]||0,field[face[0]*3+2]||0];let x=base[0],y=base[1],z=base[2];
@@ -388,7 +389,37 @@
     const group=new THREE.Group(),makeLines=function(arr,color){const geom=new THREE.BufferGeometry();geom.setAttribute('position',new THREE.Float32BufferAttribute(arr,3));return new THREE.LineSegments(geom,new THREE.LineBasicMaterial({color:color,linewidth:1,depthTest:true}))};
     if(k1.length)group.add(makeLines(k1,0xff5555));if(k2.length)group.add(makeLines(k2,0x55a7ff));return group;
   }
-  async function applyPrincipalCurvatureField(meshData){clearPrincipalCurvatureField();if(!principalCurvOn||!meshData)return null;const pcData=await computePrincipalCurvatureWASM(meshData.positions,meshData.faces);principalFieldGroup=buildPrincipalCurvatureField(meshData,pcData);modelScene.add(principalFieldGroup);return pcData}
+
+  function buildUmbilicMarkers(meshData,pcData){
+    const scores=[];
+    for(let i=0;i<meshData.positions.length&&i<pcData.pv1.length;i++){
+      const k1=Math.abs(pcData.pv1[i]||0),k2=Math.abs(pcData.pv2[i]||0),scale=Math.max(k1,k2,1e-12);
+      const rel=Math.abs(k1-k2)/scale;
+      scores.push({i,rel});
+    }
+    scores.sort(function(a,b){return a.rel-b.rel});
+    const maxCount=Math.max(8,Math.min(80,Math.ceil(meshData.positions.length*0.006)));
+    const pts=[];
+    for(let s=0;s<scores.length&&pts.length/3<maxCount;s++){
+      if(scores[s].rel>0.18&&pts.length>0)break;
+      const p=meshData.positions[scores[s].i];
+      pts.push(p[0],p[1],p[2]);
+    }
+    if(!pts.length)return null;
+    const geom=new THREE.BufferGeometry();
+    geom.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
+    return new THREE.Points(geom,new THREE.PointsMaterial({color:0xfff24a,size:.075,sizeAttenuation:true,depthTest:false}));
+  }
+
+  async function applyPrincipalCurvatureField(meshData){
+    clearPrincipalCurvatureField();if(!principalCurvOn||!meshData)return null;
+    const pcData=await computePrincipalCurvatureWASM(meshData.positions,meshData.faces);
+    principalFieldGroup=buildPrincipalCurvatureField(meshData,pcData);modelScene.add(principalFieldGroup);
+    umbilicMarkers=buildUmbilicMarkers(meshData,pcData);
+    if(umbilicMarkers)modelScene.add(umbilicMarkers);
+    pcData.umbilicCount=umbilicMarkers?umbilicMarkers.geometry.attributes.position.count:0;
+    return pcData
+  }
 
   function buildQuadCoverFaceDirections(meshData,pcData){
     const dirs=new Float64Array(meshData.faces.length*3);
@@ -406,7 +437,7 @@
   }
   async function togglePrincipalCurvatureField(){
     principalCurvOn=document.getElementById('principal-chk').checked;if(!principalCurvOn){clearPrincipalCurvatureField();return}
-    try{await applyPrincipalCurvatureField(currentMeshData);setStatus('主曲率场已绘制（红/蓝为两组主方向）','#89f0b6')}
+    try{const pcData=await applyPrincipalCurvatureField(currentMeshData);setStatus('主曲率场已绘制（红/蓝为两组主方向，黄色为脐点候选 '+(pcData?pcData.umbilicCount:0)+' 个）','#89f0b6')}
     catch(e){console.error(e);principalCurvOn=false;document.getElementById('principal-chk').checked=false;setStatus('主曲率场计算失败: '+e.message,'#ff9d9d')}
   }
   window.togglePrincipalCurvatureField=togglePrincipalCurvatureField;
