@@ -224,6 +224,23 @@
         transform: translateY(0) scale(0.97);
         box-shadow: 0 2px 6px rgba(255, 107, 53, 0.4);
       }
+      #change-pin-btn {
+        padding: 4px 10px;
+        font-size: 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        border: 1px solid rgba(106, 132, 255, 0.3);
+        background: #111b31;
+        color: #c6d1f4;
+        transition: background 0.2s ease;
+      }
+      #change-pin-btn:hover {
+        background: #1a2a4a;
+        border-color: rgba(106, 132, 255, 0.55);
+      }
+      #change-pin-btn:active {
+        background: #0f1a30;
+      }
   </style>
 </head>
 <body>
@@ -261,6 +278,10 @@
           <legend style="color:#ffb446;font-size:11px;padding:0 6px;">算法参数</legend>
           <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;">
             <span id="param-none" style="font-size:12px;color:#5a6791;">无参数</span>
+            <!-- LSCM 改pin点 -->
+            <span id="param-lscm-pin" style="display:none;font-size:12px;color:#c6d1f4;">
+              <button id="change-pin-btn" type="button">改pin点</button>
+            </span>
             <!-- Tutte 边界选择 -->
             <span id="param-tutte-boundary" style="display:none;font-size:12px;color:#c6d1f4;">
               边界:
@@ -393,6 +414,7 @@
       let lastElapsedMs = 0;
       let distortionEnabled = false;
       let currentDistortionMesh = null;
+      let currentCustomAnchors = null;  // 用户手动选择的 pin 点
 
       function setStatus(message, color) {
         statusText.textContent = message;
@@ -647,6 +669,35 @@
         return [bestA, bestB];
       }
 
+      /**
+       * 选取一对不同于 excludePair 的最远顶点作为备选 pin 点
+       * @param {number[][]} vertices 顶点坐标数组
+       * @param {number[]} excludePair 要排除的顶点对 [a, b]
+       * @returns {number[]} 新的顶点对索引
+       */
+      function chooseAlternativeAnchorPair(vertices, excludePair) {
+        const exA = excludePair[0], exB = excludePair[1];
+        let bestA = exA === 0 ? 1 : 0;
+        let bestB = exB === 0 ? 1 : 0;
+        let bestDist2 = -1;
+        for (let i = 0; i < vertices.length; i++) {
+          for (let j = i + 1; j < vertices.length; j++) {
+            // 排除与 excludePair 相同的无序对
+            if ((i === exA && j === exB) || (i === exB && j === exA)) continue;
+            const dx = vertices[i][0] - vertices[j][0];
+            const dy = vertices[i][1] - vertices[j][1];
+            const dz = vertices[i][2] - vertices[j][2];
+            const dist2 = dx * dx + dy * dy + dz * dz;
+            if (dist2 > bestDist2) {
+              bestDist2 = dist2;
+              bestA = i;
+              bestB = j;
+            }
+          }
+        }
+        return [bestA, bestB];
+      }
+
       // ==================== WASM 求解器初始化 ====================
       let wasmInstance = null;         // Unified WASM 模块实例（包含所有算法）
       let wasmReady = false;           // WASM 是否已就绪
@@ -744,6 +795,13 @@
         document.getElementById('lscm-bd-chk').style.display = (m === 'lscm') ? '' : 'none';
         document.getElementById('arap-bd-chk').style.display = (m === 'arap') ? '' : 'none';
 
+        // 改pin点按钮仅在 LSCM 时显示
+        document.getElementById('param-lscm-pin').style.display = (m === 'lscm') ? '' : 'none';
+        // 切换出 LSCM 时重置自定义 pin 点
+        if (m !== 'lscm') {
+          currentCustomAnchors = null;
+        }
+
         updateStartButtonState();
       }
 
@@ -772,6 +830,7 @@
       document.querySelectorAll('input[name="method"]').forEach(function(radio) {
         radio.addEventListener('change', onParamChange);
       });
+      document.getElementById('change-pin-btn').addEventListener('click', onChangePinClick);
       onParamChange();  // 初始显示"无参数"
 
       // ==================== WASM 驱动的 LSCM 求解 ====================
@@ -783,7 +842,7 @@
           throw new Error("模型顶点或三角形数量不足");
         }
 
-        const anchors = chooseAnchorPair(vertices);
+        const anchors = currentCustomAnchors || chooseAnchorPair(vertices);
 
         if (!wasmReady) {
           const loaded = await initUnifiedSolver();
@@ -877,7 +936,7 @@
 
         if (onProgress) onProgress(0, faces.length);
 
-        const anchors = chooseAnchorPair(vertices);
+        const anchors = currentCustomAnchors || chooseAnchorPair(vertices);
 
         const flatPositions = new Float64Array(vertices.length * 3);
         for (let i = 0; i < vertices.length; i++) {
@@ -1470,6 +1529,55 @@
         return { group: group, pinPoints: points };
       }
 
+      /**
+       * 更新 3D 模型视图中的 pin 点，不重建整个模型组
+       * @param {number[]} anchors 新的 pin 点顶点索引
+       */
+      function updateModelPinPoints(anchors) {
+        if (!currentModelGroup || !currentMeshData) return;
+
+        // 移除旧的 pin 点
+        if (currentPins && currentPins.parent) {
+          currentPins.parent.remove(currentPins);
+        }
+
+        const positions = currentMeshData.positions;
+        const pinPositions = [];
+        for (let i = 0; i < anchors.length; i++) {
+          const p = positions[anchors[i]];
+          pinPositions.push(p[0], p[1], p[2]);
+        }
+
+        const points = new THREE.Points(
+          new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pinPositions, 3)),
+          new THREE.PointsMaterial({ color: 0xffb74d, size: 0.05, sizeAttenuation: true })
+        );
+        currentModelGroup.add(points);
+        currentPins = points;
+      }
+
+      /**
+       * "改pin点"按钮点击处理：选择不同于当前 pin 点的另一对最远顶点
+       */
+      function onChangePinClick() {
+        if (!currentMeshData || !currentMeshData.positions || currentMeshData.positions.length < 2) return;
+
+        const vertices = currentMeshData.positions;
+        const currentAnchors = currentCustomAnchors || chooseAnchorPair(vertices);
+        const newAnchors = chooseAlternativeAnchorPair(vertices, currentAnchors);
+
+        currentCustomAnchors = newAnchors;
+        updateModelPinPoints(newAnchors);
+
+        const srcLabel = getCurrentSourceLabel();
+        setStatus(
+          "已更换 pin 点: " + newAnchors[0] + " & " + newAnchors[1] +
+          "（原: " + currentAnchors[0] + " & " + currentAnchors[1] + "）" +
+          " / " + srcLabel,
+          "#89f0b6"
+        );
+      }
+
       function buildUvMesh(uv, faces, anchors) {
         const edgeSet = new Set();
         const segments = [];
@@ -1825,6 +1933,7 @@
 
           setStatus("正在提取三角网格...");
           const meshData = collectMeshData(root);
+          currentCustomAnchors = null;  // 加载新模型时重置自定义 pin 点
           const anchors = chooseAnchorPair(meshData.positions);
 
           const modelVisual = buildModelGroup(root, anchors, meshData.positions);
