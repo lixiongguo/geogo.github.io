@@ -8,6 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
 
+  <script src="assets/wasm/unified_solver.js"></script>
   <script src="assets/wasm/cp_solver.js"></script>
   <script src="assets/wasm/cetm_solver.js"></script>
   <script src="assets/wasm/ricci_solver.js"></script>
@@ -74,6 +75,7 @@
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cetm"> CETM</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="ricci"> Ricci流</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover"> QuadCover简化</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover_full"> QuadCover完整</label>
         </div>
       </fieldset>
 
@@ -98,6 +100,16 @@
         <input type="checkbox" id="principal-chk" onchange="togglePrincipalCurvatureField()"><span>主曲率场</span>
       </label>
       <button id="reload-btn">展开!</button>
+
+      <fieldset id="texture-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:6px 10px;margin:0;display:flex;gap:12px;align-items:center;">
+        <legend style="color:#8a9dd4;font-size:11px;padding:0 4px;">纹理显示</legend>
+        <label style="color:#d8def7;font-size:13px;cursor:pointer;">
+          <input type="radio" name="texture-display" value="checkerboard" id="radio-checkerboard" disabled> 棋盘格
+        </label>
+        <label style="color:#d8def7;font-size:13px;cursor:pointer;">
+          <input type="radio" name="texture-display" value="distortion" id="radio-distortion" disabled> 共形扭曲
+        </label>
+      </fieldset>
 
       <div class="status" id="status-text">正在加载模型...</div>
     </div>
@@ -137,6 +149,8 @@
   const uvCanvas=document.getElementById("uv-canvas");
   const modelSel=document.getElementById("model-select");
   const reloadBtn=document.getElementById("reload-btn");
+  const radioCheckerboard=document.getElementById("radio-checkerboard");
+  const radioDistortion=document.getElementById("radio-distortion");
   const statusText=document.getElementById("status-text");
   const objLoader=new THREE.OBJLoader();
 
@@ -158,6 +172,8 @@
   // ============ 状态 ============
   let currentModelGroup=null,currentUvLines=null,currentUvPins=null,currentPickMesh=null,busy=false;
   let currentMeshData=null,currentUnwrapUv=null;
+  let textureEnabled=false,currentTexturedMesh=null,checkerTexture=null;
+  let distortionEnabled=false,currentDistortionMesh=null,taInst=null,taReady=false,taFailed=false;
 
   function setStatus(msg,c){statusText.textContent=msg;statusText.style.color=c||"#8cc4ff"}
 
@@ -304,6 +320,153 @@
       if((b[0]-a[0])*(p[1]-a[1])-(p[0]-a[0])*(b[1]-a[1])<-eps)count++;
     }
     return count;
+  }
+
+  // ============ 棋盘格 / 共形扭曲显示 ============
+  async function initTextureAtlasSolver(){
+    if(taReady)return true;if(taFailed)return false;
+    try{if(typeof UnifiedSolver!=='function')throw new Error('UnifiedSolver 未加载');taInst=await UnifiedSolver();taReady=true;return true}
+    catch(e){taFailed=true;console.error(e);return false}
+  }
+
+  function createCheckerTexture(){
+    const texSize=512,cells=16,cellSize=texSize/cells,canvas=document.createElement("canvas");
+    canvas.width=texSize;canvas.height=texSize;
+    const ctx=canvas.getContext("2d");
+    for(let y=0;y<cells;y++)for(let x=0;x<cells;x++){const dark=((x+y)&1)===0;ctx.fillStyle=dark?"#1f2f54":"#e9f0ff";ctx.fillRect(x*cellSize,y*cellSize,cellSize,cellSize)}
+    ctx.strokeStyle="rgba(120,150,210,0.4)";
+    for(let i=0;i<=cells;i++){const p=i*cellSize;ctx.beginPath();ctx.moveTo(p,0);ctx.lineTo(p,texSize);ctx.stroke();ctx.beginPath();ctx.moveTo(0,p);ctx.lineTo(texSize,p);ctx.stroke()}
+    const texture=new THREE.CanvasTexture(canvas);
+    texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(1,1);texture.needsUpdate=true;
+    return texture;
+  }
+
+  function buildTexturedMesh(meshData,uv){
+    const pos=[],idx=[],uvFlat=[];
+    for(let i=0;i<meshData.positions.length;i++)pos.push(meshData.positions[i][0],meshData.positions[i][1],meshData.positions[i][2]);
+    for(let i=0;i<meshData.faces.length;i++)idx.push(meshData.faces[i][0],meshData.faces[i][1],meshData.faces[i][2]);
+    for(let i=0;i<uv.length;i++)uvFlat.push(uv[i][0],uv[i][1]);
+    const geom=new THREE.BufferGeometry();
+    geom.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
+    geom.setAttribute("uv",new THREE.Float32BufferAttribute(uvFlat,2));
+    geom.setIndex(idx);geom.computeVertexNormals();
+    if(!checkerTexture)checkerTexture=createCheckerTexture();
+    return new THREE.Mesh(geom,new THREE.MeshStandardMaterial({map:checkerTexture,metalness:.05,roughness:.75,side:THREE.DoubleSide}));
+  }
+
+  function clearTexturedMesh(){
+    if(currentTexturedMesh&&currentTexturedMesh.parent)currentTexturedMesh.parent.remove(currentTexturedMesh);
+    if(currentTexturedMesh&&currentTexturedMesh.geometry)currentTexturedMesh.geometry.dispose();
+    if(currentTexturedMesh&&currentTexturedMesh.material)currentTexturedMesh.material.dispose();
+    currentTexturedMesh=null;
+  }
+
+  function clearDistortionMesh(){
+    if(currentDistortionMesh&&currentDistortionMesh.parent)currentDistortionMesh.parent.remove(currentDistortionMesh);
+    if(currentDistortionMesh&&currentDistortionMesh.geometry)currentDistortionMesh.geometry.dispose();
+    if(currentDistortionMesh&&currentDistortionMesh.material)currentDistortionMesh.material.dispose();
+    currentDistortionMesh=null;
+  }
+
+  function resetTextureRadios(){
+    textureEnabled=false;distortionEnabled=false;
+    clearTexturedMesh();clearDistortionMesh();
+    if(radioCheckerboard){radioCheckerboard.checked=false;radioCheckerboard.disabled=true}
+    if(radioDistortion){radioDistortion.checked=false;radioDistortion.disabled=true}
+    if(currentModelGroup)currentModelGroup.visible=true;
+  }
+
+  function setTextureDisplayEnabled(enabled){
+    if(enabled&&(!currentMeshData||!currentUnwrapUv)){
+      setStatus('请先点击"展开!"生成 UV，再开启棋盘格', '#ffd38a');
+      if(radioCheckerboard)radioCheckerboard.checked=false;
+      return;
+    }
+    textureEnabled=enabled;
+    if(textureEnabled){
+      clearTexturedMesh();
+      currentTexturedMesh=buildTexturedMesh(currentMeshData,currentUnwrapUv);
+      modelScene.add(currentTexturedMesh);
+      if(currentModelGroup)currentModelGroup.visible=false;
+      if(currentDistortionMesh)currentDistortionMesh.visible=false;
+      distortionEnabled=false;
+      setStatus("已开启棋盘格贴图", "#89f0b6");
+    }else{
+      clearTexturedMesh();
+      if(currentModelGroup)currentModelGroup.visible=true;
+    }
+  }
+
+  async function setDistortionEnabled(enabled){
+    if(!enabled){
+      distortionEnabled=false;clearDistortionMesh();
+      if(currentModelGroup)currentModelGroup.visible=true;
+      if(currentTexturedMesh&&textureEnabled)currentTexturedMesh.visible=true;
+      return;
+    }
+    if(!currentMeshData||!currentUnwrapUv){
+      setStatus('请先点击"展开!"生成 UV', '#ffd38a');
+      if(radioDistortion)radioDistortion.checked=false;
+      if(radioCheckerboard){radioCheckerboard.checked=true;setTextureDisplayEnabled(true)}
+      return;
+    }
+    if(!taReady&& !taFailed){setStatus('正在加载共形扭曲引擎...', '#ffd38a');await initTextureAtlasSolver()}
+    if(!taReady){
+      setStatus('共形扭曲引擎加载失败', '#ff9d9d');
+      if(radioDistortion)radioDistortion.checked=false;
+      if(radioCheckerboard){radioCheckerboard.checked=true;setTextureDisplayEnabled(true)}
+      return;
+    }
+    setStatus('共形扭曲计算中...', '#ffd38a');
+    let pp=0,fpt=0,uvp=0;
+    try{
+      const fp=new Float64Array(currentMeshData.positions.length*3);
+      for(let i=0;i<currentMeshData.positions.length;i++){fp[i*3]=currentMeshData.positions[i][0];fp[i*3+1]=currentMeshData.positions[i][1];fp[i*3+2]=currentMeshData.positions[i][2]}
+      const ff=new Int32Array(currentMeshData.faces.length*3);
+      for(let i=0;i<currentMeshData.faces.length;i++){ff[i*3]=currentMeshData.faces[i][0];ff[i*3+1]=currentMeshData.faces[i][1];ff[i*3+2]=currentMeshData.faces[i][2]}
+      const fu=new Float64Array(currentUnwrapUv.length*2);
+      for(let i=0;i<currentUnwrapUv.length;i++){fu[i*2]=currentUnwrapUv[i][0];fu[i*2+1]=currentUnwrapUv[i][1]}
+      pp=taInst._malloc(fp.length*8);fpt=taInst._malloc(ff.length*4);uvp=taInst._malloc(fu.length*8);
+      for(let i=0;i<fp.length;i++)taInst.setValue(pp+i*8,fp[i],'double');
+      for(let i=0;i<ff.length;i++)taInst.setValue(fpt+i*4,ff[i],'i32');
+      for(let i=0;i<fu.length;i++)taInst.setValue(uvp+i*8,fu[i],'double');
+      const lr=taInst.ccall('load_mesh_with_uv','number',['number','number','number','number','number','number'],[pp,fp.length,fpt,ff.length,uvp,fu.length]);
+      if(lr!==0)throw new Error('load_mesh_with_uv failed: '+lr);
+      const nFaces=taInst.ccall('compute_qc_error','number',[],[]);
+      if(nFaces<=0)throw new Error('compute_qc_error returned '+nFaces);
+      const errSize=taInst.ccall('get_qc_errors_size','number',[],[]),errPtr=taInst.ccall('get_qc_errors','number',[],[]);
+      const colSize=taInst.ccall('get_qc_colors_size','number',[],[]),colPtr=taInst.ccall('get_qc_colors','number',[],[]);
+      const errors=[],colors=[];
+      for(let i=0;i<errSize;i++)errors.push(taInst.getValue(errPtr+i*8,'double'));
+      for(let i=0;i<colSize;i++)colors.push(taInst.getValue(colPtr+i*8,'double'));
+      taInst.ccall('ta_dispose','void',[],[]);
+      let avgErr=0,maxErr=0;
+      for(let i=0;i<errors.length;i++){avgErr+=errors[i];if(errors[i]>maxErr)maxErr=errors[i]}
+      avgErr/=Math.max(errors.length,1);
+      const nV=currentMeshData.positions.length,vCol=new Float32Array(nV*3),vCount=new Float32Array(nV);
+      for(let i=0;i<currentMeshData.faces.length;i++){
+        const f=currentMeshData.faces[i],r=colors[i*3]||.5,g=colors[i*3+1]||.5,b=colors[i*3+2]||.5;
+        for(let k=0;k<3;k++){const vi=f[k];vCol[vi*3]+=r;vCol[vi*3+1]+=g;vCol[vi*3+2]+=b;vCount[vi]++}
+      }
+      for(let i=0;i<nV;i++){if(vCount[i]>0){vCol[i*3]/=vCount[i];vCol[i*3+1]/=vCount[i];vCol[i*3+2]/=vCount[i]}else{vCol[i*3]=vCol[i*3+1]=vCol[i*3+2]=.5}}
+      const pos=[],idx=[];
+      for(let i=0;i<currentMeshData.positions.length;i++)pos.push(currentMeshData.positions[i][0],currentMeshData.positions[i][1],currentMeshData.positions[i][2]);
+      for(let i=0;i<currentMeshData.faces.length;i++)idx.push(currentMeshData.faces[i][0],currentMeshData.faces[i][1],currentMeshData.faces[i][2]);
+      clearDistortionMesh();
+      const geom=new THREE.BufferGeometry();geom.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geom.setAttribute('color',new THREE.Float32BufferAttribute(vCol,3));geom.setIndex(idx);geom.computeVertexNormals();
+      currentDistortionMesh=new THREE.Mesh(geom,new THREE.MeshPhongMaterial({vertexColors:true,side:THREE.DoubleSide,flatShading:false,specular:0x111111,shininess:10}));
+      modelScene.add(currentDistortionMesh);
+      if(currentModelGroup)currentModelGroup.visible=false;
+      if(currentTexturedMesh)currentTexturedMesh.visible=false;
+      distortionEnabled=true;textureEnabled=false;
+      setStatus('共形扭曲: avg='+avgErr.toFixed(4)+'  max='+maxErr.toFixed(4)+'  (绿=1.0无扭曲, 红>1.5)', '#89f0b6');
+    }catch(e){
+      console.error(e);setStatus('扭曲计算失败: '+e.message, '#ff9d9d');
+      if(radioDistortion)radioDistortion.checked=false;
+      if(radioCheckerboard){radioCheckerboard.checked=true;setTextureDisplayEnabled(true)}
+    }finally{
+      if(pp)taInst._free(pp);if(fpt)taInst._free(fpt);if(uvp)taInst._free(uvp);
+    }
   }
 
   // ============ 高斯曲率（libigl WASM） ============
@@ -549,10 +712,10 @@
 
   function onParamChange(){
     const m=getMethod();
-    document.getElementById('param-opt-scheme').style.display=(m==='quadcover')?'none':'';
+    document.getElementById('param-opt-scheme').style.display=(m==='quadcover'||m==='quadcover_full')?'none':'';
     document.getElementById('cone-btn').style.display = (m==='cp') ? '' : 'none';
     document.getElementById('cone-info').style.display = (m==='cp' && coneVertices.length>0) ? '' : 'none';
-    if (m==='cetm'||m==='ricci'||m==='quadcover'){ coneMode=false; document.getElementById('cone-btn').classList.remove('active'); document.getElementById('cone-btn').textContent='🎯 锥奇异点'; controls.enabled=true; modelCanvas.style.cursor=''; }
+    if (m==='cetm'||m==='ricci'||m==='quadcover'||m==='quadcover_full'){ coneMode=false; document.getElementById('cone-btn').classList.remove('active'); document.getElementById('cone-btn').textContent='🎯 锥奇异点'; controls.enabled=true; modelCanvas.style.cursor=''; }
     updateButtonState();
   }
   window.onParamChange=onParamChange;
@@ -560,8 +723,8 @@
 
   function updateButtonState(){
     const m=getMethod();
-    const failed=(m==='cp'&&cpFailed)||(m==='cetm'&&cetmFailed)||(m==='ricci'&&ricciFailed)||(m==='quadcover'&&qcFailed);
-    const loading=(m==='cp'&&!cpReady&&!cpFailed)||(m==='cetm'&&!cetmReady&&!cetmFailed)||(m==='ricci'&&!ricciReady&&!ricciFailed)||(m==='quadcover'&&!qcReady&&!qcFailed);
+    const failed=(m==='cp'&&cpFailed)||(m==='cetm'&&cetmFailed)||(m==='ricci'&&ricciFailed)||((m==='quadcover'||m==='quadcover_full')&&qcFailed);
+    const loading=(m==='cp'&&!cpReady&&!cpFailed)||(m==='cetm'&&!cetmReady&&!cetmFailed)||(m==='ricci'&&!ricciReady&&!ricciFailed)||((m==='quadcover'||m==='quadcover_full')&&!qcReady&&!qcFailed);
     if(failed){reloadBtn.textContent='引擎加载失败';reloadBtn.disabled=true}
     else if(loading){reloadBtn.textContent='引擎加载中...';reloadBtn.disabled=true}
     else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
@@ -647,7 +810,7 @@
     }finally{ricciInst._free(pp);ricciInst._free(fpt)}
   }
 
-  async function solveQuadCover(meshData,pcData){
+  async function solveQuadCover(meshData,pcData,full){
     await initQCSolver();const v=meshData.positions,f=meshData.faces;
     if(!qcInst)throw new Error("QuadCover WASM 初始化失败");
     const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
@@ -655,13 +818,14 @@
     const fd=buildQuadCoverFaceDirections(meshData,pcData);
     const pp=wasmWritePosInst(qcInst,fp),fpt=wasmWriteFacesInst(qcInst,ff),dpt=wasmWritePosInst(qcInst,fd);
     try{
-      const rc=qcInst.ccall('solve_qc_with_field','number',['number','number','number','number','number','number'],[pp,fp.length,fpt,ff.length,dpt,fd.length]);
-      if(rc!==0)throw new Error("solve_qc 错误:"+rc);
+      const fn=full?'solve_qc_full_with_field':'solve_qc_with_field';
+      const rc=qcInst.ccall(fn,'number',['number','number','number','number','number','number'],[pp,fp.length,fpt,ff.length,dpt,fd.length]);
+      if(rc!==0)throw new Error(full&&rc===-2?"QuadCover完整 cover integration failed":"solve_qc 错误:"+rc);
       const us=wasmReadUV(qcInst,'get_qc_uv_result_size','get_qc_uv_result');
       qcInst.ccall('qc_dispose','void',[],[]);
       const t=qcInst.ccall('get_qc_last_time_ms','number',[],[]);
       const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
-      return{uv,timeMs:t,method:'quadcover'};
+      return{uv,timeMs:t,method:full?'quadcover_full':'quadcover'};
     }finally{qcInst._free(pp);qcInst._free(fpt);qcInst._free(dpt)}
   }
 
@@ -679,6 +843,7 @@
       normalizeObject(root);
       if(currentModelGroup){modelScene.remove(currentModelGroup)}if(currentUvLines){uvScene.remove(currentUvLines)}if(currentUvPins){uvScene.remove(currentUvPins)}
       if(gaussColorMesh){modelScene.remove(gaussColorMesh);gaussColorMesh=null}clearPrincipalCurvatureField();
+      resetTextureRadios();
       clearPickMesh();
       currentUvLines=null;currentUvPins=null;currentUnwrapUv=null;
       let meshData=rawText?parseObjMeshData(rawText):null;
@@ -695,7 +860,7 @@
 
   async function doUnwrap(){
     if(busy||!currentMeshData)return;
-    const method=getMethod(),mNames={cp:'Circle Pattern',cetm:'CETM',ricci:'Ricci 流',quadcover:'QuadCover简化'};
+    const method=getMethod(),mNames={cp:'Circle Pattern',cetm:'CETM',ricci:'Ricci 流',quadcover:'QuadCover简化',quadcover_full:'QuadCover完整'};
     const label=mNames[method]||method,optNames={0:'梯度下降',1:'牛顿法',3:'LBFGS'};
     setBusy(true);setStatus(label+" 求解中...");
     const t0=performance.now();
@@ -708,11 +873,17 @@
         setStatus("QuadCover: 正在计算主曲率场...");
         principalCurvOn=true;document.getElementById('principal-chk').checked=true;
         const pcData=await applyPrincipalCurvatureField(currentMeshData);
-        setStatus("QuadCover 求解中...");
-        r=await solveQuadCover(currentMeshData,pcData);
+        setStatus(label+" 求解中...");
+        r=await solveQuadCover(currentMeshData,pcData,method==='quadcover_full');
       }
       const ms=r.timeMs>0?r.timeMs:(performance.now()-t0);
       currentUnwrapUv=r.uv;
+      clearDistortionMesh();distortionEnabled=false;
+      if(radioCheckerboard&&radioDistortion){
+        radioCheckerboard.disabled=false;radioDistortion.disabled=false;
+        radioCheckerboard.checked=true;radioDistortion.checked=false;
+        setTextureDisplayEnabled(true);
+      }
       document.getElementById('uv-panel-label').textContent=label+' UV 网格';
       if(currentUvLines)uvScene.remove(currentUvLines);if(currentUvPins)uvScene.remove(currentUvPins);
       const anchors=chooseAnchorPair(currentMeshData.positions);
@@ -720,7 +891,7 @@
       currentUvLines=uvV.lines;currentUvPins=uvV.pins;uvScene.add(currentUvLines);uvScene.add(currentUvPins);
       const fc=countFlippedFaces(r.uv,currentMeshData.faces);
       const coneInfo = (r.cones > 0) ? (' / 锥奇异点 ' + r.cones + ' 个') : '';
-      const optInfo=(method==='quadcover')?'主曲率场':optNames[getOptScheme()];
+      const optInfo=(method==='quadcover'||method==='quadcover_full')?'主曲率场':optNames[getOptScheme()];
       showTiming(ms,label+' / '+optInfo+' / '+MODELS[modelSel.value].label+' / '+currentMeshData.positions.length+' 顶点 / '+currentMeshData.faces.length+' 三角面'+coneInfo,fc);
       setStatus(label+" 完成，翻转面 "+fc+" 个"+(r.cones>0?"，锥 "+r.cones+" 个":""),fc===0?"#89f0b6":"#ffd38a");
     }catch(e){console.error(e);setStatus("失败: "+e.message,"#ff9d9d")}
@@ -745,6 +916,8 @@
   window.addEventListener("resize",resize);
   modelSel.addEventListener("change",loadModel);
   reloadBtn.addEventListener("click",doUnwrap);
+  if(radioCheckerboard)radioCheckerboard.addEventListener("change",function(){if(radioCheckerboard.checked)setTextureDisplayEnabled(true)});
+  if(radioDistortion)radioDistortion.addEventListener("change",function(){if(radioDistortion.checked){setTextureDisplayEnabled(false);setDistortionEnabled(true)}});
   onParamChange();
   updateButtonState();
 
