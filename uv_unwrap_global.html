@@ -73,7 +73,7 @@
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cp" checked> CirclePat</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cetm"> CETM</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="ricci"> Ricci流</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover"> QuadCover</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover"> QuadCover简化</label>
         </div>
       </fieldset>
 
@@ -190,19 +190,40 @@
     return new Promise((resolve,reject)=>{objLoader.load(url,resolve,undefined,reject)});
   }
 
-  function parseRawFaces(txt){
-    const faces=[],lines=txt.split(/\r?\n/);
+  function parseObjMeshData(txt){
+    const positions=[],faces=[],lines=txt.split(/\r?\n/);
+    function objIndex(token){
+      const raw=parseInt(token.split('/')[0],10);
+      if(isNaN(raw))return -1;
+      return raw>0?raw-1:positions.length+raw;
+    }
     for(let i=0;i<lines.length;i++){
       const line=lines[i].trim();
-      if(!line.startsWith('f ')&&!line.startsWith('f\t'))continue;
-      const parts=line.slice(1).trim().split(/\s+/);
-      const idx=parts.map(p=>parseInt(p.split('/')[0],10)-1).filter(x=>!isNaN(x));
-      if(idx.length>=3)faces.push(idx);
+      if(line.startsWith('v ')||line.startsWith('v\t')){
+        const p=line.slice(1).trim().split(/\s+/).map(Number);
+        if(p.length>=3&&p.every(Number.isFinite))positions.push([p[0],p[1],p[2]]);
+      }else if(line.startsWith('f ')||line.startsWith('f\t')){
+        const idx=line.slice(1).trim().split(/\s+/).map(objIndex).filter(x=>x>=0);
+        for(let k=1;k+1<idx.length;k++)faces.push([idx[0],idx[k],idx[k+1]]);
+      }
     }
-    return faces;
+    return positions.length&&faces.length?{positions,faces}:null;
   }
 
   async function fetchObjText(url){try{const r=await fetch(url);return r.ok?r.text():null}catch(e){return null}}
+
+  function normalizeMeshData(meshData){
+    let minX=Infinity,minY=Infinity,minZ=Infinity,maxX=-Infinity,maxY=-Infinity,maxZ=-Infinity;
+    for(const p of meshData.positions){
+      if(p[0]<minX)minX=p[0];if(p[0]>maxX)maxX=p[0];
+      if(p[1]<minY)minY=p[1];if(p[1]>maxY)maxY=p[1];
+      if(p[2]<minZ)minZ=p[2];if(p[2]>maxZ)maxZ=p[2];
+    }
+    const cx=(minX+maxX)/2,cy=(minY+maxY)/2,cz=(minZ+maxZ)/2;
+    const s=Math.max(maxX-minX,maxY-minY,maxZ-minZ)||1;
+    for(const p of meshData.positions){p[0]=(p[0]-cx)/s;p[1]=(p[1]-cy)/s;p[2]=(p[2]-cz)/s}
+    return meshData;
+  }
 
   function collectMeshData(root){
     root.updateMatrixWorld(true);
@@ -367,7 +388,22 @@
     const group=new THREE.Group(),makeLines=function(arr,color){const geom=new THREE.BufferGeometry();geom.setAttribute('position',new THREE.Float32BufferAttribute(arr,3));return new THREE.LineSegments(geom,new THREE.LineBasicMaterial({color:color,linewidth:1,depthTest:true}))};
     if(k1.length)group.add(makeLines(k1,0xff5555));if(k2.length)group.add(makeLines(k2,0x55a7ff));return group;
   }
-  async function applyPrincipalCurvatureField(meshData){clearPrincipalCurvatureField();if(!principalCurvOn||!meshData)return;const pcData=await computePrincipalCurvatureWASM(meshData.positions,meshData.faces);principalFieldGroup=buildPrincipalCurvatureField(meshData,pcData);modelScene.add(principalFieldGroup)}
+  async function applyPrincipalCurvatureField(meshData){clearPrincipalCurvatureField();if(!principalCurvOn||!meshData)return null;const pcData=await computePrincipalCurvatureWASM(meshData.positions,meshData.faces);principalFieldGroup=buildPrincipalCurvatureField(meshData,pcData);modelScene.add(principalFieldGroup);return pcData}
+
+  function buildQuadCoverFaceDirections(meshData,pcData){
+    const dirs=new Float64Array(meshData.faces.length*3);
+    for(let i=0;i<meshData.faces.length;i++){
+      const f=meshData.faces[i],a=meshData.positions[f[0]],b=meshData.positions[f[1]],c=meshData.positions[f[2]];
+      const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
+      let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;const nLen=Math.hypot(nx,ny,nz);
+      if(nLen<=1e-12){dirs[i*3]=1;dirs[i*3+1]=0;dirs[i*3+2]=0;continue}
+      nx/=nLen;ny/=nLen;nz/=nLen;
+      const d=averagedPrincipalDirection(pcData.pd1,f,[nx,ny,nz])||averagedPrincipalDirection(pcData.pd2,f,[nx,ny,nz]);
+      if(d){dirs[i*3]=d[0];dirs[i*3+1]=d[1];dirs[i*3+2]=d[2]}
+      else{dirs[i*3]=1;dirs[i*3+1]=0;dirs[i*3+2]=0}
+    }
+    return dirs;
+  }
   async function togglePrincipalCurvatureField(){
     principalCurvOn=document.getElementById('principal-chk').checked;if(!principalCurvOn){clearPrincipalCurvatureField();return}
     try{await applyPrincipalCurvatureField(currentMeshData);setStatus('主曲率场已绘制（红/蓝为两组主方向）','#89f0b6')}
@@ -580,21 +616,22 @@
     }finally{ricciInst._free(pp);ricciInst._free(fpt)}
   }
 
-  async function solveQuadCover(meshData){
+  async function solveQuadCover(meshData,pcData){
     await initQCSolver();const v=meshData.positions,f=meshData.faces;
     if(!qcInst)throw new Error("QuadCover WASM 初始化失败");
     const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
     const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
-    const pp=wasmWritePosInst(qcInst,fp),fpt=wasmWriteFacesInst(qcInst,ff);
+    const fd=buildQuadCoverFaceDirections(meshData,pcData);
+    const pp=wasmWritePosInst(qcInst,fp),fpt=wasmWriteFacesInst(qcInst,ff),dpt=wasmWritePosInst(qcInst,fd);
     try{
-      const rc=qcInst.ccall('solve_qc','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length]);
+      const rc=qcInst.ccall('solve_qc_with_field','number',['number','number','number','number','number','number'],[pp,fp.length,fpt,ff.length,dpt,fd.length]);
       if(rc!==0)throw new Error("solve_qc 错误:"+rc);
       const us=wasmReadUV(qcInst,'get_qc_uv_result_size','get_qc_uv_result');
       qcInst.ccall('qc_dispose','void',[],[]);
       const t=qcInst.ccall('get_qc_last_time_ms','number',[],[]);
       const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
       return{uv,timeMs:t,method:'quadcover'};
-    }finally{qcInst._free(pp);qcInst._free(fpt)}
+    }finally{qcInst._free(pp);qcInst._free(fpt);qcInst._free(dpt)}
   }
 
   // ============ 加载 & 展开 ============
@@ -604,8 +641,8 @@
     setStatus("加载 "+m.label+" ...");
     try{
       const urls=["assets/Models2/"+m.file,"./assets/Models2/"+m.file,"../assets/Models2/"+m.file];
-      let root=null;
-      for(const u of urls){try{root=await loadOBJ(u);break}catch(e){}}
+      let root=null,rawText=null;
+      for(const u of urls){try{root=await loadOBJ(u);rawText=await fetchObjText(u);break}catch(e){}}
       if(!root)throw new Error("模型加载失败");
       clearCones();  // 切换模型时清空锥奇异点
       normalizeObject(root);
@@ -613,7 +650,9 @@
       if(gaussColorMesh){modelScene.remove(gaussColorMesh);gaussColorMesh=null}clearPrincipalCurvatureField();
       clearPickMesh();
       currentUvLines=null;currentUvPins=null;currentUnwrapUv=null;
-      const meshData=collectMeshData(root);const anchors=chooseAnchorPair(meshData.positions);
+      let meshData=rawText?parseObjMeshData(rawText):null;
+      meshData=meshData?normalizeMeshData(meshData):collectMeshData(root);
+      const anchors=chooseAnchorPair(meshData.positions);
       currentModelGroup=buildModelGroup(root,anchors,meshData.positions);modelScene.add(currentModelGroup);
       currentPickMesh=buildPickMesh(meshData);
       controls.target.set(0,0,0);controls.update();currentMeshData=meshData;
@@ -625,7 +664,7 @@
 
   async function doUnwrap(){
     if(busy||!currentMeshData)return;
-    const method=getMethod(),mNames={cp:'Circle Pattern',cetm:'CETM',ricci:'Ricci 流',quadcover:'QuadCover'};
+    const method=getMethod(),mNames={cp:'Circle Pattern',cetm:'CETM',ricci:'Ricci 流',quadcover:'QuadCover简化'};
     const label=mNames[method]||method,optNames={0:'梯度下降',1:'牛顿法',3:'LBFGS'};
     setBusy(true);setStatus(label+" 求解中...");
     const t0=performance.now();
@@ -637,9 +676,9 @@
       else{
         setStatus("QuadCover: 正在计算主曲率场...");
         principalCurvOn=true;document.getElementById('principal-chk').checked=true;
-        await applyPrincipalCurvatureField(currentMeshData);
+        const pcData=await applyPrincipalCurvatureField(currentMeshData);
         setStatus("QuadCover 求解中...");
-        r=await solveQuadCover(currentMeshData);
+        r=await solveQuadCover(currentMeshData,pcData);
       }
       const ms=r.timeMs>0?r.timeMs:(performance.now()-t0);
       currentUnwrapUv=r.uv;
