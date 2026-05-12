@@ -3,16 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>全局参数化 - Circle Pattern / CETM / Ricci Flow</title>
+  <title>全局参数化 - QuadCover</title>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
 
   <script src="assets/wasm/unified_solver.js"></script>
-  <script src="assets/wasm/cp_solver.js"></script>
-  <script src="assets/wasm/cetm_solver.js"></script>
-  <script src="assets/wasm/ricci_solver.js"></script>
-  <script src="assets/wasm/quadcover_solver.js"></script>
   <script src="assets/wasm/gauss_curvature.js"></script>
   <script src="assets/wasm/principal_curvature.js"></script>
 <style>
@@ -51,6 +47,8 @@
   #cone-btn.active{background:#4a2060;border-color:#c060e0;box-shadow:0 0 12px rgba(180,80,220,.4)}
   #cone-info{display:none;font-size:11px;color:#c9a0e0;margin-left:6px}
   .cone-angle{width:50px;padding:2px 4px;border-radius:4px;text-align:center;font-size:11px;border:1px solid rgba(200,120,220,.3);background:#0d1528;color:#e0c0ff}
+  .entry-link{border:1px solid rgba(106,132,255,.28);background:#101a30;color:#b9c8ff;border-radius:10px;padding:9px 12px;font-size:13px;text-decoration:none;white-space:nowrap}
+  .entry-link:hover{background:#172546;color:#eef2ff}
 </style>
 </head>
 <body>
@@ -67,15 +65,16 @@
   <div class="toolbar">
     <div class="toolbar-right">
       <select id="model-select" title="Models2" style="width:170px;font-size:15px;padding:10px 14px;"></select>
+      <a class="entry-link" id="family-entry-link" href="uv_unwrap_cone_global.html">锥奇异点全局参数化</a>
 
       <fieldset style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:8px 12px;margin:0;">
         <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开算法</legend>
         <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cp" checked> CirclePat</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cetm"> CETM</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="ricci"> Ricci流</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover"> QuadCover简化</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover_full"> QuadCover完整</label>
+          <label class="cone-method" style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cp"> CirclePat</label>
+          <label class="cone-method" style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cetm"> CETM</label>
+          <label class="cone-method" style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="ricci"> Ricci流</label>
+          <label class="quadcover-method" style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover" checked> QuadCover简化</label>
+          <label class="quadcover-method" style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover_full"> QuadCover完整</label>
         </div>
       </fieldset>
 
@@ -131,6 +130,8 @@
 
 <script>
 (function(){
+  const PAGE_FAMILY = new URLSearchParams(window.location.search).get('family') === 'cone' ? 'cone' : 'quadcover';
+
   // ============ Models2 ============
   const MODELS = {
     cow: { label: "Cow (5.8K)", file: "cow_F5804.obj" },
@@ -701,20 +702,52 @@
   let cetmInst=null,cetmReady=false,cetmFailed=false;
   let ricciInst=null,ricciReady=false,ricciFailed=false;
   let qcInst=null,qcReady=false,qcFailed=false;
+  const solverScriptPromises = {};
 
-  async function initCPSolver(){if(cpReady)return true;if(cpFailed)return false;try{cpInst=await CPSolver();cpReady=true;return true}catch(e){cpFailed=true;return false}}
-  async function initCETMSolver(){if(cetmReady)return true;if(cetmFailed)return false;try{cetmInst=await CETMSolver();cetmReady=true;return true}catch(e){cetmFailed=true;return false}}
-  async function initRicciSolver(){if(ricciReady)return true;if(ricciFailed)return false;try{ricciInst=await RicciFlowSolver();ricciReady=true;return true}catch(e){ricciFailed=true;return false}}
-  async function initQCSolver(){if(qcReady)return true;if(qcFailed)return false;try{qcInst=await QuadCoverSolver();qcReady=true;return true}catch(e){qcFailed=true;return false}}
+  function loadSolverScript(src,globalName){
+    if(window[globalName])return Promise.resolve(true);
+    if(!solverScriptPromises[src]){
+      solverScriptPromises[src]=new Promise(function(resolve,reject){
+        const s=document.createElement('script');
+        s.src=src;
+        s.onload=function(){resolve(true)};
+        s.onerror=function(){reject(new Error('求解器脚本加载失败: '+src))};
+        document.head.appendChild(s);
+      });
+    }
+    return solverScriptPromises[src];
+  }
 
-  function getMethod(){const c=document.querySelector('input[name="method"]:checked');return c?c.value:'cp'}
+  async function initCPSolver(){if(cpReady)return true;if(cpFailed)return false;try{await loadSolverScript('assets/wasm/cp_solver.js','CPSolver');cpInst=await CPSolver();cpReady=true;return true}catch(e){cpFailed=true;return false}}
+  async function initCETMSolver(){if(cetmReady)return true;if(cetmFailed)return false;try{await loadSolverScript('assets/wasm/cetm_solver.js','CETMSolver');cetmInst=await CETMSolver();cetmReady=true;return true}catch(e){cetmFailed=true;return false}}
+  async function initRicciSolver(){if(ricciReady)return true;if(ricciFailed)return false;try{await loadSolverScript('assets/wasm/ricci_solver.js','RicciFlowSolver');ricciInst=await RicciFlowSolver();ricciReady=true;return true}catch(e){ricciFailed=true;return false}}
+  async function initQCSolver(){if(qcReady)return true;if(qcFailed)return false;try{await loadSolverScript('assets/wasm/quadcover_solver.js','QuadCoverSolver');qcInst=await QuadCoverSolver();qcReady=true;return true}catch(e){qcFailed=true;return false}}
+
+  function configurePageFamily(){
+    const isConePage = PAGE_FAMILY === 'cone';
+    document.title = isConePage ? '锥奇异点全局参数化 - Circle Pattern / CETM / Ricci Flow' : '全局参数化 - QuadCover';
+    document.querySelectorAll('.cone-method').forEach(function(el){el.style.display = isConePage ? '' : 'none'});
+    document.querySelectorAll('.quadcover-method').forEach(function(el){el.style.display = isConePage ? 'none' : ''});
+    const entryLink = document.getElementById('family-entry-link');
+    if(entryLink){
+      entryLink.href = isConePage ? 'uv_unwrap_global.html' : 'uv_unwrap_cone_global.html';
+      entryLink.textContent = isConePage ? 'QuadCover 全局参数化' : '锥奇异点全局参数化';
+      entryLink.target = isConePage ? '_parent' : '_self';
+    }
+    const defaultMethod = isConePage ? 'cp' : 'quadcover';
+    const checked = document.querySelector('input[name="method"][value="'+defaultMethod+'"]');
+    if(checked)checked.checked = true;
+  }
+
+  function getMethod(){const c=document.querySelector('input[name="method"]:checked');return c?c.value:(PAGE_FAMILY==='cone'?'cp':'quadcover')}
   function getOptScheme(){const v=parseInt(document.getElementById('opt-scheme-select').value);return(v===0||v===1||v===3)?v:1}
 
   function onParamChange(){
     const m=getMethod();
+    document.getElementById('param-panel').style.display = (PAGE_FAMILY === 'cone') ? '' : 'none';
     document.getElementById('param-opt-scheme').style.display=(m==='quadcover'||m==='quadcover_full')?'none':'';
-    document.getElementById('cone-btn').style.display = (m==='cp') ? '' : 'none';
-    document.getElementById('cone-info').style.display = (m==='cp' && coneVertices.length>0) ? '' : 'none';
+    document.getElementById('cone-btn').style.display = (PAGE_FAMILY === 'cone' && m==='cp') ? '' : 'none';
+    document.getElementById('cone-info').style.display = (PAGE_FAMILY === 'cone' && m==='cp' && coneVertices.length>0) ? '' : 'none';
     if (m==='cetm'||m==='ricci'||m==='quadcover'||m==='quadcover_full'){ coneMode=false; document.getElementById('cone-btn').classList.remove('active'); document.getElementById('cone-btn').textContent='🎯 锥奇异点'; controls.enabled=true; modelCanvas.style.cursor=''; }
     updateButtonState();
   }
@@ -912,6 +945,7 @@
   const gc=[];for(let i=-10;i<=10;i++){const t=i/10;gc.push(-1,t,0,1,t,0,t,-1,0,t,1,0)}
   const gg=new THREE.BufferGeometry();gg.setAttribute("position",new THREE.Float32BufferAttribute(gc,3));uvScene.add(new THREE.LineSegments(gg,grid));
 
+  configurePageFamily();
   populateSelect();resize();setStatus("就绪 — 选择模型后点击展开","#8cc4ff");
   window.addEventListener("resize",resize);
   modelSel.addEventListener("change",loadModel);
@@ -922,7 +956,8 @@
   updateButtonState();
 
   // 预加载 WASM
-  Promise.all([initCPSolver(),initCETMSolver(),initRicciSolver(),initQCSolver()]).then(()=>{updateButtonState();loadModel()});
+  const startupSolvers = PAGE_FAMILY === 'cone' ? [initCPSolver(),initCETMSolver(),initRicciSolver()] : [initQCSolver()];
+  Promise.all(startupSolvers).then(()=>{updateButtonState();loadModel()});
   animate();
 })();
 </script>
