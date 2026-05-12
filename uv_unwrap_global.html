@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>全局参数化 - Circle Pattern / CETM / Ricci Flow</title>
+  <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
+
+  <script src="assets/wasm/cp_solver.js"></script>
+  <script src="assets/wasm/cetm_solver.js"></script>
+  <script src="assets/wasm/ricci_solver.js"></script>
+<style>
+  *{box-sizing:border-box}html,body{margin:0;height:100%}
+  body{overflow:hidden;background:#070b14;color:#d8def7;font-family:"Segoe UI",Arial,sans-serif}
+  .app{display:flex;flex-direction:column;height:100vh}
+  .timing-display{display:none;padding:10px 18px;background:linear-gradient(90deg,rgba(16,30,61,0.95),rgba(26,46,91,0.95));border-bottom:2px solid rgba(106,132,255,0.35);text-align:center}
+  .timing-display.visible{display:block}
+  .timing-row{display:flex;align-items:center;justify-content:center;gap:24px}
+  .timing-block{display:flex;flex-direction:column;align-items:center}
+  .timing-sep{width:1px;height:40px;background:rgba(106,132,255,.25)}
+  .timing-display .timing-label{font-size:11px;color:#8a9dd4;text-transform:uppercase;letter-spacing:2px;margin-bottom:2px}
+  .timing-display .timing-value{font-size:28px;font-weight:700;color:#ffd700;text-shadow:0 0 16px rgba(255,215,0,.45),0 0 32px rgba(255,215,0,.2);font-family:Consolas,monospace}
+  .timing-display .timing-details{font-size:11px;color:#6a7db5;margin-top:6px}
+  #flip-value{color:#52d681;text-shadow:0 0 16px rgba(82,214,129,.4)}
+  #flip-value.has-flip{color:#ff5252;text-shadow:0 0 18px rgba(255,82,82,.55);animation:flipPulse 1.2s ease-in-out infinite}
+  @keyframes flipPulse{0%,100%{opacity:1}50%{opacity:.7}}
+  .toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 18px;background:rgba(9,15,28,.96);border-bottom:1px solid rgba(106,132,255,.18)}
+  .toolbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  select,button{border:1px solid rgba(106,132,255,.25);background:#121b31;color:#eef2ff;border-radius:10px;padding:9px 12px;font-size:14px}
+  button{cursor:pointer;transition:background .2s ease}
+  button:hover{background:#172546}
+  .status{min-width:240px;color:#8cc4ff;font-size:13px;text-align:right}
+  .main{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:2px;background:#11192b;min-height:0}
+  .panel{display:flex;flex-direction:column;min-width:0;min-height:0;background:#0b1220}
+  .panel-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(106,132,255,.16);color:#c6d1f4;font-size:14px}
+  .panel-header span:last-child{color:#8292bd;font-size:12px}
+  .canvas-wrap{position:relative;flex:1;min-height:0}
+  canvas{display:block;width:100%;height:100%}
+  .footer-note{padding:10px 16px;border-top:1px solid rgba(106,132,255,.16);color:#7e8db5;font-size:12px}
+  @media(max-width:900px){.main{grid-template-columns:1fr;grid-template-rows:1fr 1fr}}
+  #reload-btn{padding:9px 22px;background:linear-gradient(135deg,#ff6b35 0%,#ff8f5e 100%);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .25s cubic-bezier(.4,0,.2,1);box-shadow:0 3px 10px rgba(255,107,53,.4);letter-spacing:1px}
+  #reload-btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+  #reload-btn:not(:disabled):hover{transform:translateY(-2px) scale(1.04);box-shadow:0 6px 18px rgba(255,107,53,.6)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="timing-display" id="timing-display">
+    <div class="timing-row">
+      <div class="timing-block"><div class="timing-label">计算耗时</div><div class="timing-value"><span id="timing-ms">0</span>ms</div></div>
+      <div class="timing-sep"></div>
+      <div class="timing-block"><div class="timing-label">翻转三角面</div><div class="timing-value" id="flip-value"><span id="flip-count">0</span></div></div>
+    </div>
+    <div class="timing-details" id="timing-details"></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="toolbar-right">
+      <select id="model-select" title="Models2" style="width:170px;font-size:15px;padding:10px 14px;"></select>
+
+      <fieldset style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:8px 12px;margin:0;">
+        <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开算法</legend>
+        <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cp" checked> CirclePat</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cetm"> CETM</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="ricci"> Ricci流</label>
+        </div>
+      </fieldset>
+
+      <fieldset id="param-panel" style="border:1px solid rgba(255,180,70,0.35);border-radius:10px;padding:8px 12px;margin:0;background:rgba(20,25,45,.7);">
+        <legend style="color:#ffb446;font-size:11px;padding:0 6px;">算法参数</legend>
+        <span id="param-opt-scheme" style="font-size:12px;color:#c6d1f4;">
+          优化:<select id="opt-scheme-select" style="width:75px;padding:3px 5px;border-radius:6px;font-size:11px;border:1px solid rgba(106,132,255,.3);background:#0d1528;color:#eef2ff;margin-left:4px;">
+            <option value="1" selected>牛顿法</option>
+            <option value="0">梯度下降</option>
+            <option value="3">LBFGS</option>
+          </select>
+        </span>
+      </fieldset>
+
+      <button id="reload-btn">展开!</button>
+
+      <div class="status" id="status-text">正在加载模型...</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <section class="panel">
+      <div class="panel-header"><span>3D 模型</span><span>拖拽旋转 / 滚轮缩放</span></div>
+      <div class="canvas-wrap"><canvas id="model-canvas"></canvas></div>
+      <div class="footer-note">左侧显示原始三角网格与自动选择的约束点。</div>
+    </section>
+    <section class="panel">
+      <div class="panel-header"><span id="uv-panel-label">UV 网格</span><span>边界归一化到 0..1</span></div>
+      <div class="canvas-wrap"><canvas id="uv-canvas"></canvas></div>
+      <div class="footer-note">右侧展示展开后的线框 UV 结果。</div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ============ Models2 ============
+  const MODELS = {
+    holes3: { label: "3 Holes", file: "3holes.obj" },
+    armadillo: { label: "Armadillo", file: "armadillo.obj" },
+    beast: { label: "Beast", file: "beast.obj" },
+    botijo: { label: "Botijo", file: "botijo.obj" },
+    bunny: { label: "Bunny", file: "bunny.obj" },
+    cow: { label: "Cow", file: "cow.obj" },
+    doubletorus: { label: "Double Torus", file: "double-torus.obj" },
+    fandisk: { label: "Fandisk", file: "fandisk.obj" },
+    happy: { label: "Happy Buddha", file: "happy.obj" },
+    lucy: { label: "Lucy", file: "lucy.obj" },
+    rocker: { label: "Rocker Arm", file: "rocker-arm.obj" },
+    torus: { label: "Torus", file: "torus.obj" }
+  };
+
+  // ============ Three.js 初始化 ============
+  const modelCanvas=document.getElementById("model-canvas");
+  const uvCanvas=document.getElementById("uv-canvas");
+  const modelSel=document.getElementById("model-select");
+  const reloadBtn=document.getElementById("reload-btn");
+  const statusText=document.getElementById("status-text");
+  const objLoader=new THREE.OBJLoader();
+
+  const modelR=new THREE.WebGLRenderer({canvas:modelCanvas,antialias:true,alpha:true});
+  const uvR=new THREE.WebGLRenderer({canvas:uvCanvas,antialias:true,alpha:true});
+  modelR.setPixelRatio(Math.min(devicePixelRatio,2));uvR.setPixelRatio(Math.min(devicePixelRatio,2));
+
+  const modelScene=new THREE.Scene();const uvScene=new THREE.Scene();
+  modelScene.background=new THREE.Color(0x08101d);uvScene.background=new THREE.Color(0x091120);
+
+  const modelCam=new THREE.PerspectiveCamera(45,1,.01,100);modelCam.position.set(1.8,1.5,1.8);
+  const uvCam=new THREE.OrthographicCamera(-1.15,1.15,1.15,-1.15,.1,10);uvCam.position.set(0,0,2);
+  const controls=new THREE.OrbitControls(modelCam,modelCanvas);
+  controls.enableDamping=true;controls.dampingFactor=.08;
+
+  modelScene.add(new THREE.AmbientLight(0xffffff,.8));
+  const dl=new THREE.DirectionalLight(0xffffff,.85);dl.position.set(2,3,4);modelScene.add(dl);
+
+  // ============ 状态 ============
+  let currentModelGroup=null,currentUvLines=null,currentUvPins=null,busy=false;
+  let currentMeshData=null,currentUnwrapUv=null;
+
+  function setStatus(msg,c){statusText.textContent=msg;statusText.style.color=c||"#8cc4ff"}
+
+  function showTiming(ms,details,flipped){
+    document.getElementById("timing-display").classList.add("visible");
+    document.getElementById("timing-ms").textContent=ms.toFixed(1);
+    document.getElementById("timing-details").textContent=details||"";
+    const fv=document.getElementById("flip-value"),fc=document.getElementById("flip-count");
+    fc.textContent=typeof flipped==='number'?flipped:0;
+    fv.classList.toggle("has-flip",flipped>0);
+  }
+
+  function setBusy(v){
+    busy=v;reloadBtn.disabled=v;modelSel.disabled=v;
+  }
+
+  // ============ 模型加载 ============
+  function populateSelect(){
+    const keys=Object.keys(MODELS);
+    modelSel.innerHTML="";
+    for(let i=0;i<keys.length;i++){
+      const o=document.createElement("option");
+      o.value=keys[i];o.textContent=MODELS[keys[i]].label;
+      modelSel.appendChild(o);
+    }
+    if(keys.length)modelSel.value=keys[0];
+  }
+
+  function loadOBJ(url){
+    return new Promise((resolve,reject)=>{objLoader.load(url,resolve,undefined,reject)});
+  }
+
+  function parseRawFaces(txt){
+    const faces=[],lines=txt.split(/\r?\n/);
+    for(let i=0;i<lines.length;i++){
+      const line=lines[i].trim();
+      if(!line.startsWith('f ')&&!line.startsWith('f\t'))continue;
+      const parts=line.slice(1).trim().split(/\s+/);
+      const idx=parts.map(p=>parseInt(p.split('/')[0],10)-1).filter(x=>!isNaN(x));
+      if(idx.length>=3)faces.push(idx);
+    }
+    return faces;
+  }
+
+  async function fetchObjText(url){try{const r=await fetch(url);return r.ok?r.text():null}catch(e){return null}}
+
+  function collectMeshData(root){
+    root.updateMatrixWorld(true);
+    const pos=[],faces=[],vm=new Map(),t=new THREE.Vector3();
+    function gi(x,y,z){const k=Math.round(x*1e5)+"_"+Math.round(y*1e5)+"_"+Math.round(z*1e5);if(!vm.has(k)){vm.set(k,pos.length);pos.push([x,y,z])}return vm.get(k)}
+    root.traverse(function(c){
+      if(!c.isMesh||!c.geometry||!c.geometry.attributes.position)return;
+      const g=c.geometry.clone(),pa=g.attributes.position,lg=new Array(pa.count);
+      for(let i=0;i<pa.count;i++){t.fromBufferAttribute(pa,i).applyMatrix4(c.matrixWorld);lg[i]=gi(t.x,t.y,t.z)}
+      if(g.index){const ix=g.index.array;for(let i=0;i<ix.length;i+=3)faces.push([lg[ix[i]],lg[ix[i+1]],lg[ix[i+2]]])}
+      else for(let i=0;i<pa.count;i+=3)faces.push([lg[i],lg[i+1],lg[i+2]]);
+    });
+    return{positions:pos,faces};
+  }
+
+  function chooseAnchorPair(v){
+    let ba=0,bb=1,bd=-1;
+    for(let i=0;i<v.length;i++)for(let j=i+1;j<v.length;j++){
+      const d=(v[i][0]-v[j][0])**2+(v[i][1]-v[j][1])**2+(v[i][2]-v[j][2])**2;
+      if(d>bd){bd=d;ba=i;bb=j}
+    }
+    return[ba,bb];
+  }
+
+  // ============ 渲染 ============
+  function normalizeObject(root){
+    const b=new THREE.Box3().setFromObject(root),c=b.getCenter(new THREE.Vector3()),s=b.getSize(new THREE.Vector3());
+    const m=Math.max(s.x,s.y,s.z)||1;root.position.sub(c);root.scale.setScalar(1/m);root.updateMatrixWorld(true)
+  }
+
+  function buildModelGroup(root,anchors,pos){
+    const g=new THREE.Group(),mat=new THREE.MeshStandardMaterial({color:0x7fa7ff,roughness:.55,metalness:.05,flatShading:false,side:THREE.DoubleSide});
+    root.traverse(function(c){
+      if(!c.isMesh||!c.geometry)return;
+      const m=new THREE.Mesh(c.geometry,mat);m.matrixAutoUpdate=false;m.matrix.copy(c.matrixWorld);g.add(m);
+      const w=new THREE.LineSegments(new THREE.WireframeGeometry(c.geometry),new THREE.LineBasicMaterial({color:0x1f2f55,transparent:true,opacity:.65}));
+      w.matrixAutoUpdate=false;w.matrix.copy(c.matrixWorld);g.add(w);
+    });
+    const pp=[];for(let i=0;i<anchors.length;i++){const p=pos[anchors[i]];pp.push(p[0],p[1],p[2])}
+    g.add(new THREE.Points(new THREE.BufferGeometry().setAttribute("position",new THREE.Float32BufferAttribute(pp,3)),new THREE.PointsMaterial({color:0xffb74d,size:.05,sizeAttenuation:true})));
+    return g;
+  }
+
+  function buildUvMesh(uv,faces,anchors){
+    const es=new Set(),sg=[];
+    function tp(p){return[(p[0]-.5)*1.8,(p[1]-.5)*1.8,0]}
+    function ae(a,b){const k=a<b?a+"_"+b:b+"_"+a;if(es.has(k))return;es.add(k);const pa=tp(uv[a]),pb=tp(uv[b]);sg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2])}
+    for(let i=0;i<faces.length;i++){ae(faces[i][0],faces[i][1]);ae(faces[i][1],faces[i][2]);ae(faces[i][2],faces[i][0])}
+    const lg=new THREE.BufferGeometry();lg.setAttribute("position",new THREE.Float32BufferAttribute(sg,3));
+    const lines=new THREE.LineSegments(lg,new THREE.LineBasicMaterial({color:0x86b2ff,transparent:true,opacity:.95}));
+    const pp=[];for(let i=0;i<anchors.length;i++){const p=tp(uv[anchors[i]]);pp.push(p[0],p[1],.01)}
+    const pins=new THREE.Points(new THREE.BufferGeometry().setAttribute("position",new THREE.Float32BufferAttribute(pp,3)),new THREE.PointsMaterial({color:0xffa94d,size:.06,sizeAttenuation:false}));
+    return{lines,pins};
+  }
+
+  function countFlippedFaces(uv,faces){
+    let c=0;const eps=1e-12;
+    for(let i=0;i<faces.length;i++){
+      const t=faces[i],a=uv[t[0]],b=uv[t[1]],c=uv[t[2]];
+      if((b[0]-a[0])*(c[1]-a[1])-(c[0]-a[0])*(b[1]-a[1])<-eps)c++;
+    }
+    return c;
+  }
+
+  // ============ WASM 求解器 ============
+  let cpInst=null,cpReady=false,cpFailed=false;
+  let cetmInst=null,cetmReady=false,cetmFailed=false;
+  let ricciInst=null,ricciReady=false,ricciFailed=false;
+
+  async function initCPSolver(){if(cpReady)return true;if(cpFailed)return false;try{cpInst=await CPSolver();cpReady=true;return true}catch(e){cpFailed=true;return false}}
+  async function initCETMSolver(){if(cetmReady)return true;if(cetmFailed)return false;try{cetmInst=await CETMSolver();cetmReady=true;return true}catch(e){cetmFailed=true;return false}}
+  async function initRicciSolver(){if(ricciReady)return true;if(ricciFailed)return false;try{ricciInst=await RicciFlowSolver();ricciReady=true;return true}catch(e){ricciFailed=true;return false}}
+
+  function getMethod(){const c=document.querySelector('input[name="method"]:checked');return c?c.value:'cp'}
+  function getOptScheme(){const v=parseInt(document.getElementById('opt-scheme-select').value);return(v===0||v===1||v===3)?v:1}
+
+  function onParamChange(){
+    const m=getMethod();
+    document.getElementById('param-opt-scheme').style.display='';
+    updateButtonState();
+  }
+  window.onParamChange=onParamChange;
+  document.querySelectorAll('input[name="method"]').forEach(r=>r.addEventListener('change',onParamChange));
+
+  function updateButtonState(){
+    const m=getMethod();
+    const failed=(m==='cp'&&cpFailed)||(m==='cetm'&&cetmFailed)||(m==='ricci'&&ricciFailed);
+    const loading=(m==='cp'&&!cpReady&&!cpFailed)||(m==='cetm'&&!cetmReady&&!cetmFailed)||(m==='ricci'&&!ricciReady&&!ricciFailed);
+    if(failed){reloadBtn.textContent='引擎加载失败';reloadBtn.disabled=true}
+    else if(loading){reloadBtn.textContent='引擎加载中...';reloadBtn.disabled=true}
+    else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
+  }
+
+  function wasmWritePosInst(inst,flat){
+    const p=inst._malloc(flat.length*8);
+    for(let i=0;i<flat.length;i++)inst.setValue(p+i*8,flat[i],'double');
+    return p;
+  }
+  function wasmWriteFacesInst(inst,flat){
+    const p=inst._malloc(flat.length*4);
+    for(let i=0;i<flat.length;i++)inst.setValue(p+i*4,flat[i],'i32');
+    return p;
+  }
+  function wasmReadUV(inst,getSizeFn,getPtrFn){
+    const sz=inst.ccall(getSizeFn,'number',[],[]);
+    const ptr=inst.ccall(getPtrFn,'number',[],[]);
+    const uvs=[];for(let i=0;i<sz;i++)uvs.push(inst.getValue(ptr+i*8,'double'));
+    return uvs;
+  }
+
+  // ============ 求解器调用 ============
+  async function solveCP(meshData){
+    await initCPSolver();const v=meshData.positions,f=meshData.faces;
+    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
+    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
+    const pp=wasmWritePosInst(cpInst,fp),fpt=wasmWriteFacesInst(cpInst,ff);
+    try{
+      const rc=cpInst.ccall('solve_cp','number',['number','number','number','number','number','number','number','number','number'],[pp,fp.length,fpt,ff.length,getOptScheme(),0,0,0,0]);
+      if(rc!==0)throw new Error("solve_cp 错误:"+rc);
+      const us=wasmReadUV(cpInst,'get_cp_uv_result_size','get_cp_uv_result');
+      cpInst.ccall('cp_dispose','void',[],[]);
+      const t=cpInst.ccall('get_cp_last_time_ms','number',[],[]);
+      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
+      return{uv,timeMs:t,method:'cp'};
+    }finally{cpInst._free(pp);cpInst._free(fpt)}
+  }
+
+  async function solveCETM(meshData){
+    await initCETMSolver();const v=meshData.positions,f=meshData.faces;
+    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
+    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
+    const pp=wasmWritePosInst(cetmInst,fp),fpt=wasmWriteFacesInst(cetmInst,ff);
+    try{
+      const rc=cetmInst.ccall('solve_cetm','number',['number','number','number','number','number'],[pp,fp.length,fpt,ff.length,getOptScheme()]);
+      if(rc!==0)throw new Error("solve_cetm 错误:"+rc);
+      const us=wasmReadUV(cetmInst,'get_cetm_uv_result_size','get_cetm_uv_result');
+      cetmInst.ccall('cetm_dispose','void',[],[]);
+      const t=cetmInst.ccall('get_cetm_last_time_ms','number',[],[]);
+      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
+      return{uv,timeMs:t,method:'cetm'};
+    }finally{cetmInst._free(pp);cetmInst._free(fpt)}
+  }
+
+  async function solveRicci(meshData){
+    await initRicciSolver();const v=meshData.positions,f=meshData.faces;
+    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
+    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
+    const pp=wasmWritePosInst(ricciInst,fp),fpt=wasmWriteFacesInst(ricciInst,ff);
+    try{
+      const rc=ricciInst.ccall('solve_ricci','number',['number','number','number','number','number'],[pp,fp.length,fpt,ff.length,getOptScheme()]);
+      if(rc!==0)throw new Error("solve_ricci 错误:"+rc);
+      const us=wasmReadUV(ricciInst,'get_ricci_uv_result_size','get_ricci_uv_result');
+      ricciInst.ccall('ricci_dispose','void',[],[]);
+      const t=ricciInst.ccall('get_ricci_last_time_ms','number',[],[]);
+      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
+      return{uv,timeMs:t,method:'ricci'};
+    }finally{ricciInst._free(pp);ricciInst._free(fpt)}
+  }
+
+  // ============ 加载 & 展开 ============
+  async function loadModel(){
+    if(busy)return;setBusy(true);
+    const key=modelSel.value,m=MODELS[key];
+    setStatus("加载 "+m.label+" ...");
+    try{
+      const urls=["assets/Models2/"+m.file,"./assets/Models2/"+m.file,"../assets/Models2/"+m.file];
+      let root=null;
+      for(const u of urls){try{root=await loadOBJ(u);break}catch(e){}}
+      if(!root)throw new Error("模型加载失败");
+      normalizeObject(root);
+      if(currentModelGroup){modelScene.remove(currentModelGroup)}if(currentUvLines){uvScene.remove(currentUvLines)}if(currentUvPins){uvScene.remove(currentUvPins)}
+      currentUvLines=null;currentUvPins=null;currentUnwrapUv=null;
+      const meshData=collectMeshData(root);const anchors=chooseAnchorPair(meshData.positions);
+      currentModelGroup=buildModelGroup(root,anchors,meshData.positions);modelScene.add(currentModelGroup);
+      controls.target.set(0,0,0);controls.update();currentMeshData=meshData;
+      setStatus("就绪: "+m.label+" / "+meshData.positions.length+" 顶点 / "+meshData.faces.length+" 三角面，点击展开","#89f0b6");
+    }catch(e){console.error(e);setStatus("加载失败: "+e.message,"#ff9d9d")}
+    finally{setBusy(false)}
+  }
+
+  async function doUnwrap(){
+    if(busy||!currentMeshData)return;
+    const method=getMethod(),mNames={cp:'Circle Pattern',cetm:'CETM',ricci:'Ricci 流'};
+    const label=mNames[method]||method,optNames={0:'梯度下降',1:'牛顿法',3:'LBFGS'};
+    setBusy(true);setStatus(label+" 求解中...");
+    const t0=performance.now();
+    try{
+      let r;
+      if(method==='cp')r=await solveCP(currentMeshData);
+      else if(method==='cetm')r=await solveCETM(currentMeshData);
+      else r=await solveRicci(currentMeshData);
+      const ms=r.timeMs>0?r.timeMs:(performance.now()-t0);
+      currentUnwrapUv=r.uv;
+      document.getElementById('uv-panel-label').textContent=label+' UV 网格';
+      if(currentUvLines)uvScene.remove(currentUvLines);if(currentUvPins)uvScene.remove(currentUvPins);
+      const anchors=chooseAnchorPair(currentMeshData.positions);
+      const uvV=buildUvMesh(r.uv,currentMeshData.faces,anchors);
+      currentUvLines=uvV.lines;currentUvPins=uvV.pins;uvScene.add(currentUvLines);uvScene.add(currentUvPins);
+      const fc=countFlippedFaces(r.uv,currentMeshData.faces);
+      showTiming(ms,label+' / '+optNames[getOptScheme()]+' / '+MODELS[modelSel.value].label+' / '+currentMeshData.positions.length+' 顶点 / '+currentMeshData.faces.length+' 三角面',fc);
+      setStatus(label+" 完成，翻转面 "+fc+" 个",fc===0?"#89f0b6":"#ffd38a");
+    }catch(e){console.error(e);setStatus("失败: "+e.message,"#ff9d9d")}
+    finally{setBusy(false)}
+  }
+
+  function resize(){
+    const mr=modelCanvas.parentElement.getBoundingClientRect(),ur=uvCanvas.parentElement.getBoundingClientRect();
+    modelR.setSize(mr.width,mr.height,false);uvR.setSize(ur.width,ur.height,false);
+    modelCam.aspect=mr.width/Math.max(mr.height,1);modelCam.updateProjectionMatrix();
+    const a=ur.width/Math.max(ur.height,1),s=1.15;uvCam.left=-s*a;uvCam.right=s*a;uvCam.top=s;uvCam.bottom=-s;uvCam.updateProjectionMatrix();
+  }
+
+  function animate(){requestAnimationFrame(animate);controls.update();modelR.render(modelScene,modelCam);uvR.render(uvScene,uvCam)}
+
+  // 初始化 UV 网格
+  const grid=new THREE.LineBasicMaterial({color:0x1a2947,transparent:true,opacity:.85});
+  const gc=[];for(let i=-10;i<=10;i++){const t=i/10;gc.push(-1,t,0,1,t,0,t,-1,0,t,1,0)}
+  const gg=new THREE.BufferGeometry();gg.setAttribute("position",new THREE.Float32BufferAttribute(gc,3));uvScene.add(new THREE.LineSegments(gg,grid));
+
+  populateSelect();resize();setStatus("就绪 — 选择模型后点击展开","#8cc4ff");
+  window.addEventListener("resize",resize);
+  modelSel.addEventListener("change",loadModel);
+  reloadBtn.addEventListener("click",doUnwrap);
+  onParamChange();
+  updateButtonState();
+
+  // 预加载 WASM
+  Promise.all([initCPSolver(),initCETMSolver(),initRicciSolver()]).then(()=>{updateButtonState();loadModel()});
+  animate();
+})();
+</script>
+</body>
+</html>
