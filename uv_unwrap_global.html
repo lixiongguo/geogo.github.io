@@ -100,6 +100,24 @@
       <label style="font-size:12px;color:#8a9dd4;cursor:pointer;display:flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid rgba(106,132,255,.25);border-radius:10px;background:#121b31;">
         <input type="checkbox" id="principal-chk" onchange="togglePrincipalCurvatureField()"><span>主曲率场</span>
       </label>
+      <div style="font-size:11px;color:#9fb0de;padding:7px 10px;border:1px solid rgba(106,132,255,.18);border-radius:10px;background:rgba(18,27,49,.65);display:grid;gap:6px;">
+        <label style="display:grid;grid-template-columns:50px 1fr auto;gap:8px;align-items:center;">
+          <span>密度</span>
+          <input id="principal-density" type="range" min="120" max="1200" step="20" value="520" oninput="onPrincipalFieldStyleInput()">
+          <span id="principal-density-val" style="min-width:34px;text-align:right;color:#cbd8ff;">520</span>
+        </label>
+        <label style="display:grid;grid-template-columns:50px 1fr auto;gap:8px;align-items:center;">
+          <span>长度</span>
+          <input id="principal-length" type="range" min="0.12" max="0.6" step="0.01" value="0.26" oninput="onPrincipalFieldStyleInput()">
+          <span id="principal-length-val" style="min-width:34px;text-align:right;color:#cbd8ff;">0.26</span>
+        </label>
+      </div>
+      <label style="font-size:12px;color:#8a9dd4;cursor:pointer;display:flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid rgba(106,132,255,.25);border-radius:10px;background:#121b31;">
+        <input type="checkbox" id="anisotropy-chk" onchange="toggleAnisotropyHeatmap()"><span>各向异性热力图</span>
+      </label>
+      <label style="font-size:12px;color:#8a9dd4;cursor:pointer;display:flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid rgba(106,132,255,.25);border-radius:10px;background:#121b31;">
+        <input type="checkbox" id="topology-index-chk" onchange="toggleTopologyIndexMarkers()"><span>拓扑指数</span>
+      </label>
       <button id="reload-btn">展开!</button>
 
       <fieldset id="texture-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:6px 10px;margin:0;display:flex;gap:12px;align-items:center;">
@@ -496,11 +514,175 @@
     gaussColorMesh=new THREE.Mesh(g,new THREE.MeshPhongMaterial({vertexColors:true,side:THREE.DoubleSide,specular:0x111111,shininess:10}));
     modelScene.add(gaussColorMesh);if(currentModelGroup)currentModelGroup.visible=false;
   }
-  async function toggleGaussCurvature(){gaussCurvOn=document.getElementById('gauss-chk').checked;if(gaussCurvOn)await applyGaussCurvature(currentMeshData);else{if(gaussColorMesh){modelScene.remove(gaussColorMesh);gaussColorMesh=null}if(currentModelGroup)currentModelGroup.visible=true}}
+  async function toggleGaussCurvature(){gaussCurvOn=document.getElementById('gauss-chk').checked;if(gaussCurvOn){if(document.getElementById('anisotropy-chk').checked){document.getElementById('anisotropy-chk').checked=false;anisotropyOn=false;clearAnisotropyHeatmap()}await applyGaussCurvature(currentMeshData)}else{if(gaussColorMesh){modelScene.remove(gaussColorMesh);gaussColorMesh=null}if(currentModelGroup)currentModelGroup.visible=true}}
   window.toggleGaussCurvature=toggleGaussCurvature;
 
   // ============ 主曲率场（libigl WASM） ============
   let principalCurvOn=false,principalFieldGroup=null,umbilicMarkers=null,pcInst=null,pcReady=false,pcFailed=false;
+  let principalCurvCache=null;
+  let anisotropyOn=false,anisotropyMesh=null;
+  let topologyIndexOn=false,topologyIndexMarkers=null;
+  const principalFieldStyle={density:520,length:0.26};
+  function readPrincipalFieldStyleFromUI(){
+    const densityEl=document.getElementById('principal-density'),lengthEl=document.getElementById('principal-length');
+    if(densityEl)principalFieldStyle.density=Math.max(20,Number(densityEl.value)||520);
+    if(lengthEl)principalFieldStyle.length=Math.max(0.02,Number(lengthEl.value)||0.26);
+    const densityValEl=document.getElementById('principal-density-val'),lengthValEl=document.getElementById('principal-length-val');
+    if(densityValEl)densityValEl.textContent=String(Math.round(principalFieldStyle.density));
+    if(lengthValEl)lengthValEl.textContent=principalFieldStyle.length.toFixed(2);
+  }
+  async function onPrincipalFieldStyleInput(){
+    readPrincipalFieldStyleFromUI();
+    if(!principalCurvOn||!currentMeshData)return;
+    try{await applyPrincipalCurvatureField(currentMeshData,principalCurvCache)}
+    catch(e){console.error(e);setStatus('主曲率场更新失败: '+e.message,'#ff9d9d')}
+  }
+  window.onPrincipalFieldStyleInput=onPrincipalFieldStyleInput;
+
+  async function ensurePrincipalCurvatureData(meshData){
+    if(!meshData)throw new Error('缺少网格数据');
+    if(principalCurvCache)return principalCurvCache;
+    principalCurvCache=await computePrincipalCurvatureWASM(meshData.positions,meshData.faces);
+    return principalCurvCache;
+  }
+
+  function clearAnisotropyHeatmap(){
+    if(!anisotropyMesh)return;
+    modelScene.remove(anisotropyMesh);
+    if(anisotropyMesh.geometry)anisotropyMesh.geometry.dispose();
+    if(anisotropyMesh.material)anisotropyMesh.material.dispose();
+    anisotropyMesh=null;
+  }
+
+  function clearTopologyIndexMarkers(){
+    if(!topologyIndexMarkers)return;
+    modelScene.remove(topologyIndexMarkers);
+    if(topologyIndexMarkers.geometry)topologyIndexMarkers.geometry.dispose();
+    if(topologyIndexMarkers.material)topologyIndexMarkers.material.dispose();
+    topologyIndexMarkers=null;
+  }
+
+  function anisotropyColor(a){
+    const t=Math.max(0,Math.min(1,a));
+    const hot=[1.0,0.25,0.12],cold=[0.08,0.58,1.0];
+    return[
+      hot[0]+(cold[0]-hot[0])*t,
+      hot[1]+(cold[1]-hot[1])*t,
+      hot[2]+(cold[2]-hot[2])*t
+    ];
+  }
+
+  async function applyAnisotropyHeatmap(meshData,cachedData){
+    clearAnisotropyHeatmap();if(!anisotropyOn||!meshData)return;
+    const pcData=cachedData||await ensurePrincipalCurvatureData(meshData);
+    const count=meshData.positions.length;
+    const pos=new Float32Array(count*3),cols=new Float32Array(count*3);
+    for(let i=0;i<count;i++){
+      pos[i*3]=meshData.positions[i][0];pos[i*3+1]=meshData.positions[i][1];pos[i*3+2]=meshData.positions[i][2];
+      const k1=Math.abs(pcData.pv1[i]||0),k2=Math.abs(pcData.pv2[i]||0);
+      const a=Math.abs(k1-k2)/(k1+k2+1e-12),c=anisotropyColor(a);
+      cols[i*3]=c[0];cols[i*3+1]=c[1];cols[i*3+2]=c[2];
+    }
+    const idx=[];for(let i=0;i<meshData.faces.length;i++)idx.push(meshData.faces[i][0],meshData.faces[i][1],meshData.faces[i][2]);
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));g.setIndex(idx);g.computeVertexNormals();
+    anisotropyMesh=new THREE.Mesh(g,new THREE.MeshPhongMaterial({vertexColors:true,side:THREE.DoubleSide,specular:0x111111,shininess:10}));
+    modelScene.add(anisotropyMesh);if(currentModelGroup)currentModelGroup.visible=false;
+  }
+
+  function computeVertexNormals(meshData){
+    const n=meshData.positions.length,normals=new Float64Array(n*3);
+    for(let i=0;i<meshData.faces.length;i++){
+      const f=meshData.faces[i],a=meshData.positions[f[0]],b=meshData.positions[f[1]],c=meshData.positions[f[2]];
+      const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
+      const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
+      for(let k=0;k<3;k++){const vi=f[k]*3;normals[vi]+=nx;normals[vi+1]+=ny;normals[vi+2]+=nz}
+    }
+    for(let i=0;i<n;i++){
+      const j=i*3,len=Math.hypot(normals[j],normals[j+1],normals[j+2]);
+      if(len>1e-12){normals[j]/=len;normals[j+1]/=len;normals[j+2]/=len}
+      else{normals[j]=0;normals[j+1]=0;normals[j+2]=1}
+    }
+    return normals;
+  }
+
+  function buildTopologyIndexMarkers(meshData,pcData){
+    const vertexNormals=computeVertexNormals(meshData),faceDirs=new Array(meshData.faces.length),faceCenters=new Array(meshData.faces.length),vertexFaces=new Array(meshData.positions.length);
+    for(let i=0;i<vertexFaces.length;i++)vertexFaces[i]=[];
+    for(let fi=0;fi<meshData.faces.length;fi++){
+      const f=meshData.faces[fi],a=meshData.positions[f[0]],b=meshData.positions[f[1]],c=meshData.positions[f[2]];
+      const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
+      let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;const nLen=Math.hypot(nx,ny,nz);if(nLen<=1e-12)continue;nx/=nLen;ny/=nLen;nz/=nLen;
+      faceDirs[fi]=averagedPrincipalDirection(pcData.pd1,f,[nx,ny,nz]);
+      faceCenters[fi]=[(a[0]+b[0]+c[0])/3,(a[1]+b[1]+c[1])/3,(a[2]+b[2]+c[2])/3];
+      vertexFaces[f[0]].push(fi);vertexFaces[f[1]].push(fi);vertexFaces[f[2]].push(fi);
+    }
+    const pts=[],cols=[],threshold=0.24;
+    for(let vi=0;vi<meshData.positions.length;vi++){
+      const incident=vertexFaces[vi];if(!incident||incident.length<3)continue;
+      const p=meshData.positions[vi],nx=vertexNormals[vi*3],ny=vertexNormals[vi*3+1],nz=vertexNormals[vi*3+2];
+      let tx=Math.abs(nx)<0.9?1:0,ty=0,tz=Math.abs(nx)<0.9?0:1;
+      let bx=ny*tz-nz*ty,by=nz*tx-nx*tz,bz=nx*ty-ny*tx;
+      let bl=Math.hypot(bx,by,bz);if(bl<=1e-12)continue;bx/=bl;by/=bl;bz/=bl;
+      tx=by*nz-bz*ny;ty=bz*nx-bx*nz;tz=bx*ny-by*nx;
+      const tl=Math.hypot(tx,ty,tz);if(tl<=1e-12)continue;tx/=tl;ty/=tl;tz/=tl;
+      const ordered=[];
+      for(let i=0;i<incident.length;i++){
+        const fi=incident[i],c=faceCenters[fi],d=faceDirs[fi];if(!c||!d)continue;
+        const rx=c[0]-p[0],ry=c[1]-p[1],rz=c[2]-p[2];
+        const dotC=rx*nx+ry*ny+rz*nz,cx=rx-dotC*nx,cy=ry-dotC*ny,cz=rz-dotC*nz;
+        const ang=Math.atan2(cx*bx+cy*by+cz*bz,cx*tx+cy*ty+cz*tz);
+        const dotD=d[0]*nx+d[1]*ny+d[2]*nz,dx=d[0]-dotD*nx,dy=d[1]-dotD*ny,dz=d[2]-dotD*nz;
+        const dl=Math.hypot(dx,dy,dz);if(dl<=1e-12)continue;
+        const theta=Math.atan2((dx/dl)*bx+(dy/dl)*by+(dz/dl)*bz,(dx/dl)*tx+(dy/dl)*ty+(dz/dl)*tz);
+        ordered.push({ang:ang,theta:theta});
+      }
+      if(ordered.length<3)continue;
+      ordered.sort(function(a,b){return a.ang-b.ang});
+      let winding=0;
+      for(let i=0;i<ordered.length;i++){
+        const t0=ordered[i].theta,t1=ordered[(i+1)%ordered.length].theta;
+        let dt=t1-t0;
+        while(dt>Math.PI*0.5)dt-=Math.PI;
+        while(dt<-Math.PI*0.5)dt+=Math.PI;
+        winding+=dt;
+      }
+      const index=winding/(2*Math.PI);if(Math.abs(index)<threshold)continue;
+      const markScale=Math.min(1,Math.abs(index)/0.5);
+      pts.push(p[0]+nx*0.01,p[1]+ny*0.01,p[2]+nz*0.01);
+      if(index>0)cols.push(1.0,0.38+0.4*(1-markScale),0.22);else cols.push(0.25,0.62,1.0);
+    }
+    if(!pts.length)return null;
+    const geom=new THREE.BufferGeometry();geom.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));geom.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
+    return new THREE.Points(geom,new THREE.PointsMaterial({size:.07,sizeAttenuation:true,vertexColors:true,depthTest:false}));
+  }
+
+  async function applyTopologyIndexMarkers(meshData,cachedData){
+    clearTopologyIndexMarkers();if(!topologyIndexOn||!meshData)return;
+    const pcData=cachedData||await ensurePrincipalCurvatureData(meshData);
+    topologyIndexMarkers=buildTopologyIndexMarkers(meshData,pcData);
+    if(topologyIndexMarkers)modelScene.add(topologyIndexMarkers);
+  }
+
+  async function toggleAnisotropyHeatmap(){
+    anisotropyOn=document.getElementById('anisotropy-chk').checked;
+    if(anisotropyOn&&document.getElementById('gauss-chk').checked){
+      document.getElementById('gauss-chk').checked=false;gaussCurvOn=false;
+      if(gaussColorMesh){modelScene.remove(gaussColorMesh);gaussColorMesh=null}
+    }
+    if(!anisotropyOn){clearAnisotropyHeatmap();if(!gaussCurvOn&&currentModelGroup)currentModelGroup.visible=true;return}
+    try{await applyAnisotropyHeatmap(currentMeshData,principalCurvCache);setStatus('各向异性热力图已绘制（暖色更接近脐点）','#89f0b6')}
+    catch(e){console.error(e);anisotropyOn=false;document.getElementById('anisotropy-chk').checked=false;setStatus('各向异性热力图计算失败: '+e.message,'#ff9d9d')}
+  }
+  window.toggleAnisotropyHeatmap=toggleAnisotropyHeatmap;
+
+  async function toggleTopologyIndexMarkers(){
+    topologyIndexOn=document.getElementById('topology-index-chk').checked;
+    if(!topologyIndexOn){clearTopologyIndexMarkers();return}
+    try{await applyTopologyIndexMarkers(currentMeshData,principalCurvCache);setStatus('拓扑指数已标注（橙=正指数，蓝=负指数）','#89f0b6')}
+    catch(e){console.error(e);topologyIndexOn=false;document.getElementById('topology-index-chk').checked=false;setStatus('拓扑指数计算失败: '+e.message,'#ff9d9d')}
+  }
+  window.toggleTopologyIndexMarkers=toggleTopologyIndexMarkers;
+
   async function initPC(){
     if(pcReady)return true;if(pcFailed)return false;
     try{if(typeof PrincipalCurvatureSolver!=='function')throw new Error('PrincipalCurvatureSolver 未加载');pcInst=await PrincipalCurvatureSolver();pcReady=true;return true}
@@ -537,13 +719,14 @@
     const len=Math.hypot(x,y,z);return len>1e-10?[x/len,y/len,z/len]:null;
   }
   function buildPrincipalCurvatureField(meshData,pcData){
-    const k1=[],k2=[],step=Math.max(1,Math.floor(meshData.faces.length/180));
+    const targetSamples=Math.max(20,Math.round(principalFieldStyle.density));
+    const k1=[],k2=[],step=Math.max(1,Math.floor(meshData.faces.length/targetSamples));
     for(let i=0;i<meshData.faces.length;i+=step){
       const f=meshData.faces[i],a=meshData.positions[f[0]],b=meshData.positions[f[1]],c=meshData.positions[f[2]];
       const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
       let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;const nLen=Math.hypot(nx,ny,nz);if(nLen<=1e-12)continue;nx/=nLen;ny/=nLen;nz/=nLen;
       const cx=(a[0]+b[0]+c[0])/3,cy=(a[1]+b[1]+c[1])/3,cz=(a[2]+b[2]+c[2])/3;
-      const e0=Math.hypot(ux,uy,uz),e1=Math.hypot(c[0]-b[0],c[1]-b[1],c[2]-b[2]),e2=Math.hypot(a[0]-c[0],a[1]-c[1],a[2]-c[2]),len=(e0+e1+e2)/3*.35,offset=len*.08,center=[cx+nx*offset,cy+ny*offset,cz+nz*offset];
+      const e0=Math.hypot(ux,uy,uz),e1=Math.hypot(c[0]-b[0],c[1]-b[1],c[2]-b[2]),e2=Math.hypot(a[0]-c[0],a[1]-c[1],a[2]-c[2]),len=(e0+e1+e2)/3*principalFieldStyle.length,offset=len*.08,center=[cx+nx*offset,cy+ny*offset,cz+nz*offset];
       const d1=averagedPrincipalDirection(pcData.pd1,f,[nx,ny,nz]),d2=averagedPrincipalDirection(pcData.pd2,f,[nx,ny,nz]);
       if(d1)k1.push(center[0]-d1[0]*len,center[1]-d1[1]*len,center[2]-d1[2]*len,center[0]+d1[0]*len,center[1]+d1[1]*len,center[2]+d1[2]*len);
       if(d2)k2.push(center[0]-d2[0]*len,center[1]-d2[1]*len,center[2]-d2[2]*len,center[0]+d2[0]*len,center[1]+d2[1]*len,center[2]+d2[2]*len);
@@ -573,9 +756,10 @@
     return new THREE.Points(geom,new THREE.PointsMaterial({color:0xfff24a,size:.075,sizeAttenuation:true,depthTest:false}));
   }
 
-  async function applyPrincipalCurvatureField(meshData){
+  async function applyPrincipalCurvatureField(meshData,cachedData){
     clearPrincipalCurvatureField();if(!principalCurvOn||!meshData)return null;
-    const pcData=await computePrincipalCurvatureWASM(meshData.positions,meshData.faces);
+    readPrincipalFieldStyleFromUI();
+    const pcData=cachedData||await ensurePrincipalCurvatureData(meshData);
     principalFieldGroup=buildPrincipalCurvatureField(meshData,pcData);modelScene.add(principalFieldGroup);
     umbilicMarkers=buildUmbilicMarkers(meshData,pcData);
     if(umbilicMarkers)modelScene.add(umbilicMarkers);
@@ -967,8 +1151,10 @@
       normalizeObject(root);
       if(currentModelGroup){modelScene.remove(currentModelGroup)}if(currentUvLines){uvScene.remove(currentUvLines)}if(currentUvPins){uvScene.remove(currentUvPins)}
       if(gaussColorMesh){modelScene.remove(gaussColorMesh);gaussColorMesh=null}clearPrincipalCurvatureField();
+      clearAnisotropyHeatmap();clearTopologyIndexMarkers();
       resetTextureRadios();
       clearPickMesh();
+      principalCurvCache=null;
       currentUvLines=null;currentUvPins=null;currentUnwrapUv=null;
       let meshData=rawText?parseObjMeshData(rawText):null;
       meshData=meshData?normalizeMeshData(meshData):collectMeshData(root);
@@ -978,7 +1164,7 @@
       controls.target.set(0,0,0);controls.update();currentMeshData=meshData;
       if(PAGE_FAMILY==='cone')coneVertices=computeBenChenCones(currentMeshData);
       updateConeDisplay();
-      if(gaussCurvOn)await applyGaussCurvature(currentMeshData);if(principalCurvOn)await applyPrincipalCurvatureField(currentMeshData);
+      if(gaussCurvOn)await applyGaussCurvature(currentMeshData);if(anisotropyOn)await applyAnisotropyHeatmap(currentMeshData,principalCurvCache);if(principalCurvOn)await applyPrincipalCurvatureField(currentMeshData);if(topologyIndexOn)await applyTopologyIndexMarkers(currentMeshData,principalCurvCache);
       const coneText=PAGE_FAMILY==='cone'?" / Ben-Chen 锥点 "+coneVertices.length+" 个":"";
       setStatus("就绪: "+m.label+" / "+meshData.positions.length+" 顶点 / "+meshData.faces.length+" 三角面"+coneText+"，点击展开","#89f0b6");
     }catch(e){console.error(e);setStatus("加载失败: "+e.message,"#ff9d9d")}
