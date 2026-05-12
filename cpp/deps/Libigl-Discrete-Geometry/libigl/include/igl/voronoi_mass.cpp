@@ -49,7 +49,7 @@ void igl::voronoi_mass(
     Eigen::VectorXi _;
     Eigen::VectorXi Ivec;
     igl::unique_simplices(allF,F,_,Ivec);
-    I = Ivec.reshaped(T.rows(),T.cols());
+    I = Eigen::Map<const MatrixX4I>(Ivec.data(), T.rows(), T.cols());
   }
 
   // Face circumcenters

@@ -10,6 +10,7 @@
   
   <script src="assets/wasm/unified_solver.js"></script>
   <script src="assets/wasm/gauss_curvature.js"></script>
+  <script src="assets/wasm/principal_curvature.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
@@ -98,8 +99,6 @@
       background: rgba(9, 15, 28, 0.96);
       border-bottom: 1px solid rgba(106, 132, 255, 0.18);
     }
-    .toolbar-left {
-         }
     .toolbar-right {
       display: flex;
       align-items: center;
@@ -312,6 +311,9 @@
         </fieldset>
         <label style="font-size:12px;color:#8a9dd4;cursor:pointer;display:flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid rgba(106,132,255,.25);border-radius:10px;background:#121b31;">
           <input type="checkbox" id="gauss-chk" onchange="toggleGaussCurvature()"><span>高斯曲率</span>
+        </label>
+        <label style="font-size:12px;color:#8a9dd4;cursor:pointer;display:flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid rgba(106,132,255,.25);border-radius:10px;background:#121b31;">
+          <input type="checkbox" id="principal-chk" onchange="togglePrincipalCurvatureField()"><span>主曲率场</span>
         </label>
         <button id="reload-btn"><span class="btn-text">展开</span><span class="btn-excl">!</span></button>
         <fieldset id="texture-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:6px 10px;margin:0;display:flex;gap:12px;align-items:center;">
@@ -672,29 +674,65 @@
         return [bestA, bestB];
       }
 
+      function vertexDist2(vertices, a, b) {
+        const dx = vertices[a][0] - vertices[b][0];
+        const dy = vertices[a][1] - vertices[b][1];
+        const dz = vertices[a][2] - vertices[b][2];
+        return dx * dx + dy * dy + dz * dz;
+      }
+
+      function meshDiag2(vertices) {
+        let minX = Infinity, minY = Infinity, minZ = Infinity;
+        let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+        for (let i = 0; i < vertices.length; i++) {
+          const p = vertices[i];
+          if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
+          if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
+          if (p[2] < minZ) minZ = p[2]; if (p[2] > maxZ) maxZ = p[2];
+        }
+        const dx = maxX - minX, dy = maxY - minY, dz = maxZ - minZ;
+        return dx * dx + dy * dy + dz * dz;
+      }
+
       /**
-       * 选取一对不同于 excludePair 的最远顶点作为备选 pin 点
+       * 选取一对与 excludePair 空间位置明显不同、且彼此尽量远的 pin 点。
+       * 只排除同一无序对会经常选到原 pin 附近的顶点，因此这里要求新顶点
+       * 到旧两个 pin 都有足够距离；若模型太小或候选不足则逐步放宽阈值。
        * @param {number[][]} vertices 顶点坐标数组
-       * @param {number[]} excludePair 要排除的顶点对 [a, b]
+       * @param {number[]} excludePair 要避开的顶点对 [a, b]
        * @returns {number[]} 新的顶点对索引
        */
       function chooseAlternativeAnchorPair(vertices, excludePair) {
         const exA = excludePair[0], exB = excludePair[1];
-        let bestA = exA === 0 ? 1 : 0;
-        let bestB = exB === 0 ? 1 : 0;
-        let bestDist2 = -1;
-        for (let i = 0; i < vertices.length; i++) {
-          for (let j = i + 1; j < vertices.length; j++) {
-            // 排除与 excludePair 相同的无序对
-            if ((i === exA && j === exB) || (i === exB && j === exA)) continue;
-            const dx = vertices[i][0] - vertices[j][0];
-            const dy = vertices[i][1] - vertices[j][1];
-            const dz = vertices[i][2] - vertices[j][2];
-            const dist2 = dx * dx + dy * dy + dz * dz;
-            if (dist2 > bestDist2) {
-              bestDist2 = dist2;
-              bestA = i;
-              bestB = j;
+        const diag2 = meshDiag2(vertices) || 1;
+        const thresholds = [0.25, 0.18, 0.12, 0.06, 0];
+        let candidates = [];
+        for (let ti = 0; ti < thresholds.length; ti++) {
+          const minSep2 = diag2 * thresholds[ti] * thresholds[ti];
+          candidates = [];
+          for (let i = 0; i < vertices.length; i++) {
+            if (i === exA || i === exB) continue;
+            const sep2 = Math.min(vertexDist2(vertices, i, exA), vertexDist2(vertices, i, exB));
+            if (sep2 >= minSep2) candidates.push({ index: i, sep2: sep2 });
+          }
+          if (candidates.length >= 2) break;
+        }
+
+        candidates.sort(function (a, b) { return b.sep2 - a.sep2; });
+        candidates = candidates.slice(0, Math.min(candidates.length, 512));
+
+        let bestA = candidates[0] ? candidates[0].index : (exA === 0 ? 1 : 0);
+        let bestB = candidates[1] ? candidates[1].index : (exB === 0 ? 1 : 0);
+        let bestScore = -Infinity;
+        for (let i = 0; i < candidates.length; i++) {
+          for (let j = i + 1; j < candidates.length; j++) {
+            const a = candidates[i], b = candidates[j];
+            const pairDist2 = vertexDist2(vertices, a.index, b.index);
+            const score = pairDist2 + 0.35 * (a.sep2 + b.sep2);
+            if (score > bestScore) {
+              bestScore = score;
+              bestA = a.index;
+              bestB = b.index;
             }
           }
         }
@@ -1691,6 +1729,132 @@
       }
       window.toggleGaussCurvature = toggleGaussCurvature;
 
+      // ============ 主曲率场（libigl WASM） ============
+      let principalCurvOn = false, principalFieldGroup = null, pcInst = null, pcReady = false, pcFailed = false;
+
+      async function initPC() {
+        if (pcReady) return true;
+        if (pcFailed) return false;
+        try {
+          if (typeof PrincipalCurvatureSolver !== 'function') throw new Error('PrincipalCurvatureSolver 未加载');
+          pcInst = await PrincipalCurvatureSolver();
+          pcReady = true;
+          return true;
+        } catch (e) {
+          pcFailed = true;
+          console.error(e);
+          return false;
+        }
+      }
+
+      async function computePrincipalCurvatureWASM(positions, faces) {
+        const ok = await initPC();
+        if (!ok) throw new Error('主曲率 WASM 初始化失败');
+        const nV = positions.length;
+        const fp = new Float64Array(nV * 3);
+        for (let i = 0; i < nV; i++) { fp[i*3]=positions[i][0]; fp[i*3+1]=positions[i][1]; fp[i*3+2]=positions[i][2]; }
+        const ff = new Int32Array(faces.length * 3);
+        for (let i = 0; i < faces.length; i++) { ff[i*3]=faces[i][0]; ff[i*3+1]=faces[i][1]; ff[i*3+2]=faces[i][2]; }
+        const pp = pcInst._malloc(fp.length * 8);
+        const fpt = pcInst._malloc(ff.length * 4);
+        for (let i = 0; i < fp.length; i++) pcInst.setValue(pp + i * 8, fp[i], 'double');
+        for (let i = 0; i < ff.length; i++) pcInst.setValue(fpt + i * 4, ff[i], 'i32');
+        const rc = pcInst.ccall('compute_principal_curvature','number',['number','number','number','number','number'],[pp,nV,fpt,faces.length,5]);
+        pcInst._free(pp); pcInst._free(fpt);
+        if (rc !== 0) throw new Error('compute_principal_curvature 返回错误码: ' + rc);
+        const count = pcInst.ccall('get_pc_num_verts','number',[],[]);
+        const pd1Ptr = pcInst.ccall('get_pc_pd1','number',[],[]);
+        const pd2Ptr = pcInst.ccall('get_pc_pd2','number',[],[]);
+        const pv1Ptr = pcInst.ccall('get_pc_pv1','number',[],[]);
+        const pv2Ptr = pcInst.ccall('get_pc_pv2','number',[],[]);
+        const pd1 = new Float64Array(count * 3), pd2 = new Float64Array(count * 3);
+        const pv1 = new Float64Array(count), pv2 = new Float64Array(count);
+        for (let i = 0; i < count * 3; i++) { pd1[i] = pcInst.getValue(pd1Ptr + i * 8, 'double'); pd2[i] = pcInst.getValue(pd2Ptr + i * 8, 'double'); }
+        for (let i = 0; i < count; i++) { pv1[i] = pcInst.getValue(pv1Ptr + i * 8, 'double'); pv2[i] = pcInst.getValue(pv2Ptr + i * 8, 'double'); }
+        pcInst.ccall('pc_dispose','void',[],[]);
+        return { pd1, pd2, pv1, pv2 };
+      }
+
+      function clearPrincipalCurvatureField() {
+        if (!principalFieldGroup) return;
+        modelScene.remove(principalFieldGroup);
+        principalFieldGroup.traverse(function (obj) {
+          if (obj.geometry) obj.geometry.dispose();
+          if (obj.material) obj.material.dispose();
+        });
+        principalFieldGroup = null;
+      }
+
+      function averagedPrincipalDirection(field, face, normal) {
+        const base = [field[face[0]*3] || 0, field[face[0]*3+1] || 0, field[face[0]*3+2] || 0];
+        let x = base[0], y = base[1], z = base[2];
+        for (let k = 1; k < 3; k++) {
+          const vi = face[k] * 3;
+          let dx = field[vi] || 0, dy = field[vi+1] || 0, dz = field[vi+2] || 0;
+          if (dx * base[0] + dy * base[1] + dz * base[2] < 0) { dx = -dx; dy = -dy; dz = -dz; }
+          x += dx; y += dy; z += dz;
+        }
+        const dotN = x * normal[0] + y * normal[1] + z * normal[2];
+        x -= dotN * normal[0]; y -= dotN * normal[1]; z -= dotN * normal[2];
+        const len = Math.hypot(x, y, z);
+        return len > 1e-10 ? [x / len, y / len, z / len] : null;
+      }
+
+      function buildPrincipalCurvatureField(meshData, pcData) {
+        const k1 = [], k2 = [];
+        const step = Math.max(1, Math.floor(meshData.faces.length / 180));
+        for (let i = 0; i < meshData.faces.length; i += step) {
+          const f = meshData.faces[i], a = meshData.positions[f[0]], b = meshData.positions[f[1]], c = meshData.positions[f[2]];
+          const ux = b[0]-a[0], uy = b[1]-a[1], uz = b[2]-a[2];
+          const vx = c[0]-a[0], vy = c[1]-a[1], vz = c[2]-a[2];
+          let nx = uy*vz - uz*vy, ny = uz*vx - ux*vz, nz = ux*vy - uy*vx;
+          const nLen = Math.hypot(nx, ny, nz);
+          if (nLen <= 1e-12) continue;
+          nx /= nLen; ny /= nLen; nz /= nLen;
+          const cx = (a[0]+b[0]+c[0]) / 3, cy = (a[1]+b[1]+c[1]) / 3, cz = (a[2]+b[2]+c[2]) / 3;
+          const e0 = Math.hypot(ux, uy, uz), e1 = Math.hypot(c[0]-b[0], c[1]-b[1], c[2]-b[2]), e2 = Math.hypot(a[0]-c[0], a[1]-c[1], a[2]-c[2]);
+          const len = (e0 + e1 + e2) / 3 * 0.35;
+          const offset = len * 0.08;
+          const center = [cx + nx * offset, cy + ny * offset, cz + nz * offset];
+          const d1 = averagedPrincipalDirection(pcData.pd1, f, [nx, ny, nz]);
+          const d2 = averagedPrincipalDirection(pcData.pd2, f, [nx, ny, nz]);
+          if (d1) k1.push(center[0]-d1[0]*len, center[1]-d1[1]*len, center[2]-d1[2]*len, center[0]+d1[0]*len, center[1]+d1[1]*len, center[2]+d1[2]*len);
+          if (d2) k2.push(center[0]-d2[0]*len, center[1]-d2[1]*len, center[2]-d2[2]*len, center[0]+d2[0]*len, center[1]+d2[1]*len, center[2]+d2[2]*len);
+        }
+        const group = new THREE.Group();
+        const makeLines = function (arr, color) {
+          const geom = new THREE.BufferGeometry();
+          geom.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+          return new THREE.LineSegments(geom, new THREE.LineBasicMaterial({ color: color, linewidth: 1, depthTest: true }));
+        };
+        if (k1.length) group.add(makeLines(k1, 0xff5555));
+        if (k2.length) group.add(makeLines(k2, 0x55a7ff));
+        return group;
+      }
+
+      async function applyPrincipalCurvatureField(meshData) {
+        clearPrincipalCurvatureField();
+        if (!principalCurvOn || !meshData) return;
+        const pcData = await computePrincipalCurvatureWASM(meshData.positions, meshData.faces);
+        principalFieldGroup = buildPrincipalCurvatureField(meshData, pcData);
+        modelScene.add(principalFieldGroup);
+      }
+
+      async function togglePrincipalCurvatureField() {
+        principalCurvOn = document.getElementById('principal-chk').checked;
+        if (!principalCurvOn) { clearPrincipalCurvatureField(); return; }
+        try {
+          await applyPrincipalCurvatureField(currentMeshData);
+          setStatus('主曲率场已绘制（红/蓝为两组主方向）', '#89f0b6');
+        } catch (e) {
+          console.error(e);
+          principalCurvOn = false;
+          document.getElementById('principal-chk').checked = false;
+          setStatus('主曲率场计算失败: ' + e.message, '#ff9d9d');
+        }
+      }
+      window.togglePrincipalCurvatureField = togglePrincipalCurvatureField;
+
       function createCheckerTexture() {
         const texSize = 512;
         const cells = 16;
@@ -1980,6 +2144,8 @@
           clearGroup(uvScene, currentUvPins);
           clearTexturedMesh();
           clearDistortionMesh();
+          if (gaussColorMesh) { modelScene.remove(gaussColorMesh); gaussColorMesh = null; }
+          clearPrincipalCurvatureField();
           distortionEnabled = false;
           currentUvLines = null;
           currentUvPins = null;
@@ -2005,6 +2171,8 @@
           currentMeshData = meshData;
           currentSourcePath = resolved.sourcePath;
           currentRawFaces = resolved.rawFaces;  // 原始 OBJ 面数据（含四边形）
+          if (gaussCurvOn) await applyGaussCurvature(currentMeshData);
+          if (principalCurvOn) await applyPrincipalCurvatureField(currentMeshData);
 
           // 检测是否为四边形网格（原始面至少有 3/4 是四边面）
           if (currentRawFaces && currentRawFaces.length > 0) {
