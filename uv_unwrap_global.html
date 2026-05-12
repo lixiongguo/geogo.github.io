@@ -11,6 +11,7 @@
   <script src="assets/wasm/cp_solver.js"></script>
   <script src="assets/wasm/cetm_solver.js"></script>
   <script src="assets/wasm/ricci_solver.js"></script>
+  <script src="assets/wasm/quadcover_solver.js"></script>
   <script src="assets/wasm/gauss_curvature.js"></script>
   <script src="assets/wasm/principal_curvature.js"></script>
 <style>
@@ -72,6 +73,7 @@
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cp" checked> CirclePat</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cetm"> CETM</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="ricci"> Ricci流</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover"> QuadCover</label>
         </div>
       </fieldset>
 
@@ -275,12 +277,12 @@
   }
 
   function countFlippedFaces(uv,faces){
-    let c=0;const eps=1e-12;
+    let count=0;const eps=1e-12;
     for(let i=0;i<faces.length;i++){
-      const t=faces[i],a=uv[t[0]],b=uv[t[1]],c=uv[t[2]];
-      if((b[0]-a[0])*(c[1]-a[1])-(c[0]-a[0])*(b[1]-a[1])<-eps)c++;
+      const t=faces[i],a=uv[t[0]],b=uv[t[1]],p=uv[t[2]];
+      if((b[0]-a[0])*(p[1]-a[1])-(p[0]-a[0])*(b[1]-a[1])<-eps)count++;
     }
-    return c;
+    return count;
   }
 
   // ============ 高斯曲率（libigl WASM） ============
@@ -468,20 +470,22 @@
   let cpInst=null,cpReady=false,cpFailed=false;
   let cetmInst=null,cetmReady=false,cetmFailed=false;
   let ricciInst=null,ricciReady=false,ricciFailed=false;
+  let qcInst=null,qcReady=false,qcFailed=false;
 
   async function initCPSolver(){if(cpReady)return true;if(cpFailed)return false;try{cpInst=await CPSolver();cpReady=true;return true}catch(e){cpFailed=true;return false}}
   async function initCETMSolver(){if(cetmReady)return true;if(cetmFailed)return false;try{cetmInst=await CETMSolver();cetmReady=true;return true}catch(e){cetmFailed=true;return false}}
   async function initRicciSolver(){if(ricciReady)return true;if(ricciFailed)return false;try{ricciInst=await RicciFlowSolver();ricciReady=true;return true}catch(e){ricciFailed=true;return false}}
+  async function initQCSolver(){if(qcReady)return true;if(qcFailed)return false;try{qcInst=await QuadCoverSolver();qcReady=true;return true}catch(e){qcFailed=true;return false}}
 
   function getMethod(){const c=document.querySelector('input[name="method"]:checked');return c?c.value:'cp'}
   function getOptScheme(){const v=parseInt(document.getElementById('opt-scheme-select').value);return(v===0||v===1||v===3)?v:1}
 
   function onParamChange(){
     const m=getMethod();
-    document.getElementById('param-opt-scheme').style.display='';
+    document.getElementById('param-opt-scheme').style.display=(m==='quadcover')?'none':'';
     document.getElementById('cone-btn').style.display = (m==='cp') ? '' : 'none';
     document.getElementById('cone-info').style.display = (m==='cp' && coneVertices.length>0) ? '' : 'none';
-    if (m==='cetm'||m==='ricci'){ coneMode=false; document.getElementById('cone-btn').classList.remove('active'); document.getElementById('cone-btn').textContent='🎯 锥奇异点'; controls.enabled=true; modelCanvas.style.cursor=''; }
+    if (m==='cetm'||m==='ricci'||m==='quadcover'){ coneMode=false; document.getElementById('cone-btn').classList.remove('active'); document.getElementById('cone-btn').textContent='🎯 锥奇异点'; controls.enabled=true; modelCanvas.style.cursor=''; }
     updateButtonState();
   }
   window.onParamChange=onParamChange;
@@ -489,8 +493,8 @@
 
   function updateButtonState(){
     const m=getMethod();
-    const failed=(m==='cp'&&cpFailed)||(m==='cetm'&&cetmFailed)||(m==='ricci'&&ricciFailed);
-    const loading=(m==='cp'&&!cpReady&&!cpFailed)||(m==='cetm'&&!cetmReady&&!cetmFailed)||(m==='ricci'&&!ricciReady&&!ricciFailed);
+    const failed=(m==='cp'&&cpFailed)||(m==='cetm'&&cetmFailed)||(m==='ricci'&&ricciFailed)||(m==='quadcover'&&qcFailed);
+    const loading=(m==='cp'&&!cpReady&&!cpFailed)||(m==='cetm'&&!cetmReady&&!cetmFailed)||(m==='ricci'&&!ricciReady&&!ricciFailed)||(m==='quadcover'&&!qcReady&&!qcFailed);
     if(failed){reloadBtn.textContent='引擎加载失败';reloadBtn.disabled=true}
     else if(loading){reloadBtn.textContent='引擎加载中...';reloadBtn.disabled=true}
     else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
@@ -576,6 +580,23 @@
     }finally{ricciInst._free(pp);ricciInst._free(fpt)}
   }
 
+  async function solveQuadCover(meshData){
+    await initQCSolver();const v=meshData.positions,f=meshData.faces;
+    if(!qcInst)throw new Error("QuadCover WASM 初始化失败");
+    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
+    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
+    const pp=wasmWritePosInst(qcInst,fp),fpt=wasmWriteFacesInst(qcInst,ff);
+    try{
+      const rc=qcInst.ccall('solve_qc','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length]);
+      if(rc!==0)throw new Error("solve_qc 错误:"+rc);
+      const us=wasmReadUV(qcInst,'get_qc_uv_result_size','get_qc_uv_result');
+      qcInst.ccall('qc_dispose','void',[],[]);
+      const t=qcInst.ccall('get_qc_last_time_ms','number',[],[]);
+      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
+      return{uv,timeMs:t,method:'quadcover'};
+    }finally{qcInst._free(pp);qcInst._free(fpt)}
+  }
+
   // ============ 加载 & 展开 ============
   async function loadModel(){
     if(busy)return;setBusy(true);
@@ -604,7 +625,7 @@
 
   async function doUnwrap(){
     if(busy||!currentMeshData)return;
-    const method=getMethod(),mNames={cp:'Circle Pattern',cetm:'CETM',ricci:'Ricci 流'};
+    const method=getMethod(),mNames={cp:'Circle Pattern',cetm:'CETM',ricci:'Ricci 流',quadcover:'QuadCover'};
     const label=mNames[method]||method,optNames={0:'梯度下降',1:'牛顿法',3:'LBFGS'};
     setBusy(true);setStatus(label+" 求解中...");
     const t0=performance.now();
@@ -612,7 +633,14 @@
       let r;
       if(method==='cp')r=await solveCP(currentMeshData);
       else if(method==='cetm')r=await solveCETM(currentMeshData);
-      else r=await solveRicci(currentMeshData);
+      else if(method==='ricci')r=await solveRicci(currentMeshData);
+      else{
+        setStatus("QuadCover: 正在计算主曲率场...");
+        principalCurvOn=true;document.getElementById('principal-chk').checked=true;
+        await applyPrincipalCurvatureField(currentMeshData);
+        setStatus("QuadCover 求解中...");
+        r=await solveQuadCover(currentMeshData);
+      }
       const ms=r.timeMs>0?r.timeMs:(performance.now()-t0);
       currentUnwrapUv=r.uv;
       document.getElementById('uv-panel-label').textContent=label+' UV 网格';
@@ -622,7 +650,8 @@
       currentUvLines=uvV.lines;currentUvPins=uvV.pins;uvScene.add(currentUvLines);uvScene.add(currentUvPins);
       const fc=countFlippedFaces(r.uv,currentMeshData.faces);
       const coneInfo = (r.cones > 0) ? (' / 锥奇异点 ' + r.cones + ' 个') : '';
-      showTiming(ms,label+' / '+optNames[getOptScheme()]+' / '+MODELS[modelSel.value].label+' / '+currentMeshData.positions.length+' 顶点 / '+currentMeshData.faces.length+' 三角面'+coneInfo,fc);
+      const optInfo=(method==='quadcover')?'主曲率场':optNames[getOptScheme()];
+      showTiming(ms,label+' / '+optInfo+' / '+MODELS[modelSel.value].label+' / '+currentMeshData.positions.length+' 顶点 / '+currentMeshData.faces.length+' 三角面'+coneInfo,fc);
       setStatus(label+" 完成，翻转面 "+fc+" 个"+(r.cones>0?"，锥 "+r.cones+" 个":""),fc===0?"#89f0b6":"#ffd38a");
     }catch(e){console.error(e);setStatus("失败: "+e.message,"#ff9d9d")}
     finally{setBusy(false)}
@@ -650,7 +679,7 @@
   updateButtonState();
 
   // 预加载 WASM
-  Promise.all([initCPSolver(),initCETMSolver(),initRicciSolver()]).then(()=>{updateButtonState();loadModel()});
+  Promise.all([initCPSolver(),initCETMSolver(),initRicciSolver(),initQCSolver()]).then(()=>{updateButtonState();loadModel()});
   animate();
 })();
 </script>
