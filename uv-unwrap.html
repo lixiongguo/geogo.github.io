@@ -9,6 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
   
   <script src="assets/wasm/unified_solver.js"></script>
+  <script src="assets/wasm/tutte_arap_solver.js"></script>
   <script src="assets/wasm/gauss_curvature.js"></script>
   <script src="assets/wasm/principal_curvature.js"></script>
   <style>
@@ -743,6 +744,9 @@
       let wasmInstance = null;         // Unified WASM 模块实例（包含所有算法）
       let wasmReady = false;           // WASM 是否已就绪
       let wasmLoadFailed = false;
+      let tutteArapInstance = null;
+      let tutteArapReady = false;
+      let tutteArapLoadFailed = false;
 
       /**
        * 异步加载 Unified WASM 求解器（包含全部 11 个算法）
@@ -766,6 +770,25 @@
         }
       }
 
+      async function initTutteARAPSolver() {
+        if (tutteArapReady) return true;
+        if (tutteArapLoadFailed) return false;
+
+        try {
+          if (typeof TutteARAPSolver === 'undefined') {
+            throw new Error('Tutte/ARAP WASM 胶水代码未加载，请确保 assets/wasm/tutte_arap_solver.js 已部署');
+          }
+          tutteArapInstance = await TutteARAPSolver();
+          tutteArapReady = true;
+          console.log('Tutte/ARAP WASM 加载成功');
+          return true;
+        } catch (err) {
+          console.error('Tutte/ARAP WASM 加载失败:', err);
+          tutteArapLoadFailed = true;
+          return false;
+        }
+      }
+
       function getCurrentModelKey() { return modelSelect.value; }
       function getCurrentModelObj() { return MODELS1[getCurrentModelKey()]; }
 
@@ -773,6 +796,10 @@
       function getCurrentMethod() {
         const checked = document.querySelector('input[name="method"]:checked');
         return checked ? checked.value : 'lscm';
+      }
+
+      function shouldShowPinPoints() {
+        return getCurrentMethod() === 'lscm';
       }
 
       /** BD 是否启用（LSCM 或 ARAP 的 BD 复选框选中） */
@@ -841,6 +868,13 @@
         // 切换出 LSCM 时重置自定义 pin 点
         if (m !== 'lscm') {
           currentCustomAnchors = null;
+        }
+        if (currentMeshData) {
+          updateModelPinPoints(currentCustomAnchors || chooseAnchorPair(currentMeshData.positions));
+        }
+        if (!shouldShowPinPoints() && currentUvPins) {
+          clearGroup(uvScene, currentUvPins);
+          currentUvPins = null;
         }
 
         updateStartButtonState();
@@ -1385,7 +1419,7 @@
       // ==================== WASM 驱动的 Tutte + ARAP 求解 ====================
 
       async function solveTutteCircleAsync(meshData, onProgress) {
-        if (!wasmReady) { const ok = await initUnifiedSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
+        if (!tutteArapReady) { const ok = await initTutteARAPSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
 
         const flatPositions = new Float64Array(meshData.positions.length * 3);
         for (let i = 0; i < meshData.positions.length; i++) {
@@ -1397,29 +1431,29 @@
         }
         if (onProgress) onProgress(0, 1);
 
-        const posPtr = wasmInstance._malloc(flatPositions.length * 8);
-        for (let i = 0; i < flatPositions.length; i++) wasmInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
-        const facePtr = wasmInstance._malloc(flatFaces.length * 4);
-        for (let i = 0; i < flatFaces.length; i++) wasmInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
+        const posPtr = tutteArapInstance._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) tutteArapInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
+        const facePtr = tutteArapInstance._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) tutteArapInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
 
         try {
-          const ret = wasmInstance.ccall('solve_tutte_circle', 'number',
+          const ret = tutteArapInstance.ccall('solve_tutte_circle', 'number',
             ['number','number','number','number'],[posPtr,flatPositions.length,facePtr,flatFaces.length]);
           if (ret !== 0) throw new Error("solve_tutte_circle 返回错误码: " + ret);
-          const uvSize = wasmInstance.ccall('get_ta_uv_result_size','number',[],[]);
-          const uvPtr = wasmInstance.ccall('get_ta_uv_result','number',[],[]);
-          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(wasmInstance.getValue(uvPtr+i*8,'double'));
-          wasmInstance.ccall('ta_dispose','void',[],[]);
-          const timeMs = wasmInstance.ccall('get_ta_last_time_ms','number',[],[]);
+          const uvSize = tutteArapInstance.ccall('get_ta_uv_result_size','number',[],[]);
+          const uvPtr = tutteArapInstance.ccall('get_ta_uv_result','number',[],[]);
+          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(tutteArapInstance.getValue(uvPtr+i*8,'double'));
+          tutteArapInstance.ccall('ta_dispose','void',[],[]);
+          const timeMs = tutteArapInstance.ccall('get_ta_last_time_ms','number',[],[]);
           if (onProgress) onProgress(1,1);
           const n = meshData.positions.length;
           const uv = []; for (let i=0;i<n;i++) uv.push([uvs[i*2],uvs[i*2+1]]);
           return { uv, anchors: chooseAnchorPair(meshData.positions), flippedFaceCount: countFlippedFaces(uv,meshData.faces), timeMs, method:'tutte_circle' };
-        } finally { wasmInstance._free(posPtr); wasmInstance._free(facePtr); }
+        } finally { tutteArapInstance._free(posPtr); tutteArapInstance._free(facePtr); }
       }
 
       async function solveTutteSquareAsync(meshData, onProgress) {
-        if (!wasmReady) { const ok = await initUnifiedSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
+        if (!tutteArapReady) { const ok = await initTutteARAPSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
 
         const flatPositions = new Float64Array(meshData.positions.length * 3);
         for (let i = 0; i < meshData.positions.length; i++) {
@@ -1431,29 +1465,29 @@
         }
         if (onProgress) onProgress(0, 1);
 
-        const posPtr = wasmInstance._malloc(flatPositions.length * 8);
-        for (let i = 0; i < flatPositions.length; i++) wasmInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
-        const facePtr = wasmInstance._malloc(flatFaces.length * 4);
-        for (let i = 0; i < flatFaces.length; i++) wasmInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
+        const posPtr = tutteArapInstance._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) tutteArapInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
+        const facePtr = tutteArapInstance._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) tutteArapInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
 
         try {
-          const ret = wasmInstance.ccall('solve_tutte_square', 'number',
+          const ret = tutteArapInstance.ccall('solve_tutte_square', 'number',
             ['number','number','number','number'],[posPtr,flatPositions.length,facePtr,flatFaces.length]);
           if (ret !== 0) throw new Error("solve_tutte_square 返回错误码: " + ret);
-          const uvSize = wasmInstance.ccall('get_ta_uv_result_size','number',[],[]);
-          const uvPtr = wasmInstance.ccall('get_ta_uv_result','number',[],[]);
-          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(wasmInstance.getValue(uvPtr+i*8,'double'));
-          wasmInstance.ccall('ta_dispose','void',[],[]);
-          const timeMs = wasmInstance.ccall('get_ta_last_time_ms','number',[],[]);
+          const uvSize = tutteArapInstance.ccall('get_ta_uv_result_size','number',[],[]);
+          const uvPtr = tutteArapInstance.ccall('get_ta_uv_result','number',[],[]);
+          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(tutteArapInstance.getValue(uvPtr+i*8,'double'));
+          tutteArapInstance.ccall('ta_dispose','void',[],[]);
+          const timeMs = tutteArapInstance.ccall('get_ta_last_time_ms','number',[],[]);
           if (onProgress) onProgress(1,1);
           const n = meshData.positions.length;
           const uv = []; for (let i=0;i<n;i++) uv.push([uvs[i*2],uvs[i*2+1]]);
           return { uv, anchors: chooseAnchorPair(meshData.positions), flippedFaceCount: countFlippedFaces(uv,meshData.faces), timeMs, method:'tutte_square' };
-        } finally { wasmInstance._free(posPtr); wasmInstance._free(facePtr); }
+        } finally { tutteArapInstance._free(posPtr); tutteArapInstance._free(facePtr); }
       }
 
       async function solveARAPAsync(meshData, onProgress) {
-        if (!wasmReady) { const ok = await initUnifiedSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
+        if (!tutteArapReady) { const ok = await initTutteARAPSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
 
         const flatPositions = new Float64Array(meshData.positions.length * 3);
         for (let i = 0; i < meshData.positions.length; i++) {
@@ -1467,25 +1501,25 @@
 
         const maxIter = parseInt(document.getElementById('arap-iter-input').value) || 30;
 
-        const posPtr = wasmInstance._malloc(flatPositions.length * 8);
-        for (let i = 0; i < flatPositions.length; i++) wasmInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
-        const facePtr = wasmInstance._malloc(flatFaces.length * 4);
-        for (let i = 0; i < flatFaces.length; i++) wasmInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
+        const posPtr = tutteArapInstance._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) tutteArapInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
+        const facePtr = tutteArapInstance._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) tutteArapInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
 
         try {
-          const ret = wasmInstance.ccall('solve_arap', 'number',
+          const ret = tutteArapInstance.ccall('solve_arap', 'number',
             ['number','number','number','number','number'],[posPtr,flatPositions.length,facePtr,flatFaces.length,maxIter]);
           if (ret !== 0) throw new Error("solve_arap 返回错误码: " + ret);
-          const uvSize = wasmInstance.ccall('get_ta_uv_result_size','number',[],[]);
-          const uvPtr = wasmInstance.ccall('get_ta_uv_result','number',[],[]);
-          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(wasmInstance.getValue(uvPtr+i*8,'double'));
-          wasmInstance.ccall('ta_dispose','void',[],[]);
-          const timeMs = wasmInstance.ccall('get_ta_last_time_ms','number',[],[]);
+          const uvSize = tutteArapInstance.ccall('get_ta_uv_result_size','number',[],[]);
+          const uvPtr = tutteArapInstance.ccall('get_ta_uv_result','number',[],[]);
+          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(tutteArapInstance.getValue(uvPtr+i*8,'double'));
+          tutteArapInstance.ccall('ta_dispose','void',[],[]);
+          const timeMs = tutteArapInstance.ccall('get_ta_last_time_ms','number',[],[]);
           if (onProgress) onProgress(1,1);
           const n = meshData.positions.length;
           const uv = []; for (let i=0;i<n;i++) uv.push([uvs[i*2],uvs[i*2+1]]);
           return { uv, anchors: chooseAnchorPair(meshData.positions), flippedFaceCount: countFlippedFaces(uv,meshData.faces), timeMs, method:'arap', maxIter };
-        } finally { wasmInstance._free(posPtr); wasmInstance._free(facePtr); }
+        } finally { tutteArapInstance._free(posPtr); tutteArapInstance._free(facePtr); }
       }
 
       function countFlippedFaces(uv, faces) {
@@ -1499,7 +1533,7 @@
         return count;
       }
 
-      function buildModelGroup(root, anchors, positions) {
+      function buildModelGroup(root, anchors, positions, showPins) {
         const group = new THREE.Group();
         const meshMaterial = new THREE.MeshStandardMaterial({
           color: 0x7fa7ff,
@@ -1555,17 +1589,20 @@
           }
         });
 
-        const pinPositions = [];
-        for (let i = 0; i < anchors.length; i++) {
-          const p = positions[anchors[i]];
-          pinPositions.push(p[0], p[1], p[2]);
-        }
+        let points = null;
+        if (showPins) {
+          const pinPositions = [];
+          for (let i = 0; i < anchors.length; i++) {
+            const p = positions[anchors[i]];
+            pinPositions.push(p[0], p[1], p[2]);
+          }
 
-        const points = new THREE.Points(
-          new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pinPositions, 3)),
-          new THREE.PointsMaterial({ color: 0xffb74d, size: 0.05, sizeAttenuation: true })
-        );
-        group.add(points);
+          points = new THREE.Points(
+            new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pinPositions, 3)),
+            new THREE.PointsMaterial({ color: 0xffb74d, size: 0.05, sizeAttenuation: true })
+          );
+          group.add(points);
+        }
 
         return { group: group, pinPoints: points };
       }
@@ -1581,6 +1618,9 @@
         if (currentPins && currentPins.parent) {
           currentPins.parent.remove(currentPins);
         }
+        currentPins = null;
+
+        if (!shouldShowPinPoints()) return;
 
         const positions = currentMeshData.positions;
         const pinPositions = [];
@@ -1601,6 +1641,7 @@
        * "改pin点"按钮点击处理：选择不同于当前 pin 点的另一对最远顶点
        */
       function onChangePinClick() {
+        if (!shouldShowPinPoints()) return;
         if (!currentMeshData || !currentMeshData.positions || currentMeshData.positions.length < 2) return;
 
         const vertices = currentMeshData.positions;
@@ -1619,7 +1660,7 @@
         );
       }
 
-      function buildUvMesh(uv, faces, anchors) {
+      function buildUvMesh(uv, faces, anchors, showPins) {
         const edgeSet = new Set();
         const segments = [];
 
@@ -1661,15 +1702,18 @@
           new THREE.LineBasicMaterial({ color: 0x86b2ff, transparent: true, opacity: 0.95 })
         );
 
-        const pinPositions = [];
-        for (let i = 0; i < anchors.length; i++) {
-          const p = toPlane(uv[anchors[i]]);
-          pinPositions.push(p[0], p[1], 0.01);
+        let pins = null;
+        if (showPins) {
+          const pinPositions = [];
+          for (let i = 0; i < anchors.length; i++) {
+            const p = toPlane(uv[anchors[i]]);
+            pinPositions.push(p[0], p[1], 0.01);
+          }
+          pins = new THREE.Points(
+            new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pinPositions, 3)),
+            new THREE.PointsMaterial({ color: 0xffa94d, size: 0.06, sizeAttenuation: false })
+          );
         }
-        const pins = new THREE.Points(
-          new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pinPositions, 3)),
-          new THREE.PointsMaterial({ color: 0xffa94d, size: 0.06, sizeAttenuation: false })
-        );
 
         return { lines: lines, pins: pins };
       }
@@ -2160,7 +2204,7 @@
           currentCustomAnchors = null;  // 加载新模型时重置自定义 pin 点
           const anchors = chooseAnchorPair(meshData.positions);
 
-          const modelVisual = buildModelGroup(root, anchors, meshData.positions);
+          const modelVisual = buildModelGroup(root, anchors, meshData.positions, shouldShowPinPoints());
           currentModelGroup = modelVisual.group;
           currentPins = modelVisual.pinPoints;
           currentModelGroup.visible = true;
@@ -2324,11 +2368,11 @@
 
           clearGroup(uvScene, currentUvLines);
           clearGroup(uvScene, currentUvPins);
-          const uvVisual = buildUvMesh(unwrapResult.uv, currentMeshData.faces, unwrapResult.anchors);
+          const uvVisual = buildUvMesh(unwrapResult.uv, currentMeshData.faces, unwrapResult.anchors, shouldShowPinPoints());
           currentUvLines = uvVisual.lines;
           currentUvPins = uvVisual.pins;
           uvScene.add(currentUvLines);
-          uvScene.add(currentUvPins);
+          if (currentUvPins) uvScene.add(currentUvPins);
 
           let details =
             methodLabel +
