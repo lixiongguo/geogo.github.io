@@ -8,8 +8,8 @@
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
   
-  <!-- WASM Unified Solver (LSCM / BD-LSCM / Tutte+ARAP / CETM / RicciFlow / CirclePatterns / QuadCover / BFF / MIQ / Holomorphic1Form / PrincipalCurvature) -->
   <script src="assets/wasm/unified_solver.js"></script>
+  <script src="assets/wasm/gauss_curvature.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
@@ -1636,102 +1636,58 @@
         return { lines: lines, pins: pins };
       }
 
-      // ============ 高斯曲率（角度亏损法） ============
-      let gaussCurvOn = false;
-      let gaussColorMesh = null;
+      // ============ 高斯曲率（libigl WASM） ============
+      let gaussCurvOn = false, gaussColorMesh = null, gcInst = null, gcReady = false;
 
-      function computeGaussCurvature(positions, faces) {
+      async function initGC(){if(gcReady)return true;try{gcInst=await GaussCurvatureSolver();gcReady=true;return true}catch(e){return false}}
+
+      async function computeGaussCurvatureWASM(positions, faces) {
+        await initGC();
         const nV = positions.length;
-        const angles = new Float64Array(nV);  // Σθ_i
-        const areas = new Float64Array(nV);   // A_i (barycentric area)
-
-        function sub(a, b) { return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
-        function len(v) { return Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]); }
-        function cross(a, b) { return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
-        function dot(a, b) { return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
-
-        for (let fi = 0; fi < faces.length; fi++) {
-          const [i0, i1, i2] = faces[fi];
-          const v0 = positions[i0], v1 = positions[i1], v2 = positions[i2];
-          const e01 = sub(v1, v0), e02 = sub(v2, v0), e12 = sub(v2, v1);
-          const l01 = len(e01), l02 = len(e02), l12 = len(e12);
-          if (l01 < 1e-12 || l02 < 1e-12 || l12 < 1e-12) continue;
-
-          // 三角形内角（余弦定理）
-          const a0 = Math.acos(Math.max(-1, Math.min(1, (l01*l01 + l02*l02 - l12*l12) / (2*l01*l02))));
-          const a1 = Math.acos(Math.max(-1, Math.min(1, (l01*l01 + l12*l12 - l02*l02) / (2*l01*l12))));
-          const a2 = Math.PI - a0 - a1;
-
-          angles[i0] += a0; angles[i1] += a1; angles[i2] += a2;
-
-          // 三角形面积 / 3 → barycentric area contribution
-          const area = 0.5 * len(cross(e01, e02));
-          const a3 = area / 3;
-          areas[i0] += a3; areas[i1] += a3; areas[i2] += a3;
+        const fp = new Float64Array(nV * 3);
+        for (let i = 0; i < nV; i++) { fp[i*3]=positions[i][0]; fp[i*3+1]=positions[i][1]; fp[i*3+2]=positions[i][2]; }
+        const ff = new Int32Array(faces.length * 3);
+        for (let i = 0; i < faces.length; i++) { ff[i*3]=faces[i][0]; ff[i*3+1]=faces[i][1]; ff[i*3+2]=faces[i][2]; }
+        const pp = gcInst._malloc(fp.length * 8);
+        for (let i = 0; i < fp.length; i++) gcInst.setValue(pp + i * 8, fp[i], 'double');
+        const fpt = gcInst._malloc(ff.length * 4);
+        for (let i = 0; i < ff.length; i++) gcInst.setValue(fpt + i * 4, ff[i], 'i32');
+        const rc = gcInst.ccall('compute_gauss_curvature','number',['number','number','number','number'],[pp,nV,fpt,faces.length]);
+        const curv = new Float64Array(nV);
+        if (rc === 0) {
+          const sz = gcInst.ccall('get_gc_result_size','number',[],[]);
+          const ptr = gcInst.ccall('get_gc_result','number',[],[]);
+          for (let i = 0; i < sz; i++) curv[i] = gcInst.getValue(ptr + i * 8, 'double');
+          gcInst.ccall('gc_dispose','void',[],[]);
         }
-
-        // K(v) = (2π - Σθ_v) / A_v
-        const curvatures = new Float64Array(nV);
-        let maxK = -Infinity, minK = Infinity;
-        for (let i = 0; i < nV; i++) {
-          const K = (areas[i] > 1e-12) ? (2*Math.PI - angles[i]) / areas[i] : 0;
-          curvatures[i] = K;
-          if (K > maxK) maxK = K;
-          if (K < minK) minK = K;
-        }
-        return { curvatures, minK, maxK };
+        gcInst._free(pp); gcInst._free(fpt);
+        let minK = Infinity, maxK = -Infinity;
+        for (let i = 0; i < nV; i++) { if (curv[i] > maxK) maxK = curv[i]; if (curv[i] < minK) minK = curv[i]; }
+        return { curvatures: curv, minK, maxK };
       }
 
       function gaussColor(K, minK, maxK) {
-        const range = (maxK - minK) || 1;
-        const t = (K - minK) / range;  // 0..1, 0=blue/concave, 1=red/convex
-        // 蓝(凹) → 白 → 红(凸)
-        if (t < 0.5) {
-          const s = t * 2;
-          return [s, s, 1];  // blue → white
-        } else {
-          const s = (t - 0.5) * 2;
-          return [1, 1-s, 1-s];  // white → red
-        }
+        const r = (maxK - minK) || 1, t = (K - minK) / r;
+        if (t < 0.5) { const s = t * 2; return [s, s, 1]; }
+        else { const s = (t - 0.5) * 2; return [1, 1-s, 1-s]; }
       }
 
-      function applyGaussCurvature(meshData) {
+      async function applyGaussCurvature(meshData) {
         if (gaussColorMesh) { modelScene.remove(gaussColorMesh); gaussColorMesh = null; }
         if (!gaussCurvOn || !meshData) return;
-
-        const { curvatures, minK, maxK } = computeGaussCurvature(meshData.positions, meshData.faces);
-        const pos = new Float32Array(meshData.positions.length * 3);
-        const cols = new Float32Array(meshData.positions.length * 3);
-        for (let i = 0; i < meshData.positions.length; i++) {
-          pos[i*3] = meshData.positions[i][0];
-          pos[i*3+1] = meshData.positions[i][1];
-          pos[i*3+2] = meshData.positions[i][2];
-          const c = gaussColor(curvatures[i], minK, maxK);
-          cols[i*3] = c[0]; cols[i*3+1] = c[1]; cols[i*3+2] = c[2];
-        }
-        const idx = [];
-        for (let i = 0; i < meshData.faces.length; i++) {
-          idx.push(meshData.faces[i][0], meshData.faces[i][1], meshData.faces[i][2]);
-        }
-        const geom = new THREE.BufferGeometry();
-        geom.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-        geom.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
-        geom.setIndex(idx);
-        geom.computeVertexNormals();
-        const mat = new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, specular: 0x111111, shininess: 10 });
-        gaussColorMesh = new THREE.Mesh(geom, mat);
-        modelScene.add(gaussColorMesh);
-        if (currentModelGroup) currentModelGroup.visible = false;
+        const { curvatures, minK, maxK } = await computeGaussCurvatureWASM(meshData.positions, meshData.faces);
+        const pos = new Float32Array(meshData.positions.length * 3), cols = new Float32Array(meshData.positions.length * 3);
+        for (let i = 0; i < meshData.positions.length; i++) { pos[i*3]=meshData.positions[i][0]; pos[i*3+1]=meshData.positions[i][1]; pos[i*3+2]=meshData.positions[i][2]; const c = gaussColor(curvatures[i], minK, maxK); cols[i*3]=c[0]; cols[i*3+1]=c[1]; cols[i*3+2]=c[2]; }
+        const idx = []; for (let i = 0; i < meshData.faces.length; i++) idx.push(meshData.faces[i][0], meshData.faces[i][1], meshData.faces[i][2]);
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3)); g.setIndex(idx); g.computeVertexNormals();
+        gaussColorMesh = new THREE.Mesh(g, new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, specular: 0x111111, shininess: 10 }));
+        modelScene.add(gaussColorMesh); if (currentModelGroup) currentModelGroup.visible = false;
       }
 
-      function toggleGaussCurvature() {
+      async function toggleGaussCurvature() {
         gaussCurvOn = document.getElementById('gauss-chk').checked;
-        if (gaussCurvOn) {
-          applyGaussCurvature(currentMeshData);
-        } else {
-          if (gaussColorMesh) { modelScene.remove(gaussColorMesh); gaussColorMesh = null; }
-          if (currentModelGroup) currentModelGroup.visible = true;
-        }
+        if (gaussCurvOn) await applyGaussCurvature(currentMeshData);
+        else { if (gaussColorMesh) { modelScene.remove(gaussColorMesh); gaussColorMesh = null; } if (currentModelGroup) currentModelGroup.visible = true; }
       }
       window.toggleGaussCurvature = toggleGaussCurvature;
 
