@@ -244,35 +244,15 @@
     </div>
     <div class="toolbar">
       <div class="toolbar-right">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <input type="radio" name="model-source" value="assets/Models" id="model-radio1" style="accent-color:#6a84ff;cursor:pointer;">
-          <select id="model-select1" title="Models" style="width:155px;font-size:15px;padding:10px 14px;"></select>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <input type="radio" name="model-source" value="assets/Models2" id="model-radio2" style="accent-color:#6a84ff;cursor:pointer;">
-          <select id="model-select2" title="Models2" style="width:155px;font-size:15px;padding:10px 14px;"></select>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <input type="radio" name="model-source" value="assets/Models3" id="model-radio3" style="accent-color:#6a84ff;cursor:pointer;">
-          <select id="model-select3" title="Models3" style="width:155px;font-size:15px;padding:10px 14px;"></select>
-        </div>
+        <select id="model-select" title="Models" style="width:180px;font-size:15px;padding:10px 14px;"></select>
         <fieldset id="method-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:8px 12px;margin:0;">
           <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开算法</legend>
-          <div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:4px;">
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="lscm" checked> LSCM</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte" checked> Tutte</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="lscm"> LSCM</label>
             <label id="lscm-bd-chk" style="color:#8a9dd4;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;margin-right:8px;"><input type="checkbox" id="bd-chk-lscm" onchange="onParamChange()"><span style="line-height:1">BD</span></label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte"> Tutte</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="arap"> ARAP</label>
             <label id="arap-bd-chk" style="color:#8a9dd4;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;margin-right:8px;"><input type="checkbox" id="bd-chk-arap" onchange="onParamChange()"><span style="line-height:1">BD</span></label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cetm"> CETM</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="ricci"> Ricci流</label>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cp"> CirclePat</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover"> QuadCover</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="bff"> BFF</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="miq"> MIQ</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="holo"> 全纯1-形式</label>
           </div>
         </fieldset>
 
@@ -351,61 +331,22 @@
   <script>
     (function () {
       const MODELS1 = {
-        balls: { label: "Balls", file: "Balls.obj" },
-        nefertiti: { label: "Nefertiti Face", file: "Nefertiti_face.obj" },
-        beetle: { label: "Beetle", file: "beetle.obj" },
-        bunnyhead: { label: "Bunny Head", file: "bunnyhead.obj" },
-        camelhead: { label: "Camel Head", file: "camelhead.obj" },
-        cathead: { label: "Cat Head", file: "cathead.obj" },
-        cow_head: { label: "Cow Head", file: "cow_head.obj" },
-        spot_cowhead: { label: "Spot Cow Head", file: "spot_cowhead.obj" },
-        hand: { label: "Hand (5K)", file: "hand_1_i_f5000.obj" },
-        hencky: { label: "Hencky (20K)", file: "hencky_f20000.obj" },
-        maxplanck: { label: "Max Planck", file: "max-planck.obj" }
+        cathead: { label: "Cat Head (248)", file: "cathead_F248.obj" },
+        beetle: { label: "Beetle (2.1K)", file: "beetle_F2052.obj" },
+        bunnyhead: { label: "Bunny Head (3K)", file: "bunnyhead_F3000.obj" },
+        max: { label: "Max (3.6K)", file: "max_F3599.obj" },
+        hand: { label: "Hand (3.8K)", file: "hand_F3769.obj" },
+        hand1i: { label: "Hand 1i (5K)", file: "hand_1_i_F4999.obj" },
+        spot_cowhead: { label: "Spot Cow Head (9K)", file: "spot_cowhead_F9024.obj" },
+        hencky: { label: "Hencky (20K)", file: "hencky_F20000.obj" },
+        camelhead: { label: "Camel Head (22.7K)", file: "camelhead_F22704.obj" },
+        maxplanck: { label: "Max Planck (100K)", file: "max-planck_F99990.obj" }
       };
-      const MODELS2 = {
-        holes3: { label: "3 Holes", file: "3holes.obj" },
-        armadillo: { label: "Armadillo", file: "armadillo.obj" },
-        beast: { label: "Beast", file: "beast.obj" },
-        botijo: { label: "Botijo", file: "botijo.obj" },
-        bunny: { label: "Bunny", file: "bunny.obj" },
-        cow: { label: "Cow", file: "cow.obj" },
-        doubletorus: { label: "Double Torus", file: "double-torus.obj" },
-        fandisk: { label: "Fandisk", file: "fandisk.obj" },
-        happy: { label: "Happy Buddha", file: "happy.obj" },
-        lucy: { label: "Lucy", file: "lucy.obj" },
-        rocker: { label: "Rocker Arm", file: "rocker-arm.obj" },
-        torus: { label: "Torus", file: "torus.obj" }
-      };
-      const MODELS3 = {
-        holes3b: { label: "3 Holes", file: "3holes.obj" },
-        armadillob: { label: "Armadillo", file: "armadillo.obj" },
-        bimba: { label: "Bimba", file: "bimba.obj" },
-        camel_b: { label: "Camel B", file: "camel_b.obj" },
-        doubletorusb: { label: "Double Torus", file: "double-torus.obj" },
-        dragon: { label: "Dragon (87K)", file: "dragon_87k.obj" },
-        elephant: { label: "Elephant", file: "elephant.obj" },
-        fertility: { label: "Fertility", file: "fertility.obj" },
-        gargoyle: { label: "Gargoyle", file: "gargoyle.obj" },
-        kitten: { label: "Kitten", file: "kitten.obj" },
-        soccerball: { label: "Soccer Ball", file: "soccerball.obj" },
-        vaselion: { label: "Vase Lion", file: "vase_lion.obj" }
-      };
-      const MODEL_BASES = ["assets/Models", "assets/Models2", "assets/Models3"];
-      const MIRROR_BASE_PATHS = [
-        ["assets/Models", "../assets/Models", "./assets/Models"],
-        ["assets/Models2", "../assets/Models2", "./assets/Models2"],
-        ["assets/Models3", "../assets/Models3", "./assets/Models3"]
-      ];
+
 
       const modelCanvas = document.getElementById("model-canvas");
       const uvCanvas = document.getElementById("uv-canvas");
-      const modelSelect1 = document.getElementById("model-select1");
-      const modelSelect2 = document.getElementById("model-select2");
-      const modelSelect3 = document.getElementById("model-select3");
-      const modelRadio1 = document.getElementById("model-radio1");
-      const modelRadio2 = document.getElementById("model-radio2");
-      const modelRadio3 = document.getElementById("model-radio3");
+      const modelSelect = document.getElementById("model-select");
       const reloadBtn = document.getElementById("reload-btn");
       const textureBtn = null;
       const radioCheckerboard = document.getElementById("radio-checkerboard");
@@ -492,12 +433,7 @@
       function setBusy(nextBusy) {
         busy = nextBusy;
         reloadBtn.disabled = nextBusy;
-        modelSelect1.disabled = nextBusy;
-        modelSelect2.disabled = nextBusy;
-        modelSelect3.disabled = nextBusy;
-        modelRadio1.disabled = nextBusy;
-        modelRadio2.disabled = nextBusy;
-        modelRadio3.disabled = nextBusy;
+        modelSelect.disabled = nextBusy;
         // 单选框在展开完成前保持禁用
         if (!nextBusy && currentUnwrapUv) {
           radioCheckerboard.disabled = false;
@@ -520,18 +456,7 @@
         if (keys.length > 0) sel.value = keys[0];
       }
       function initModelOptions() {
-        populateSelect(modelSelect1, MODELS1);
-        populateSelect(modelSelect2, MODELS2);
-        populateSelect(modelSelect3, MODELS3);
-      }
-      function setModelSource(source) {
-        currentModelSource = source;
-        currentMeshData = null;
-        currentSourcePath = "";
-        currentRawFaces = null;
-        isQuadMesh = false;
-        setStatus("已切换到 " + source + "，正在加载模型预览...", "#8cc4ff");
-        loadModelPreview();
+        populateSelect(modelSelect, MODELS1);
       }
 
       function resize() {
@@ -611,17 +536,9 @@
       }
 
       function getModelCandidateUrls(modelKey) {
-        const model = getCurrentModelObj();
+        const model = MODELS1[modelKey];
         if (!model) return [];
-        const srcIdx = currentModelSource === "assets/Models" ? 0 : (currentModelSource === "assets/Models2" ? 1 : 2);
-        const paths = MIRROR_BASE_PATHS[srcIdx];
-        const urls = [];
-        const seen = new Set();
-        for (let i = 0; i < paths.length; i++) {
-          const url = paths[i] + "/" + model.file;
-          if (!seen.has(url)) { seen.add(url); urls.push(url); }
-        }
-        return urls;
+        return ["assets/Models/" + model.file, "./assets/Models/" + model.file, "../assets/Models/" + model.file];
       }
 
       async function loadBuiltinModel(modelKey) {
@@ -757,19 +674,8 @@
         }
       }
 
-      /** 当前选中的模型源 (Models/Models2/Models3) */
-      let currentModelSource = "assets/Models";
-      function getCurrentModelKey() {
-        if (currentModelSource === "assets/Models") return modelSelect1.value;
-        if (currentModelSource === "assets/Models2") return modelSelect2.value;
-        return modelSelect3.value;
-      }
-      function getCurrentModelObj() {
-        const key = getCurrentModelKey();
-        if (currentModelSource === "assets/Models") return MODELS1[key];
-        if (currentModelSource === "assets/Models2") return MODELS2[key];
-        return MODELS3[key];
-      }
+      function getCurrentModelKey() { return modelSelect.value; }
+      function getCurrentModelObj() { return MODELS1[getCurrentModelKey()]; }
 
       /** 当前选中的算法 */
       function getCurrentMethod() {
@@ -2125,16 +2031,7 @@
       resize();
       setStatus("正在加载默认模型 3D 预览...", "#8cc4ff");
       window.addEventListener("resize", resize);
-      function onModelRadioChange() {
-        const src = document.querySelector('input[name="model-source"]:checked');
-        if (src) setModelSource(src.value);
-      }
-      modelSelect1.addEventListener("change", function () { if (modelRadio1.checked) setModelSource("assets/Models"); });
-      modelSelect2.addEventListener("change", function () { if (modelRadio2.checked) setModelSource("assets/Models2"); });
-      modelSelect3.addEventListener("change", function () { if (modelRadio3.checked) setModelSource("assets/Models3"); });
-      modelRadio1.addEventListener("change", onModelRadioChange);
-      modelRadio2.addEventListener("change", onModelRadioChange);
-      modelRadio3.addEventListener("change", onModelRadioChange);
+      modelSelect.addEventListener("change", loadModelPreview);
       reloadBtn.addEventListener("click", updateModel);
 
       // 纹理显示单选框切换
@@ -2164,13 +2061,8 @@
         }
       });
       
-      // 启动时随机选择一个模型源加载
-      (function(){
-        const radios = [modelRadio1, modelRadio2, modelRadio3];
-        const idx = Math.floor(Math.random() * 3);
-        radios[idx].checked = true;
-        setModelSource(radios[idx].value);
-      })();
+      // 启动加载第一个模型
+      (function(){ loadModelPreview(); })();
       animate();
     })();
   </script>

@@ -43,6 +43,10 @@
   #reload-btn{padding:9px 22px;background:linear-gradient(135deg,#ff6b35 0%,#ff8f5e 100%);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .25s cubic-bezier(.4,0,.2,1);box-shadow:0 3px 10px rgba(255,107,53,.4);letter-spacing:1px}
   #reload-btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
   #reload-btn:not(:disabled):hover{transform:translateY(-2px) scale(1.04);box-shadow:0 6px 18px rgba(255,107,53,.6)}
+  #cone-btn{padding:9px 14px;background:#2a1a3e;border:1px solid rgba(200,120,220,.35);color:#d4a0f0;font-size:13px}
+  #cone-btn.active{background:#4a2060;border-color:#c060e0;box-shadow:0 0 12px rgba(180,80,220,.4)}
+  #cone-info{display:none;font-size:11px;color:#c9a0e0;margin-left:6px}
+  .cone-angle{width:50px;padding:2px 4px;border-radius:4px;text-align:center;font-size:11px;border:1px solid rgba(200,120,220,.3);background:#0d1528;color:#e0c0ff}
 </style>
 </head>
 <body>
@@ -80,6 +84,9 @@
         </span>
       </fieldset>
 
+      <button id="cone-btn" title="点击模型顶点添加锥奇异点">🎯 锥奇异点</button>
+      <span id="cone-info">0 个</span>
+
       <button id="reload-btn">展开!</button>
 
       <div class="status" id="status-text">正在加载模型...</div>
@@ -104,18 +111,15 @@
 (function(){
   // ============ Models2 ============
   const MODELS = {
-    holes3: { label: "3 Holes", file: "3holes.obj" },
-    armadillo: { label: "Armadillo", file: "armadillo.obj" },
-    beast: { label: "Beast", file: "beast.obj" },
-    botijo: { label: "Botijo", file: "botijo.obj" },
-    bunny: { label: "Bunny", file: "bunny.obj" },
-    cow: { label: "Cow", file: "cow.obj" },
-    doubletorus: { label: "Double Torus", file: "double-torus.obj" },
-    fandisk: { label: "Fandisk", file: "fandisk.obj" },
-    happy: { label: "Happy Buddha", file: "happy.obj" },
-    lucy: { label: "Lucy", file: "lucy.obj" },
-    rocker: { label: "Rocker Arm", file: "rocker-arm.obj" },
-    torus: { label: "Torus", file: "torus.obj" }
+    cow: { label: "Cow (5.8K)", file: "cow_F5804.obj" },
+    doubletorus: { label: "Double Torus (6.1K)", file: "double-torus_F6144.obj" },
+    holes3: { label: "3 Holes (7.2K)", file: "3holes_F7200.obj" },
+    torus: { label: "Torus (7.7K)", file: "torus_F7680.obj" },
+    fandisk: { label: "Fandisk (12.9K)", file: "fandisk_F12946.obj" },
+    kitten: { label: "Kitten (18.9K)", file: "kitten_F18894.obj" },
+    rocker: { label: "Rocker Arm (20.1K)", file: "rocker-arm_F20088.obj" },
+    bunny: { label: "Bunny (28.6K)", file: "bunny_F28576.obj" },
+    soccerball: { label: "Soccer Ball (57.6K)", file: "soccerball_F57600.obj" },
   };
 
   // ============ Three.js 初始化 ============
@@ -253,6 +257,98 @@
     return c;
   }
 
+  // ============ 锥奇异点交互 ============
+  let coneMode = false;
+  let coneVertices = [];  // [{index, angle}]  angle 为目标角度和（默认 2π）
+  let coneMarkers = null;
+  const raycaster = new THREE.Raycaster();
+
+  function toggleConeMode(){
+    coneMode = !coneMode;
+    const btn = document.getElementById('cone-btn');
+    btn.classList.toggle('active', coneMode);
+    btn.textContent = coneMode ? '🎯 选择中...' : '🎯 锥奇异点';
+    controls.enabled = !coneMode;
+    // 点选模式下鼠标变为十字
+    modelCanvas.style.cursor = coneMode ? 'crosshair' : '';
+  }
+
+  function addConeVertex(vertexIndex, angle){
+    if (!angle || angle < 0) angle = 2 * Math.PI;
+    const exist = coneVertices.find(c => c.index === vertexIndex);
+    if (exist) { exist.angle = angle; } else { coneVertices.push({index: vertexIndex, angle}); }
+    updateConeDisplay();
+  }
+
+  function removeConeVertex(vertexIndex){
+    coneVertices = coneVertices.filter(c => c.index !== vertexIndex);
+    updateConeDisplay();
+  }
+
+  function clearCones(){
+    coneVertices = [];
+    updateConeDisplay();
+  }
+
+  function updateConeDisplay(){
+    const info = document.getElementById('cone-info');
+    info.style.display = coneVertices.length > 0 ? '' : 'none';
+    info.textContent = coneVertices.length + ' 个';
+    // 更新 3D 标记
+    if (coneMarkers){ modelScene.remove(coneMarkers); coneMarkers = null; }
+    if (coneVertices.length === 0 || !currentMeshData) return;
+    const pts = [];
+    for (const c of coneVertices){
+      if (c.index < currentMeshData.positions.length){
+        const p = currentMeshData.positions[c.index];
+        pts.push(p[0], p[1], p[2]);
+      }
+    }
+    if (pts.length === 0) return;
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    coneMarkers = new THREE.Points(geom, new THREE.PointsMaterial({color: 0xff3377, size: .04, sizeAttenuation: true}));
+    modelScene.add(coneMarkers);
+  }
+
+  modelCanvas.addEventListener('click', function(e){
+    if (!coneMode || !currentMeshData || !currentModelGroup) return;
+    const rect = modelCanvas.getBoundingClientRect();
+    const mouse = new THREE.Vector2(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    raycaster.setFromCamera(mouse, modelCam);
+    const hits = raycaster.intersectObjects(currentModelGroup.children, true);
+    if (hits.length > 0){
+      const vi = hits[0].faceIndex; // face index (approx)
+      // 找到最近顶点
+      const face = currentMeshData.faces[vi >= 0 && vi < currentMeshData.faces.length ? vi : 0];
+      if (!face) return;
+      const pos = currentMeshData.positions;
+      let bestVi = face[0], bestD2 = Infinity;
+      const hp = hits[0].point;
+      for (let k = 0; k < 3; k++){
+        const idx = face[k], p = pos[idx];
+        const d2 = (hp.x-p[0])**2 + (hp.y-p[1])**2 + (hp.z-p[2])**2;
+        if (d2 < bestD2){ bestD2 = d2; bestVi = idx; }
+      }
+      // Ctrl+Click 删除，普通点击添加
+      if (e.ctrlKey || e.metaKey){
+        removeConeVertex(bestVi);
+      } else {
+        const existing = coneVertices.find(c => c.index === bestVi);
+        if (existing) {
+          removeConeVertex(bestVi);
+        } else {
+          addConeVertex(bestVi, 2 * Math.PI);
+        }
+      }
+    }
+  });
+
+  document.getElementById('cone-btn').addEventListener('click', toggleConeMode);
+
   // ============ WASM 求解器 ============
   let cpInst=null,cpReady=false,cpFailed=false;
   let cetmInst=null,cetmReady=false,cetmFailed=false;
@@ -268,6 +364,9 @@
   function onParamChange(){
     const m=getMethod();
     document.getElementById('param-opt-scheme').style.display='';
+    document.getElementById('cone-btn').style.display = (m==='cp') ? '' : 'none';
+    document.getElementById('cone-info').style.display = (m==='cp' && coneVertices.length>0) ? '' : 'none';
+    if (m==='cetm'||m==='ricci'){ coneMode=false; document.getElementById('cone-btn').classList.remove('active'); document.getElementById('cone-btn').textContent='🎯 锥奇异点'; controls.enabled=true; modelCanvas.style.cursor=''; }
     updateButtonState();
   }
   window.onParamChange=onParamChange;
@@ -305,15 +404,29 @@
     const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
     const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
     const pp=wasmWritePosInst(cpInst,fp),fpt=wasmWriteFacesInst(cpInst,ff);
+    // 锥奇异点
+    const cones = coneVertices.length > 0 ? coneVertices : [];
+    let ciPtr = 0, caPtr = 0;
+    if (cones.length > 0){
+      const ci = new Int32Array(cones.map(c => c.index));
+      const ca = new Float64Array(cones.map(c => c.angle));
+      ciPtr = cpInst._malloc(ci.length * 4);
+      for(let i=0;i<ci.length;i++)cpInst.setValue(ciPtr+i*4,ci[i],'i32');
+      caPtr = cpInst._malloc(ca.length * 8);
+      for(let i=0;i<ca.length;i++)cpInst.setValue(caPtr+i*8,ca[i],'double');
+    }
     try{
-      const rc=cpInst.ccall('solve_cp','number',['number','number','number','number','number','number','number','number','number'],[pp,fp.length,fpt,ff.length,getOptScheme(),0,0,0,0]);
+      const rc=cpInst.ccall('solve_cp','number',['number','number','number','number','number','number','number','number','number'],[pp,fp.length,fpt,ff.length,getOptScheme(),ciPtr,cones.length,caPtr,cones.length]);
       if(rc!==0)throw new Error("solve_cp 错误:"+rc);
       const us=wasmReadUV(cpInst,'get_cp_uv_result_size','get_cp_uv_result');
       cpInst.ccall('cp_dispose','void',[],[]);
       const t=cpInst.ccall('get_cp_last_time_ms','number',[],[]);
       const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
-      return{uv,timeMs:t,method:'cp'};
-    }finally{cpInst._free(pp);cpInst._free(fpt)}
+      return{uv,timeMs:t,method:'cp',cones:cones.length};
+    }finally{
+      cpInst._free(pp);cpInst._free(fpt);
+      if(ciPtr)cpInst._free(ciPtr);if(caPtr)cpInst._free(caPtr);
+    }
   }
 
   async function solveCETM(meshData){
@@ -358,6 +471,7 @@
       let root=null;
       for(const u of urls){try{root=await loadOBJ(u);break}catch(e){}}
       if(!root)throw new Error("模型加载失败");
+      clearCones();  // 切换模型时清空锥奇异点
       normalizeObject(root);
       if(currentModelGroup){modelScene.remove(currentModelGroup)}if(currentUvLines){uvScene.remove(currentUvLines)}if(currentUvPins){uvScene.remove(currentUvPins)}
       currentUvLines=null;currentUvPins=null;currentUnwrapUv=null;
@@ -388,8 +502,9 @@
       const uvV=buildUvMesh(r.uv,currentMeshData.faces,anchors);
       currentUvLines=uvV.lines;currentUvPins=uvV.pins;uvScene.add(currentUvLines);uvScene.add(currentUvPins);
       const fc=countFlippedFaces(r.uv,currentMeshData.faces);
-      showTiming(ms,label+' / '+optNames[getOptScheme()]+' / '+MODELS[modelSel.value].label+' / '+currentMeshData.positions.length+' 顶点 / '+currentMeshData.faces.length+' 三角面',fc);
-      setStatus(label+" 完成，翻转面 "+fc+" 个",fc===0?"#89f0b6":"#ffd38a");
+      const coneInfo = (r.cones > 0) ? (' / 锥奇异点 ' + r.cones + ' 个') : '';
+      showTiming(ms,label+' / '+optNames[getOptScheme()]+' / '+MODELS[modelSel.value].label+' / '+currentMeshData.positions.length+' 顶点 / '+currentMeshData.faces.length+' 三角面'+coneInfo,fc);
+      setStatus(label+" 完成，翻转面 "+fc+" 个"+(r.cones>0?"，锥 "+r.cones+" 个":""),fc===0?"#89f0b6":"#ffd38a");
     }catch(e){console.error(e);setStatus("失败: "+e.message,"#ff9d9d")}
     finally{setBusy(false)}
   }
