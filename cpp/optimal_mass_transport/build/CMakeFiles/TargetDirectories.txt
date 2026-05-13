@@ -1,3 +1,0 @@
-/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/cpp/optimal_mass_transport/build/CMakeFiles/run_tests.dir
-/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/cpp/optimal_mass_transport/build/CMakeFiles/edit_cache.dir
-/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/cpp/optimal_mass_transport/build/CMakeFiles/rebuild_cache.dir

@@ -1,0 +1,25 @@
+build/
+*.dSYM/
+output/
+
+# Binaries
+debug_test
+full_test
+pinpoint
+step_test
+run_tests
+run_tests.exe
+*.out
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Compiler intermediates
+*.o
+*.obj
+*.pdb
+*.ilk
+*.d
