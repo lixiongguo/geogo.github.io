@@ -27,6 +27,14 @@ target_include_directories(run_tests PRIVATE
 )
 target_link_libraries(run_tests Eigen3::Eigen)
 
+add_executable(transition_test transition_test.cpp)
+target_include_directories(transition_test PRIVATE
+    ${EIGEN3_INCLUDE_DIR}
+    ${STB_DIR}
+    ${CMAKE_SOURCE_DIR}
+)
+target_link_libraries(transition_test Eigen3::Eigen)
+
 if(MSVC)
     # Make __cplusplus reflect the selected C++ standard for Eigen.
     target_compile_options(run_tests PRIVATE /Zc:__cplusplus)
