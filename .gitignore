@@ -18,3 +18,6 @@ scripts/oss_credentials.md
 scripts/_monograph_temp.html
 scripts/.math_cache
 scripts/_pdf_images
+
+# Blender 场景文件太大了，不提交
+assets/renderer/CausticsLens/
