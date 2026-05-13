@@ -103,26 +103,30 @@ void test_3() {
 }
 
 void test_4() {
-    printf("\n===== Test 4: flame image deformation series =====\n");
+    printf("\n===== Test 4: flame colour deformation series (20 frames) =====\n");
     int square_edge = 2;
     int P_type      = 1;
     int eq_method   = 0;
 
+    // Compute OT map from grayscale
     auto optimal_u = omt::compute_optimal_mass_transport(
         img("flame_2.bmp"), img("flame_1.bmp"),
         square_edge, P_type, eq_method);
 
-    auto image_0 = omt::imread_gray(img("flame_2.bmp"));
-    auto image_1 = omt::imread_gray(img("flame_1.bmp"));
+    // Load colour images
+    auto rgb0 = omt::imread_rgb(img("flame_2.bmp"));
+    auto rgb1 = omt::imread_rgb(img("flame_1.bmp"));
 
-    int num_frames = 6;
-    auto series = omt::create_image_series(optimal_u, image_0, image_1,
-                                            square_edge, num_frames);
+    printf("Colour images: %ld×%ld\n", rgb0[0].rows(), rgb0[0].cols());
+
+    int num_frames = 20;
+    auto series = omt::create_image_series_rgb(optimal_u, rgb0, rgb1,
+                                                square_edge, num_frames);
 
     for (int i = 0; i < static_cast<int>(series.size()); ++i) {
         std::string fname = "test4_frame_" + std::to_string(i + 1) + ".bmp";
-        omt::imwrite_gray(out(fname), series[static_cast<size_t>(i)]);
-        printf("  Frame %d → %s\n", i + 1, out(fname).c_str());
+        omt::imwrite_rgb(out(fname), series[static_cast<size_t>(i)]);
+        printf("  Frame %d/%d → %s\n", i + 1, num_frames, out(fname).c_str());
     }
 }
 

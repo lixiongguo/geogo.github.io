@@ -14,6 +14,7 @@
 
 #include <string>
 #include <vector>
+#include <array>
 #include <utility>
 #include <cmath>
 #include <algorithm>
@@ -767,6 +768,98 @@ compute_optimal_mass_transport(const std::string& img0_path,
 
     Tensor2D u = gradient_descent(u0, myu_0, myu_1, square_edge_len, P_type);
     return u;
+}
+
+// ─── RGB (colour) support ──────────────────────────────────────────────────
+
+using RGBImage = std::array<ImageMat, 3>;  // R, G, B channels
+
+inline RGBImage imread_rgb(const std::string& path) {
+    int w, h, ch;
+    unsigned char* data = stbi_load(path.c_str(), &w, &h, &ch, 3);  // force RGB
+    if (!data) throw std::runtime_error("Cannot open: " + path);
+    RGBImage rgb;
+    for (int k = 0; k < 3; ++k) rgb[k] = ImageMat(h, w);
+    for (int r = 0; r < h; ++r)
+        for (int c = 0; c < w; ++c)
+            for (int k = 0; k < 3; ++k)
+                rgb[k](r, c) = static_cast<double>(data[(r * w + c) * 3 + k]);
+    stbi_image_free(data);
+    return rgb;
+}
+
+inline void imwrite_rgb(const std::string& path, const RGBImage& img) {
+    int h = static_cast<int>(img[0].rows());
+    int w = static_cast<int>(img[0].cols());
+    std::vector<unsigned char> buf(static_cast<size_t>(h * w * 3));
+    for (int r = 0; r < h; ++r)
+        for (int c = 0; c < w; ++c)
+            for (int k = 0; k < 3; ++k) {
+                double v = std::round(img[k](r, c));
+                v = std::max(0.0, std::min(255.0, v));
+                buf[(r * w + c) * 3 + k] = static_cast<unsigned char>(v);
+            }
+    stbi_write_bmp(path.c_str(), w, h, 3, buf.data());
+}
+
+// RGB version: compute OT from grayscale, apply SAME deform to all channels
+inline std::vector<RGBImage>
+create_image_series_rgb(const Tensor2D& optimal_u,
+                         const RGBImage& img0,
+                         const RGBImage& img1,
+                         int square_edge_len,
+                         int num_frames)
+{
+    int s1 = static_cast<int>(optimal_u.first.rows());
+    int s2 = static_cast<int>(optimal_u.first.cols());
+    int h = static_cast<int>(img1[0].rows());
+    int w = static_cast<int>(img1[0].cols());
+
+    Tensor2D delta_u;
+    delta_u.first  = Eigen::MatrixXd(s1, s2);
+    delta_u.second = Eigen::MatrixXd(s1, s2);
+    for (int i = 0; i < s1; ++i)
+        for (int j = 0; j < s2; ++j) {
+            delta_u.first(i, j)  = (optimal_u.first(i, j)  - (i + 1.0)) / num_frames;
+            delta_u.second(i, j) = (optimal_u.second(i, j) - (j + 1.0)) / num_frames;
+        }
+
+    std::vector<RGBImage> series;
+    series.reserve(static_cast<size_t>(num_frames));
+
+    for (int f = num_frames; f >= 1; --f) {
+        Tensor2D u_frame;
+        u_frame.first  = Eigen::MatrixXd(s1, s2);
+        u_frame.second = Eigen::MatrixXd(s1, s2);
+        for (int i = 0; i < s1; ++i)
+            for (int j = 0; j < s2; ++j) {
+                u_frame.first(i, j)  = optimal_u.first(i, j)
+                    - (f - 1) * delta_u.first(i, j);
+                u_frame.second(i, j) = optimal_u.second(i, j)
+                    - (f - 1) * delta_u.second(i, j);
+            }
+
+        Tensor2D u_img = compute_image_deformation_map(u_frame, img1[0], square_edge_len);
+        double t = static_cast<double>(f) / num_frames;
+        int crop = square_edge_len + 4;
+        int nh = std::max(1, h - crop), nw = std::max(1, w - crop);
+
+        RGBImage frame;
+        for (int k = 0; k < 3; ++k) {
+            frame[k] = ImageMat::Zero(h, w);
+            for (int i = 0; i < h; ++i)
+                for (int j = 0; j < w; ++j) {
+                    int xl = std::max(0, std::min(h - 1,
+                        static_cast<int>(std::round(u_img.first(i, j))) - 1));
+                    int yl = std::max(0, std::min(w - 1,
+                        static_cast<int>(std::round(u_img.second(i, j))) - 1));
+                    frame[k](i, j) = (1.0 - t) * img0[k](i, j) + t * img1[k](xl, yl);
+                }
+            frame[k] = frame[k].block(0, 0, nh, nw);
+        }
+        series.push_back(std::move(frame));
+    }
+    return series;
 }
 
 } // namespace omt
