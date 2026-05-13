@@ -17,12 +17,24 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#ifdef _WIN32
+#include <direct.h>
+#else
 #include <sys/stat.h>
+#endif
 
 // Base directory for test images
 static const std::string kImageDir =
     "../midas-journal-319-master/code_optimal_mass_transport/";
 static const std::string kOutputDir = "output/";
+
+static void ensure_output_dir() {
+#ifdef _WIN32
+    _mkdir(kOutputDir.c_str());
+#else
+    mkdir(kOutputDir.c_str(), 0755);
+#endif
+}
 
 // helper: construct full image path
 static std::string img(const std::string& name) { return kImageDir + name; }
@@ -204,7 +216,7 @@ int main(int argc, char* argv[]) {
     int test_type = std::atoi(argv[1]);
 
     // ensure output directory exists
-    mkdir(kOutputDir.c_str(), 0755);
+    ensure_output_dir();
 
     try {
         switch (test_type) {
