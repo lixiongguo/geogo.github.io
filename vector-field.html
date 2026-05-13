@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>向量场 — Trivial Connection / N-RoSy（复多项式）</title>
+  <title>向量场 — Trivial Connection / N-PolyVector</title>
   <script src="./assets/wasm/principal_curvature.js"></script>
 
   <style>
@@ -36,6 +36,7 @@
       font-size: 18px;
       font-weight: 600;
       background: linear-gradient(90deg, #6366f1, #a78bfa);
+      background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -231,13 +232,14 @@
 
 <div class="container">
   <div class="header">
-    <h1>向量场 — Trivial Connection · N-RoSy</h1>
+    <h1>向量场 — Trivial Connection · N-PolyVector</h1>
     <div class="controls">
       <div class="control-group">
-        <label>场源:</label>
-        <select id="source-select" title="主曲率：libigl WASM；Trivial：Crane 离散联络 + 复多项式种子（Diamanti 等）">
+        <label>算法:</label>
+        <select id="source-select" title="主曲率：libigl WASM；Trivial：Keenan Crane 离散联络；N-PolyVector：复多项式零点控制奇点">
           <option value="principal">主曲率 (libigl)</option>
-          <option value="trivial" selected>Trivial Connection + 复多项式</option>
+          <option value="trivial" selected>Keenan Crane Trivial Connection</option>
+          <option value="polyvector">Design N-PolyVector (Complex Polynomial)</option>
         </select>
       </div>
       <div class="control-group" id="poly-controls">
@@ -286,20 +288,19 @@
           <option value="3holes">3 Holes (7.2K)</option>
           <option value="torus-obj">Torus (7.7K)</option>
           <option value="fandisk">Fandisk (12.9K)</option>
+          <option value="kitten">Kitten (18.9K)</option>
           <option value="rocker-arm">Rocker Arm (20K)</option>
           <option value="bunny">Bunny (28.6K)</option>
-          <option value="beast">Beast (32.4K)</option>
-          <option value="happy">Happy Buddha (98.6K)</option>
-          <option value="lucy">Lucy (100K)</option>
-          <option value="armadillo">Armadillo (100K)</option>
+          <option value="elephant">Elephant</option>
+          <option value="soccerball">Soccer Ball (57.6K)</option>
         </select>
       </div>
       <div class="control-group">
         <label>显示:</label>
         <select id="field-select">
-          <option value="principal">主曲率方向</option>
-          <option value="asymptotic">渐近方向</option>
-          <option value="both">两者都显示</option>
+          <option value="principal">主方向 / 第一分支</option>
+          <option value="asymptotic">渐近方向 / N 分支</option>
+          <option value="both">全部显示</option>
         </select>
       </div>
       <div class="control-group">
@@ -373,11 +374,11 @@
           </div>
           <div class="legend-item" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(100,140,255,0.2);">
             <div class="legend-color" style="background: #ff6b9d;"></div>
-            <span>Trivial：主枝方向</span>
+            <span>N-RoSy：主枝方向</span>
           </div>
           <div class="legend-item">
             <div class="legend-color" style="background: #88ffc2;"></div>
-            <span>Trivial：N-RoSy 对称枝</span>
+            <span>N-RoSy：对称分支</span>
           </div>
         </div>
       </div>
@@ -386,9 +387,9 @@
         <h3>说明</h3>
         <div class="info-item">
           <div class="value" style="font-size: 11px; line-height: 1.6;">
-            <strong>Trivial Connection</strong>（Crane 等）：在三角网格上为 N-RoSy 场指定「沿边的平行输运」转角，使除奇点外和乐（holonomy）平凡；本页用 <strong>复多项式 P(z)</strong> 在面心 PCA 平面坐标上给出光滑种子相位，再沿邻接面 BFS 用 N 重对称（2π/N 整数倍）对齐跳跃，对应离散联络的整数化思路。<br><br>
-            与 <em>Designing N-PolyVector Fields with Complex Polynomials</em> 及参考实现
-            <a href="https://github.com/LucasGao2000/4-Rosy-Complex-Poly" target="_blank" rel="noopener" style="color:#8ab4ff">4-Rosy-Complex-Poly</a> 同类：多项式零点控制奇点位置。<br><br>
+            <strong>Keenan Crane Trivial Connection</strong>：在三角网格面之间做离散平行输运，从一个种子方向沿邻接面传播，得到除全局 holonomy 影响外尽量平凡的 N-RoSy 场。<br><br>
+            <strong>Designing N-PolyVector Fields with Complex Polynomials</strong>：用复多项式 <strong>P(z)</strong> 的相位定义 N-RoSy 场，零点控制奇点位置；与参考实现
+            <a href="https://github.com/LucasGao2000/4-Rosy-Complex-Poly" target="_blank" rel="noopener" style="color:#8ab4ff">4-Rosy-Complex-Poly</a> 同类。<br><br>
             <strong>主曲率</strong> 模式仍使用 libigl WASM。鼠标拖拽旋转，滚轮缩放。
           </div>
         </div>
@@ -421,14 +422,14 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
   // State
   let currentModel = 'sphere';
-  let fieldSource = 'trivial'; // 'principal' | 'trivial'
+  let fieldSource = 'trivial'; // 'principal' | 'trivial' | 'polyvector'
   let displayMode = 'principal';
   let arrowMode = 'arrows';
   let density = 2;
   let isAnimating = false;
   let animationPhase = 0;
 
-  /** Trivial connection + complex polynomial N-RoSy: per-face angle θ in tangent plane, bases (T1,T2), normals */
+  /** N-RoSy result: per-face angle θ in tangent plane, bases (T1,T2), normals */
   let trivialResult = null;
 
   // WASM principal curvature state
@@ -662,7 +663,8 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
       addEdge(i2, i0, fi);
     }
     const adj = new Array(numF).fill(0).map(function () { return []; });
-    edgeMap.forEach(function (list) {
+    const boundaryEdges = [];
+    edgeMap.forEach(function (list, key) {
       if (list.length === 2) {
         const fa = list[0], fb = list[1];
         const a0 = F[fa * 3], a1 = F[fa * 3 + 1], a2 = F[fa * 3 + 2];
@@ -676,49 +678,163 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
         if (v0 === v1) return;
         adj[fa].push({ other: fb, va: v0, vb: v1 });
         adj[fb].push({ other: fa, va: v0, vb: v1 });
+      } else if (list.length === 1) {
+        const parts = key.split('_');
+        if (parts.length === 2) {
+          boundaryEdges.push({ face: list[0], va: parseInt(parts[0], 10), vb: parseInt(parts[1], 10) });
+        }
       }
     });
-    return { normals: normals, T1: T1, T2: T2, cent: cent, adj: adj };
+    return { normals: normals, T1: T1, T2: T2, cent: cent, adj: adj, boundaryEdges: boundaryEdges };
   }
 
-  function computeTrivialNRosyField(V, F) {
+  function isNRosySource() {
+    return fieldSource === 'trivial' || fieldSource === 'polyvector';
+  }
+
+  function complexMul(a, b) {
+    return { re: a.re * b.re - a.im * b.im, im: a.re * b.im + a.im * b.re };
+  }
+
+  function complexConj(a) {
+    return { re: a.re, im: -a.im };
+  }
+
+  function complexPowUnit(a, n) {
+    const ang = Math.atan2(a.im, a.re) * n;
+    return { re: Math.cos(ang), im: Math.sin(ang) };
+  }
+
+  function edgeComplexInFace(V, T1, T2, fi, va, vb) {
+    const ex = V[va * 3] - V[vb * 3];
+    const ey = V[va * 3 + 1] - V[vb * 3 + 1];
+    const ez = V[va * 3 + 2] - V[vb * 3 + 2];
+    const el = Math.hypot(ex, ey, ez) + 1e-20;
+    const ux = ex / el, uy = ey / el, uz = ez / el;
+    const re = ux * T1[fi * 3] + uy * T1[fi * 3 + 1] + uz * T1[fi * 3 + 2];
+    const im = ux * T2[fi * 3] + uy * T2[fi * 3 + 1] + uz * T2[fi * 3 + 2];
+    return complexConj({ re: re, im: im });
+  }
+
+  function solvePolyVectorFieldFromRepo(V, F, frames, N) {
+    const { normals, T1, T2, adj, boundaryEdges } = frames;
     const numF = F.length / 3;
-    if (numF < 1) return null;
-    const N = parseInt(document.getElementById('nrosy-n').value, 10) || 4;
-    const polyType = document.getElementById('poly-type').value;
-    const kpow = parseInt(document.getElementById('poly-k').value, 10) || 2;
-    const s0r = parseInt(document.getElementById('root-re').value, 10) * 0.01;
-    const s0i = parseInt(document.getElementById('root-im').value, 10) * 0.01;
-    const s1r = parseInt(document.getElementById('root2-re').value, 10) * 0.01;
-    const s1i = parseInt(document.getElementById('root2-im').value, 10) * 0.01;
+    const zRe = new Float64Array(numF);
+    const zIm = new Float64Array(numF);
+    const fixed = new Uint8Array(numF);
+    const cRe = new Float64Array(numF);
+    const cIm = new Float64Array(numF);
 
-    let cu = 0, cv = 0, cw = 0;
-    const nv = V.length / 3;
-    for (let i = 0; i < nv; i++) {
-      cu += V[i * 3];
-      cv += V[i * 3 + 1];
-      cw += V[i * 3 + 2];
-    }
-    cu /= nv;
-    cv /= nv;
-    cw /= nv;
-
-    const { normals, T1, T2, cent, adj } = buildFaceFramesAndAdjacency(V, F, numF);
-    const rawTheta = new Float32Array(numF);
     for (let fi = 0; fi < numF; fi++) {
-      const zre = cent[fi * 3] - cu;
-      const zim = cent[fi * 3 + 1] - cv;
-      const P = evalPolynomialAtZ(zre, zim, polyType, kpow, s0r, s0i, s1r, s1i);
-      rawTheta[fi] = Math.atan2(P.im, P.re) / N;
+      zRe[fi] = 1;
+      zIm[fi] = 0;
+    }
+
+    boundaryEdges.forEach(function (edge) {
+      const fi = edge.face;
+      const ex = V[edge.va * 3] - V[edge.vb * 3];
+      const ey = V[edge.va * 3 + 1] - V[edge.vb * 3 + 1];
+      const ez = V[edge.va * 3 + 2] - V[edge.vb * 3 + 2];
+      const el = Math.hypot(ex, ey, ez) + 1e-20;
+      const ux = ex / el, uy = ey / el, uz = ez / el;
+      const nx = normals[fi * 3], ny = normals[fi * 3 + 1], nz = normals[fi * 3 + 2];
+      const px = uy * nz - uz * ny;
+      const py = uz * nx - ux * nz;
+      const pz = ux * ny - uy * nx;
+      const pl = Math.hypot(px, py, pz) + 1e-20;
+      const dir = {
+        re: (px / pl) * T1[fi * 3] + (py / pl) * T1[fi * 3 + 1] + (pz / pl) * T1[fi * 3 + 2],
+        im: (px / pl) * T2[fi * 3] + (py / pl) * T2[fi * 3 + 1] + (pz / pl) * T2[fi * 3 + 2]
+      };
+      const zn = complexPowUnit(dir, N);
+      fixed[fi] = 1;
+      cRe[fi] += zn.re;
+      cIm[fi] += zn.im;
+    });
+
+    let fixedCount = 0;
+    for (let fi = 0; fi < numF; fi++) {
+      if (!fixed[fi]) continue;
+      fixedCount++;
+      const l = Math.hypot(cRe[fi], cIm[fi]) + 1e-20;
+      zRe[fi] = cRe[fi] / l;
+      zIm[fi] = cIm[fi] / l;
+    }
+
+    if (fixedCount === 0 && numF > 0) {
+      fixed[0] = 1;
+      zRe[0] = 1;
+      zIm[0] = 0;
+    }
+
+    const nextRe = new Float64Array(numF);
+    const nextIm = new Float64Array(numF);
+    for (let iter = 0; iter < 90; iter++) {
+      for (let fi = 0; fi < numF; fi++) {
+        if (fixed[fi]) {
+          nextRe[fi] = zRe[fi];
+          nextIm[fi] = zIm[fi];
+          continue;
+        }
+
+        let sr = 0, si = 0, w = 0;
+        const neighbors = adj[fi];
+        for (let k = 0; k < neighbors.length; k++) {
+          const nb = neighbors[k];
+          const gj = nb.other;
+          const ef = complexPowUnit(edgeComplexInFace(V, T1, T2, fi, nb.va, nb.vb), N);
+          const eg = complexPowUnit(edgeComplexInFace(V, T1, T2, gj, nb.va, nb.vb), N);
+          const ratio = complexMul(eg, complexConj(ef));
+          const transported = complexMul(ratio, { re: zRe[gj], im: zIm[gj] });
+          sr += transported.re;
+          si += transported.im;
+          w += 1;
+        }
+
+        if (w > 0) {
+          const l = Math.hypot(sr, si) + 1e-20;
+          nextRe[fi] = sr / l;
+          nextIm[fi] = si / l;
+        } else {
+          nextRe[fi] = zRe[fi];
+          nextIm[fi] = zIm[fi];
+        }
+      }
+
+      zRe.set(nextRe);
+      zIm.set(nextIm);
     }
 
     const theta = new Float32Array(numF);
+    for (let fi = 0; fi < numF; fi++) {
+      theta[fi] = Math.atan2(zIm[fi], zRe[fi]) / N;
+    }
+    return theta;
+  }
+
+  function computeNRosyField(V, F) {
+    const numF = F.length / 3;
+    if (numF < 1) return null;
+    const N = parseInt(document.getElementById('nrosy-n').value, 10) || 4;
+
+    const frames = buildFaceFramesAndAdjacency(V, F, numF);
+    const { normals, T1, T2, cent, adj } = frames;
+
+    const theta = new Float32Array(numF);
+
+    if (fieldSource === 'polyvector') {
+      const solvedTheta = solvePolyVectorFieldFromRepo(V, F, frames, N);
+      return { theta: solvedTheta, T1: T1, T2: T2, normals: normals, cent: cent, N: N, numF: numF, algorithm: 'polyvector' };
+    }
+
+    // Keenan Crane-style trivial connection demo: propagate one seed direction by
+    // discrete parallel transport across face adjacency.
     const visited = new Uint8Array(numF);
     for (let seed = 0; seed < numF; seed++) {
       if (visited[seed]) continue;
       const queue = [seed];
       visited[seed] = 1;
-      theta[seed] = rawTheta[seed];
+      theta[seed] = 0;
       let qh = 0;
       while (qh < queue.length) {
         const f = queue[qh++];
@@ -735,31 +851,33 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
             V[v0 * 3], V[v0 * 3 + 1], V[v0 * 3 + 2],
             V[v1 * 3], V[v1 * 3 + 1], V[v1 * 3 + 2]
           );
-          const ref = theta[f] + tau;
-          theta[g] = snapToFiber(rawTheta[g], ref, N);
+          theta[g] = theta[f] + tau;
           visited[g] = 1;
           queue.push(g);
         }
       }
     }
 
-    return { theta: theta, T1: T1, T2: T2, normals: normals, cent: cent, N: N, numF: numF };
+    return { theta: theta, T1: T1, T2: T2, normals: normals, cent: cent, N: N, numF: numF, algorithm: 'trivial' };
   }
 
   function syncPolyControlsVisibility() {
-    const on = fieldSource === 'trivial';
+    const nRosyOn = isNRosySource();
+    const polynomialSeedOn = false;
     const ids = ['poly-controls', 'poly-controls2', 'poly-controls3', 'poly-controls4', 'poly-controls5', 'poly-controls6', 'poly-controls7'];
     for (let i = 0; i < ids.length; i++) {
       const el = document.getElementById(ids[i]);
-      if (el) el.style.display = on ? 'flex' : 'none';
+      if (el) el.style.display = polynomialSeedOn ? 'flex' : 'none';
     }
+    const nCtrl = document.getElementById('poly-controls');
+    if (nCtrl) nCtrl.style.display = nRosyOn ? 'flex' : 'none';
     const pt = document.getElementById('poly-type').value;
     const q5 = document.getElementById('poly-controls5');
     const q6 = document.getElementById('poly-controls6');
     const q7 = document.getElementById('poly-controls7');
-    if (q5) q5.style.display = on && pt === 'quad' ? 'flex' : 'none';
-    if (q6) q6.style.display = on && pt === 'quad' ? 'flex' : 'none';
-    if (q7) q7.style.display = on && pt === 'power' ? 'flex' : 'none';
+    if (q5) q5.style.display = polynomialSeedOn && pt === 'quad' ? 'flex' : 'none';
+    if (q6) q6.style.display = polynomialSeedOn && pt === 'quad' ? 'flex' : 'none';
+    if (q7) q7.style.display = polynomialSeedOn && pt === 'power' ? 'flex' : 'none';
   }
 
   /**
@@ -856,7 +974,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     }
   }
 
-  // Generate arrows on each face: principal curvature (WASM) or Trivial Connection N-RoSy
+  // Generate arrows on each face: principal curvature (WASM) or N-RoSy field
   function generateArrows(geometry) {
     // Clear existing
     Object.keys(arrowGroups).forEach(key => {
@@ -877,7 +995,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     const idxAttr = geometry.index;
     const numFaces = idxAttr ? idxAttr.count / 3 : posAttr.count / 3;
 
-    if (fieldSource === 'trivial' && trivialResult && trivialResult.numF === numFaces) {
+    if (isNRosySource() && trivialResult && trivialResult.numF === numFaces) {
       const tr = trivialResult;
       const step = Math.max(1, Math.floor(numFaces / (80 * density)));
       let totalArrows = 0;
@@ -1034,7 +1152,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     const idxAttr = geometry.index;
     const numFaces = idxAttr ? idxAttr.count / 3 : positions.count / 3;
 
-    if (fieldSource === 'trivial' && trivialResult && trivialResult.numF === numFaces && currentF) {
+    if (isNRosySource() && trivialResult && trivialResult.numF === numFaces && currentF) {
       const tr = trivialResult;
       const nv = positions.count;
       const vx = new Float64Array(nv);
@@ -1202,17 +1320,16 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
   // Model file mapping for OBJ models
   const MODEL_FILES = {
-    cow: 'cow.obj',
-    'double-torus': 'double-torus.obj',
-    '3holes': '3holes.obj',
-    'torus-obj': 'torus.obj',
-    fandisk: 'fandisk.obj',
-    'rocker-arm': 'rocker-arm.obj',
-    bunny: 'bunny.obj',
-    beast: 'beast.obj',
-    happy: 'happy.obj',
-    lucy: 'lucy.obj',
-    armadillo: 'armadillo.obj'
+    cow: 'cow_F5804.obj',
+    'double-torus': 'double-torus_F6144.obj',
+    '3holes': '3holes_F7200.obj',
+    'torus-obj': 'torus_F7680.obj',
+    fandisk: 'fandisk_F12946.obj',
+    kitten: 'kitten_F18894.obj',
+    'rocker-arm': 'rocker-arm_F20088.obj',
+    bunny: 'bunny_F28576.obj',
+    elephant: 'elephant.obj',
+    soccerball: 'soccerball_F57600.obj'
   };
 
   // Create model (async for WASM computation)
@@ -1286,11 +1403,11 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
       }
     }
 
-    // Initialize field: Trivial Connection N-RoSy (JS) or libigl principal curvature (WASM)
+    // Initialize field: N-RoSy (JS) or libigl principal curvature (WASM)
     pcResult = null;
     trivialResult = null;
-    if (fieldSource === 'trivial') {
-      trivialResult = computeTrivialNRosyField(currentV, currentF);
+    if (isNRosySource()) {
+      trivialResult = computeNRosyField(currentV, currentF);
       document.getElementById('curvature').textContent = '—';
     } else {
       await initPCModule();
@@ -1318,6 +1435,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
         object.scale.setScalar(scale);
         object.position.sub(center.multiplyScalar(scale));
+        object.updateMatrixWorld(true);
 
         // Find first mesh and extract geometry
         let foundMesh = null;
@@ -1327,12 +1445,11 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
         if (foundMesh) {
           const geometry = foundMesh.geometry.clone();
+          geometry.applyMatrix4(foundMesh.matrixWorld);
           geometry.computeVertexNormals();
           await setupMesh(geometry, geometry.attributes.position.count,
             geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3);
         }
-
-        meshGroup.add(object);
       },
       undefined,
       function(err) {
@@ -1390,8 +1507,8 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   });
 
   function refreshTrivialField() {
-    if (fieldSource !== 'trivial' || !mesh || !currentV || !currentF) return;
-    trivialResult = computeTrivialNRosyField(currentV, currentF);
+    if (!isNRosySource() || !mesh || !currentV || !currentF) return;
+    trivialResult = computeNRosyField(currentV, currentF);
     updateVisualization();
   }
 

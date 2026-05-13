@@ -34,6 +34,7 @@
       font-size: 16px;
       font-weight: 600;
       background: linear-gradient(90deg, #6366f1, #a78bfa);
+      background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -943,8 +944,8 @@ class PolygonDecomp extends CanvasManager {
     this.monoStepIdx = 0;
 
     // Collect reflex vertices sorted by y-coordinate (sweep order)
-    const reflexList = [...this.reflexVertices].sort(
-      (a, b) => this.vertices[a].y - this.vertices[b].y] || this.vertices[a].x - this.vertices[b].x
+    const reflexList = [...this.reflexVertices].sort((a, b) =>
+      (this.vertices[a].y - this.vertices[b].y) || (this.vertices[a].x - this.vertices[b].x)
     );
 
     // For each reflex vertex, find a valid diagonal to add
@@ -1152,8 +1153,7 @@ class PolygonDecomp extends CanvasManager {
   triangulateMonotonePiece(vtxIndices) {
     // Sort vertices by y-coordinate
     const sorted = vtxIndices.slice().sort((a, b) =>
-      this.vertices[a].y - this.vertices[b].y] ||
-      this.vertices[a].x - this.vertices[b].x
+      (this.vertices[a].y - this.vertices[b].y) || (this.vertices[a].x - this.vertices[b].x)
     );
     // Map global idx to position in sorted order
     const pos = {};
@@ -1555,7 +1555,7 @@ class WFCMapGen extends CanvasManager {
     const pattern = this.patterns[this.patternType];
     while (this.propagationStack.length > 0) {
       const { x, y } = this.propagationStack.shift(); const cell = this.grid[y][x];
-      [[0,-1,'down'],[0,1,'up],[-1,0,'right'],[1,0,'left']].forEach(([dx,dy,direction]) => {
+      [[0,-1,'down'],[0,1,'up'],[-1,0,'right'],[1,0,'left']].forEach(([dx,dy,direction]) => {
         const nx = x + dx, ny = y + dy; if (nx < 0 || nx >= this.gridSize || ny < 0 || ny >= this.gridSize) return;
         const neighbor = this.grid[ny][nx]; if (neighbor.collapsed !== null) return;
         const allowed = new Set(); cell.possibilities.forEach(t => { if (pattern.adj[t] && pattern.adj[t][direction]) pattern.adj[t][direction].forEach(at => allowed.add(at)); });

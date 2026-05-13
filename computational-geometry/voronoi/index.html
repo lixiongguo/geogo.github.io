@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: null
 title: "Voronoi 图生成"
 ---
 <!DOCTYPE html>
@@ -31,28 +31,98 @@ title: "Voronoi 图生成"
             display: flex;
             gap: 20px;
             margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .canvas-panel {
+            flex: 1 1 500px;
+            max-width: 540px;
         }
         canvas {
             border: 1px solid #ccc;
             background: white;
             cursor: crosshair;
+            max-width: 100%;
         }
         .controls {
             margin: 20px 0;
             text-align: center;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
-        button {
+        button, select, input {
             padding: 10px 20px;
             margin: 0 5px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
             background: #007bff;
             color: white;
             border: none;
-            border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
         }
         button:hover {
             background: #0056b3;
+        }
+        input[type="number"] {
+            width: 72px;
+            border: 1px solid #ccc;
+        }
+        input[type="range"] {
+            width: 160px;
+            padding: 0;
+        }
+        .weight-value {
+            min-width: 64px;
+            text-align: right;
+            color: #555;
+            font-variant-numeric: tabular-nums;
+        }
+        .weight-panel {
+            margin-top: 16px;
+            padding: 12px;
+            background: #f8f9fb;
+            border: 1px solid #e3e7ef;
+            border-radius: 6px;
+        }
+        .weight-controls {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        .point-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 8px;
+        }
+        .point-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 6px 8px;
+            background: white;
+            border: 1px solid #e1e5ee;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .point-row.selected {
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,.12);
+        }
+        .swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            border: 1px solid rgba(0,0,0,.2);
         }
         .info {
             margin-top: 20px;
@@ -67,30 +137,51 @@ title: "Voronoi 图生成"
         <h1>Voronoi 图生成实验</h1>
         
         <div class="controls">
-            <button onclick="addRandomPoints()">随机添加点</button>
+            <label>模式
+                <select id="diagramMode" onchange="setMode(this.value)">
+                    <option value="ordinary">Voronoi / Delaunay</option>
+                    <option value="power">Power Diagram / Weighted Delaunay</option>
+                </select>
+            </label>
+            <label>随机数量
+                <input id="randomCount" type="number" min="1" max="80" value="10">
+            </label>
+            <button onclick="addRandomPoints()">随机生成节点</button>
             <button onclick="clearPoints()">清空</button>
             <button onclick="toggleAnimation()">动画模式</button>
         </div>
 
+        <div class="weight-panel">
+            <div class="weight-controls">
+                <strong>Power 权重：</strong>
+                <span id="selectedLabel">未选中节点</span>
+                <input id="weightSlider" type="range" min="0" max="1" value="0" step="0.001" oninput="setSelectedWeight(this.value)">
+                <span id="weightValue" class="weight-value">0.000</span>
+                <button onclick="randomizeWeights()">随机权重</button>
+                <button onclick="resetWeights()">权重归零</button>
+            </div>
+            <div class="point-list" id="pointList"></div>
+        </div>
+
         <div class="canvas-container">
-            <div>
-                <h3>Voronoi 图</h3>
+            <div class="canvas-panel">
+                <h3 id="leftTitle">Voronoi 图</h3>
                 <canvas id="voronoiCanvas" width="500" height="500"></canvas>
             </div>
-            <div>
-                <h3>Delaunay 三角化</h3>
+            <div class="canvas-panel">
+                <h3 id="rightTitle">Delaunay 三角化</h3>
                 <canvas id="delaunayCanvas" width="500" height="500"></canvas>
             </div>
         </div>
 
         <div class="info">
             <h3>算法说明</h3>
-            <p>Voronoi 图（泰森多边形）是将平面划分为若干个区域，每个区域包含且仅包含一个生成点，区域内的任意位置到该生成点的距离小于到其他生成点的距离。</p>
-            <p>本实验使用 <strong>Fortune 算法</strong> 实现 Voronoi 图的快速生成，时间复杂度为 O(n log n)。</p>
-            <p>点击画布可以添加生成点，观察 Voronoi 图和 Delaunay 三角化的实时变化。</p>
+            <p>普通 Voronoi 图使用欧氏距离平方；Power Diagram 使用 power distance：<strong>π_i(x)=||x-p_i||²-\hat w_i L²</strong>。这里输入的权重 $\hat w_i\in[0,1]$，$L$ 是画布对角线长度，因此权重已经按距离尺度归一化。</p>
+            <p>右侧普通模式显示 Bowyer-Watson Delaunay 三角化；带权模式显示 Power Diagram 的对偶图，即 weighted Delaunay / regular triangulation 的交互近似。</p>
+            <p>点击画布添加/选中节点；在 Power 模式下可用滑块或列表输入每个节点的 power 权重。</p>
         </div>
     </div>
 
-    <script src="voronoi.js"></script>
+    <script src="voronoi.js?v=20260513-2"></script>
 </body>
 </html>
