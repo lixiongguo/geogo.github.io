@@ -1,105 +1,40 @@
 {
-  "default": "cpp-reference",
+  "default": "kitten-clay",
   "scenes": [
     {
-      "id": "cpp-reference",
-      "name": "CPP 对齐场景",
-      "file": "/assets/renderer/Scenes/cpp-reference.json"
+      "id": "kitten-clay",
+      "name": "Kitten 01 · Clay Trio",
+      "file": "/assets/renderer/Scenes/kitten-clay.json"
     },
     {
-      "id": "caustics-lens",
-      "name": "Caustics Lens (from Blender)",
-      "file": "/assets/renderer/Scenes/caustics-lens.json"
+      "id": "kitten-gold",
+      "name": "Kitten 02 · Gold Multi-Light",
+      "file": "/assets/renderer/Scenes/kitten-gold.json"
     },
     {
-      "id": "l02",
-      "name": "L02 (skeleton)",
-      "file": "/assets/renderer/Scenes/L02.json"
+      "id": "kitten-chrome",
+      "name": "Kitten 03 · Mirror Pair",
+      "file": "/assets/renderer/Scenes/kitten-chrome.json"
     },
     {
-      "id": "l04",
-      "name": "L04 (skeleton)",
-      "file": "/assets/renderer/Scenes/L04.json"
+      "id": "kitten-glass",
+      "name": "Kitten 04 · Glass Multi-Light",
+      "file": "/assets/renderer/Scenes/kitten-glass.json"
     },
     {
-      "id": "l05",
-      "name": "L05 (skeleton)",
-      "file": "/assets/renderer/Scenes/L05.json"
+      "id": "kitten-copper",
+      "name": "Kitten 05 · Copper Group",
+      "file": "/assets/renderer/Scenes/kitten-copper.json"
     },
     {
-      "id": "l06",
-      "name": "L06 (skeleton)",
-      "file": "/assets/renderer/Scenes/L06.json"
+      "id": "kitten-ice",
+      "name": "Kitten 06 · Blue Glass Duo",
+      "file": "/assets/renderer/Scenes/kitten-ice.json"
     },
     {
-      "id": "l07",
-      "name": "L07 (skeleton)",
-      "file": "/assets/renderer/Scenes/L07.json"
-    },
-    {
-      "id": "l10-bd",
-      "name": "L10_BD (skeleton)",
-      "file": "/assets/renderer/Scenes/L10_BD.json"
-    },
-    {
-      "id": "l10-btc",
-      "name": "L10_BTC (skeleton)",
-      "file": "/assets/renderer/Scenes/L10_BTC.json"
-    },
-    {
-      "id": "l10-normal",
-      "name": "L10_normal (skeleton)",
-      "file": "/assets/renderer/Scenes/L10_normal.json"
-    },
-    {
-      "id": "l10-ttc",
-      "name": "L10_TTC (skeleton)",
-      "file": "/assets/renderer/Scenes/L10_TTC.json"
-    },
-    {
-      "id": "l11",
-      "name": "L11 (skeleton)",
-      "file": "/assets/renderer/Scenes/L11.json"
-    },
-    {
-      "id": "l12",
-      "name": "L12 (skeleton)",
-      "file": "/assets/renderer/Scenes/L12.json"
-    },
-    {
-      "id": "l13",
-      "name": "L13 (skeleton)",
-      "file": "/assets/renderer/Scenes/L13.json"
-    },
-    {
-      "id": "l14",
-      "name": "L14 (skeleton)",
-      "file": "/assets/renderer/Scenes/L14.json"
-    },
-    {
-      "id": "l16",
-      "name": "L16 (skeleton)",
-      "file": "/assets/renderer/Scenes/L16.json"
-    },
-    {
-      "id": "l18",
-      "name": "L18 (skeleton)",
-      "file": "/assets/renderer/Scenes/L18.json"
-    },
-    {
-      "id": "l19",
-      "name": "L19 (skeleton)",
-      "file": "/assets/renderer/Scenes/L19.json"
-    },
-    {
-      "id": "l20",
-      "name": "L20 (skeleton)",
-      "file": "/assets/renderer/Scenes/L20.json"
-    },
-    {
-      "id": "l21",
-      "name": "L21 (skeleton)",
-      "file": "/assets/renderer/Scenes/L21.json"
+      "id": "kitten-emissive",
+      "name": "Kitten 07 · Emissive Multi-Light",
+      "file": "/assets/renderer/Scenes/kitten-emissive.json"
     }
   ]
 }
