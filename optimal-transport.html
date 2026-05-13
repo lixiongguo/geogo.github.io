@@ -273,39 +273,77 @@
       </div>
     </div>
 
-    <!-- Tab 3: Area-Preserving Parameterization -->
+    <!-- Tab 3: Gu Xianfeng — Semi-Discrete OT (Alexandrov / Legendre) -->
     <div class="tab-panel" id="panel-3">
       <div class="canvas-area"><canvas id="canvas-3"></canvas></div>
       <div class="control-panel">
-        <div class="algo-desc">保面积参数化 (Semi-Discrete OT)：基于顾老师的变分方法，通过调节势函数 ψ 使 Laguerre 单元面积匹配目标质量，实现保面积映射。</div>
+        <div class="algo-desc">顾险峰半离散 OT：Minkowski–Alexandrov 凸几何 → Legendre–Fenchel 对偶；用势 <strong>ψ</strong> 定义 Laguerre 单元 L_i(ψ)，极大化凹能量 E(ψ)，梯度 ∂E/∂ψ_i = m_i − μ(L_i)。与博客「5.2 顾老师的 Semi-Discrete 解法」一致。规范：每步对 ψ 去均值（平移不变性）。</div>
         <div class="control-section">
           <div class="control-section-title">操作</div>
-          <button class="primary" onclick="algorithms[3].generate()">随机生成</button>
-          <button onclick="algorithms[3].step()">单步迭代</button>
+          <button class="primary" onclick="algorithms[3].generate()">随机生成站点</button>
+          <button onclick="algorithms[3].step()">单步（梯度上升）</button>
           <button onclick="algorithms[3].run()" id="btn-run-3">自动求解</button>
           <button class="danger" onclick="algorithms[3].reset()">重置</button>
         </div>
         <div class="control-section">
           <div class="control-section-title">参数</div>
           <div class="control-row"><label>目标点数</label><input type="number" id="sd-n" value="30" min="8" max="80" style="width:60px;"></div>
-          <div class="control-row"><label>源密度</label><select id="sd-density" style="width:110px;">
+          <div class="control-row"><label>源密度 ρ</label><select id="sd-density" style="width:110px;">
             <option value="uniform">均匀</option><option value="gaussian" selected>高斯</option>
             <option value="bimodal">双峰</option><option value="corner">角落聚集</option>
           </select></div>
-          <div class="control-row"><label>学习率</label><input type="range" id="sd-lr" value="50" min="1" max="200"><span class="range-value" id="sd-lr-val">0.050</span></div>
+          <div class="control-row"><label>步长</label><input type="range" id="sd-lr" value="50" min="1" max="200"><span class="range-value" id="sd-lr-val">0.050</span></div>
           <div class="control-row"><label>网格分辨率</label><input type="range" id="sd-grid" value="80" min="30" max="150"><span class="range-value" id="sd-grid-val">80</span></div>
           <div class="control-row"><label>动画速度</label><input type="range" id="sd-speed" value="100" min="20" max="500"><span class="range-value" id="sd-speed-val">100ms</span></div>
         </div>
         <div class="control-section">
           <div class="control-section-title">图例</div>
-          <div class="legend-item"><span class="legend-dot" style="background:#a78bfa"></span>源密度 ρ(x)</div>
-          <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>目标点 y_i</div>
-          <div class="legend-item"><span class="legend-dot" style="background:#50c8a0"></span>Laguerre 单元</div>
-          <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>面积误差</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#a78bfa"></span>ρ(x) 调制亮度</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>离散原子 y_i</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#50c8a0"></span>Laguerre / Power 单元</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>质量残差大</div>
         </div>
         <div class="control-section">
           <div class="control-section-title">信息</div>
-          <div class="info-box" id="info-3">点击"随机生成"开始。算法：E(ψ) = Σψ_i·m_i - ∫min_j(c-ψ_j)ρ dx，梯度 ∂E/∂ψ_i = m_i - |L_i|</div>
+          <div class="info-box" id="info-3">保面积含义：各原子质量 m_i 相等时，收敛后 μ(L_i)≈m_i，即把连续测度均匀分割到各目标点（半离散 OT 的 piecewise-constant 映射）。文献：Gu–Luo–Yau《Computational Conformal Geometry》; Alexandrov《Convex Polyhedra》; Aurenhammer–Hoffmann–Aronov (Minkowski / least-squares clustering).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Merigot — Semi-Discrete OT (Power diagram + multiscale) -->
+    <div class="tab-panel" id="panel-4">
+      <div class="canvas-area"><canvas id="canvas-4"></canvas></div>
+      <div class="control-panel">
+        <div class="algo-desc">Merigot 半离散 OT：在平方代价下最优划分是 <strong>Power 图</strong>；最小化凸能量 Φ(w)，∂Φ/∂w_i = λ_i − μ(V_i^w)，用 <strong>梯度下降</strong> 更新权重 w。站点由源密度上的 <strong>Lloyd</strong> 量化得到（对应博客 5.3 的量化思想）；可选 <strong>粗→细</strong> 网格与点数递推，稳定初值。</div>
+        <div class="control-section">
+          <div class="control-section-title">操作</div>
+          <button class="primary" onclick="algorithms[4].generate()">生成（Lloyd + 多尺度）</button>
+          <button onclick="algorithms[4].step()">单步（梯度下降 Φ）</button>
+          <button onclick="algorithms[4].run()" id="btn-run-4">自动求解</button>
+          <button class="danger" onclick="algorithms[4].reset()">重置</button>
+        </div>
+        <div class="control-section">
+          <div class="control-section-title">参数</div>
+          <div class="control-row"><label>目标点数</label><input type="number" id="mg-n" value="36" min="8" max="100" style="width:60px;"></div>
+          <div class="control-row"><label>源密度 ρ</label><select id="mg-density" style="width:110px;">
+            <option value="uniform">均匀</option><option value="gaussian" selected>高斯</option>
+            <option value="bimodal">双峰</option><option value="corner">角落聚集</option>
+          </select></div>
+          <div class="control-row"><label>Lloyd 迭代</label><input type="range" id="mg-lloyd" value="12" min="2" max="30"><span class="range-value" id="mg-lloyd-val">12</span></div>
+          <div class="control-row"><label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="mg-ms" checked> 粗→细多尺度</label></div>
+          <div class="control-row"><label>步长</label><input type="range" id="mg-lr" value="45" min="1" max="200"><span class="range-value" id="mg-lr-val">0.045</span></div>
+          <div class="control-row"><label>网格分辨率</label><input type="range" id="mg-grid" value="90" min="40" max="160"><span class="range-value" id="mg-grid-val">90</span></div>
+          <div class="control-row"><label>动画速度</label><input type="range" id="mg-speed" value="80" min="20" max="500"><span class="range-value" id="mg-speed-val">80ms</span></div>
+        </div>
+        <div class="control-section">
+          <div class="control-section-title">图例</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#22d3ee"></span>站点 Lloyd 量化</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>目标原子</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#a78bfa"></span>Power 单元</div>
+        </div>
+        <div class="control-section">
+          <div class="control-section-title">信息</div>
+          <div class="info-box" id="info-4">与顾老师路线对偶：此处显式最小化 Φ(w)；梯度与「目标质量 − 单元质量」一致。多尺度：先在较粗网格与较少点上求 adapted weights，再插值到细层作初值。参见博客「5.3 Merigot 的 Semi-Discrete 解法」及 Mérigot 等关于多尺度 OT 的论述。</div>
         </div>
       </div>
     </div>
@@ -325,7 +363,8 @@ const TABS = [
   { name: '1D 传输映射', algo: 'Sinkhorn', complexity: 'O(n²) per iter' },
   { name: '图像颜色迁移', algo: 'Histogram OT', complexity: 'O(k·256²)' },
   { name: '点云配准', algo: 'OT-ICP', complexity: 'O(n²) per iter' },
-  { name: '保面积参数化', algo: 'Semi-Discrete OT', complexity: 'O(n·G²) per iter' },
+  { name: '顾险峰半离散 OT', algo: 'Alexandrov–Legendre', complexity: 'O(n·G²) / iter' },
+  { name: 'Merigot 半离散 OT', algo: 'Power Φ + multiscale', complexity: 'O(n·G²) / iter' },
 ];
 let currentTab = 0;
 function $(id) { return document.getElementById(id); }
@@ -1025,34 +1064,130 @@ class PointCloudReg extends CanvasManager {
 }
 
 // ============================================================
-// 3: Semi-Discrete OT (Area-Preserving Parameterization)
+// Shared: source density & Laguerre / Power diagram on uniform grid
 // ============================================================
-class SemiDiscreteOT extends CanvasManager {
+function otDensity2D(x, y, type) {
+  switch (type) {
+    case 'uniform': return 1.0;
+    case 'gaussian': return Math.exp(-8 * ((x - 0.5) ** 2 + (y - 0.5) ** 2));
+    case 'bimodal': return Math.exp(-12 * ((x - 0.3) ** 2 + (y - 0.3) ** 2)) + 0.8 * Math.exp(-12 * ((x - 0.7) ** 2 + (y - 0.7) ** 2));
+    case 'corner': return Math.exp(-10 * (x ** 2 + y ** 2)) + 0.5 * Math.exp(-10 * ((x - 1) ** 2 + (y - 1) ** 2));
+    default: return 1.0;
+  }
+}
+
+function buildDensityGrid(densityType, G) {
+  const densityField = new Float64Array(G * G);
+  let totalMass = 0;
+  for (let j = 0; j < G; j++) {
+    for (let i = 0; i < G; i++) {
+      const x = (i + 0.5) / G, y = (j + 0.5) / G;
+      const d = otDensity2D(x, y, densityType);
+      densityField[j * G + i] = d;
+      totalMass += d;
+    }
+  }
+  return { densityField, totalMass };
+}
+
+/** Laguerre cells: argmin_k ||x-y_k||² - w_k ; returns cell index per pixel and μ(L_k) */
+function laguerreCellMasses(pts, weights, densityField, G) {
+  const n = pts.length;
+  const cells = new Int32Array(G * G);
+  const cellAreas = new Float64Array(n);
+  const cellArea = 1.0 / (G * G);
+  for (let j = 0; j < G; j++) {
+    for (let i = 0; i < G; i++) {
+      const px = (i + 0.5) / G, py = (j + 0.5) / G;
+      let minVal = Infinity, minIdx = 0;
+      for (let k = 0; k < n; k++) {
+        const dx = px - pts[k].x, dy = py - pts[k].y;
+        const val = dx * dx + dy * dy - weights[k];
+        if (val < minVal) { minVal = val; minIdx = k; }
+      }
+      cells[j * G + i] = minIdx;
+      cellAreas[minIdx] += densityField[j * G + i] * cellArea;
+    }
+  }
+  return { cells, cellAreas };
+}
+
+function gaugeZeroInPlace(arr) {
+  let s = 0;
+  for (let i = 0; i < arr.length; i++) s += arr[i];
+  s /= arr.length;
+  for (let i = 0; i < arr.length; i++) arr[i] -= s;
+}
+
+/** Lloyd: centroids of Voronoi cells weighted by ρ (Merigot-style quantization). */
+function lloydCentroidsFromDensity(densityField, G, K, iterations) {
+  const pts = [];
+  for (let k = 0; k < K; k++) pts.push({ x: Math.random(), y: Math.random() });
+  const cellArea = 1 / (G * G);
+  for (let it = 0; it < iterations; it++) {
+    const sumWx = new Float64Array(K), sumWy = new Float64Array(K), sumM = new Float64Array(K);
+    for (let j = 0; j < G; j++) {
+      for (let i = 0; i < G; i++) {
+        const px = (i + 0.5) / G, py = (j + 0.5) / G;
+        let best = 0, bestD = Infinity;
+        for (let k = 0; k < K; k++) {
+          const dx = px - pts[k].x, dy = py - pts[k].y;
+          const d = dx * dx + dy * dy;
+          if (d < bestD) { bestD = d; best = k; }
+        }
+        const m = densityField[j * G + i] * cellArea;
+        sumWx[best] += px * m; sumWy[best] += py * m; sumM[best] += m;
+      }
+    }
+    for (let k = 0; k < K; k++) {
+      if (sumM[k] > 1e-14) {
+        pts[k].x = sumWx[k] / sumM[k];
+        pts[k].y = sumWy[k] / sumM[k];
+      }
+    }
+  }
+  return pts;
+}
+
+/** Approximate ∫ min_k(||x-y_k||² - w_k) ρ dx on grid (for dual energy bookkeeping). */
+function integralMinEnvelop(pts, weights, densityField, G) {
+  let s = 0;
+  const cellArea = 1 / (G * G);
+  for (let j = 0; j < G; j++) {
+    for (let i = 0; i < G; i++) {
+      const px = (i + 0.5) / G, py = (j + 0.5) / G;
+      let m = Infinity;
+      const rho = densityField[j * G + i];
+      for (let k = 0; k < pts.length; k++) {
+        const dx = px - pts[k].x, dy = py - pts[k].y;
+        const v = dx * dx + dy * dy - weights[k];
+        if (v < m) m = v;
+      }
+      s += m * rho * cellArea;
+    }
+  }
+  return s;
+}
+
+// ============================================================
+// 3: Gu — Semi-Discrete OT (maximize concave E, gradient ascent on ψ)
+// ============================================================
+class GuSemiDiscreteOT extends CanvasManager {
   constructor() { super('canvas-3'); this.reset(); }
 
   reset() {
-    this.pts = [];       // target Dirac points y_i
-    this.psi = [];       // potential / weight
-    this.mass = [];      // target mass m_i
-    this.cells = [];     // Laguerre cell pixel assignment
-    this.cellAreas = []; // actual area |L_i|
+    this.pts = [];
+    this.psi = null;
+    this.mass = null;
+    this.cells = null;
+    this.cellAreas = null;
     this.iteration = 0;
     this.maxError = Infinity;
     this.running = false;
     this.timer = null;
     this.gridRes = 80;
     this.densityField = null;
-  }
-
-  // Source density function ρ(x) on [0,1]²
-  density(x, y, type) {
-    switch (type) {
-      case 'uniform': return 1.0;
-      case 'gaussian': return Math.exp(-8 * ((x - 0.5) ** 2 + (y - 0.5) ** 2));
-      case 'bimodal': return Math.exp(-12 * ((x - 0.3) ** 2 + (y - 0.3) ** 2)) + 0.8 * Math.exp(-12 * ((x - 0.7) ** 2 + (y - 0.7) ** 2));
-      case 'corner': return Math.exp(-10 * (x ** 2 + y ** 2)) + 0.5 * Math.exp(-10 * ((x - 1) ** 2 + (y - 1) ** 2));
-      default: return 1.0;
-    }
+    this.dualE = null;
   }
 
   generate() {
@@ -1060,93 +1195,64 @@ class SemiDiscreteOT extends CanvasManager {
     this.iteration = 0;
     this.maxError = Infinity;
 
-    const n = parseInt($('sd-n').value) || 30;
+    const n = parseInt($('sd-n').value, 10) || 30;
     const densityType = $('sd-density').value;
-    this.gridRes = parseInt($('sd-grid').value) || 80;
-
-    // Generate target points (uniformly in [0,1]²)
-    this.pts = [];
-    for (let i = 0; i < n; i++) {
-      this.pts.push({ x: Math.random(), y: Math.random() });
-    }
-
-    // Compute source density on grid & total mass
+    this.gridRes = parseInt($('sd-grid').value, 10) || 80;
     const G = this.gridRes;
-    this.densityField = new Float64Array(G * G);
-    let totalMass = 0;
-    for (let j = 0; j < G; j++) {
-      for (let i = 0; i < G; i++) {
-        const x = (i + 0.5) / G, y = (j + 0.5) / G;
-        const d = this.density(x, y, densityType);
-        this.densityField[j * G + i] = d;
-        totalMass += d;
-      }
-    }
+
+    this.pts = [];
+    for (let i = 0; i < n; i++) this.pts.push({ x: Math.random(), y: Math.random() });
+
+    const bg = buildDensityGrid(densityType, G);
+    this.densityField = bg.densityField;
     const cellArea = 1.0 / (G * G);
+    const totalMass = bg.totalMass * cellArea;
 
-    // Target mass: equal mass per point
-    this.mass = new Float64Array(n).fill(totalMass * cellArea / n);
-
-    // Initialize psi = 0
+    this.mass = new Float64Array(n).fill(totalMass / n);
     this.psi = new Float64Array(n).fill(0);
 
-    // Compute initial Laguerre cells
-    this.computeCells();
+    const L = laguerreCellMasses(this.pts, this.psi, this.densityField, G);
+    this.cells = L.cells;
+    this.cellAreas = L.cellAreas;
+    this.dualE = this.computeDualE();
+    this.maxError = 0;
+    for (let i = 0; i < n; i++) this.maxError = Math.max(this.maxError, Math.abs(this.mass[i] - this.cellAreas[i]));
 
-    this.info(`生成 ${n} 个目标点，密度=${densityType}，网格=${G}×${G}`);
+    this.info(`顾险峰半离散：${n} 个随机站点，ρ=${densityType}，网格 ${G}×${G}。E(ψ)≈${this.dualE.toFixed(5)}，初 max|m_i−μ_i|=${this.maxError.toExponential(2)}`);
     this.render();
   }
 
-  computeCells() {
+  computeDualE() {
     const n = this.pts.length;
-    const G = this.gridRes;
-    this.cells = new Int32Array(G * G);
-    this.cellAreas = new Float64Array(n);
-    const cellArea = 1.0 / (G * G);
-
-    // Assign each grid point to the Laguerre cell minimizing |x-y_i|² - ψ_i
-    for (let j = 0; j < G; j++) {
-      for (let i = 0; i < G; i++) {
-        const px = (i + 0.5) / G, py = (j + 0.5) / G;
-        let minVal = Infinity, minIdx = 0;
-        for (let k = 0; k < n; k++) {
-          const dx = px - this.pts[k].x, dy = py - this.pts[k].y;
-          const val = dx * dx + dy * dy - this.psi[k];
-          if (val < minVal) { minVal = val; minIdx = k; }
-        }
-        this.cells[j * G + i] = minIdx;
-        this.cellAreas[minIdx] += this.densityField[j * G + i] * cellArea;
-      }
-    }
+    let s = 0;
+    for (let i = 0; i < n; i++) s += this.psi[i] * this.mass[i];
+    const integral = integralMinEnvelop(this.pts, this.psi, this.densityField, this.gridRes);
+    return s - integral;
   }
 
   step() {
-    if (this.pts.length === 0) { this.info('请先生成'); return; }
+    if (this.pts.length === 0) { this.info('请先生成站点'); return; }
     this.clearState();
 
     const n = this.pts.length;
     const lr = parseFloat($('sd-lr').value) / 1000;
-
-    // Gradient of E(ψ): ∂E/∂ψ_i = m_i - |L_i(ψ)|
     const gradient = new Float64Array(n);
     this.maxError = 0;
     for (let i = 0; i < n; i++) {
       gradient[i] = this.mass[i] - this.cellAreas[i];
       this.maxError = Math.max(this.maxError, Math.abs(gradient[i]));
     }
+    for (let i = 0; i < n; i++) this.psi[i] += lr * gradient[i];
+    gaugeZeroInPlace(this.psi);
 
-    // Gradient ascent (E is concave, so we ascend)
-    for (let i = 0; i < n; i++) {
-      this.psi[i] += lr * gradient[i];
-    }
-
-    // Recompute cells with updated psi
-    this.cellAreas.fill(0);
-    this.computeCells();
+    const L = laguerreCellMasses(this.pts, this.psi, this.densityField, this.gridRes);
+    this.cells = L.cells;
+    this.cellAreas = L.cellAreas;
+    this.dualE = this.computeDualE();
 
     this.iteration++;
-    const totalArea = this.cellAreas.reduce((a, b) => a + b, 0);
-    this.info(`迭代 ${this.iteration}: max err = ${this.maxError.toFixed(6)}, total area = ${totalArea.toFixed(4)}`);
+    const sumA = this.cellAreas.reduce((a, b) => a + b, 0);
+    this.info(`Gu 迭代 ${this.iteration}: max|m_i−μ(L_i)|=${this.maxError.toExponential(2)}, ∑μ(L_i)=${sumA.toFixed(4)}, E≈${this.dualE.toFixed(5)}`);
     this.render();
   }
 
@@ -1155,16 +1261,12 @@ class SemiDiscreteOT extends CanvasManager {
     if (this.pts.length === 0) this.generate();
     this.running = true;
     $('btn-run-3').textContent = '停止';
-    const spd = parseInt($('sd-speed').value) || 100;
+    const spd = parseInt($('sd-speed').value, 10) || 100;
     const doStep = () => {
       if (!this.running) return;
       this.step();
-      if (this.iteration < 500 && this.maxError > 1e-4 && this.running) {
-        this.timer = setTimeout(doStep, spd);
-      } else {
-        this.running = false;
-        $('btn-run-3').textContent = '自动求解';
-      }
+      if (this.iteration < 600 && this.maxError > 8e-5 && this.running) this.timer = setTimeout(doStep, spd);
+      else { this.running = false; $('btn-run-3').textContent = '自动求解'; }
     };
     doStep();
   }
@@ -1180,7 +1282,7 @@ class SemiDiscreteOT extends CanvasManager {
     const ctx = this.ctx;
     if (this.pts.length === 0) {
       ctx.fillStyle = '#555'; ctx.font = '14px monospace'; ctx.textAlign = 'center';
-      ctx.fillText('点击 "随机生成" 开始', this.w / 2, this.h / 2);
+      ctx.fillText('点击「随机生成站点」', this.w / 2, this.h / 2);
       return;
     }
 
@@ -1191,89 +1293,291 @@ class SemiDiscreteOT extends CanvasManager {
     const ox = (this.w - side) / 2, oy = (this.h - side) / 2;
     const cellPx = side / G;
 
-    // Cell colors: assign a unique hue per cell
-    const cellColors = [];
-    for (let i = 0; i < n; i++) {
-      const hue = (i * 137.508) % 360; // golden angle for max spread
-      cellColors.push(`hsl(${hue}, 55%, 40%)`);
-    }
-
-    // Draw Laguerre cells colored by assignment
     for (let j = 0; j < G; j++) {
       for (let i = 0; i < G; i++) {
         const k = this.cells[j * G + i];
-        // Modulate brightness by source density
         const d = this.densityField[j * G + i];
-        const maxD = 2.0;
-        const brightness = 0.3 + 0.7 * Math.min(d / maxD, 1.0);
+        const brightness = 0.3 + 0.7 * Math.min(d / 2, 1.0);
         const hue = (k * 137.508) % 360;
         ctx.fillStyle = `hsla(${hue}, 55%, ${Math.round(brightness * 45)}%, 0.85)`;
         ctx.fillRect(ox + i * cellPx, oy + j * cellPx, cellPx + 0.5, cellPx + 0.5);
       }
     }
 
-    // Draw Laguerre cell boundaries (pixels where neighbor has different assignment)
     ctx.strokeStyle = 'rgba(200,200,255,0.35)';
     ctx.lineWidth = 1;
     for (let j = 0; j < G; j++) {
       for (let i = 0; i < G; i++) {
         const k = this.cells[j * G + i];
         const px = ox + i * cellPx, py = oy + j * cellPx;
-        // Right neighbor
         if (i < G - 1 && this.cells[j * G + i + 1] !== k) {
           ctx.beginPath(); ctx.moveTo(px + cellPx, py); ctx.lineTo(px + cellPx, py + cellPx); ctx.stroke();
         }
-        // Bottom neighbor
         if (j < G - 1 && this.cells[(j + 1) * G + i] !== k) {
           ctx.beginPath(); ctx.moveTo(px, py + cellPx); ctx.lineTo(px + cellPx, py + cellPx); ctx.stroke();
         }
       }
     }
 
-    // Draw target points
     this.pts.forEach((p, i) => {
       const px = ox + p.x * side, py = oy + p.y * side;
-      // Area error indicator: red if |L_i| < m_i, green if balanced
       const err = Math.abs(this.cellAreas[i] - this.mass[i]) / (this.mass[i] + 1e-10);
       const errColor = err < 0.1 ? '#50c8a0' : (err < 0.3 ? '#f59e0b' : '#ef4444');
-
       ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2);
       ctx.fillStyle = '#f59e0b'; ctx.fill();
       ctx.strokeStyle = errColor; ctx.lineWidth = 2; ctx.stroke();
     });
 
-    // Draw border
     ctx.strokeStyle = 'rgba(100,140,255,0.3)'; ctx.lineWidth = 1;
     ctx.strokeRect(ox, oy, side, side);
 
-    // Labels
     ctx.fillStyle = '#a78bfa'; ctx.font = '11px monospace'; ctx.textAlign = 'left';
-    ctx.fillText('ρ(x): source density → cell brightness', ox, oy - 8);
-
+    ctx.fillText('Gu: Laguerre L_i(ψ)，凹能量 E(ψ) 梯度上升', ox, oy - 8);
     if (this.iteration > 0) {
       ctx.fillStyle = '#8a8ad0'; ctx.textAlign = 'right';
-      ctx.fillText(`iter: ${this.iteration}, max err: ${this.maxError.toFixed(5)}`, ox + side, oy - 8);
+      ctx.fillText(`iter ${this.iteration}  maxerr ${this.maxError.toFixed(5)}  E≈${this.dualE != null ? this.dualE.toFixed(4) : '—'}`, ox + side, oy - 8);
     }
 
-    // Mass distribution bar chart (bottom-right mini)
     if (this.iteration > 0) {
       const barW = Math.min(120, side * 0.4);
       const barH = 60;
       const bx = ox + side - barW, by = oy + side + 6;
       ctx.fillStyle = '#6666a0'; ctx.font = '9px monospace'; ctx.textAlign = 'left';
-      ctx.fillText('mass: target → bar, actual → dot', bx, by);
+      ctx.fillText('质量 m_i（条） vs μ(L_i)（点）', bx, by);
       const maxM = Math.max(...this.mass) * 1.5;
       for (let i = 0; i < n; i++) {
         const x = bx + (i / n) * barW;
         const hTarget = (this.mass[i] / maxM) * barH;
         const hActual = (this.cellAreas[i] / maxM) * barH;
-        // Target bar
         ctx.fillStyle = 'rgba(99,102,241,0.4)';
-        ctx.fillRect(x, by + barH - hTarget + 10, barW / n - 1, hTarget);
-        // Actual dot
+        ctx.fillRect(x, by + barH - hTarget + 10, Math.max(0.5, barW / n - 1), hTarget);
         ctx.fillStyle = '#50c8a0';
-        ctx.fillRect(x, by + barH - hActual + 10, barW / n - 1, 2);
+        ctx.fillRect(x, by + barH - hActual + 10, Math.max(0.5, barW / n - 1), 2);
       }
+    }
+  }
+}
+
+// ============================================================
+// 4: Merigot — minimize Φ(w), gradient descent, Lloyd + multiscale init
+// ============================================================
+class MerigotSemiDiscreteOT extends CanvasManager {
+  constructor() { super('canvas-4'); this.reset(); }
+
+  reset() {
+    this.pts = [];
+    this.w = null;
+    this.mass = null;
+    this.cells = null;
+    this.cellAreas = null;
+    this.iteration = 0;
+    this.maxError = Infinity;
+    this.running = false;
+    this.timer = null;
+    this.gridRes = 90;
+    this.densityField = null;
+    this.phi = null;
+    this.initMsg = '';
+  }
+
+  /** Internal: optimize weights for fixed pts on grid G */
+  optimizeWeights(pts, massTarget, densityField, G, steps, lr) {
+    const n = pts.length;
+    let w = new Float64Array(n).fill(0);
+    for (let s = 0; s < steps; s++) {
+      const { cellAreas } = laguerreCellMasses(pts, w, densityField, G);
+      let maxErr = 0;
+      for (let i = 0; i < n; i++) {
+        const g = massTarget[i] - cellAreas[i];
+        maxErr = Math.max(maxErr, Math.abs(g));
+        w[i] -= lr * g;
+      }
+      gaugeZeroInPlace(w);
+      if (maxErr < 2e-4) break;
+    }
+    return w;
+  }
+
+  generate() {
+    this.clearState();
+    this.iteration = 0;
+    this.maxError = Infinity;
+
+    const n = parseInt($('mg-n').value, 10) || 36;
+    const densityType = $('mg-density').value;
+    const G = parseInt($('mg-grid').value, 10) || 90;
+    const lloydIt = parseInt($('mg-lloyd').value, 10) || 12;
+    const useMs = $('mg-ms').checked;
+
+    this.gridRes = G;
+    const bg = buildDensityGrid(densityType, G);
+    this.densityField = bg.densityField;
+    const cellArea = 1 / (G * G);
+    const totalMu = bg.totalMass * cellArea;
+    const uniformMass = totalMu / n;
+
+    if (useMs && n > 12) {
+      const n0 = Math.max(8, Math.floor(n / 4));
+      const G0 = Math.max(36, Math.floor(G * 0.55));
+      const bg0 = buildDensityGrid(densityType, G0);
+      const totalMu0 = bg0.totalMass / (G0 * G0);
+      const pts0 = lloydCentroidsFromDensity(bg0.densityField, G0, n0, lloydIt);
+      const mass0 = new Float64Array(n0).fill(totalMu0 / n0);
+      const lr0 = 0.06;
+      const w0 = this.optimizeWeights(pts0, mass0, bg0.densityField, G0, 200, lr0);
+
+      this.pts = lloydCentroidsFromDensity(this.densityField, G, n, lloydIt);
+      this.w = new Float64Array(n);
+      for (let i = 0; i < n; i++) {
+        let bj = 0, bd = Infinity;
+        for (let j = 0; j < n0; j++) {
+          const dx = this.pts[i].x - pts0[j].x, dy = this.pts[i].y - pts0[j].y;
+          const d = dx * dx + dy * dy;
+          if (d < bd) { bd = d; bj = j; }
+        }
+        this.w[i] = w0[bj];
+      }
+      gaugeZeroInPlace(this.w);
+      this.initMsg = `多尺度：粗层 n=${n0}, G=${G0}（总质量≈${totalMu0.toFixed(3)}）上预解 w → 细层。`;
+    } else {
+      this.pts = lloydCentroidsFromDensity(this.densityField, G, n, lloydIt);
+      this.w = new Float64Array(n).fill(0);
+      this.initMsg = `Lloyd(${lloydIt}) 量化站点，单尺度。`;
+    }
+
+    this.mass = new Float64Array(n).fill(uniformMass);
+    const L = laguerreCellMasses(this.pts, this.w, this.densityField, G);
+    this.cells = L.cells;
+    this.cellAreas = L.cellAreas;
+    this.phi = this.computePhi();
+    this.maxError = 0;
+    for (let i = 0; i < n; i++) this.maxError = Math.max(this.maxError, Math.abs(this.mass[i] - this.cellAreas[i]));
+
+    this.info(`Merigot：${this.initMsg} Φ(w)≈${this.phi.toFixed(5)}，初 max|λ_i−μ_i|=${this.maxError.toExponential(2)}。单步：w_i ← w_i − η·(λ_i−μ(V_i))。`);
+    this.render();
+  }
+
+  computePhi() {
+    const n = this.pts.length, G = this.gridRes;
+    let part1 = 0;
+    for (let i = 0; i < n; i++) part1 += this.mass[i] * this.w[i];
+    let part2 = 0;
+    const cellArea = 1 / (G * G);
+    for (let j = 0; j < G; j++) {
+      for (let i = 0; i < G; i++) {
+        const k = this.cells[j * G + i];
+        const px = (i + 0.5) / G, py = (j + 0.5) / G;
+        const dx = px - this.pts[k].x, dy = py - this.pts[k].y;
+        const rho = this.densityField[j * G + i];
+        part2 += (dx * dx + dy * dy - this.w[k]) * rho * cellArea;
+      }
+    }
+    return part1 - part2;
+  }
+
+  step() {
+    if (this.pts.length === 0) { this.info('请先生成'); return; }
+    this.clearState();
+
+    const n = this.pts.length;
+    const lr = parseFloat($('mg-lr').value) / 1000;
+    const gradient = new Float64Array(n);
+    this.maxError = 0;
+    for (let i = 0; i < n; i++) {
+      gradient[i] = this.mass[i] - this.cellAreas[i];
+      this.maxError = Math.max(this.maxError, Math.abs(gradient[i]));
+    }
+    for (let i = 0; i < n; i++) this.w[i] -= lr * gradient[i];
+    gaugeZeroInPlace(this.w);
+
+    const L = laguerreCellMasses(this.pts, this.w, this.densityField, this.gridRes);
+    this.cells = L.cells;
+    this.cellAreas = L.cellAreas;
+    this.phi = this.computePhi();
+
+    this.iteration++;
+    this.info(`Merigot 迭代 ${this.iteration}: max|λ_i−μ(V_i)|=${this.maxError.toExponential(2)}, Φ≈${this.phi.toFixed(5)}`);
+    this.render();
+  }
+
+  run() {
+    if (this.running) { this.clearState(); return; }
+    if (this.pts.length === 0) this.generate();
+    this.running = true;
+    $('btn-run-4').textContent = '停止';
+    const spd = parseInt($('mg-speed').value, 10) || 80;
+    const doStep = () => {
+      if (!this.running) return;
+      this.step();
+      if (this.iteration < 700 && this.maxError > 6e-5 && this.running) this.timer = setTimeout(doStep, spd);
+      else { this.running = false; $('btn-run-4').textContent = '自动求解'; }
+    };
+    doStep();
+  }
+
+  clearState() {
+    if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+    this.running = false;
+    $('btn-run-4').textContent = '自动求解';
+  }
+
+  render() {
+    this.clear();
+    const ctx = this.ctx;
+    if (this.pts.length === 0) {
+      ctx.fillStyle = '#555'; ctx.font = '14px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('点击「生成（Lloyd + 多尺度）」', this.w / 2, this.h / 2);
+      return;
+    }
+
+    const n = this.pts.length;
+    const G = this.gridRes;
+    const pad = 40;
+    const side = Math.min(this.w - 2 * pad, this.h - 2 * pad);
+    const ox = (this.w - side) / 2, oy = (this.h - side) / 2;
+    const cellPx = side / G;
+
+    for (let j = 0; j < G; j++) {
+      for (let i = 0; i < G; i++) {
+        const k = this.cells[j * G + i];
+        const d = this.densityField[j * G + i];
+        const brightness = 0.28 + 0.72 * Math.min(d / 2, 1.0);
+        const hue = (k * 137.508 + 40) % 360;
+        ctx.fillStyle = `hsla(${hue}, 50%, ${Math.round(brightness * 42)}%, 0.88)`;
+        ctx.fillRect(ox + i * cellPx, oy + j * cellPx, cellPx + 0.5, cellPx + 0.5);
+      }
+    }
+
+    ctx.strokeStyle = 'rgba(34,211,238,0.28)';
+    ctx.lineWidth = 1;
+    for (let j = 0; j < G; j++) {
+      for (let i = 0; i < G; i++) {
+        const k = this.cells[j * G + i];
+        const px = ox + i * cellPx, py = oy + j * cellPx;
+        if (i < G - 1 && this.cells[j * G + i + 1] !== k) {
+          ctx.beginPath(); ctx.moveTo(px + cellPx, py); ctx.lineTo(px + cellPx, py + cellPx); ctx.stroke();
+        }
+        if (j < G - 1 && this.cells[(j + 1) * G + i] !== k) {
+          ctx.beginPath(); ctx.moveTo(px, py + cellPx); ctx.lineTo(px + cellPx, py + cellPx); ctx.stroke();
+        }
+      }
+    }
+
+    this.pts.forEach((p, i) => {
+      const px = ox + p.x * side, py = oy + p.y * side;
+      ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#f59e0b'; ctx.fill();
+      ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 1.2; ctx.stroke();
+    });
+
+    ctx.strokeStyle = 'rgba(100,140,255,0.3)'; ctx.lineWidth = 1;
+    ctx.strokeRect(ox, oy, side, side);
+
+    ctx.fillStyle = '#22d3ee'; ctx.font = '11px monospace'; ctx.textAlign = 'left';
+    ctx.fillText('Merigot: Power 图 + 凸能量 Φ(w) 梯度下降', ox, oy - 8);
+    if (this.iteration > 0 || this.phi != null) {
+      ctx.fillStyle = '#8a8ad0'; ctx.textAlign = 'right';
+      ctx.fillText(`iter ${this.iteration}  maxerr ${this.maxError.toFixed(5)}  Φ≈${this.phi != null ? this.phi.toFixed(4) : '—'}`, ox + side, oy - 8);
     }
   }
 }
@@ -1284,8 +1588,9 @@ class SemiDiscreteOT extends CanvasManager {
 const ot1d = new OT1D();
 const ct = new ColorTransfer();
 const pc = new PointCloudReg();
-const sd = new SemiDiscreteOT();
-const algorithms = [ot1d, ct, pc, sd];
+const guSd = new GuSemiDiscreteOT();
+const merigotSd = new MerigotSemiDiscreteOT();
+const algorithms = [ot1d, ct, pc, guSd, merigotSd];
 
 $('ot-lambda').oninput = () => $('ot-lambda-val').textContent = (parseFloat($('ot-lambda').value) / 1000).toFixed(4);
 $('ot-speed').oninput = () => $('ot-speed-val').textContent = $('ot-speed').value + 'ms';
@@ -1297,6 +1602,10 @@ $('pc-speed').oninput = () => $('pc-speed-val').textContent = $('pc-speed').valu
 $('sd-lr').oninput = () => $('sd-lr-val').textContent = (parseFloat($('sd-lr').value) / 1000).toFixed(3);
 $('sd-grid').oninput = () => $('sd-grid-val').textContent = $('sd-grid').value;
 $('sd-speed').oninput = () => $('sd-speed-val').textContent = $('sd-speed').value + 'ms';
+$('mg-lr').oninput = () => $('mg-lr-val').textContent = (parseFloat($('mg-lr').value) / 1000).toFixed(3);
+$('mg-grid').oninput = () => $('mg-grid-val').textContent = $('mg-grid').value;
+$('mg-speed').oninput = () => $('mg-speed-val').textContent = $('mg-speed').value + 'ms';
+$('mg-lloyd').oninput = () => $('mg-lloyd-val').textContent = $('mg-lloyd').value;
 
 initTabs();
 window.addEventListener('resize', () => algorithms[currentTab].resize());

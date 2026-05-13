@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UV展开 - QuadCover / LSCM / Tutte / ARAP / CETM / Ricci / CP</title>
+  <title>UV展开 - SCP / ABF++ / linABF / LSCM / Tutte / ARAP / …</title>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
@@ -270,6 +270,9 @@
             <label id="lscm-bd-chk" style="color:#8a9dd4;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;margin-right:8px;"><input type="checkbox" id="bd-chk-lscm" onchange="onParamChange()"><span style="line-height:1">BD</span></label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="arap"> ARAP</label>
             <label id="arap-bd-chk" style="color:#8a9dd4;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;margin-right:8px;"><input type="checkbox" id="bd-chk-arap" onchange="onParamChange()"><span style="line-height:1">BD</span></label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Spectral Conformal Parameterization (Mullen et al.)"><input type="radio" name="method" value="scp"> SCP</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="ABF++ 角度变量 + Gauss–Newton（参考 Geogram mesh_ABF）"><input type="radio" name="method" value="abfpp"> ABF++</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="线性化正弦积约束的迭代 ABF（Zayer et al.）"><input type="radio" name="method" value="linabf"> linABF</label>
           </div>
         </fieldset>
 
@@ -904,7 +907,7 @@
        * 更新按钮状态，显示 WASM 引擎加载状态
        */
       function updateStartButtonState() {
-        const btn = document.getElementById('reloadBtn');
+        const btn = document.getElementById('reload-btn');
         if (!btn) return;
 
         if (wasmLoadFailed) {
@@ -1549,6 +1552,842 @@
           if ((b[0]-a[0])*(c[1]-a[1]) - (c[0]-a[0])*(b[1]-a[1]) < -eps) count++;
         }
         return count;
+      }
+
+      // ---------- SCP / ABF / linABF（纯 JS；SCP 矩阵与 libigl vector_area_matrix + Mullen et al. 逆幂迭代一致；角度法参考 Geogram ABF++ 流程）----------
+
+      function _dot(a, b) {
+        let s = 0;
+        for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+        return s;
+      }
+      function _axpy(a, x, y) {
+        for (let i = 0; i < x.length; i++) y[i] += a * x[i];
+      }
+      function _copy(a) {
+        const o = new Float64Array(a.length);
+        o.set(a);
+        return o;
+      }
+      function _norm2(a) {
+        return Math.sqrt(_dot(a, a));
+      }
+
+      /** 稠密线性方程组 A x = b（行主元），A 为 n×n 的 Float64Array 数组 */
+      function _denseSolvePivot(Ain, bin) {
+        const n = Ain.length;
+        const A = new Array(n);
+        for (let i = 0; i < n; i++) A[i] = new Float64Array(Ain[i]);
+        const b = _copy(bin);
+        const x = new Float64Array(n);
+        for (let k = 0; k < n; k++) {
+          let piv = k, best = Math.abs(A[k][k]);
+          for (let r = k + 1; r < n; r++) {
+            const v = Math.abs(A[r][k]);
+            if (v > best) { best = v; piv = r; }
+          }
+          if (best < 1e-18) throw new Error("SCP 稠密求解奇异");
+          if (piv !== k) {
+            const tA = A[k]; A[k] = A[piv]; A[piv] = tA;
+            const tb = b[k]; b[k] = b[piv]; b[piv] = tb;
+          }
+          const akk = A[k][k];
+          for (let r = k + 1; r < n; r++) {
+            const f = A[r][k] / akk;
+            A[r][k] = 0;
+            for (let c = k + 1; c < n; c++) A[r][c] -= f * A[k][c];
+            b[r] -= f * b[k];
+          }
+        }
+        for (let r = n - 1; r >= 0; r--) {
+          let s = b[r];
+          for (let c = r + 1; c < n; c++) s -= A[r][c] * x[c];
+          x[r] = s / A[r][r];
+        }
+        return x;
+      }
+
+      /** GMRES 解 A x = b，A 为对称线性算子 applyA(v,out)=A*v */
+      function _gmresSolve(applyA, b, tol, maxIter, restart) {
+        const n = b.length;
+        const x = new Float64Array(n);
+        const r0 = new Float64Array(n);
+        const Av = new Float64Array(n);
+        const tmp = new Float64Array(n);
+        let bn = _norm2(b);
+        if (bn < 1e-30) return x;
+        const rel = Math.max(tol * bn, 1e-14);
+        applyA(x, Av);
+        for (let i = 0; i < n; i++) r0[i] = b[i] - Av[i];
+        let beta = _norm2(r0);
+        if (beta < rel) return x;
+
+        const m = Math.min(restart, n);
+        const V = new Array(m + 1);
+        for (let i = 0; i <= m; i++) V[i] = new Float64Array(n);
+        const H = [];
+        for (let i = 0; i < m; i++) H[i] = new Float64Array(m);
+
+        let total = 0;
+        while (total < maxIter) {
+          for (let i = 0; i < n; i++) V[0][i] = r0[i] / beta;
+          const cs = [], sn = [], e1 = new Float64Array(m + 1);
+          e1[0] = beta;
+          let j = 0;
+          for (; j < m && total + j < maxIter; j++) {
+            applyA(V[j], Av);
+            for (let i = 0; i <= j; i++) H[i][j] = _dot(Av, V[i]);
+            for (let i = 0; i < n; i++) tmp[i] = Av[i];
+            for (let i = 0; i <= j; i++) _axpy(-H[i][j], V[i], tmp);
+            const hNext = _norm2(tmp);
+            H[j + 1][j] = hNext;
+            if (hNext < 1e-15) { j++; break; }
+            for (let i = 0; i < n; i++) V[j + 1][i] = tmp[i] / hNext;
+            for (let i = 0; i < j; i++) {
+              const h1 = H[i][j], h2 = H[i + 1][j];
+              const c = cs[i], s = sn[i];
+              H[i][j] = c * h1 + s * h2;
+              H[i + 1][j] = -s * h1 + c * h2;
+            }
+            const hjj = H[j][j], hj1 = H[j + 1][j];
+            const den = Math.hypot(hjj, hj1);
+            const c = hjj / den, s = hj1 / den;
+            cs[j] = c; sn[j] = s;
+            H[j][j] = c * hjj + s * hj1;
+            H[j + 1][j] = 0;
+            const ej = e1[j], ej1 = e1[j + 1];
+            e1[j] = c * ej + s * ej1;
+            e1[j + 1] = -s * ej + c * ej1;
+            if (Math.abs(e1[j + 1]) < rel) { j++; break; }
+          }
+          const jr = j;
+          const Rmat = [];
+          for (let r = 0; r < jr; r++) {
+            Rmat[r] = new Float64Array(jr);
+            for (let c = r; c < jr; c++) Rmat[r][c] = H[r][c];
+          }
+          const rhs = new Float64Array(jr);
+          for (let r = 0; r < jr; r++) rhs[r] = e1[r];
+          const y = _denseSolvePivot(Rmat, rhs);
+          const dx = new Float64Array(n);
+          for (let r = 0; r < jr; r++) _axpy(y[r], V[r], dx);
+          for (let i = 0; i < n; i++) x[i] += dx[i];
+          applyA(x, Av);
+          for (let i = 0; i < n; i++) r0[i] = b[i] - Av[i];
+          beta = _norm2(r0);
+          total += jr;
+          if (beta < rel) break;
+        }
+        return x;
+      }
+
+      function _normalizeUvBox(uv) {
+        let minU = Infinity, minV = Infinity, maxU = -Infinity, maxV = -Infinity;
+        for (let i = 0; i < uv.length; i++) {
+          const u = uv[i][0], v = uv[i][1];
+          if (u < minU) minU = u; if (u > maxU) maxU = u;
+          if (v < minV) minV = v; if (v > maxV) maxV = v;
+        }
+        const du = maxU - minU || 1, dv = maxV - minV || 1, s = 1 / Math.max(du, dv);
+        for (let i = 0; i < uv.length; i++) {
+          uv[i][0] = (uv[i][0] - minU) * s;
+          uv[i][1] = (uv[i][1] - minV) * s;
+        }
+        return uv;
+      }
+
+      function _cotanLaplacianTriplets(vertices, faces) {
+        const n = vertices.length;
+        const tri = [];
+        function add(i, j, v) {
+          if (i === j) return;
+          tri.push({ i: i, j: j, v: v });
+        }
+        for (let fi = 0; fi < faces.length; fi++) {
+          const f = faces[fi];
+          const i0 = f[0], i1 = f[1], i2 = f[2];
+          const p0 = vertices[i0], p1 = vertices[i1], p2 = vertices[i2];
+          const ax = p1[0] - p0[0], ay = p1[1] - p0[1], az = p1[2] - p0[2];
+          const bx = p2[0] - p0[0], by = p2[1] - p0[1], bz = p2[2] - p0[2];
+          const cx = p2[0] - p1[0], cy = p2[1] - p1[1], cz = p2[2] - p1[2];
+          const cr = ay * bz - az * by, cy2 = az * bx - ax * bz, cz2 = ax * by - ay * bx;
+          const area2 = Math.sqrt(cr * cr + cy2 * cy2 + cz2 * cz2) + 1e-30;
+          const cot0 = _dot3(ax, ay, az, bx, by, bz) / area2;
+          const cot1 = _dot3(-ax, -ay, -az, cx, cy, cz) / area2;
+          const cot2 = _dot3(bx, by, bz, -cx, -cy, -cz) / area2;
+          add(i0, i1, cot2); add(i1, i0, cot2);
+          add(i1, i2, cot0); add(i2, i1, cot0);
+          add(i2, i0, cot1); add(i0, i2, cot1);
+        }
+        const acc = new Map();
+        function accAdd(i, j, v) {
+          const k = i + '_' + j;
+          acc.set(k, (acc.get(k) || 0) + v);
+        }
+        for (let t = 0; t < tri.length; t++) accAdd(tri[t].i, tri[t].j, tri[t].v);
+        const rows = new Array(n).fill(0).map(function () { return []; });
+        let diag = new Float64Array(n);
+        acc.forEach(function (v, k) {
+          const p = k.split('_');
+          const i = +p[0], j = +p[1];
+          if (i === j) return;
+          rows[i].push({ j: j, v: v });
+          diag[i] -= v;
+        });
+        for (let i = 0; i < n; i++) rows[i].push({ j: i, v: diag[i] });
+        return rows;
+      }
+      function _dot3(ax, ay, az, bx, by, bz) {
+        return ax * bx + ay * by + az * bz;
+      }
+
+      /** 由稀疏行列表构造稠密矩阵（仅小规模 SCP 用） */
+      function _sparseRowsToDense(rows) {
+        const n = rows.length;
+        const A = new Array(n);
+        for (let i = 0; i < n; i++) {
+          A[i] = new Float64Array(n);
+          const ri = rows[i];
+          for (let k = 0; k < ri.length; k++) A[i][ri[k].j] += ri[k].v;
+        }
+        return A;
+      }
+
+      function _buildBoundaryData(faces, nv) {
+        const edgeMap = new Map();
+        function ekey(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
+        for (let fi = 0; fi < faces.length; fi++) {
+          const f = faces[fi];
+          for (let k = 0; k < 3; k++) {
+            const a = f[k], b = f[(k + 1) % 3];
+            const ek = ekey(a, b);
+            if (!edgeMap.has(ek)) edgeMap.set(ek, []);
+            edgeMap.get(ek).push(fi);
+          }
+        }
+        const boundaryEdges = [];
+        edgeMap.forEach(function (fl, ek) {
+          if (fl.length === 1) {
+            const p = ek.split('_');
+            boundaryEdges.push([+p[0], +p[1]]);
+          }
+        });
+        const isBnd = new Array(nv).fill(false);
+        for (let e = 0; e < boundaryEdges.length; e++) {
+          isBnd[boundaryEdges[e][0]] = true;
+          isBnd[boundaryEdges[e][1]] = true;
+        }
+        return { boundaryEdges: boundaryEdges, isBnd: isBnd };
+      }
+
+      /** libigl::vector_area_matrix：仅边界边贡献 */
+      function _vectorAreaTriplets(boundaryEdges, n) {
+        const tri = [];
+        for (let e = 0; e < boundaryEdges.length; e++) {
+          const i = boundaryEdges[e][0], j = boundaryEdges[e][1];
+          tri.push({ i: i + n, j: j, v: -0.25 });
+          tri.push({ i: j, j: i + n, v: -0.25 });
+          tri.push({ i: i, j: j + n, v: 0.25 });
+          tri.push({ i: j + n, j: i, v: 0.25 });
+        }
+        const rows = new Array(2 * n).fill(0).map(function () { return []; });
+        for (let t = 0; t < tri.length; t++) {
+          const tr = tri[t];
+          rows[tr.i].push({ j: tr.j, v: tr.v });
+        }
+        return rows;
+      }
+
+      /** LC = -blockDiag(L,L) + 2*A，返回 2n×2n 稀疏行 */
+      function _buildLC(rowsL, rowsA, n) {
+        const N = 2 * n;
+        const rows = new Array(N).fill(0).map(function () { return []; });
+        function addBlock(src, roff, coff, scale) {
+          for (let i = 0; i < src.length; i++) {
+            const ri = src[i];
+            for (let k = 0; k < ri.length; k++) {
+              const t = ri[k];
+              rows[i + roff].push({ j: t.j + coff, v: scale * t.v });
+            }
+          }
+        }
+        addBlock(rowsL, 0, 0, -1);
+        addBlock(rowsL, n, n, -1);
+        addBlock(rowsA, 0, 0, 2);
+        const acc = new Array(N).fill(0).map(function () { return new Map(); });
+        for (let i = 0; i < N; i++) {
+          const ri = rows[i];
+          for (let k = 0; k < ri.length; k++) {
+            const t = ri[k];
+            const m = acc[i];
+            m.set(t.j, (m.get(t.j) || 0) + t.v);
+          }
+        }
+        const out = new Array(N);
+        for (let i = 0; i < N; i++) {
+          const m = acc[i];
+          const arr = [];
+          m.forEach(function (v, j) { arr.push({ j: j, v: v }); });
+          arr.sort(function (a, b) { return a.j - b.j; });
+          out[i] = arr;
+        }
+        return out;
+      }
+
+      /** 边界投影 P = B - E E^T（单连通边界环，与 Euclid/libigl 用法一致） */
+      function _makeBoundaryProjector(isBnd, n) {
+        const bverts = [];
+        for (let i = 0; i < n; i++) if (isBnd[i]) bverts.push(i);
+        const nb = bverts.length;
+        return function applyP(x) {
+          const y = new Float64Array(x.length);
+          if (nb === 0) {
+            for (let i = 0; i < x.length; i++) y[i] = x[i];
+            return y;
+          }
+          let su = 0, sv = 0;
+          for (let k = 0; k < nb; k++) {
+            const i = bverts[k];
+            su += x[i];
+            sv += x[i + n];
+          }
+          const mu = su / nb, mv = sv / nb;
+          for (let i = 0; i < n; i++) {
+            if (isBnd[i]) {
+              y[i] = x[i] - mu;
+              y[i + n] = x[i + n] - mv;
+            } else {
+              y[i] = x[i];
+              y[i + n] = x[i + n];
+            }
+          }
+          return y;
+        };
+      }
+
+      function spectralConformalParameterizationJs(vertices, faces) {
+        const n = vertices.length;
+        const bd = _buildBoundaryData(faces, n);
+        if (bd.boundaryEdges.length === 0) {
+          throw new Error("SCP 需要带边界的网格（与 LSCM 不同，无 pin 但需开放边界）；封闭曲面请先切开。");
+        }
+        const rowsL = _cotanLaplacianTriplets(vertices, faces);
+        const rowsA = _vectorAreaTriplets(bd.boundaryEdges, n);
+        const rowsLC = _buildLC(rowsL, rowsA, n);
+        const applyP = _makeBoundaryProjector(bd.isBnd, n);
+        const dim = 2 * n;
+        function applyLC(x, out) {
+          for (let i = 0; i < dim; i++) {
+            let s = 0;
+            const ri = rowsLC[i];
+            for (let k = 0; k < ri.length; k++) s += ri[k].v * x[ri[k].j];
+            out[i] = s;
+          }
+        }
+        let x = new Float64Array(dim);
+        for (let i = 0; i < dim; i++) x[i] = Math.random() - 0.5;
+        const powIters = 28;
+        for (let it = 0; it < powIters; it++) {
+          x = applyP(x);
+          const rhs = _copy(x);
+          if (dim <= 900) {
+            const dense = _sparseRowsToDense(rowsLC);
+            x = _denseSolvePivot(dense, rhs);
+          } else {
+            x = _gmresSolve(applyLC, rhs, 1e-9, Math.min(800, dim * 2), Math.min(80, dim));
+          }
+          const nx = _norm2(x);
+          for (let i = 0; i < dim; i++) x[i] /= nx + 1e-30;
+        }
+        const uv = new Array(n);
+        for (let i = 0; i < n; i++) uv[i] = [x[i], x[i + n]];
+        return _normalizeUvBox(uv);
+      }
+
+      function _faceAnglesFromPositions(vertices, faces) {
+        const nf = faces.length;
+        const alpha = new Float64Array(nf * 3);
+        for (let fi = 0; fi < nf; fi++) {
+          const f = faces[fi];
+          const p0 = vertices[f[0]], p1 = vertices[f[1]], p2 = vertices[f[2]];
+          const la = edgeLen(p1, p2), lb = edgeLen(p0, p2), lc = edgeLen(p0, p1);
+          alpha[fi * 3 + 0] = angleFromSides(lb, lc, la);
+          alpha[fi * 3 + 1] = angleFromSides(lc, la, lb);
+          alpha[fi * 3 + 2] = angleFromSides(la, lb, lc);
+        }
+        return alpha;
+      }
+      function edgeLen(a, b) {
+        const dx = a[0] - b[0], dy = a[1] - b[1], dz = a[2] - b[2];
+        return Math.sqrt(dx * dx + dy * dy + dz * dz) + 1e-30;
+      }
+      function angleFromSides(a, b, c) {
+        const t = (a * a + b * b - c * c) / (2 * a * b);
+        return Math.acos(Math.min(1, Math.max(-1, t)));
+      }
+
+      /** 内部顶点的 CCW 一环：每条记录为 { betaIdx, gammaIdx }（全局角下标），对应正弦积中一对对角 */
+      function _buildAngleFan(vertices, faces, isBnd) {
+        const nv = vertices.length;
+        const inc = new Array(nv).fill(0).map(function () { return []; });
+        for (let fi = 0; fi < faces.length; fi++) {
+          const f = faces[fi];
+          for (let s = 0; s < 3; s++) inc[f[s]].push({ fi: fi, s: s });
+        }
+        const fans = [];
+        const interiorVerts = [];
+        for (let v = 0; v < nv; v++) {
+          if (isBnd[v]) continue;
+          interiorVerts.push(v);
+          fans[v] = _sortNeighborsCCW(v, inc[v], vertices, faces);
+        }
+        return { interiorVerts: interiorVerts, fans: fans, inc: inc };
+      }
+
+      function _oppositeCornerGlobal(f, va, vb, fi) {
+        for (let s = 0; s < 3; s++) {
+          if (f[s] !== va && f[s] !== vb) return fi * 3 + s;
+        }
+        return -1;
+      }
+
+      function _otherSharedVertexNonV(v, fi, fj, faces) {
+        const a = faces[fi], b = faces[fj];
+        for (let ia = 0; ia < 3; ia++) {
+          if (a[ia] === v) continue;
+          for (let ib = 0; ib < 3; ib++) {
+            if (a[ia] === b[ib]) return a[ia];
+          }
+        }
+        return -1;
+      }
+
+      function _sortNeighborsCCW(v, list, vertices, faces) {
+        const pV = vertices[v];
+        let nx = 0, ny = 0, nz = 0;
+        for (let k = 0; k < list.length; k++) {
+          const t = list[k];
+          const f = faces[t.fi];
+          const p0 = vertices[f[0]], p1 = vertices[f[1]], p2 = vertices[f[2]];
+          const ax = p1[0] - p0[0], ay = p1[1] - p0[1], az = p1[2] - p0[2];
+          const bx = p2[0] - p0[0], by = p2[1] - p0[1], bz = p2[2] - p0[2];
+          nx += ay * bz - az * by; ny += az * bx - ax * bz; nz += ax * by - ay * bx;
+        }
+        const nn = Math.hypot(nx, ny, nz) + 1e-30;
+        nx /= nn; ny /= nn; nz /= nn;
+        const dirs = [];
+        for (let k = 0; k < list.length; k++) {
+          const t = list[k];
+          const f = faces[t.fi];
+          const s = t.s;
+          const u = f[(s + 1) % 3];
+          const pu = vertices[u];
+          dirs.push({ fi: t.fi, u: u, dx: pu[0] - pV[0], dy: pu[1] - pV[1], dz: pu[2] - pV[2] });
+        }
+        const r0 = dirs[0];
+        let e1x = r0.dx, e1y = r0.dy, e1z = r0.dz;
+        let le1 = Math.hypot(e1x, e1y, e1z) + 1e-30;
+        e1x /= le1; e1y /= le1; e1z /= le1;
+        let e2x = ny * e1z - nz * e1y, e2y = nz * e1x - nx * e1z, e2z = nx * e1y - ny * e1x;
+        let le2 = Math.hypot(e2x, e2y, e2z) + 1e-30;
+        e2x /= le2; e2y /= le2; e2z /= le2;
+        e1x = e2y * nz - e2z * ny;
+        e1y = e2z * nx - e2x * nz;
+        e1z = e2x * ny - e2y * nx;
+        le1 = Math.hypot(e1x, e1y, e1z) + 1e-30;
+        e1x /= le1; e1y /= le1; e1z /= le1;
+        for (let k = 0; k < dirs.length; k++) {
+          const d = dirs[k];
+          d.ang = Math.atan2(d.dx * e2x + d.dy * e2y + d.dz * e2z, d.dx * e1x + d.dy * e1y + d.dz * e1z);
+        }
+        dirs.sort(function (a, b) { return a.ang - b.ang; });
+        const d = dirs.length;
+        const pairs = [];
+        for (let i = 0; i < d; i++) {
+          const fPrev = dirs[(i + d - 1) % d].fi;
+          const fCur = dirs[i].fi;
+          const wi = _otherSharedVertexNonV(v, fPrev, fCur, faces);
+          if (wi < 0) continue;
+          const betaIdx = _oppositeCornerGlobal(faces[fPrev], v, wi, fPrev);
+          const gammaIdx = _oppositeCornerGlobal(faces[fCur], v, wi, fCur);
+          pairs.push({ betaIdx: betaIdx, gammaIdx: gammaIdx });
+        }
+        return pairs;
+      }
+
+      function _multJtSparse(Jrows, x, outNAlpha) {
+        outNAlpha.fill(0);
+        for (let r = 0; r < Jrows.length; r++) {
+          const row = Jrows[r];
+          const xr = x[r];
+          for (let k = 0; k < row.length; k++) {
+            const t = row[k];
+            outNAlpha[t.j] += t.v * xr;
+          }
+        }
+      }
+
+      function _multJSparse(Jrows, a, outM) {
+        for (let r = 0; r < Jrows.length; r++) {
+          let s = 0;
+          const row = Jrows[r];
+          for (let k = 0; k < row.length; k++) {
+            const t = row[k];
+            s += t.v * a[t.j];
+          }
+          outM[r] = s;
+        }
+      }
+
+      function _cgJJt(Jrows, rhs, nAlpha, maxIt, tol) {
+        const m = rhs.length;
+        const x = new Float64Array(m);
+        const r = new Float64Array(m);
+        const p = new Float64Array(m);
+        const Ap = new Float64Array(m);
+        const Jtp = new Float64Array(nAlpha);
+        for (let i = 0; i < m; i++) r[i] = rhs[i];
+        let rr = _dot(r, r);
+        const rhsN = Math.sqrt(rr) + 1e-30;
+        for (let i = 0; i < m; i++) p[i] = r[i];
+        let iter = 0;
+        while (iter < maxIt) {
+          _multJtSparse(Jrows, p, Jtp);
+          _multJSparse(Jrows, Jtp, Ap);
+          const denom = _dot(p, Ap) + 1e-30;
+          const alpha = rr / denom;
+          for (let i = 0; i < m; i++) x[i] += alpha * p[i];
+          for (let i = 0; i < m; i++) r[i] -= alpha * Ap[i];
+          const rrNew = _dot(r, r);
+          if (Math.sqrt(rrNew) < tol * rhsN) break;
+          const beta = rrNew / (rr + 1e-30);
+          for (let i = 0; i < m; i++) p[i] = r[i] + beta * p[i];
+          rr = rrNew;
+          iter++;
+        }
+        return x;
+      }
+
+      function _clampAngle(t) {
+        return Math.min(Math.PI - 1e-3, Math.max(1e-3, t));
+      }
+
+      function _buildJrowsAndRhsLin(alpha, faces, fanData, nAlpha) {
+        const nf = faces.length;
+        const interiorVerts = fanData.interiorVerts;
+        const fans = fanData.fans;
+        const rows = [];
+        const rhs = [];
+        for (let fi = 0; fi < nf; fi++) {
+          rows.push([
+            { j: fi * 3 + 0, v: 1 },
+            { j: fi * 3 + 1, v: 1 },
+            { j: fi * 3 + 2, v: 1 }
+          ]);
+          rhs.push(Math.PI);
+        }
+        for (let iv = 0; iv < interiorVerts.length; iv++) {
+          const v = interiorVerts[iv];
+          const list = fanData.inc[v];
+          const row = [];
+          for (let k = 0; k < list.length; k++) {
+            row.push({ j: list[k].fi * 3 + list[k].s, v: 1 });
+          }
+          rows.push(row);
+          rhs.push(2 * Math.PI);
+        }
+        for (let iv = 0; iv < interiorVerts.length; iv++) {
+          const v = interiorVerts[iv];
+          const pairs = fans[v];
+          const row = [];
+          let linRhs = 0;
+          let fLog = 0;
+          for (let k = 0; k < pairs.length; k++) {
+            const bi = pairs[k].betaIdx, gi = pairs[k].gammaIdx;
+            const bet = _clampAngle(alpha[bi]);
+            const gam = _clampAngle(alpha[gi]);
+            const cb = 1 / Math.tan(bet);
+            const cg = 1 / Math.tan(gam);
+            row.push({ j: bi, v: cb });
+            row.push({ j: gi, v: -cg });
+            fLog += Math.log(Math.sin(bet)) - Math.log(Math.sin(gam));
+            linRhs += cb * bet - cg * gam;
+          }
+          rhs.push(linRhs - fLog);
+          rows.push(row);
+        }
+        return { Jrows: rows, rhs: rhs };
+      }
+
+      function _solveConstrainedLeastSquares(alpha0, Jrows, c, nAlpha) {
+        const m = Jrows.length;
+        const Ja0 = new Float64Array(m);
+        _multJSparse(Jrows, alpha0, Ja0);
+        const rhsLam = new Float64Array(m);
+        for (let i = 0; i < m; i++) rhsLam[i] = Ja0[i] - c[i];
+        const lam = _cgJJt(Jrows, rhsLam, nAlpha, Math.min(800, m * 3 + 50), 1e-10);
+        const JtLam = new Float64Array(nAlpha);
+        _multJtSparse(Jrows, lam, JtLam);
+        const alpha = new Float64Array(nAlpha);
+        for (let i = 0; i < nAlpha; i++) alpha[i] = alpha0[i] - JtLam[i];
+        return alpha;
+      }
+
+      function _nonlinearResidual(alpha, faces, fanData, nAlpha) {
+        const nf = faces.length;
+        const interiorVerts = fanData.interiorVerts;
+        const fans = fanData.fans;
+        const R = [];
+        for (let fi = 0; fi < nf; fi++) {
+          R.push(alpha[fi * 3] + alpha[fi * 3 + 1] + alpha[fi * 3 + 2] - Math.PI);
+        }
+        for (let iv = 0; iv < interiorVerts.length; iv++) {
+          const v = interiorVerts[iv];
+          const list = fanData.inc[v];
+          let s = 0;
+          for (let k = 0; k < list.length; k++) s += alpha[list[k].fi * 3 + list[k].s];
+          R.push(s - 2 * Math.PI);
+        }
+        for (let iv = 0; iv < interiorVerts.length; iv++) {
+          const v = interiorVerts[iv];
+          const pairs = fans[v];
+          let fLog = 0;
+          for (let k = 0; k < pairs.length; k++) {
+            const bi = pairs[k].betaIdx, gi = pairs[k].gammaIdx;
+            fLog += Math.log(Math.sin(_clampAngle(alpha[bi]))) - Math.log(Math.sin(_clampAngle(alpha[gi])));
+          }
+          R.push(fLog);
+        }
+        return R;
+      }
+
+      function _buildJNewton(alpha, faces, fanData, nAlpha) {
+        const base = _buildJrowsAndRhsLin(alpha, faces, fanData, nAlpha);
+        return base.Jrows;
+      }
+
+      function _solveNewtonStep(alpha, alpha0, lam, Jrows, Rvec, nAlpha) {
+        const m = Jrows.length;
+        const ra = new Float64Array(nAlpha);
+        for (let i = 0; i < nAlpha; i++) ra[i] = -2 * (alpha[i] - alpha0[i]);
+        const JtL = new Float64Array(nAlpha);
+        _multJtSparse(Jrows, lam, JtL);
+        for (let i = 0; i < nAlpha; i++) ra[i] -= JtL[i];
+        const Jra = new Float64Array(m);
+        _multJSparse(Jrows, ra, Jra);
+        const rhsLam = new Float64Array(m);
+        for (let i = 0; i < m; i++) rhsLam[i] = Jra[i] + 2 * Rvec[i];
+        const dlam = _cgJJt(Jrows, rhsLam, nAlpha, Math.min(900, m * 3 + 80), 1e-9);
+        const Jtd = new Float64Array(nAlpha);
+        _multJtSparse(Jrows, dlam, Jtd);
+        const dalpha = new Float64Array(nAlpha);
+        for (let i = 0; i < nAlpha; i++) dalpha[i] = (ra[i] - Jtd[i]) * 0.5;
+        return { dalpha: dalpha, dlam: dlam };
+      }
+
+      function _angleFlattenLinABF(vertices, faces, maxIter) {
+        const nAlpha = faces.length * 3;
+        const bd = _buildBoundaryData(faces, vertices.length);
+        if (bd.boundaryEdges.length === 0) {
+          throw new Error("ABF 类算法需要带边界网格。");
+        }
+        const fanData = _buildAngleFan(vertices, faces, bd.isBnd);
+        let alpha = _faceAnglesFromPositions(vertices, faces);
+        const alpha0 = alpha.slice();
+        for (let it = 0; it < maxIter; it++) {
+          const built = _buildJrowsAndRhsLin(alpha, faces, fanData, nAlpha);
+          const c = new Float64Array(built.rhs.length);
+          for (let i = 0; i < built.rhs.length; i++) c[i] = built.rhs[i];
+          const alphaNew = _solveConstrainedLeastSquares(alpha0, built.Jrows, c, nAlpha);
+          let diff = 0;
+          for (let i = 0; i < nAlpha; i++) {
+            diff += (alphaNew[i] - alpha[i]) * (alphaNew[i] - alpha[i]);
+          }
+          alpha = alphaNew;
+          if (Math.sqrt(diff) < 1e-5) break;
+        }
+        for (let i = 0; i < nAlpha; i++) alpha[i] = _clampAngle(alpha[i]);
+        return alpha;
+      }
+
+      function _angleFlattenABFpp(vertices, faces, maxNewton) {
+        const nAlpha = faces.length * 3;
+        const bd = _buildBoundaryData(faces, vertices.length);
+        if (bd.boundaryEdges.length === 0) throw new Error("ABF 类算法需要带边界网格。");
+        const fanData = _buildAngleFan(vertices, faces, bd.isBnd);
+        let alpha = _faceAnglesFromPositions(vertices, faces);
+        const alpha0 = alpha.slice();
+        const m = faces.length + 2 * fanData.interiorVerts.length;
+        let lam = new Float64Array(m);
+        const Rbuf = [];
+        for (let k = 0; k < maxNewton; k++) {
+          const Jrows = _buildJNewton(alpha, faces, fanData, nAlpha);
+          const Rvec = _nonlinearResidual(alpha, faces, fanData, nAlpha);
+          let nr = 0;
+          for (let i = 0; i < Rvec.length; i++) nr += Rvec[i] * Rvec[i];
+          nr = Math.sqrt(nr);
+          if (nr < 1e-4) break;
+          const step = _solveNewtonStep(alpha, alpha0, lam, Jrows, Rvec, nAlpha);
+          let s = 1;
+          for (let trial = 0; trial < 8; trial++) {
+            const trialA = new Float64Array(nAlpha);
+            for (let i = 0; i < nAlpha; i++) {
+              trialA[i] = _clampAngle(alpha[i] + s * step.dalpha[i]);
+            }
+            const Rt = _nonlinearResidual(trialA, faces, fanData, nAlpha);
+            let nrt = 0;
+            for (let i = 0; i < Rt.length; i++) nrt += Rt[i] * Rt[i];
+            nrt = Math.sqrt(nrt);
+            if (nrt < nr * 1.05) {
+              alpha = trialA;
+              for (let i = 0; i < m; i++) lam[i] += s * step.dlam[i];
+              break;
+            }
+            s *= 0.5;
+          }
+        }
+        return alpha;
+      }
+
+      function _twoCircleIntersection(a, ra, b, rb, signSide) {
+        const dx = b[0] - a[0], dy = b[1] - a[1];
+        const d = Math.hypot(dx, dy) + 1e-30;
+        const nx = dx / d, ny = dy / d;
+        const t = (ra * ra - rb * rb + d * d) / (2 * d);
+        const h2 = ra * ra - t * t;
+        const h = Math.sqrt(Math.max(0, h2));
+        const px = a[0] + t * nx, py = a[1] + t * ny;
+        const ox = -ny * h * signSide, oy = nx * h * signSide;
+        return [px + ox, py + oy];
+      }
+
+      function _triSignedArea2d(a, b, c) {
+        return (b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]);
+      }
+
+      function _triSign3d(p0, p1, p2) {
+        const ax = p1[0] - p0[0], ay = p1[1] - p0[1], az = p1[2] - p0[2];
+        const bx = p2[0] - p0[0], by = p2[1] - p0[1], bz = p2[2] - p0[2];
+        const cx = ay * bz - az * by, cy = az * bx - ax * bz, cz = ax * by - ay * bx;
+        if (Math.abs(cx) >= Math.abs(cy) && Math.abs(cx) >= Math.abs(cz)) return cx >= 0 ? 1 : -1;
+        if (Math.abs(cy) >= Math.abs(cz)) return cy >= 0 ? 1 : -1;
+        return cz >= 0 ? 1 : -1;
+      }
+
+      function _anglesToUv(vertices, faces, alpha) {
+        const nv = vertices.length;
+        const uv = new Array(nv);
+        for (let i = 0; i < nv; i++) uv[i] = null;
+        const f0 = faces[0];
+        const p0 = vertices[f0[0]], p1 = vertices[f0[1]], p2 = vertices[f0[2]];
+        const l01 = edgeLen(p0, p1), l12 = edgeLen(p1, p2), l20 = edgeLen(p2, p0);
+        uv[f0[0]] = [0, 0];
+        uv[f0[1]] = [l01, 0];
+        const want0 = _triSign3d(p0, p1, p2);
+        let sgn = 1;
+        uv[f0[2]] = _twoCircleIntersection(uv[f0[0]], l20, uv[f0[1]], l12, sgn);
+        if (_triSignedArea2d(uv[f0[0]], uv[f0[1]], uv[f0[2]]) * want0 < 0) {
+          sgn = -1;
+          uv[f0[2]] = _twoCircleIntersection(uv[f0[0]], l20, uv[f0[1]], l12, sgn);
+        }
+        const faceDone = new Array(faces.length).fill(false);
+        faceDone[0] = true;
+        const queue = [0];
+        while (queue.length) {
+          const fi = queue.shift();
+          const f = faces[fi];
+          for (let e = 0; e < 3; e++) {
+            const v0 = f[e], v1 = f[(e + 1) % 3], v2 = f[(e + 2) % 3];
+            if (uv[v0] === null || uv[v1] === null) continue;
+            const adj = _findOtherFaceOnEdge(faces, fi, v0, v1);
+            if (adj < 0 || faceDone[adj]) continue;
+            const g = faces[adj];
+            let a = -1, b = -1, c = -1;
+            for (let s = 0; s < 3; s++) {
+              const i0 = g[s], i1 = g[(s + 1) % 3], i2 = g[(s + 2) % 3];
+              if (uv[i0] !== null && uv[i1] !== null && uv[i2] === null) {
+                a = i0; b = i1; c = i2;
+                break;
+              }
+            }
+            if (c < 0) continue;
+            const lac = edgeLen(vertices[a], vertices[c]);
+            const lbc = edgeLen(vertices[b], vertices[c]);
+            const want = _triSign3d(vertices[g[0]], vertices[g[1]], vertices[g[2]]);
+            let cand = _twoCircleIntersection(uv[a], lac, uv[b], lbc, 1);
+            if (_triSignedArea2d(uv[a], uv[b], cand) * want < 0) {
+              cand = _twoCircleIntersection(uv[a], lac, uv[b], lbc, -1);
+            }
+            uv[c] = cand;
+            faceDone[adj] = true;
+            queue.push(adj);
+          }
+        }
+        for (let i = 0; i < nv; i++) {
+          if (uv[i] === null) uv[i] = [0, 0];
+        }
+        return _normalizeUvBox(uv);
+      }
+
+      function _findOtherFaceOnEdge(faces, skipFi, v0, v1) {
+        for (let fi = 0; fi < faces.length; fi++) {
+          if (fi === skipFi) continue;
+          const f = faces[fi];
+          const h0 = f[0] === v0 || f[1] === v0 || f[2] === v0;
+          const h1 = f[0] === v1 || f[1] === v1 || f[2] === v1;
+          if (h0 && h1) return fi;
+        }
+        return -1;
+      }
+
+      async function solveSCPAsync(meshData, onProgress) {
+        const vertices = meshData.positions, faces = meshData.faces;
+        if (onProgress) onProgress(0, 1);
+        const t0 = performance.now();
+        const uv = spectralConformalParameterizationJs(vertices, faces);
+        const timeMs = performance.now() - t0;
+        if (onProgress) onProgress(1, 1);
+        return {
+          uv: uv,
+          anchors: chooseAnchorPair(vertices),
+          flippedFaceCount: countFlippedFaces(uv, faces),
+          timeMs: timeMs,
+          method: 'scp'
+        };
+      }
+
+      async function solveLinABFAsync(meshData, onProgress) {
+        const vertices = meshData.positions, faces = meshData.faces;
+        if (onProgress) onProgress(0, 2);
+        const t0 = performance.now();
+        const alpha = _angleFlattenLinABF(vertices, faces, 40);
+        if (onProgress) onProgress(1, 2);
+        const uv = _anglesToUv(vertices, faces, alpha);
+        if (onProgress) onProgress(2, 2);
+        return {
+          uv: uv,
+          anchors: chooseAnchorPair(vertices),
+          flippedFaceCount: countFlippedFaces(uv, faces),
+          timeMs: performance.now() - t0,
+          method: 'linabf'
+        };
+      }
+
+      async function solveABFppAsync(meshData, onProgress) {
+        const vertices = meshData.positions, faces = meshData.faces;
+        if (onProgress) onProgress(0, 2);
+        const t0 = performance.now();
+        const alpha = _angleFlattenABFpp(vertices, faces, 12);
+        if (onProgress) onProgress(1, 2);
+        const uv = _anglesToUv(vertices, faces, alpha);
+        if (onProgress) onProgress(2, 2);
+        return {
+          uv: uv,
+          anchors: chooseAnchorPair(vertices),
+          flippedFaceCount: countFlippedFaces(uv, faces),
+          timeMs: performance.now() - t0,
+          method: 'abfpp'
+        };
       }
 
       function buildModelGroup(root, anchors, positions, showPins) {
@@ -2542,6 +3381,9 @@
         else if (method === 'bff') methodLabel = 'BFF';
         else if (method === 'miq') methodLabel = 'MIQ';
         else if (method === 'holo') methodLabel = '全纯1-形式';
+        else if (method === 'scp') methodLabel = 'SCP (谱共形)';
+        else if (method === 'abfpp') methodLabel = 'ABF++';
+        else if (method === 'linabf') methodLabel = 'linABF';
         else methodLabel = 'LSCM';
 
         setBusy(true);
@@ -2613,6 +3455,18 @@
             for(let i=0;i<nv;i++)uvs[i]=[us[i*2],us[i*2+1]];
             unwrapResult = {uv:uvs, anchors:chooseAnchorPair(fv), flippedFaceCount:countFlippedFaces(uvs,ff),
               timeMs:wasmInstance.ccall('get_holo_last_time_ms','number',[],[]), method:'holo'};
+          } else if (method === 'scp') {
+            unwrapResult = await solveSCPAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
+          } else if (method === 'linabf') {
+            unwrapResult = await solveLinABFAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
+          } else if (method === 'abfpp') {
+            unwrapResult = await solveABFppAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
           } else {
             unwrapResult = await solveLSCMAsync(currentMeshData, function(progress, total) {
               updateTimingProgress(progress, total);
@@ -2634,7 +3488,7 @@
           }
 
           // 更新 UV 面板标签
-          const methodNames = { lscm:'LSCM', tutte:'Tutte', arap:'ARAP', cetm:'CETM', ricci:'Ricci', cp:'CirclePat', quadcover:'QuadCover', bff:'BFF', miq:'MIQ', holo:'Holo' };
+          const methodNames = { lscm:'LSCM', tutte:'Tutte', arap:'ARAP', cetm:'CETM', ricci:'Ricci', cp:'CirclePat', quadcover:'QuadCover', bff:'BFF', miq:'MIQ', holo:'Holo', scp:'SCP', abfpp:'ABF++', linabf:'linABF' };
           document.getElementById('uv-panel-label').textContent =
             (methodNames[unwrapResult.method] || unwrapResult.method) + ' UV 网格';
 

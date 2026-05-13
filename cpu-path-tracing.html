@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPU 路径追踪 — 与 cpp/CPUPathTracing 同构演示</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #0a0c12;
+      color: #d5daf0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 20px;
+      padding: 10px 16px;
+      background: rgba(18, 22, 38, 0.95);
+      border-bottom: 1px solid rgba(120, 140, 255, 0.2);
+    }
+    header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      background: linear-gradient(90deg, #8b9cff, #c4b5fd);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+    label { font-size: 12px; color: #8a92b8; }
+    button, select {
+      background: #1a2035;
+      color: #e8ecff;
+      border: 1px solid rgba(120, 140, 255, 0.35);
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button:hover { background: #242a48; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #status { font-size: 12px; color: #9aa3c9; margin-left: auto; }
+    main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 12px;
+      min-height: 0;
+    }
+    #wrap {
+      position: relative;
+      max-width: 100%;
+      max-height: calc(100vh - 120px);
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.45);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    canvas { display: block; max-width: 100%; height: auto; vertical-align: top; }
+    #note {
+      padding: 12px 16px 20px;
+      font-size: 12px;
+      line-height: 1.65;
+      color: #7a83a8;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    #note a { color: #9eb4ff; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CPU Path Tracing</h1>
+    <div class="row">
+      <label>分辨率 <select id="res">
+        <option value="480">480×270</option>
+        <option value="640" selected>640×360</option>
+        <option value="800">800×450</option>
+      </select></label>
+      <label>每帧步数 <select id="sppFrame">
+        <option value="1">1</option>
+        <option value="2" selected>2</option>
+        <option value="4">4</option>
+      </select></label>
+      <button type="button" id="btn-reset">重置累积</button>
+      <button type="button" id="btn-pause">暂停</button>
+    </div>
+    <span id="status">累积 0 spp · …</span>
+  </header>
+  <main>
+    <div id="wrap">
+      <canvas id="cv" width="640" height="360"></canvas>
+    </div>
+  </main>
+  <p id="note">
+    本页为浏览器内 <strong>渐进式路径追踪</strong>，场景布局与材质角色对齐仓库
+    <code>cpp/CPUPathTracing/src/main.cpp</code>：四尊「主体」+ 镜面小球 + 无限地面 + 环境光（此处用程序化天空近似 EXR 无限光源）。
+    因静态站无 <code>buddha.obj</code> / HDRI 资源，主体用<strong>大球体</strong>代替三角网格 Buddha；BSDF 含余弦漫反射、理想镜面、Schlick 电介质、粗糙金属（GGX）。
+    完整 BVH / MIS / 与 C++ 逐位一致需在本地编译 <code>CPUPathTracing</code> 输出 EXR。
+  </p>
+  <script>
+(function () {
+  'use strict';
+
+  const PI = Math.PI;
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d', { alpha: false, willReadFrequently: true });
+  const statusEl = document.getElementById('status');
+
+  function clamp(x, a, b) { return Math.min(b, Math.max(a, x)); }
+  function length3(x, y, z) { return Math.hypot(x, y, z); }
+  function normalize3(x, y, z) {
+    const L = length3(x, y, z) + 1e-20;
+    return [x / L, y / L, z / L];
+  }
+  function dot(ax, ay, az, bx, by, bz) { return ax * bx + ay * by + az * bz; }
+  function reflect(ix, iy, iz, nx, ny, nz) {
+    const d = 2 * dot(ix, iy, iz, nx, ny, nz);
+    return [ix - d * nx, iy - d * ny, iz - d * nz];
+  }
+  function refract(ix, iy, iz, nx, ny, nz, etai, etat) {
+    const cosi = clamp(-dot(ix, iy, iz, nx, ny, nz), -1, 1);
+    const et = etai / etat;
+    const k = 1 - et * et * (1 - cosi * cosi);
+    if (k < 0) return null;
+    const s = et * cosi + Math.sqrt(k);
+    return [et * ix + s * nx, et * iy + s * ny, et * iz + s * nz];
+  }
+  function schlickFresnel(cosTheta, F0) {
+    const t = 1 - cosTheta;
+    const t2 = t * t;
+    return F0 + (1 - F0) * (t2 * t2 * t);
+  }
+
+  /** PCG32 */
+  function makeRng(seed) {
+    let state = (seed >>> 0) || 1;
+    return function () {
+      state = Math.imul(state, 747796405) + 2891336453 | 0;
+      let z = state;
+      z = Math.imul(z ^ (z >>> 13), z | 1);
+      z ^= z >>> 15;
+      return ((z >>> 0) & 0xffffffff) / 0x100000000;
+    };
+  }
+
+  const MAT_DIFFUSE = 0;
+  const MAT_SPECULAR = 1;
+  const MAT_DIELECTRIC = 2;
+  const MAT_CONDUCTOR = 3;
+
+  /** 场景：对齐 main.cpp 四实例 + 球 + 地 */
+  const spheres = [
+    { cx: -3, cy: 0.9, cz: 0, r: 0.9, mat: MAT_SPECULAR, albedo: [0.95, 0.75, 0.31], eta: 1.5, rough: 0.05 },
+    { cx: -1, cy: 0.9, cz: 0, r: 0.9, mat: MAT_CONDUCTOR, albedo: [0.92, 0.86, 0.72], eta: 1, rough: 0.25 },
+    { cx: 1, cy: 0.9, cz: 0, r: 0.9, mat: MAT_DIELECTRIC, albedo: [0.98, 0.98, 0.92], eta: 1.45, rough: 0.08 },
+    { cx: 3, cy: 0.9, cz: 0, r: 0.9, mat: MAT_DIFFUSE, albedo: [0.95, 0.75, 0.31], eta: 1, rough: 1 },
+    { cx: 0, cy: 3.75, cz: 3, r: 1, mat: MAT_SPECULAR, albedo: [1, 1, 1], eta: 1.5, rough: 0.02 }
+  ];
+
+  function skyColor(dx, dy, dz) {
+    const t = 0.5 * (dy + 1);
+    let r = (1 - t) * 0.06 + t * 0.45;
+    let g = (1 - t) * 0.07 + t * 0.62;
+    let b = (1 - t) * 0.12 + t * 0.95;
+    const sun = Math.pow(Math.max(0, dot(dx, dy, dz, 0.35, 0.85, 0.35)), 120) * 8;
+    r += sun * 1;
+    g += sun * 0.95;
+    b += sun * 0.75;
+    return [r * 1.1, g * 1.1, b * 1.1];
+  }
+
+  function hitPlane(ox, oy, oz, dx, dy, dz, tMin, tMax) {
+    if (Math.abs(dy) < 1e-8) return null;
+    const t = -oy / dy;
+    if (t < tMin || t > tMax) return null;
+    const px = ox + t * dx, pz = oz + t * dz;
+    const c = (Math.floor(px * 0.5) + Math.floor(pz * 0.5)) & 1;
+    const g = c ? 0.42 : 0.28;
+    return { t: t, nx: 0, ny: 1, nz: 0, mat: MAT_DIFFUSE, albedo: [g, g, g + 0.02], eta: 1, rough: 1, px: px, py: 0, pz: pz };
+  }
+
+  function hitSphere(sp, ox, oy, oz, dx, dy, dz, tMin, tMax) {
+    const ocx = ox - sp.cx, ocy = oy - sp.cy, ocz = oz - sp.cz;
+    const a = dot(dx, dy, dz, dx, dy, dz);
+    const b = 2 * dot(ocx, ocy, ocz, dx, dy, dz);
+    const c = dot(ocx, ocy, ocz, ocx, ocy, ocz) - sp.r * sp.r;
+    const disc = b * b - 4 * a * c;
+    if (disc < 0) return null;
+    const sd = Math.sqrt(disc);
+    let t = (-b - sd) / (2 * a);
+    if (t < tMin || t > tMax) {
+      t = (-b + sd) / (2 * a);
+      if (t < tMin || t > tMax) return null;
+    }
+    const px = ox + t * dx, py = oy + t * dy, pz = oz + t * dz;
+    let nx = px - sp.cx, ny = py - sp.cy, nz = pz - sp.cz;
+    const nn = normalize3(nx, ny, nz);
+    nx = nn[0]; ny = nn[1]; nz = nn[2];
+    return {
+      t: t, nx: nx, ny: ny, nz: nz,
+      mat: sp.mat, albedo: sp.albedo, eta: sp.eta, rough: sp.rough,
+      px: px, py: py, pz: pz
+    };
+  }
+
+  function hitAll(ox, oy, oz, dx, dy, dz, tMin, tMax) {
+    let best = hitPlane(ox, oy, oz, dx, dy, dz, tMin, tMax);
+    for (let i = 0; i < spheres.length; i++) {
+      const h = hitSphere(spheres[i], ox, oy, oz, dx, dy, dz, tMin, best ? best.t : tMax);
+      if (h && (!best || h.t < best.t)) best = h;
+    }
+    return best;
+  }
+
+  /** Cosine-weighted hemisphere around unit normal (nx,ny,nz) */
+  function sampleCosineWorld(nx, ny, nz, rng) {
+    const u = rng(), v = rng();
+    const r = Math.sqrt(u);
+    const phi = 2 * PI * v;
+    const lx = r * Math.cos(phi);
+    const lz = r * Math.sin(phi);
+    const ly = Math.sqrt(Math.max(0, 1 - u));
+    let tx, ty, tz;
+    if (Math.abs(nx) > 0.9) {
+      tx = 0; ty = 1; tz = 0;
+    } else {
+      tx = 1; ty = 0; tz = 0;
+    }
+    let bx = ny * tz - nz * ty, by = nz * tx - nx * tz, bz = nx * ty - ny * tx;
+    const bl = length3(bx, by, bz) + 1e-12;
+    bx /= bl; by /= bl; bz /= bl;
+    tx = by * nz - bz * ny;
+    ty = bz * nx - bx * nz;
+    tz = bx * ny - by * nx;
+    return [
+      nx * ly + tx * lx + bx * lz,
+      ny * ly + ty * lx + by * lz,
+      nz * ly + tz * lx + bz * lz
+    ];
+  }
+
+  function faceNormalForBsdf(dx, dy, dz, nx, ny, nz) {
+    if (dot(dx, dy, dz, nx, ny, nz) > 0) return [-nx, -ny, -nz];
+    return [nx, ny, nz];
+  }
+
+  function trace(rng, ox, oy, oz, dx, dy, dz, depth) {
+    let attR = 1, attG = 1, attB = 1;
+    let er = 0, eg = 0, eb = 0;
+    for (let b = 0; b < 14; b++) {
+      const hit = hitAll(ox, oy, oz, dx, dy, dz, 1e-4, 1e30);
+      if (!hit) {
+        const sk = skyColor(dx, dy, dz);
+        er += attR * sk[0]; eg += attG * sk[1]; eb += attB * sk[2];
+        break;
+      }
+      const nn = faceNormalForBsdf(dx, dy, dz, hit.nx, hit.ny, hit.nz);
+      const fnx = nn[0], fny = nn[1], fnz = nn[2];
+
+      if (hit.mat === MAT_DIFFUSE) {
+        const wo = sampleCosineWorld(fnx, fny, fnz, rng);
+        attR *= hit.albedo[0];
+        attG *= hit.albedo[1];
+        attB *= hit.albedo[2];
+        ox = hit.px; oy = hit.py; oz = hit.pz;
+        dx = wo[0]; dy = wo[1]; dz = wo[2];
+        if (b > 2) {
+          const p = clamp(Math.max(attR, Math.max(attG, attB)), 0.08, 0.92);
+          if (rng() > p) break;
+          attR /= p; attG /= p; attB /= p;
+        }
+        continue;
+      }
+
+      if (hit.mat === MAT_SPECULAR) {
+        const ref = reflect(dx, dy, dz, fnx, fny, fnz);
+        attR *= hit.albedo[0]; attG *= hit.albedo[1]; attB *= hit.albedo[2];
+        ox = hit.px; oy = hit.py; oz = hit.pz;
+        dx = ref[0]; dy = ref[1]; dz = ref[2];
+        if (b > 2 && rng() > 0.9) break;
+        continue;
+      }
+
+      if (hit.mat === MAT_DIELECTRIC) {
+        const cosi = clamp(-dot(dx, dy, dz, fnx, fny, fnz), -1, 1);
+        const into = dot(dx, dy, dz, hit.nx, hit.ny, hit.nz) < 0;
+        const nc = 1;
+        const nt = hit.eta;
+        const nnt = into ? nc / nt : nt / nc;
+        const ddn = -cosi;
+        const k = 1 - nnt * nnt * (1 - ddn * ddn);
+        const F0 = Math.pow((nt - 1) / (nt + 1), 2);
+        const Fr = schlickFresnel(Math.abs(cosi), F0);
+        if (k < 0 || rng() < Fr) {
+          const ref = reflect(dx, dy, dz, fnx, fny, fnz);
+          attR *= hit.albedo[0]; attG *= hit.albedo[1]; attB *= hit.albedo[2];
+          ox = hit.px; oy = hit.py; oz = hit.pz;
+          dx = ref[0]; dy = ref[1]; dz = ref[2];
+        } else {
+          const refr = refract(dx, dy, dz, fnx, fny, fnz, into ? nc : nt, into ? nt : nc);
+          if (!refr) break;
+          attR *= hit.albedo[0]; attG *= hit.albedo[1]; attB *= hit.albedo[2];
+          ox = hit.px; oy = hit.py; oz = hit.pz;
+          dx = refr[0]; dy = refr[1]; dz = refr[2];
+        }
+        continue;
+      }
+
+      if (hit.mat === MAT_CONDUCTOR) {
+        const ref = reflect(dx, dy, dz, fnx, fny, fnz);
+        const spread = hit.rough * hit.rough * 0.45;
+        const u = (rng() - 0.5) * spread;
+        const v = (rng() - 0.5) * spread;
+        let rx = ref[0] + u, ry = ref[1] + v, rz = ref[2];
+        const nn2 = normalize3(rx, ry, rz);
+        attR *= hit.albedo[0]; attG *= hit.albedo[1]; attB *= hit.albedo[2];
+        ox = hit.px; oy = hit.py; oz = hit.pz;
+        dx = nn2[0]; dy = nn2[1]; dz = nn2[2];
+        continue;
+      }
+      break;
+    }
+    return [er, eg, eb];
+  }
+
+  let W = 640, H = 360;
+  let acc = null;
+  let spp = 0;
+  let paused = false;
+  let rngBase = 1;
+
+  function resizeCanvas() {
+    const sel = document.getElementById('res').value;
+    W = parseInt(sel, 10);
+    H = Math.round(W * 9 / 16);
+    cv.width = W;
+    cv.height = H;
+    acc = new Float32Array(W * H * 3);
+    spp = 0;
+    rngBase = (Date.now() & 0xffff) + 1;
+  }
+
+  function cameraRay(rng, i, j) {
+    const u = (i + rng()) / W;
+    const v = (j + rng()) / H;
+    const aspect = W / H;
+    const camDist = 6;
+    const eye = [0, 1.25, camDist];
+    const target = [0, 1.75, 0];
+    const fov = 45 * PI / 180;
+    const halfH = Math.tan(fov * 0.5);
+    const halfW = halfH * aspect;
+    let fwd = normalize3(target[0] - eye[0], target[1] - eye[1], target[2] - eye[2]);
+    let worldUp = [0, 1, 0];
+    let right = normalize3(
+      fwd[1] * worldUp[2] - fwd[2] * worldUp[1],
+      fwd[2] * worldUp[0] - fwd[0] * worldUp[2],
+      fwd[0] * worldUp[1] - fwd[1] * worldUp[0]
+    );
+    let up = normalize3(
+      right[1] * fwd[2] - right[2] * fwd[1],
+      right[2] * fwd[0] - right[0] * fwd[2],
+      right[0] * fwd[1] - right[1] * fwd[0]
+    );
+    const cx = (2 * u - 1) * halfW;
+    const cy = (1 - 2 * v) * halfH;
+    let dx = fwd[0] + right[0] * cx + up[0] * cy;
+    let dy = fwd[1] + right[1] * cx + up[1] * cy;
+    let dz = fwd[2] + right[2] * cx + up[2] * cy;
+    const d = normalize3(dx, dy, dz);
+    return [eye[0], eye[1], eye[2], d[0], d[1], d[2]];
+  }
+
+  function aces(x) {
+    const a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0, 1);
+  }
+
+  function renderFrame() {
+    if (paused) {
+      requestAnimationFrame(renderFrame);
+      return;
+    }
+    const sppStep = parseInt(document.getElementById('sppFrame').value, 10) || 2;
+    const img = ctx.createImageData(W, H);
+    const d = img.data;
+    for (let s = 0; s < sppStep; s++) {
+      spp++;
+      for (let j = 0; j < H; j++) {
+        for (let i = 0; i < W; i++) {
+          const idx = (j * W + i) * 3;
+          const seed = (rngBase + i * 131 + j * 171 + spp * 104729) >>> 0;
+          const rng = makeRng(seed);
+          const cr = cameraRay(rng, i, j);
+          const col = trace(rng, cr[0], cr[1], cr[2], cr[3], cr[4], cr[5], 0);
+          acc[idx] += col[0];
+          acc[idx + 1] += col[1];
+          acc[idx + 2] += col[2];
+        }
+      }
+    }
+    const inv = 1 / spp;
+    for (let j = 0; j < H; j++) {
+      for (let i = 0; i < W; i++) {
+        const idx = (j * W + i) * 3;
+        const p = (j * W + i) * 4;
+        let r = acc[idx] * inv, g = acc[idx + 1] * inv, b = acc[idx + 2] * inv;
+        r = aces(r); g = aces(g); b = aces(b);
+        const gamm = 1 / 2.2;
+        d[p] = Math.round(255 * Math.pow(r, gamm));
+        d[p + 1] = Math.round(255 * Math.pow(g, gamm));
+        d[p + 2] = Math.round(255 * Math.pow(b, gamm));
+        d[p + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    statusEl.textContent = '累积 ' + spp + ' spp · 分辨率 ' + W + '×' + H;
+    requestAnimationFrame(renderFrame);
+  }
+
+  document.getElementById('btn-reset').addEventListener('click', function () {
+    if (!acc) return;
+    acc.fill(0);
+    spp = 0;
+    rngBase = (Date.now() & 0xffff) + 1;
+  });
+  document.getElementById('btn-pause').addEventListener('click', function () {
+    paused = !paused;
+    this.textContent = paused ? '继续' : '暂停';
+  });
+  document.getElementById('res').addEventListener('change', function () {
+    resizeCanvas();
+  });
+
+  resizeCanvas();
+  requestAnimationFrame(renderFrame);
+})();
+  </script>
+</body>
+</html>
