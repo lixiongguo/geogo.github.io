@@ -1,10 +1,11 @@
 from __future__ import print_function
 import sys
-sys.path.append('../PyMongeAmpere-build/')
-sys.path.append('../PyMongeAmpere-build/lib')
+import pymongeampere_path
+
+pymongeampere_path.ensure_pymonge_on_path()
 
 import numpy as np
-import cPickle
+import pickle
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 import matplotlib.pyplot as plt
@@ -20,7 +21,7 @@ def write_data1(data, filename):
 	"""
 	try:
 		outfile = open(filename,'w')
-		cPickle.dump(data, outfile,0)
+		pickle.dump(data, outfile, 0)
 	except (NameError, IOError) as e:
 		print(e)
 		sys.exit(1)
@@ -28,7 +29,7 @@ def write_data1(data, filename):
 def load_data(filename):
 	try:
 		infile = open(filename,'r')
-		data = cPickle.load(infile)
+		data = pickle.load(infile)
 		return data
 	except (NameError, IOError) as e:
 		print(e)

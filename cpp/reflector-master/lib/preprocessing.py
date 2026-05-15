@@ -1,8 +1,9 @@
 """Contains functions used during the input processing step."""
 from __future__ import print_function
 import sys
-sys.path.append('../PyMongeAmpere-build/')
-sys.path.append('../PyMongeAmpere-build/lib')
+import pymongeampere_path
+
+pymongeampere_path.ensure_pymonge_on_path()
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt

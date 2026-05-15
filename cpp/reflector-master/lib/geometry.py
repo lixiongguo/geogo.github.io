@@ -6,7 +6,10 @@ from __future__ import print_function
 import sys
 
 import numpy as np
+<<<<<<< HEAD
 import numpy.matlib
+=======
+>>>>>>> 8a8a2ae (一些新的修改)
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -27,6 +30,29 @@ class NotProperShapeError(GeometricError):
 	pass
 
 
+<<<<<<< HEAD
+=======
+def barycentre(pts, w):
+	"""
+	Weighted barycentre of points.
+
+	Parameters
+	----------
+	pts : (N, dim) array
+	w : (N,) weights
+	"""
+	try:
+		pts = np.asarray(pts, dtype=np.float64)
+		w = np.asarray(w, dtype=np.float64)
+		if pts.shape[0] != w.shape[0]:
+			raise NotProperShapeError("Pts and w must have the same length.")
+		return np.sum(pts * w[:, np.newaxis], axis=0) / np.sum(w)
+	except NotProperShapeError as arg:
+		print("****barycentre error: ", arg.msg)
+		raise
+
+
+>>>>>>> 8a8a2ae (一些新的修改)
 def distance_point_line(m, n, pt):
 	"""
 	Computes the distance between the line generated 
@@ -60,7 +86,11 @@ def distance_point_line(m, n, pt):
 			raise NotProperShapeError("m, n and pt must have the same dimension.")
 			
 		if np.allclose(m, n):
+<<<<<<< HEAD
 			raise ValueError
+=======
+			raise NotProperShapeError("Impossible to generate a line from two identical points")
+>>>>>>> 8a8a2ae (一些新的修改)
 
 		u = n - m			# Direction vector
 		Mpt = pt - m
@@ -68,11 +98,17 @@ def distance_point_line(m, n, pt):
 		dist = np.linalg.norm(Mpt - (np.inner(Mpt,u)/(norm_u*norm_u))*u)
 		return dist
 	
+<<<<<<< HEAD
 	except NotProperShapeError, arg:
 		print("****distance_point_line error: ", arg.msg)
 		
 	except ValueError:
 		print ("****distance_point_line error: Impossible to generate a line from two identical points")
+=======
+	except NotProperShapeError as arg:
+		print("****distance_point_line error: ", arg.msg)
+		raise
+>>>>>>> 8a8a2ae (一些新的修改)
 
 
 def furthest_point(cloud, a):
@@ -93,6 +129,11 @@ def furthest_point(cloud, a):
 		distance between a and the furthest point in cloud.
 	"""
 	try:
+<<<<<<< HEAD
+=======
+		a = np.asarray(a, dtype=np.float64)
+		cloud = np.asarray(cloud, dtype=np.float64)
+>>>>>>> 8a8a2ae (一些新的修改)
 		if len(a.shape) > 1:
 			raise NotProperShapeError("a must be a point")
 			
@@ -104,12 +145,22 @@ def furthest_point(cloud, a):
 			return cloud
 
 		N = np.shape(cloud)[0]
+<<<<<<< HEAD
 		tmp = np.matlib.matrep(a,N,1)
 		dist = np.linalg.norm(tmp-cloud, axis=1)
 		return np.max(dist)
 		
 	except NotProperShapeError, arg:
 		print("****furthest_point error: ", arg.msg)
+=======
+		tmp = np.tile(np.asarray(a, dtype=np.float64), (N, 1))
+		dist = np.linalg.norm(tmp-cloud, axis=1)
+		return np.max(dist)
+		
+	except NotProperShapeError as arg:
+		print("****furthest_point error: ", arg.msg)
+		raise
+>>>>>>> 8a8a2ae (一些新的修改)
 		
 
 def gradient_to_spherical(gx,gy):
@@ -167,10 +218,18 @@ def gradient_to_spherical(gx,gy):
 		
 	except FloatingPointError:
 		print("****gradient_to_spherical error: division by zero.")
+<<<<<<< HEAD
 		
 	except NotProperShapeError, arg:
 		print("****gradient_to_spherical error: ", arg.msg)
 		
+=======
+		raise
+		
+	except NotProperShapeError as arg:
+		print("****gradient_to_spherical error: ", arg.msg)
+		raise
+>>>>>>> 8a8a2ae (一些新的修改)
 def spherical_to_gradient(theta,phi):
 	"""
 	This function convert spherical coordinates of reflected rays
@@ -199,6 +258,11 @@ def spherical_to_gradient(theta,phi):
 	Inverse Methods for Illumination Optics, Corien Prins
 	"""
 	try:
+<<<<<<< HEAD
+=======
+		theta = np.asarray(theta, dtype=np.float64)
+		phi = np.asarray(phi, dtype=np.float64)
+>>>>>>> 8a8a2ae (一些新的修改)
 		if len(theta.shape) > 1 or len(phi.shape) > 1:
 			raise NotProperShapeError("theta and phi must be 1D arrays.")
 		
@@ -212,10 +276,18 @@ def spherical_to_gradient(theta,phi):
 		
 	except FloatingPointError:
 		print("****spherical_to_gradient error: division by zero.")
+<<<<<<< HEAD
 		
 	except NotProperShapeError, arg:
 		print("****spherical_to_gradient error: ", arg.msg)
 
+=======
+		raise
+		
+	except NotProperShapeError as arg:
+		print("****spherical_to_gradient error: ", arg.msg)
+		raise
+>>>>>>> 8a8a2ae (一些新的修改)
 		
 def planar_to_spherical(eta,xi,theta_0,phi_0,d):
 	"""
@@ -252,7 +324,13 @@ def planar_to_spherical(eta,xi,theta_0,phi_0,d):
 	--------
 	Inverse Methods for Illumination Optics, Corien Prins
 	"""
+<<<<<<< HEAD
 	try:		
+=======
+	try:
+		eta = np.asarray(eta, dtype=np.float64)
+		xi = np.asarray(xi, dtype=np.float64)
+>>>>>>> 8a8a2ae (一些新的修改)
 		if len(xi.shape) > 1 or len(eta.shape) > 1:
 			raise NotProperShapeError("xi and eta must be 1D arrays.")
 		
@@ -275,10 +353,18 @@ def planar_to_spherical(eta,xi,theta_0,phi_0,d):
 		
 	except FloatingPointError:
 		print("****planar_to_spherical error: division by zero.")
+<<<<<<< HEAD
 		
 	except NotProperShapeError, arg:
 		print("****planar_to_spherical error: ", arg.msg)
 
+=======
+		raise
+		
+	except NotProperShapeError as arg:
+		print("****planar_to_spherical error: ", arg.msg)
+		raise
+>>>>>>> 8a8a2ae (一些新的修改)
 
 def spherical_to_cartesian(r, theta, phi):
 	"""
@@ -299,7 +385,14 @@ def spherical_to_cartesian(r, theta, phi):
     x, y, z : reals
         Cartesian coordinates of the point
     """
+<<<<<<< HEAD
 	try:		
+=======
+	try:
+		r = np.asarray(r, dtype=np.float64)
+		theta = np.asarray(theta, dtype=np.float64)
+		phi = np.asarray(phi, dtype=np.float64)
+>>>>>>> 8a8a2ae (一些新的修改)
 		if len(r.shape) > 1 or len(theta.shape) > 1 or len(phi.shape) > 1:
 			raise NotProperShapeError("r, theta, phi must be 1D arrays.")
 
@@ -312,9 +405,15 @@ def spherical_to_cartesian(r, theta, phi):
 
 		return x,y,z
 
+<<<<<<< HEAD
 	except NotProperShapeError, arg:
 		print("****spherical_to_cartesian error: ", arg.msg)
 
+=======
+	except NotProperShapeError as arg:
+		print("****spherical_to_cartesian error: ", arg.msg)
+		raise
+>>>>>>> 8a8a2ae (一些新的修改)
 
 def plan_cartesian_equation(theta_0, phi_0, d):
 	"""

@@ -85,7 +85,7 @@ def ray_tracer(comm, density, t_box, interpol, base, niter=None, s1=[0.,0.,1.]):
 	M = None
 	if niter is None:
 		niter = 10
-	for i in xrange(niter):
+	for i in range(niter):
 		nray = 200000
 		# Generate source point according to
 		# to the source density probability

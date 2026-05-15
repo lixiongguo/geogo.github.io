@@ -4,9 +4,10 @@ import sys
 import argparse
 import time
 
-sys.path.append('../PyMongeAmpere-build/')
-sys.path.append('../PyMongeAmpere-build/lib')
 sys.path.append('./lib')
+import pymongeampere_path
+
+pymongeampere_path.ensure_pymonge_on_path()
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,7 +20,7 @@ import rayTracing as ray
 import misc
 import export
 
-debut = time.clock()
+debut = time.perf_counter()
 
 #### Parameters initialization ####
 parser = argparse.ArgumentParser()
@@ -39,14 +40,14 @@ p,q = geo.planar_to_gradient(P[:,0],P[:,1],target_plane_base)
 Y = np.vstack([p,q]).T
 
 print('Number of diracs: ', len(nu))
-t = time.clock() - debut
+t = time.perf_counter() - debut
 print ("Inputs processing:", t, "s")
 
 ##### Optimal Transport problem resolution #####
 psi0 = ma.optimal_transport_presolve_2(Y, mu.vertices, Y_w=nu, X_w=mu.values)
 psi = ma.optimal_transport_2(mu, Y, nu, w0=psi0, verbose=True)
 
-t = time.clock() - t
+t = time.perf_counter() - t
 print ("OT resolution:", t, "s")
 
 Z,T_Z,u_Z = misc.eval_legendre_fenchel(mu, Y, psi)
@@ -61,8 +62,8 @@ export.export_off('square_monge_1e3.off', points, T_Z)
 ##### Ray tracing #####
 M = ray.ray_tracer(mu, target_plane_box, interpol, target_plane_base, niter=3)
 
-print ("Ray tracing:", time.clock() - t, "s")
+print ("Ray tracing:", time.perf_counter() - t, "s")
 plt.imshow(M, interpolation='nearest',
 		       vmin=0, vmax=255, cmap=plt.get_cmap('gray'))
-print ("Execution time:", time.clock() - debut, "s (CPU time)")
+print ("Execution time:", time.perf_counter() - debut, "s (CPU time)")
 plt.show()

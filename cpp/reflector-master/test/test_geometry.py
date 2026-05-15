@@ -23,7 +23,7 @@ class GeometryTest(unittest.TestCase):
 		w3 = np.array([1.,3.,1.,3.,3.,1.,3.,1.])
 		self.assertTrue(np.allclose(geo.barycentre(self.p3, w3),[0.5,0.5,0.5]))
 		
-		self.assertRaises(geo.NotProperShapeError, geo.barycentre(self.p3,w2))
+		self.assertRaises(geo.NotProperShapeError, geo.barycentre, self.p3, w2)
 		
 		
 	def test_furthest_point(self):
@@ -33,9 +33,9 @@ class GeometryTest(unittest.TestCase):
 		a3 = np.array([-1.,-1.,-1.])
 		self.assertTrue(np.allclose(geo.furthest_point(self.p3, a3),[2.*math.sqrt(3),2.*math.sqrt(3)]))
 		
-		self.assertRaises(geo.NotProperShapeError,geo.furthest_point(self.p3,[[0.,0.,0.],[0.,0.,0.]]))
-			
-		self.assertRaises(geo.NotProperShapeError,geo.furthest_point(self.p3,[0.,0.]))
+		self.assertRaises(geo.NotProperShapeError, geo.furthest_point, self.p3, [[0.,0.,0.],[0.,0.,0.]])
+		
+		self.assertRaises(geo.NotProperShapeError, geo.furthest_point, self.p3, [0.,0.])
 			
 		
 	def test_distance_point_line(self):
@@ -43,13 +43,13 @@ class GeometryTest(unittest.TestCase):
 		self.assertTrue(np.allclose(geo.distance_point_line([0.,0.,0.],[0.,0.,1.],[1.,1.,0.]),math.sqrt(2)))
 		self.assertTrue(np.allclose(geo.distance_point_line([0.,0.,0.],[1.,1.,1.],[1.,1.,0.]),math.sqrt(6)/3.))
 		
-		self.assertRaises(geo.NotProperShapeError, geo.distance_point_line([0.,0.],[0.,1.],[1.,1.,0.]))
+		self.assertRaises(geo.NotProperShapeError, geo.distance_point_line, [0.,0.],[0.,1.],[1.,1.,0.])
 		a = np.array([[0.,3.],
 					[3.,0.],
 					[2.,1.]])
 
-		self.assertRaises(geo.NotProperShapeError,geo.distance_point_line([0.,0.],[0.,1.],a))
-		self.assertRaises(geo.NotProperShapeError,geo.distance_point_line([0.,0.],[0.,0.],[1.,1.]))
+		self.assertRaises(geo.NotProperShapeError, geo.distance_point_line, [0.,0.],[0.,1.],a)
+		self.assertRaises(geo.NotProperShapeError, geo.distance_point_line, [0.,0.],[0.,0.],[1.,1.])
 		
 		
 	def test_gradient_to_spherical(self):
@@ -60,15 +60,15 @@ class GeometryTest(unittest.TestCase):
 		
 		gradx = np.array([0.,1.])
 		grady = np.array([1.,1.])
-		self.assertRaises(FloatingPointError,geo.gradient_to_spherical(gradx,grady))
+		self.assertRaises(FloatingPointError, geo.gradient_to_spherical, gradx, grady)
 		
 		gradx = np.array([[1.,3.],
 					[3.,0.],
 					[2.,1.]])
-		self.assertRaises(geo.NotProperShapeError,geo.gradient_to_spherical(gradx,grady))
+		self.assertRaises(geo.NotProperShapeError, geo.gradient_to_spherical, gradx, grady)
 		
 		gradx = np.array([1.,1.,1.])
-		self.assertRaises(geo.NotProperShapeError,geo.gradient_to_spherical(gradx,grady))
+		self.assertRaises(geo.NotProperShapeError, geo.gradient_to_spherical, gradx, grady)
 		
 		
 	def test_spherical_to_gradient(self):
@@ -81,10 +81,10 @@ class GeometryTest(unittest.TestCase):
 		theta = np.array([[1.,3.],
 					[3.,0.],
 					[2.,1.]])
-		self.assertRaises(geo.NotProperShapeError,geo.spherical_to_gradient(theta,phi))
+		self.assertRaises(geo.NotProperShapeError, geo.spherical_to_gradient, theta, phi)
 		
 		theta = np.array([1.,1.,1.])
-		self.assertRaises(geo.NotProperShapeError,geo.spherical_to_gradient(theta,phi))
+		self.assertRaises(geo.NotProperShapeError, geo.spherical_to_gradient, theta, phi)
 		
 	
 	def test_planar_to_spherical(self):
@@ -151,4 +151,5 @@ class GeometryTest(unittest.TestCase):
 	def test_planar_to_gradient(self):
 		
 		X = np.random.rand(4,2)
-		geo.planar_to_gradient(X[:,0], X[:,1])
+		base = [np.array([1.,0.,0.]), np.array([0.,1.,0.]), np.array([0.,0.,1.])]
+		geo.planar_to_gradient(X[:,0], X[:,1], base)

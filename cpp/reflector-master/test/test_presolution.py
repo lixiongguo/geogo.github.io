@@ -11,10 +11,10 @@ class PresolutionTest(unittest.TestCase):
 	Test of presolution function by
 	sending a square into a triangle.
 	"""
-	sPts = np.array([[0.,0.],[1.,0.],[0.,1.],[1.,1.])
+	sPts = np.array([[0.,0.],[1.,0.],[0.,1.],[1.,1.]])
 	sourceW = np.array([1.,2.,1.,2.])
-	targetPts = np.array([[2.,0.],[3.,0.],[2.,1.])
-	targetW = np.asfarray(1.,2.,1.)
+	targetPts = np.array([[2.,0.],[3.,0.],[2.,1.]])
+	targetW = np.asarray([1., 2., 1.], dtype=np.float64)
 	
 	# Problème d'accès aux variables de presolution
 	
