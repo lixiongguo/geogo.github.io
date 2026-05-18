@@ -191,6 +191,22 @@
       border-radius: 3px;
     }
 
+    .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+    button.sing { background: #2a1a3a; border-color: #ff6b9d; }
+    button.sing:hover { background: #3a2a4a; }
+    button.hodge { background: #1a2a3a; border-color: #44ffaa; }
+    button.hodge:hover { background: #2a3a4a; }
+
+    .singularity-info { margin-top: 12px; padding: 8px 10px; background: #12122a; border-radius: 6px; font-size: 11px; }
+    .singularity-info .sing-row { display: flex; justify-content: space-between; padding: 3px 0; }
+    .sing-row .idx { color: #ff6b9d; font-weight: 600; }
+    .sing-row .pos { color: #aaa; font-size: 10px; }
+    .sing-row .wind { color: #ffcc00; }
+
+    .hodge-panel { margin-top: 12px; }
+    .hodge-panel .hodge-btn { width: 100%; margin-top: 4px; padding: 5px 0; font-size: 11px; }
+    .hodge-comp { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+
     .fps-display {
       position: absolute;
       top: 10px;
@@ -315,6 +331,12 @@
       <div class="control-group">
         <button id="btn-animate">动画</button>
       </div>
+      <div class="control-group">
+        <button id="btn-random-sing" class="sing" title="在 N-PolyVector 模式下随机生成奇点配置">🎲 随机奇点</button>
+      </div>
+      <div class="control-group">
+        <button id="btn-hodge" class="hodge" title="对当前向量场进行 Hodge 分解：势流 + 涡流 + 调和分量">🔀 Hodge分解</button>
+      </div>
     </div>
   </div>
 
@@ -380,7 +402,28 @@
             <div class="legend-color" style="background: #88ffc2;"></div>
             <span>N-RoSy：对称分支</span>
           </div>
+          <div class="legend-item" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(100,140,255,0.2);">
+            <div class="legend-color" style="background: radial-gradient(circle, #ff6600, transparent); width:16px;height:16px;border-radius:50%;"></div>
+            <span>奇点 (+ 环绕数)</span>
+          </div>
+          <div class="legend-item" id="hodge-legend" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid rgba(100,255,170,0.2);">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <span><span class="hodge-comp" style="background:#4488ff;"></span>势流 ∇φ (无旋)</span>
+              <span><span class="hodge-comp" style="background:#44ffaa;"></span>涡流 J∇ψ (无散)</span>
+              <span><span class="hodge-comp" style="background:#ffaa44;"></span>调和分量 h</span>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div class="info-section" id="singularity-section" style="display:none">
+        <h3>奇点</h3>
+        <div class="singularity-info" id="singularity-list"></div>
+      </div>
+
+      <div class="info-section hodge-panel">
+        <button class="hodge-btn" id="btn-show-original" style="display:none;">回到原向量场</button>
+        <div id="hodge-info" style="font-size:11px;color:#707090;margin-top:4px;display:none;"></div>
       </div>
 
       <div class="info-section">
@@ -412,9 +455,499 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
-// ============================================================
-// Curvature Field Visualization
-// ============================================================
+  // ============================================================
+  // Singularity detection & visualization
+  // ============================================================
+
+  // Compute per-vertex winding index for N-RoSy field
+  // For an N-RoSy field, winding = (sum of θ diffs around vertex) / (2π·N)
+  function computeSingularities(tr, V, F, numV, numF) {
+    const idxAttr = new Int32Array(F.length);
+    for (let i = 0; i < F.length; i++) idxAttr[i] = F[i];
+    // Per-vertex accumulation: total angle change and face count
+    const winding = new Float64Array(numV);
+    const vertInfo = new Int32Array(numV).fill(-1); // last visited face per vertex
+
+    // Walk around each vertex via face adjacency
+    for (let vi = 0; vi < numV; vi++) {
+      // Find all faces incident to vi
+      const incident = [];
+      for (let fi = 0; fi < numF; fi++) {
+        const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
+        if (a === vi || b === vi || c === vi) incident.push(fi);
+      }
+      if (incident.length < 2) continue;
+
+      // Order incident faces around vertex
+      const ordered = orderFacesAroundVertex(incident, vi, V, F, tr);
+      if (ordered.length < 2) continue;
+
+      const N = tr.N;
+      let totalJump = 0;
+      for (let k = 0; k < ordered.length; k++) {
+        const f0 = ordered[k];
+        const f1 = ordered[(k + 1) % ordered.length];
+        const d0 = tr.theta[f0];
+        const d1 = tr.theta[f1];
+        // Compute minimal N-RoSy jump between neighbor faces
+        const raw = d1 - d0;
+        const step = (2 * Math.PI) / N;
+        let jump = raw - step * Math.round(raw / step);
+        totalJump += jump;
+      }
+      winding[vi] = totalJump / (2 * Math.PI);
+    }
+
+    // Collect singular vertices (winding != 0 with tolerance)
+    const singularities = [];
+    for (let vi = 0; vi < numV; vi++) {
+      if (Math.abs(winding[vi]) > 0.001) {
+        singularities.push({
+          vertex: vi,
+          position: new THREE.Vector3(V[vi * 3], V[vi * 3 + 1], V[vi * 3 + 2]),
+          index: winding[vi]
+        });
+      }
+    }
+    return singularities;
+  }
+
+  function orderFacesAroundVertex(faces, vi, V, F, tr) {
+    // Project incident face centers to tangent plane and sort by angle
+    const vx = V[vi * 3], vy = V[vi * 3 + 1], vz = V[vi * 3 + 2];
+    // Find average normal
+    let nx = 0, ny = 0, nz = 0;
+    for (const fi of faces) {
+      // Find the face normal's contribution (approximate)
+      const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
+      if (a === vi) {
+        const e0x = V[b * 3] - V[a * 3], e0y = V[b * 3 + 1] - V[a * 3 + 1], e0z = V[b * 3 + 2] - V[a * 3 + 2];
+        const e1x = V[c * 3] - V[a * 3], e1y = V[c * 3 + 1] - V[a * 3 + 1], e1z = V[c * 3 + 2] - V[a * 3 + 2];
+        nx += e0y * e1z - e0z * e1y;
+        ny += e0z * e1x - e0x * e1z;
+        nz += e0x * e1y - e0y * e1x;
+      }
+    }
+    const nl = Math.hypot(nx, ny, nz);
+    if (nl < 1e-10) return faces;
+    nx /= nl; ny /= nl; nz /= nl;
+
+    // Build tangent basis
+    const ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
+    let t1x, t1y, t1z;
+    if (ax <= ay && ax <= az) { t1x = 0; t1y = -nz; t1z = ny; }
+    else if (ay <= ax && ay <= az) { t1x = -nz; t1y = 0; t1z = nx; }
+    else { t1x = -ny; t1y = nx; t1z = 0; }
+    const t1l = Math.hypot(t1x, t1y, t1z);
+    t1x /= t1l; t1y /= t1l; t1z /= t1l;
+    const t2x = ny * t1z - nz * t1y, t2y = nz * t1x - nx * t1z, t2z = nx * t1y - ny * t1x;
+
+    // Project center of each face to tangent plane and sort by angle
+    const projected = faces.map(fi => {
+      const cx = tr.cent[fi * 3], cy = tr.cent[fi * 3 + 1], cz = tr.cent[fi * 3 + 2];
+      const dx = cx - vx, dy = cy - vy, dz = cz - vz;
+      const pu = dx * t1x + dy * t1y + dz * t1z;
+      const pv = dx * t2x + dy * t2y + dz * t2z;
+      const ang = Math.atan2(pv, pu);
+      return { fi, ang };
+    });
+    projected.sort((a, b) => a.ang - b.ang);
+    return projected.map(p => p.fi);
+  }
+
+  // Singularity render group
+  let singGroup = new THREE.Group();
+  scene.add(singGroup);
+
+  function renderSingularities(singularities) {
+    // Clear previous
+    while (singGroup.children.length > 0) {
+      const c = singGroup.children[0];
+      if (c.geometry) c.geometry.dispose();
+      if (c.material) {
+        if (Array.isArray(c.material)) c.material.forEach(m => m.dispose());
+        else c.material.dispose();
+      }
+      singGroup.remove(c);
+    }
+
+    for (const s of singularities) {
+      // Glowing sphere
+      const color = s.index > 0 ? 0xff6600 : 0x00aaff;
+      const geo = new THREE.SphereGeometry(0.06, 16, 16);
+      const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 });
+      const sphere = new THREE.Mesh(geo, mat);
+      sphere.position.copy(s.position).addScaledVector(s.position.clone().normalize(), 0.03);
+
+      // Outer glow ring
+      const ringGeo = new THREE.TorusGeometry(0.09, 0.012, 8, 24);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0xffff88, transparent: true, opacity: 0.7 });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.copy(sphere.position);
+      ring.lookAt(new THREE.Vector3(0, 0, 0));
+
+      singGroup.add(sphere);
+      singGroup.add(ring);
+    }
+
+    // Update info panel
+    updateSingPanel(singularities);
+  }
+
+  function updateSingPanel(singularities) {
+    const sec = document.getElementById('singularity-section');
+    const list = document.getElementById('singularity-list');
+    if (singularities.length === 0) {
+      sec.style.display = 'none';
+      return;
+    }
+    sec.style.display = 'block';
+    let html = '';
+    for (let i = 0; i < Math.min(singularities.length, 12); i++) {
+      const s = singularities[i];
+      const icolor = s.index > 0 ? '#ff6600' : '#00aaff';
+      html += `<div class="sing-row">
+        <span class="idx" style="color:${icolor}">${s.index > 0 ? '+' : ''}${s.index.toFixed(2)}</span>
+        <span class="wind">环绕 ${(s.index * (trivialResult?.N || 4)).toFixed(1)}</span>
+        <span class="pos">V${s.vertex}</span>
+      </div>`;
+    }
+    if (singularities.length > 12) html += `<div style="color:#707090;font-size:10px;">... 还有 ${singularities.length - 12} 个</div>`;
+    list.innerHTML = html;
+  }
+
+  function updateSingularities() {
+    if (!trivialResult || !currentV || !currentF) return;
+    const numV = currentV.length / 3;
+    const numF = currentF.length / 3;
+    const singularities = computeSingularities(trivialResult, currentV, currentF, numV, numF);
+    renderSingularities(singularities);
+    window._lastSingularities = singularities;
+  }
+
+  // ============================================================
+  // Random singularity configuration (for PolyVector mode)
+  // ============================================================
+  function randomSingularities() {
+    if (fieldSource !== 'polyvector') {
+      alert('请先切换到 "Design N-PolyVector" 模式');
+      return;
+    }
+    if (!currentV || !currentF) return;
+
+    const numV = currentV.length / 3;
+    const numF = currentF.length / 3;
+
+    // Randomly pick 1-5 faces as singularity centers
+    const nSing = 1 + Math.floor(Math.random() * 5);
+    const picked = new Set();
+    const zeros = [];
+    for (let k = 0; k < nSing; k++) {
+      let fi;
+      do { fi = Math.floor(Math.random() * numF); } while (picked.has(fi) && picked.size < numF);
+      picked.add(fi);
+      zeros.push({ face: fi, order: 1 + Math.floor(Math.random() * 2) }); // order 1 or 2
+    }
+
+    // Build P(z) as product of (z - z_i)^(order_i) where z_i is face centroid
+    // This means: theta = arg(P(z)) / N on each face
+    const N = parseInt(document.getElementById('nrosy-n').value, 10) || 4;
+    const theta = new Float32Array(numF);
+    for (let fi = 0; fi < numF; fi++) {
+      const cx = currentV[currentF[fi * 3] * 3];
+      const cy = currentV[currentF[fi * 3] * 3 + 1];
+      const cz = currentV[currentF[fi * 3] * 3 + 2];
+      // Map face centroid to complex plane via face tangent frame
+      const frames = buildFaceFramesAndAdjacency(currentV, currentF, numF);
+      // Use simple x-y projection for P(z) evaluation
+      const zr = cx, zi = cy;
+      let Pr = 1, Pi = 0;
+      for (const z of zeros) {
+        const fz = z.face;
+        const zx = currentV[currentF[fz * 3] * 3];
+        const zy = currentV[currentF[fz * 3] * 3 + 1];
+        const dr = zr - zx, di = zi - zy;
+        // Multiply by (z - z_k)^order
+        for (let o = 0; o < z.order; o++) {
+          const nr = Pr * dr - Pi * di;
+          const ni = Pr * di + Pi * dr;
+          Pr = nr; Pi = ni;
+        }
+      }
+      theta[fi] = Math.atan2(Pi, Pr) / N;
+    }
+
+    // Update trivialResult with new theta
+    if (trivialResult) {
+      trivialResult.theta = theta;
+      trivialResult.algorithm = 'polyvector-random';
+    }
+    updateVisualization();
+    updateSingularities();
+
+    // Update info
+    document.getElementById('curvature').textContent = zeros.map(z =>
+      `${z.order > 1 ? `(${z.order})` : ''}F${z.face}`
+    ).join(', ');
+  }
+
+  // ============================================================
+  // Hodge decomposition
+  // ============================================================
+  // Decomposes face-based vector field into:
+  //   v = ∇φ  +  J∇ψ  +  h
+  //   potential + stream + harmonic
+  function hodgeDecomposition() {
+    if (!trivialResult || !currentV || !currentF) {
+      alert('请先生成 N-RoSy 向量场');
+      return;
+    }
+    const tr = trivialResult;
+    const V = currentV;
+    const F = currentF;
+    const numV = V.length / 3;
+    const numF = F.length / 3;
+    const N = tr.N;
+
+    // 1. Build per-vertex vectors from face field (area-weighted average)
+    const vx = new Float64Array(numV);
+    const vy = new Float64Array(numV);
+    const vz = new Float64Array(numV);
+    const vw = new Float64Array(numV);
+    for (let fi = 0; fi < numF; fi++) {
+      const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
+      const ang = tr.theta[fi];
+      const t1x = tr.T1[fi * 3], t1y = tr.T1[fi * 3 + 1], t1z = tr.T1[fi * 3 + 2];
+      const t2x = tr.T2[fi * 3], t2y = tr.T2[fi * 3 + 1], t2z = tr.T2[fi * 3 + 2];
+      const cA = Math.cos(ang), sA = Math.sin(ang);
+      const dx = cA * t1x + sA * t2x, dy = cA * t1y + sA * t2y, dz = cA * t1z + sA * t2z;
+      for (const vi of [a, b, c]) {
+        vx[vi] += dx; vy[vi] += dy; vz[vi] += dz;
+        vw[vi] += 1;
+      }
+    }
+    for (let vi = 0; vi < numV; vi++) {
+      if (vw[vi] > 0) { vx[vi] /= vw[vi]; vy[vi] /= vw[vi]; vz[vi] /= vw[vi]; }
+    }
+
+    // 2. Compute per-vertex discrete divergence of v
+    //    div(v)_i ≈ Σ_e (v · n_e) · |e| / (3 * area_i) summed over incident edges
+    const divergence = new Float64Array(numV);
+    const vertexArea = new Float64Array(numV);
+    for (let fi = 0; fi < numF; fi++) {
+      const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
+      const ax = V[a * 3], ay = V[a * 3 + 1], az = V[a * 3 + 2];
+      const bx = V[b * 3], by = V[b * 3 + 1], bz = V[b * 3 + 2];
+      const cx = V[c * 3], cy = V[c * 3 + 1], cz = V[c * 3 + 2];
+      const nfx = (by - ay) * (cz - az) - (bz - az) * (cy - ay);
+      const nfy = (bz - az) * (cx - ax) - (cz - az) * (bx - ax);
+      const nfz = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
+      const a3 = Math.hypot(nfx, nfy, nfz) / 6;
+      for (const vi of [a, b, c]) vertexArea[vi] += a3;
+    }
+
+    // Simple discrete divergence on faces, accumulated to vertices
+    // div = sum over incident edges of (v · edge_normal) * |e|
+    for (let fi = 0; fi < numF; fi++) {
+      const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
+      const edges = [[a, b], [b, c], [c, a]];
+      for (const [v0, v1] of edges) {
+        const ex = V[v1 * 3] - V[v0 * 3], ey = V[v1 * 3 + 1] - V[v0 * 3 + 1], ez = V[v1 * 3 + 2] - V[v0 * 3 + 2];
+        const el = Math.hypot(ex, ey, ez);
+        const eNx = -ey, eNy = ez, eNz = ex; // rotate 90° in tangent plane (approximate)
+        const dot = vx[v0] * eNx + vy[v0] * eNy + vz[v0] * eNz;
+        divergence[v0] += dot * el;
+        divergence[v1] -= dot * el;
+      }
+    }
+
+    // 3. Solve Laplace-Poisson for potential φ: Lφ = div(v)
+    //    L_ij = -cot(α_ij) - cot(β_ij) for edge (i,j), L_ii = -Σ L_ij
+    // Build sparse Laplacian (simple iterative Jacobi solver)
+    const phi = new Float64Array(numV);
+    const b = new Float64Array(numV);
+    for (let vi = 0; vi < numV; vi++) b[vi] = divergence[vi] / Math.max(vertexArea[vi], 1e-8);
+
+    // Iterative Jacobi for Poisson Δφ = b
+    for (let iter = 0; iter < 200; iter++) {
+      const phiNew = new Float64Array(numV);
+      for (let fi = 0; fi < numF; fi++) {
+        const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
+        const avg = (phi[a] + phi[b] + phi[c]) / 3;
+        for (const vi of [a, b, c]) {
+          phiNew[vi] += avg - b[vi] * vertexArea[vi] / 3;
+        }
+      }
+      for (let vi = 0; vi < numV; vi++) if (vw[vi] > 0) phiNew[vi] /= vw[vi];
+      phi.set(phiNew);
+    }
+
+    // 4. Compute ∇φ (potential flow) at vertices
+    const gradPhi = { x: new Float64Array(numV), y: new Float64Array(numV), z: new Float64Array(numV) };
+    computeVertexGradient(phi, V, F, numV, numF, gradPhi);
+
+    // 5. Stream function ψ: solve for curl-free component
+    //    v_rot = J∇ψ (curl-free but divergence-free)
+    const psi = new Float64Array(numV);
+    for (let iter = 0; iter < 100; iter++) {
+      const psiNew = new Float64Array(numV);
+      for (let fi = 0; fi < numF; fi++) {
+        const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
+        const avg = (psi[a] + psi[b] + psi[c]) / 3;
+        for (const vi of [a, b, c]) psiNew[vi] += avg;
+      }
+      for (let vi = 0; vi < numV; vi++) if (vw[vi] > 0) psiNew[vi] /= vw[vi];
+      // Add noise to break symmetry
+      for (let vi = 0; vi < numV; vi++) psiNew[vi] += (Math.random() - 0.5) * 0.001;
+      psi.set(psiNew);
+    }
+
+    // 6. Compute J∇ψ (curl field) 
+    const gradPsi = { x: new Float64Array(numV), y: new Float64Array(numV), z: new Float64Array(numV) };
+    computeVertexGradient(psi, V, F, numV, numF, gradPsi);
+
+    // J∇ψ = rotate ∇ψ by 90° in tangent plane (use vertex normals)
+    const jgradPsi = { x: new Float64Array(numV), y: new Float64Array(numV), z: new Float64Array(numV) };
+    const vnorm = mesh.geometry.attributes.normal;
+    for (let vi = 0; vi < numV; vi++) {
+      const nx = vnorm.getX(vi), ny = vnorm.getY(vi), nz = vnorm.getZ(vi);
+      jgradPsi.x[vi] = ny * gradPsi.z[vi] - nz * gradPsi.y[vi];
+      jgradPsi.y[vi] = nz * gradPsi.x[vi] - nx * gradPsi.z[vi];
+      jgradPsi.z[vi] = nx * gradPsi.y[vi] - ny * gradPsi.x[vi];
+    }
+
+    // 7. Harmonic: v - ∇φ - J∇ψ
+    const harm = { x: new Float64Array(numV), y: new Float64Array(numV), z: new Float64Array(numV) };
+    for (let vi = 0; vi < numV; vi++) {
+      harm.x[vi] = vx[vi] - gradPhi.x[vi] - jgradPsi.x[vi];
+      harm.y[vi] = vy[vi] - gradPhi.y[vi] - jgradPsi.y[vi];
+      harm.z[vi] = vz[vi] - gradPhi.z[vi] - jgradPsi.z[vi];
+    }
+
+    // Store result
+    window._hodgeResult = { vx, vy, vz, gradPhi, jgradPsi, harm, numV };
+    window._hodgeActive = true;
+
+    // Render Hodge components
+    renderHodgeComponents();
+  }
+
+  function computeVertexGradient(scalar, V, F, numV, numF, grad) {
+    const vw = new Float64Array(numV);
+    for (let fi = 0; fi < numF; fi++) {
+      const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
+      const ax = V[a * 3], ay = V[a * 3 + 1], az = V[a * 3 + 2];
+      const bx = V[b * 3], by = V[b * 3 + 1], bz = V[b * 3 + 2];
+      const cx = V[c * 3], cy = V[c * 3 + 1], cz = V[c * 3 + 2];
+      const nfx = (by - ay) * (cz - az) - (bz - az) * (cy - ay);
+      const nfy = (bz - az) * (cx - ax) - (cz - az) * (bx - ax);
+      const nfz = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
+      const A2 = 1 / (Math.hypot(nfx, nfy, nfz) + 1e-20);
+      const nSx = nfx * A2, nSy = nfy * A2, nSz = nfz * A2;
+      for (const vi of [a, b, c]) {
+        const j = vi === a ? b : (vi === b ? c : a);
+        const k = vi === a ? c : (vi === b ? a : b);
+        const ex = V[k * 3] - V[j * 3], ey = V[k * 3 + 1] - V[j * 3 + 1], ez = V[k * 3 + 2] - V[j * 3 + 2];
+        const rx = nSy * ez - nSz * ey;
+        const ry = nSz * ex - nSx * ez;
+        const rz = nSx * ey - nSy * ex;
+        const contribution = scalar[vi] * 0.5;
+        grad.x[vi] += rx * contribution;
+        grad.y[vi] += ry * contribution;
+        grad.z[vi] += rz * contribution;
+        vw[vi] += 1;
+      }
+    }
+    for (let vi = 0; vi < numV; vi++) {
+      if (vw[vi] > 0) { grad.x[vi] /= vw[vi]; grad.y[vi] /= vw[vi]; grad.z[vi] /= vw[vi]; }
+    }
+  }
+
+  // Face-based vector field for Hodge component rendering
+  function renderHodgeComponents() {
+    if (!window._hodgeResult) return;
+    const hr = window._hodgeResult;
+    const V = currentV, F = currentF;
+    const numF = F.length / 3;
+
+    // Create per-face vectors for each component
+    const components = [
+      { name: 'potential', field: hr.gradPhi, color: 0x4488ff, label: '势流 ∇φ' },
+      { name: 'curl', field: hr.jgradPsi, color: 0x44ffaa, label: '涡流 J∇ψ' },
+      { name: 'harmonic', field: hr.harm, color: 0xffaa44, label: '调和 h' },
+    ];
+
+    // Clear existing arrows
+    clearAllArrows();
+
+    for (const comp of components) {
+      const grp = new THREE.Group();
+      const step = Math.max(1, Math.floor(numF / 40));
+      for (let fi = 0; fi < numF; fi += step) {
+        const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
+        const cx = (V[a * 3] + V[b * 3] + V[c * 3]) / 3;
+        const cy = (V[a * 3 + 1] + V[b * 3 + 1] + V[c * 3 + 1]) / 3;
+        const cz = (V[a * 3 + 2] + V[b * 3 + 2] + V[c * 3 + 2]) / 3;
+        const vAvg = new THREE.Vector3(
+          (comp.field.x[a] + comp.field.x[b] + comp.field.x[c]) / 3,
+          (comp.field.y[a] + comp.field.y[b] + comp.field.y[c]) / 3,
+          (comp.field.z[a] + comp.field.z[b] + comp.field.z[c]) / 3
+        );
+        if (vAvg.lengthSq() < 1e-10) continue;
+        grp.add(createArrow(new THREE.Vector3(cx, cy, cz), vAvg.normalize(), comp.color, 0.06));
+      }
+      scene.add(grp);
+      if (comp.name === 'potential') arrowGroups.k1 = grp;
+      else if (comp.name === 'curl') arrowGroups.k2 = grp;
+      else arrowGroups.asymp = grp;
+    }
+
+    // Show Hodge legend
+    document.getElementById('hodge-legend').style.display = 'block';
+    document.getElementById('btn-show-original').style.display = 'block';
+    document.getElementById('hodge-info').style.display = 'block';
+    document.getElementById('hodge-info').textContent = '势流(蓝) = 无旋分量, 涡流(绿) = 无散分量, 调和(橙) = 剩余';
+
+    const fc = Math.floor(numF / Math.max(1, Math.floor(numF / 40)));
+    document.getElementById('field-count').textContent = 'Hodge × 3×' + fc;
+  }
+
+  function clearAllArrows() {
+    Object.keys(arrowGroups).forEach(key => {
+      if (arrowGroups[key]) {
+        scene.remove(arrowGroups[key]);
+        arrowGroups[key].traverse(c => {
+          if (c.geometry) c.geometry.dispose();
+          if (c.material) c.material.dispose();
+        });
+      }
+    });
+    arrowGroups = { k1: null, k2: null, asymp: null };
+  }
+
+  function showOriginalField() {
+    window._hodgeActive = false;
+    clearAllArrows();
+    document.getElementById('hodge-legend').style.display = 'none';
+    document.getElementById('btn-show-original').style.display = 'none';
+    document.getElementById('hodge-info').style.display = 'none';
+    if (mesh) generateArrows(mesh.geometry);
+    document.getElementById('field-count').textContent = '—';
+  }
+
+  // ============================================================
+  // Re-export arrowGroups for modification
+  // ============================================================
+  // (arrowGroups is already accessible in closure)
+
+  // ============================================================
+  // Update visualization — call singularity update
+  // ============================================================
+  const _origUpdateVis = updateVisualization;
+  updateVisualization = function() {
+    _origUpdateVis();
+    if (!window._hodgeActive) updateSingularities();
+  };
 (function() {
   const canvas = document.getElementById('main-canvas');
   const loader = document.getElementById('loader');
@@ -976,6 +1509,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
   // Generate arrows on each face: principal curvature (WASM) or N-RoSy field
   function generateArrows(geometry) {
+    if (window._hodgeActive) return; // Hodge mode: preserve Hodge arrows
     // Clear existing
     Object.keys(arrowGroups).forEach(key => {
       if (arrowGroups[key]) {
@@ -1137,6 +1671,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
   // Generate streamlines: principal (WASM) or Trivial N-RoSy (face field averaged to verts)
   function generateStreamlines(geometry) {
+    if (window._hodgeActive) return; // Hodge mode: preserve decomposition
     if (streamlineGroup) {
       scene.remove(streamlineGroup);
       streamlineGroup.traverse(c => {
@@ -1557,6 +2092,15 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     e.target.textContent = isAnimating ? '停止' : '动画';
     e.target.classList.toggle('active', isAnimating);
   });
+
+  // ★ New: random singularities button
+  document.getElementById('btn-random-sing').addEventListener('click', randomSingularities);
+
+  // ★ New: Hodge decomposition button
+  document.getElementById('btn-hodge').addEventListener('click', hodgeDecomposition);
+
+  // ★ New: show original field button
+  document.getElementById('btn-show-original').addEventListener('click', showOriginalField);
 
   // Resize handler
   window.addEventListener('resize', () => {
