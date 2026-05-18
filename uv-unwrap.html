@@ -1306,42 +1306,6 @@
         return{uv,anchors,flippedFaceCount:countFlippedFaces(uv,faces),timeMs:result.time_ms||0,method:'cp',optScheme:optNames[opt]||'牛顿法'};
       }
 
-      // ==================== WASM 驱动的 QuadCover 求解 ====================
-
-      async function solveQCAsync(meshData, onProgress) {
-        const vertices=meshData.positions,faces=meshData.faces;
-        if(vertices.length<3||faces.length<1)throw new Error("顶点或三角形不足");
-        if(!wasmReady){const ok=await initUnifiedSolver();if(!ok)throw new Error("QC WASM 初始化失败");}
-        if(onProgress)onProgress(0,faces.length);
-        const flatPos=new Float64Array(vertices.length*3);
-        for(let i=0;i<vertices.length;i++){flatPos[i*3]=vertices[i][0];flatPos[i*3+1]=vertices[i][1];flatPos[i*3+2]=vertices[i][2];}
-        const flatF=new Int32Array(faces.length*3);
-        for(let i=0;i<faces.length;i++){flatF[i*3]=faces[i][0];flatF[i*3+1]=faces[i][1];flatF[i*3+2]=faces[i][2];}
-        if(onProgress)onProgress(faces.length*0.2,faces.length);
-        let result;
-        try{
-          const pp=wasmInstance._malloc(flatPos.length*8);
-          for(let i=0;i<flatPos.length;i++)wasmInstance.setValue(pp+i*8,flatPos[i],'double');
-          const fp=wasmInstance._malloc(flatF.length*4);
-          for(let i=0;i<flatF.length;i++)wasmInstance.setValue(fp+i*4,flatF[i],'i32');
-          try{
-            const ret=wasmInstance.ccall('solve_qc','number',['number','number','number','number'],[pp,flatPos.length,fp,flatF.length]);
-            if(ret!==0)throw new Error("solve_qc 错误: "+ret);
-            const sz=wasmInstance.ccall('get_qc_uv_result_size','number',[],[]);
-            const uvp=wasmInstance.ccall('get_qc_uv_result','number',[],[]);
-            const uvs=[];for(let i=0;i<sz;i++)uvs.push(wasmInstance.getValue(uvp+i*8,'double'));
-            wasmInstance.ccall('qc_dispose','void',[],[]);
-            result={uv:uvs,time_ms:wasmInstance.ccall('get_qc_last_time_ms','number',[],[])};
-          }finally{wasmInstance._free(pp);wasmInstance._free(fp);}
-        }catch(err){throw new Error("QuadCover WASM 失败: "+err.message);}
-        if(onProgress)onProgress(faces.length*0.9,faces.length);
-        const uvA=result.uv,n=vertices.length,uv=new Array(n);
-        for(let i=0;i<n;i++)uv[i]=[uvA[i*2],uvA[i*2+1]];
-        if(onProgress)onProgress(faces.length,faces.length);
-        const anchors=chooseAnchorPair(vertices);
-        return{uv,anchors,flippedFaceCount:countFlippedFaces(uv,faces),timeMs:result.time_ms||0,method:'quadcover'};
-      }
-
       // ==================== WASM 驱动的 BFF 求解 ====================
 
       async function solveBFFAsync(meshData, onProgress) {
@@ -1375,40 +1339,6 @@
         if(onProgress)onProgress(faces.length,faces.length);
         const anchors=chooseAnchorPair(vertices);
         return{uv,anchors,flippedFaceCount:countFlippedFaces(uv,faces),timeMs:result.time_ms||0,method:'bff'};
-      }
-
-      // ==================== WASM 驱动的 MIQ 求解 ====================
-      async function solveMIQAsync(meshData,onProgress){
-        const v=meshData.positions,f=meshData.faces;
-        if(v.length<3||f.length<1)throw new Error("顶点或三角形不足");
-        if(!wasmReady){if(!await initUnifiedSolver())throw new Error("MIQ WASM失败");}
-        if(onProgress)onProgress(0,f.length);
-        const fp=new Float64Array(v.length*3);
-        for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2];}
-        const ff=new Int32Array(f.length*3);
-        for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2];}
-        if(onProgress)onProgress(f.length*0.2,f.length);
-        let r;
-        try{
-          const pp=wasmInstance._malloc(fp.length*8);
-          for(let i=0;i<fp.length;i++)wasmInstance.setValue(pp+i*8,fp[i],'double');
-          const fpt=wasmInstance._malloc(ff.length*4);
-          for(let i=0;i<ff.length;i++)wasmInstance.setValue(fpt+i*4,ff[i],'i32');
-          try{
-            if(wasmInstance.ccall('solve_miq','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length])!==0)
-              throw new Error("MIQ solve失败");
-            const sz=wasmInstance.ccall('get_miq_uv_result_size','number',[],[]);
-            const up=wasmInstance.ccall('get_miq_uv_result','number',[],[]);
-            const us=[];for(let i=0;i<sz;i++)us.push(wasmInstance.getValue(up+i*8,'double'));
-            wasmInstance.ccall('miq_dispose','void',[],[]);
-            r={uv:us,time_ms:wasmInstance.ccall('get_miq_last_time_ms','number',[],[])};
-          }finally{wasmInstance._free(pp);wasmInstance._free(fpt);}
-        }catch(e){throw new Error("MIQ WASM失败: "+e.message);}
-        if(onProgress)onProgress(f.length*0.9,f.length);
-        const ua=r.uv,n=v.length,uv=new Array(n);
-        for(let i=0;i<n;i++)uv[i]=[ua[i*2],ua[i*2+1]];
-        if(onProgress)onProgress(f.length,f.length);
-        return{uv,anchors:chooseAnchorPair(v),flippedFaceCount:countFlippedFaces(uv,f),timeMs:r.time_ms||0,method:'miq'};
       }
 
       // ==================== WASM 驱动的 Tutte + ARAP 求解 ====================
@@ -2913,9 +2843,7 @@
         else if (method === 'cetm') methodLabel = 'CETM (共形因子)';
         else if (method === 'ricci') methodLabel = 'Ricci 流';
         else if (method === 'cp') methodLabel = 'Circle Pattern';
-        else if (method === 'quadcover') methodLabel = 'QuadCover';
         else if (method === 'bff') methodLabel = 'BFF';
-        else if (method === 'miq') methodLabel = 'MIQ';
         else if (method === 'holo') methodLabel = '全纯1-形式';
         else if (method === 'scp') methodLabel = 'SCP (谱共形)';
         else if (method === 'abfpp') methodLabel = 'ABF++';
@@ -2957,16 +2885,8 @@
             unwrapResult = await solveCPAsync(currentMeshData, function(p, t) {
               updateTimingProgress(p, t);
             });
-          } else if (method === 'quadcover') {
-            unwrapResult = await solveQCAsync(currentMeshData, function(p, t) {
-              updateTimingProgress(p, t);
-            });
           } else if (method === 'bff') {
             unwrapResult = await solveBFFAsync(currentMeshData, function(p, t) {
-              updateTimingProgress(p, t);
-            });
-          } else if (method === 'miq') {
-            unwrapResult = await solveMIQAsync(currentMeshData, function(p, t) {
               updateTimingProgress(p, t);
             });
           } else if (method === 'holo') {
@@ -3024,7 +2944,7 @@
           }
 
           // 更新 UV 面板标签
-          const methodNames = { lscm:'LSCM', tutte:'Tutte', arap:'ARAP', cetm:'CETM', ricci:'Ricci', cp:'CirclePat', quadcover:'QuadCover', bff:'BFF', miq:'MIQ', holo:'Holo', scp:'SCP', abfpp:'ABF++', linabf:'linABF' };
+          const methodNames = { lscm:'LSCM', tutte:'Tutte', arap:'ARAP', cetm:'CETM', ricci:'Ricci', cp:'CirclePat', bff:'BFF', holo:'Holo', scp:'SCP', abfpp:'ABF++', linabf:'linABF' };
           document.getElementById('uv-panel-label').textContent =
             (methodNames[unwrapResult.method] || unwrapResult.method) + ' UV 网格';
 

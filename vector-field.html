@@ -248,51 +248,10 @@
 
 <div class="container">
   <div class="header">
-    <h1>向量场 — Trivial Connection · N-PolyVector</h1>
+    <h1>向量场</h1>
     <div class="controls">
       <div class="control-group">
-        <label>算法:</label>
-        <select id="source-select" title="主曲率：libigl WASM；Trivial：Keenan Crane 离散联络；N-PolyVector：复多项式零点控制奇点">
-          <option value="principal">主曲率 (libigl)</option>
-          <option value="trivial" selected>Keenan Crane Trivial Connection</option>
-          <option value="polyvector">Design N-PolyVector (Complex Polynomial)</option>
-        </select>
-      </div>
-      <div class="control-group" id="poly-controls">
-        <label>N:</label>
-        <select id="nrosy-n" title="N-RoSy 对称阶数">
-          <option value="3">3</option>
-          <option value="4" selected>4 (Cross)</option>
-          <option value="6">6</option>
-        </select>
-      </div>
-      <div class="control-group" id="poly-controls2">
-        <label>P(z):</label>
-        <select id="poly-type">
-          <option value="linear" selected>z − s（单零点）</option>
-          <option value="quad">(z−s₀)(z−s₁)</option>
-          <option value="power">z^k</option>
-        </select>
-      </div>
-      <div class="control-group" id="poly-controls3">
-        <label title="奇点 s 的实部（PCA 平面坐标）">Re(s):</label>
-        <input type="range" id="root-re" min="-150" max="150" value="0">
-      </div>
-      <div class="control-group" id="poly-controls4">
-        <label title="奇点 s 的虚部">Im(s):</label>
-        <input type="range" id="root-im" min="-150" max="150" value="0">
-      </div>
-      <div class="control-group" id="poly-controls5" style="display:none">
-        <label>Re(s₁):</label>
-        <input type="range" id="root2-re" min="-150" max="150" value="80">
-      </div>
-      <div class="control-group" id="poly-controls6" style="display:none">
-        <label>Im(s₁):</label>
-        <input type="range" id="root2-im" min="-150" max="150" value="0">
-      </div>
-      <div class="control-group" id="poly-controls7" style="display:none">
-        <label>k:</label>
-        <input type="range" id="poly-k" min="1" max="6" value="2">
+        <span style="color:#8a9dd4;font-size:12px;letter-spacing:1px">Trivial Connection</span>
       </div>
       <div class="control-group">
         <label>模型:</label>
@@ -312,14 +271,6 @@
         </select>
       </div>
       <div class="control-group">
-        <label>显示:</label>
-        <select id="field-select">
-          <option value="principal">主方向 / 第一分支</option>
-          <option value="asymptotic">渐近方向 / N 分支</option>
-          <option value="both">全部显示</option>
-        </select>
-      </div>
-      <div class="control-group">
         <button id="btn-arrows" class="active">箭头</button>
         <button id="btn-streamlines">流线</button>
         <button id="btn-both">混合</button>
@@ -329,13 +280,10 @@
         <input type="range" id="density-slider" min="1" max="5" value="2">
       </div>
       <div class="control-group">
-        <button id="btn-animate">动画</button>
-      </div>
-      <div class="control-group">
-        <button id="btn-random-sing" class="sing" title="在 N-PolyVector 模式下随机生成奇点配置">🎲 随机奇点</button>
-      </div>
-      <div class="control-group">
-        <button id="btn-hodge" class="hodge" title="对当前向量场进行 Hodge 分解：势流 + 涡流 + 调和分量">🔀 Hodge分解</button>
+        <label>
+          <input id="show-wireframe" type="checkbox" checked>
+          <span style="font-size:12px;color:#9fb2df">三角面线框</span>
+        </label>
       </div>
     </div>
   </div>
@@ -625,319 +573,10 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   }
 
   // ============================================================
-  // Random singularity configuration (for PolyVector mode)
+  // (removed: randomSingularities, hodgeDecomposition, showOriginalField)
   // ============================================================
-  function randomSingularities() {
-    if (fieldSource !== 'polyvector') {
-      alert('请先切换到 "Design N-PolyVector" 模式');
-      return;
-    }
-    if (!currentV || !currentF) return;
-
-    const numV = currentV.length / 3;
-    const numF = currentF.length / 3;
-
-    // Randomly pick 1-5 faces as singularity centers
-    const nSing = 1 + Math.floor(Math.random() * 5);
-    const picked = new Set();
-    const zeros = [];
-    for (let k = 0; k < nSing; k++) {
-      let fi;
-      do { fi = Math.floor(Math.random() * numF); } while (picked.has(fi) && picked.size < numF);
-      picked.add(fi);
-      zeros.push({ face: fi, order: 1 + Math.floor(Math.random() * 2) }); // order 1 or 2
-    }
-
-    // Build P(z) as product of (z - z_i)^(order_i) where z_i is face centroid
-    // This means: theta = arg(P(z)) / N on each face
-    const N = parseInt(document.getElementById('nrosy-n').value, 10) || 4;
-    const theta = new Float32Array(numF);
-    for (let fi = 0; fi < numF; fi++) {
-      const cx = currentV[currentF[fi * 3] * 3];
-      const cy = currentV[currentF[fi * 3] * 3 + 1];
-      const cz = currentV[currentF[fi * 3] * 3 + 2];
-      // Map face centroid to complex plane via face tangent frame
-      const frames = buildFaceFramesAndAdjacency(currentV, currentF, numF);
-      // Use simple x-y projection for P(z) evaluation
-      const zr = cx, zi = cy;
-      let Pr = 1, Pi = 0;
-      for (const z of zeros) {
-        const fz = z.face;
-        const zx = currentV[currentF[fz * 3] * 3];
-        const zy = currentV[currentF[fz * 3] * 3 + 1];
-        const dr = zr - zx, di = zi - zy;
-        // Multiply by (z - z_k)^order
-        for (let o = 0; o < z.order; o++) {
-          const nr = Pr * dr - Pi * di;
-          const ni = Pr * di + Pi * dr;
-          Pr = nr; Pi = ni;
-        }
-      }
-      theta[fi] = Math.atan2(Pi, Pr) / N;
-    }
-
-    // Update trivialResult with new theta
-    if (trivialResult) {
-      trivialResult.theta = theta;
-      trivialResult.algorithm = 'polyvector-random';
-    }
-    updateVisualization();
-    updateSingularities();
-
-    // Update info
-    document.getElementById('curvature').textContent = zeros.map(z =>
-      `${z.order > 1 ? `(${z.order})` : ''}F${z.face}`
-    ).join(', ');
-  }
-
   // ============================================================
-  // Hodge decomposition
-  // ============================================================
-  // Decomposes face-based vector field into:
-  //   v = ∇φ  +  J∇ψ  +  h
-  //   potential + stream + harmonic
-  function hodgeDecomposition() {
-    if (!trivialResult || !currentV || !currentF) {
-      alert('请先生成 N-RoSy 向量场');
-      return;
-    }
-    const tr = trivialResult;
-    const V = currentV;
-    const F = currentF;
-    const numV = V.length / 3;
-    const numF = F.length / 3;
-    const N = tr.N;
-
-    // 1. Build per-vertex vectors from face field (area-weighted average)
-    const vx = new Float64Array(numV);
-    const vy = new Float64Array(numV);
-    const vz = new Float64Array(numV);
-    const vw = new Float64Array(numV);
-    for (let fi = 0; fi < numF; fi++) {
-      const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
-      const ang = tr.theta[fi];
-      const t1x = tr.T1[fi * 3], t1y = tr.T1[fi * 3 + 1], t1z = tr.T1[fi * 3 + 2];
-      const t2x = tr.T2[fi * 3], t2y = tr.T2[fi * 3 + 1], t2z = tr.T2[fi * 3 + 2];
-      const cA = Math.cos(ang), sA = Math.sin(ang);
-      const dx = cA * t1x + sA * t2x, dy = cA * t1y + sA * t2y, dz = cA * t1z + sA * t2z;
-      for (const vi of [a, b, c]) {
-        vx[vi] += dx; vy[vi] += dy; vz[vi] += dz;
-        vw[vi] += 1;
-      }
-    }
-    for (let vi = 0; vi < numV; vi++) {
-      if (vw[vi] > 0) { vx[vi] /= vw[vi]; vy[vi] /= vw[vi]; vz[vi] /= vw[vi]; }
-    }
-
-    // 2. Compute per-vertex discrete divergence of v
-    //    div(v)_i ≈ Σ_e (v · n_e) · |e| / (3 * area_i) summed over incident edges
-    const divergence = new Float64Array(numV);
-    const vertexArea = new Float64Array(numV);
-    for (let fi = 0; fi < numF; fi++) {
-      const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
-      const ax = V[a * 3], ay = V[a * 3 + 1], az = V[a * 3 + 2];
-      const bx = V[b * 3], by = V[b * 3 + 1], bz = V[b * 3 + 2];
-      const cx = V[c * 3], cy = V[c * 3 + 1], cz = V[c * 3 + 2];
-      const nfx = (by - ay) * (cz - az) - (bz - az) * (cy - ay);
-      const nfy = (bz - az) * (cx - ax) - (cz - az) * (bx - ax);
-      const nfz = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
-      const a3 = Math.hypot(nfx, nfy, nfz) / 6;
-      for (const vi of [a, b, c]) vertexArea[vi] += a3;
-    }
-
-    // Simple discrete divergence on faces, accumulated to vertices
-    // div = sum over incident edges of (v · edge_normal) * |e|
-    for (let fi = 0; fi < numF; fi++) {
-      const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
-      const edges = [[a, b], [b, c], [c, a]];
-      for (const [v0, v1] of edges) {
-        const ex = V[v1 * 3] - V[v0 * 3], ey = V[v1 * 3 + 1] - V[v0 * 3 + 1], ez = V[v1 * 3 + 2] - V[v0 * 3 + 2];
-        const el = Math.hypot(ex, ey, ez);
-        const eNx = -ey, eNy = ez, eNz = ex; // rotate 90° in tangent plane (approximate)
-        const dot = vx[v0] * eNx + vy[v0] * eNy + vz[v0] * eNz;
-        divergence[v0] += dot * el;
-        divergence[v1] -= dot * el;
-      }
-    }
-
-    // 3. Solve Laplace-Poisson for potential φ: Lφ = div(v)
-    //    L_ij = -cot(α_ij) - cot(β_ij) for edge (i,j), L_ii = -Σ L_ij
-    // Build sparse Laplacian (simple iterative Jacobi solver)
-    const phi = new Float64Array(numV);
-    const b = new Float64Array(numV);
-    for (let vi = 0; vi < numV; vi++) b[vi] = divergence[vi] / Math.max(vertexArea[vi], 1e-8);
-
-    // Iterative Jacobi for Poisson Δφ = b
-    for (let iter = 0; iter < 200; iter++) {
-      const phiNew = new Float64Array(numV);
-      for (let fi = 0; fi < numF; fi++) {
-        const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
-        const avg = (phi[a] + phi[b] + phi[c]) / 3;
-        for (const vi of [a, b, c]) {
-          phiNew[vi] += avg - b[vi] * vertexArea[vi] / 3;
-        }
-      }
-      for (let vi = 0; vi < numV; vi++) if (vw[vi] > 0) phiNew[vi] /= vw[vi];
-      phi.set(phiNew);
-    }
-
-    // 4. Compute ∇φ (potential flow) at vertices
-    const gradPhi = { x: new Float64Array(numV), y: new Float64Array(numV), z: new Float64Array(numV) };
-    computeVertexGradient(phi, V, F, numV, numF, gradPhi);
-
-    // 5. Stream function ψ: solve for curl-free component
-    //    v_rot = J∇ψ (curl-free but divergence-free)
-    const psi = new Float64Array(numV);
-    for (let iter = 0; iter < 100; iter++) {
-      const psiNew = new Float64Array(numV);
-      for (let fi = 0; fi < numF; fi++) {
-        const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
-        const avg = (psi[a] + psi[b] + psi[c]) / 3;
-        for (const vi of [a, b, c]) psiNew[vi] += avg;
-      }
-      for (let vi = 0; vi < numV; vi++) if (vw[vi] > 0) psiNew[vi] /= vw[vi];
-      // Add noise to break symmetry
-      for (let vi = 0; vi < numV; vi++) psiNew[vi] += (Math.random() - 0.5) * 0.001;
-      psi.set(psiNew);
-    }
-
-    // 6. Compute J∇ψ (curl field) 
-    const gradPsi = { x: new Float64Array(numV), y: new Float64Array(numV), z: new Float64Array(numV) };
-    computeVertexGradient(psi, V, F, numV, numF, gradPsi);
-
-    // J∇ψ = rotate ∇ψ by 90° in tangent plane (use vertex normals)
-    const jgradPsi = { x: new Float64Array(numV), y: new Float64Array(numV), z: new Float64Array(numV) };
-    const vnorm = mesh.geometry.attributes.normal;
-    for (let vi = 0; vi < numV; vi++) {
-      const nx = vnorm.getX(vi), ny = vnorm.getY(vi), nz = vnorm.getZ(vi);
-      jgradPsi.x[vi] = ny * gradPsi.z[vi] - nz * gradPsi.y[vi];
-      jgradPsi.y[vi] = nz * gradPsi.x[vi] - nx * gradPsi.z[vi];
-      jgradPsi.z[vi] = nx * gradPsi.y[vi] - ny * gradPsi.x[vi];
-    }
-
-    // 7. Harmonic: v - ∇φ - J∇ψ
-    const harm = { x: new Float64Array(numV), y: new Float64Array(numV), z: new Float64Array(numV) };
-    for (let vi = 0; vi < numV; vi++) {
-      harm.x[vi] = vx[vi] - gradPhi.x[vi] - jgradPsi.x[vi];
-      harm.y[vi] = vy[vi] - gradPhi.y[vi] - jgradPsi.y[vi];
-      harm.z[vi] = vz[vi] - gradPhi.z[vi] - jgradPsi.z[vi];
-    }
-
-    // Store result
-    window._hodgeResult = { vx, vy, vz, gradPhi, jgradPsi, harm, numV };
-    window._hodgeActive = true;
-
-    // Render Hodge components
-    renderHodgeComponents();
-  }
-
-  function computeVertexGradient(scalar, V, F, numV, numF, grad) {
-    const vw = new Float64Array(numV);
-    for (let fi = 0; fi < numF; fi++) {
-      const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
-      const ax = V[a * 3], ay = V[a * 3 + 1], az = V[a * 3 + 2];
-      const bx = V[b * 3], by = V[b * 3 + 1], bz = V[b * 3 + 2];
-      const cx = V[c * 3], cy = V[c * 3 + 1], cz = V[c * 3 + 2];
-      const nfx = (by - ay) * (cz - az) - (bz - az) * (cy - ay);
-      const nfy = (bz - az) * (cx - ax) - (cz - az) * (bx - ax);
-      const nfz = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
-      const A2 = 1 / (Math.hypot(nfx, nfy, nfz) + 1e-20);
-      const nSx = nfx * A2, nSy = nfy * A2, nSz = nfz * A2;
-      for (const vi of [a, b, c]) {
-        const j = vi === a ? b : (vi === b ? c : a);
-        const k = vi === a ? c : (vi === b ? a : b);
-        const ex = V[k * 3] - V[j * 3], ey = V[k * 3 + 1] - V[j * 3 + 1], ez = V[k * 3 + 2] - V[j * 3 + 2];
-        const rx = nSy * ez - nSz * ey;
-        const ry = nSz * ex - nSx * ez;
-        const rz = nSx * ey - nSy * ex;
-        const contribution = scalar[vi] * 0.5;
-        grad.x[vi] += rx * contribution;
-        grad.y[vi] += ry * contribution;
-        grad.z[vi] += rz * contribution;
-        vw[vi] += 1;
-      }
-    }
-    for (let vi = 0; vi < numV; vi++) {
-      if (vw[vi] > 0) { grad.x[vi] /= vw[vi]; grad.y[vi] /= vw[vi]; grad.z[vi] /= vw[vi]; }
-    }
-  }
-
-  // Face-based vector field for Hodge component rendering
-  function renderHodgeComponents() {
-    if (!window._hodgeResult) return;
-    const hr = window._hodgeResult;
-    const V = currentV, F = currentF;
-    const numF = F.length / 3;
-
-    // Create per-face vectors for each component
-    const components = [
-      { name: 'potential', field: hr.gradPhi, color: 0x4488ff, label: '势流 ∇φ' },
-      { name: 'curl', field: hr.jgradPsi, color: 0x44ffaa, label: '涡流 J∇ψ' },
-      { name: 'harmonic', field: hr.harm, color: 0xffaa44, label: '调和 h' },
-    ];
-
-    // Clear existing arrows
-    clearAllArrows();
-
-    for (const comp of components) {
-      const grp = new THREE.Group();
-      const step = Math.max(1, Math.floor(numF / 40));
-      for (let fi = 0; fi < numF; fi += step) {
-        const a = F[fi * 3], b = F[fi * 3 + 1], c = F[fi * 3 + 2];
-        const cx = (V[a * 3] + V[b * 3] + V[c * 3]) / 3;
-        const cy = (V[a * 3 + 1] + V[b * 3 + 1] + V[c * 3 + 1]) / 3;
-        const cz = (V[a * 3 + 2] + V[b * 3 + 2] + V[c * 3 + 2]) / 3;
-        const vAvg = new THREE.Vector3(
-          (comp.field.x[a] + comp.field.x[b] + comp.field.x[c]) / 3,
-          (comp.field.y[a] + comp.field.y[b] + comp.field.y[c]) / 3,
-          (comp.field.z[a] + comp.field.z[b] + comp.field.z[c]) / 3
-        );
-        if (vAvg.lengthSq() < 1e-10) continue;
-        grp.add(createArrow(new THREE.Vector3(cx, cy, cz), vAvg.normalize(), comp.color, 0.06));
-      }
-      scene.add(grp);
-      if (comp.name === 'potential') arrowGroups.k1 = grp;
-      else if (comp.name === 'curl') arrowGroups.k2 = grp;
-      else arrowGroups.asymp = grp;
-    }
-
-    // Show Hodge legend
-    document.getElementById('hodge-legend').style.display = 'block';
-    document.getElementById('btn-show-original').style.display = 'block';
-    document.getElementById('hodge-info').style.display = 'block';
-    document.getElementById('hodge-info').textContent = '势流(蓝) = 无旋分量, 涡流(绿) = 无散分量, 调和(橙) = 剩余';
-
-    const fc = Math.floor(numF / Math.max(1, Math.floor(numF / 40)));
-    document.getElementById('field-count').textContent = 'Hodge × 3×' + fc;
-  }
-
-  function clearAllArrows() {
-    Object.keys(arrowGroups).forEach(key => {
-      if (arrowGroups[key]) {
-        scene.remove(arrowGroups[key]);
-        arrowGroups[key].traverse(c => {
-          if (c.geometry) c.geometry.dispose();
-          if (c.material) c.material.dispose();
-        });
-      }
-    });
-    arrowGroups = { k1: null, k2: null, asymp: null };
-  }
-
-  function showOriginalField() {
-    window._hodgeActive = false;
-    clearAllArrows();
-    document.getElementById('hodge-legend').style.display = 'none';
-    document.getElementById('btn-show-original').style.display = 'none';
-    document.getElementById('hodge-info').style.display = 'none';
-    if (mesh) generateArrows(mesh.geometry);
-    document.getElementById('field-count').textContent = '—';
-  }
-
-  // ============================================================
-  // Re-export arrowGroups for modification
-  // ============================================================
-  // (arrowGroups is already accessible in closure)
+  // (removed hodgeDecomposition + showOriginalField)
 
   // Shared state between IIFE and outer functions (singularities, render, etc.)
   let trivialResult = null;
@@ -950,12 +589,9 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
   // State
   let currentModel = 'sphere';
-  let fieldSource = 'trivial'; // 'principal' | 'trivial' | 'polyvector'
-  let displayMode = 'principal';
   let arrowMode = 'arrows';
   let density = 2;
-  let isAnimating = false;
-  let animationPhase = 0;
+  let showWireframe = true;
 
   /** N-RoSy result: per-face angle θ in tangent plane, bases (T1,T2), normals */
   trivialResult = null;
@@ -1220,9 +856,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     return { normals: normals, T1: T1, T2: T2, cent: cent, adj: adj, boundaryEdges: boundaryEdges };
   }
 
-  function isNRosySource() {
-    return fieldSource === 'trivial' || fieldSource === 'polyvector';
-  }
+  function isNRosySource() { return true; }
 
   function complexMul(a, b) {
     return { re: a.re * b.re - a.im * b.im, im: a.re * b.im + a.im * b.re };
@@ -1347,17 +981,12 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   function computeNRosyField(V, F) {
     const numF = F.length / 3;
     if (numF < 1) return null;
-    const N = parseInt(document.getElementById('nrosy-n').value, 10) || 4;
+    const N = 4;
 
     const frames = buildFaceFramesAndAdjacency(V, F, numF);
     const { normals, T1, T2, cent, adj } = frames;
 
     const theta = new Float32Array(numF);
-
-    if (fieldSource === 'polyvector') {
-      const solvedTheta = solvePolyVectorFieldFromRepo(V, F, frames, N);
-      return { theta: solvedTheta, T1: T1, T2: T2, normals: normals, cent: cent, N: N, numF: numF, algorithm: 'polyvector' };
-    }
 
     // Keenan Crane-style trivial connection demo: propagate one seed direction by
     // discrete parallel transport across face adjacency.
@@ -1541,7 +1170,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
         const ang = tr.theta[fi];
         const N = tr.N;
         const stepA = (2 * Math.PI) / N;
-        const nShow = (displayMode === 'principal') ? 1 : N;
+        const nShow = 1;
         for (let k = 0; k < nShow; k++) {
           const angk = ang + k * stepA;
           const ck = Math.cos(angk), sk = Math.sin(angk);
@@ -1614,45 +1243,15 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
       const len2 = baseLen * Math.min(2.0, k2val * 5 + 0.3);
 
       // k1 direction (red - maximal curvature)
-      if (displayMode === 'principal' || displayMode === 'both') {
-        if (dir1.lengthSq() > 0.001) {
-          groupK1.add(createArrow(center, dir1, 0xff4444, len1));
-          totalArrows++;
-        }
+      if (dir1.lengthSq() > 0.001) {
+        groupK1.add(createArrow(center, dir1, 0xff4444, len1));
+        totalArrows++;
       }
 
       // k2 direction (blue - minimal curvature)
-      if (displayMode === 'principal' || displayMode === 'both') {
-        if (dir2.lengthSq() > 0.001) {
-          groupK2.add(createArrow(center, dir2, 0x4444ff, len2));
-          totalArrows++;
-        }
-      }
-
-      // Asymptotic directions (green) where K < 0
-      if ((displayMode === 'asymptotic' || displayMode === 'both')) {
-        const K = pcResult.PV1_face[fi] * pcResult.PV2_face[fi];  // Gaussian curvature
-        if (K < 0 && k1val > 1e-6) {
-          const theta = Math.atan2(Math.sqrt(-K), k1val);
-          const cosT = Math.cos(theta), sinT = Math.sin(theta);
-
-          const dA1 = new THREE.Vector3(
-            dir1.x * cosT + dir2.x * sinT,
-            dir1.y * cosT + dir2.y * sinT,
-            dir1.z * cosT + dir2.z * sinT
-          ).normalize();
-
-          const dA2 = new THREE.Vector3(
-            dir1.x * cosT - dir2.x * sinT,
-            dir1.y * cosT - dir2.y * sinT,
-            dir1.z * cosT - dir2.z * sinT
-          ).normalize();
-
-          const aLen = baseLen * 0.7;
-          groupAsymp.add(createArrow(center, dA1, 0x44ff44, aLen));
-          groupAsymp.add(createArrow(center, dA2, 0x44ff44, aLen));
-          totalArrows += 2;
-        }
+      if (dir2.lengthSq() > 0.001) {
+        groupK2.add(createArrow(center, dir2, 0x4444ff, len2));
+        totalArrows++;
       }
     }
 
@@ -1898,6 +1497,19 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
   // Setup mesh with geometry
   async function setupMesh(geometry, vertCount, faceCount) {
+    // 模型归中 + 归一化到单位球内
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    geometry.translate(-center.x, -center.y, -center.z);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const maxDim = Math.max(size.x, size.y, size.z);
+    if (maxDim > 1e-6) {
+      const scale = 1.5 / maxDim; // 归一化
+      geometry.scale(scale, scale, scale);
+    }
     geometry.computeVertexNormals();
 
     const material = new THREE.MeshStandardMaterial({
@@ -2002,11 +1614,13 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     // Remove old wireframe
     meshGroup.children = meshGroup.children.filter(c => !(c instanceof THREE.LineSegments));
 
-    // Add wireframe
-    const wireGeo = new THREE.WireframeGeometry(geometry, 15);
-    const wireMat = new THREE.LineBasicMaterial({ color: 0x333355, transparent: true, opacity: 0.3 });
-    const wireframe = new THREE.LineSegments(wireGeo, wireMat);
-    meshGroup.add(wireframe);
+    // Add wireframe (仅三角面外缘，无内部对角线)
+    if (showWireframe) {
+      const edgesGeo = new THREE.EdgesGeometry(geometry);
+      const wireMat = new THREE.LineBasicMaterial({ color: 0x6677cc, transparent: true, opacity: 0.5 });
+      const wireframe = new THREE.LineSegments(edgesGeo, wireMat);
+      meshGroup.add(wireframe);
+    }
 
     if (arrowMode === 'arrows' || arrowMode === 'both') {
       generateArrows(geometry);
@@ -2035,38 +1649,6 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     createModel(currentModel);
   });
 
-  document.getElementById('field-select').addEventListener('change', (e) => {
-    displayMode = e.target.value;
-    updateVisualization();
-  });
-
-  document.getElementById('source-select').addEventListener('change', (e) => {
-    fieldSource = e.target.value;
-    syncPolyControlsVisibility();
-    loader.classList.remove('hidden');
-    createModel(currentModel);
-  });
-
-  function refreshTrivialField() {
-    if (!isNRosySource() || !mesh || !currentV || !currentF) return;
-    trivialResult = computeNRosyField(currentV, currentF);
-    updateVisualization();
-  }
-
-  ['root-re', 'root-im', 'root2-re', 'root2-im', 'poly-k'].forEach(function (id) {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('input', refreshTrivialField);
-  });
-  const nSel = document.getElementById('nrosy-n');
-  if (nSel) nSel.addEventListener('change', refreshTrivialField);
-  const polySel = document.getElementById('poly-type');
-  if (polySel) {
-    polySel.addEventListener('change', function () {
-      syncPolyControlsVisibility();
-      refreshTrivialField();
-    });
-  }
-
   document.getElementById('btn-arrows').addEventListener('click', (e) => {
     arrowMode = 'arrows';
     document.querySelectorAll('#btn-arrows, #btn-streamlines, #btn-both').forEach(b => b.classList.remove('active'));
@@ -2093,20 +1675,10 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     updateVisualization();
   });
 
-  document.getElementById('btn-animate').addEventListener('click', (e) => {
-    isAnimating = !isAnimating;
-    e.target.textContent = isAnimating ? '停止' : '动画';
-    e.target.classList.toggle('active', isAnimating);
+  document.getElementById('show-wireframe').addEventListener('change', (e) => {
+    showWireframe = e.target.checked;
+    updateVisualization();
   });
-
-  // ★ New: random singularities button
-  document.getElementById('btn-random-sing').addEventListener('click', randomSingularities);
-
-  // ★ New: Hodge decomposition button
-  document.getElementById('btn-hodge').addEventListener('click', hodgeDecomposition);
-
-  // ★ New: show original field button
-  document.getElementById('btn-show-original').addEventListener('click', showOriginalField);
 
   // Resize handler
   window.addEventListener('resize', () => {
@@ -2125,19 +1697,6 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   function animate() {
     requestAnimationFrame(animate);
 
-    if (isAnimating && mesh) {
-      animationPhase += 0.02;
-      mesh.rotation.y = animationPhase;
-
-      // Rotate arrows
-      if (arrowGroups.k1) {
-        arrowGroups.k1.rotation.y = animationPhase;
-      }
-      if (arrowGroups.k2) {
-        arrowGroups.k2.rotation.y = animationPhase;
-      }
-    }
-
     controls.update();
     renderer.render(scene, camera);
 
@@ -2152,7 +1711,6 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   }
 
   // Initialize
-  syncPolyControlsVisibility();
   createModel('sphere');
   animate();
 })();

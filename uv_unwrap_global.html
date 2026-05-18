@@ -47,8 +47,6 @@
   #auto-cone-btn{padding:9px 12px;background:#1b263d;border:1px solid rgba(140,170,255,.35);color:#c8d6ff;font-size:13px}
   #cone-info{display:none;font-size:11px;color:#c9a0e0;margin-left:6px}
   .cone-angle{width:50px;padding:2px 4px;border-radius:4px;text-align:center;font-size:11px;border:1px solid rgba(200,120,220,.3);background:#0d1528;color:#e0c0ff}
-  .entry-link{border:1px solid rgba(106,132,255,.28);background:#101a30;color:#b9c8ff;border-radius:10px;padding:9px 12px;font-size:13px;text-decoration:none;white-space:nowrap}
-  .entry-link:hover{background:#172546;color:#eef2ff}
 </style>
 </head>
 <body>
@@ -65,33 +63,14 @@
   <div class="toolbar">
     <div class="toolbar-right">
       <select id="model-select" title="Models2" style="width:170px;font-size:15px;padding:10px 14px;"></select>
-      <a class="entry-link" id="family-entry-link" href="uv_unwrap_cone_global.html">锥奇异点全局参数化</a>
 
       <fieldset style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:8px 12px;margin:0;">
         <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开算法</legend>
         <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
-          <label class="cone-method" style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cp"> CirclePat</label>
-          <label class="cone-method" style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cetm"> CETM</label>
-          <label class="cone-method" style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="ricci"> Ricci流</label>
-          <label class="quadcover-method" style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover" checked> QuadCover简化</label>
-          <label class="quadcover-method" style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover_full"> QuadCover完整</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover" checked> QuadCover简化</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover_full"> QuadCover完整</label>
         </div>
       </fieldset>
-
-      <fieldset id="param-panel" style="border:1px solid rgba(255,180,70,0.35);border-radius:10px;padding:8px 12px;margin:0;background:rgba(20,25,45,.7);">
-        <legend style="color:#ffb446;font-size:11px;padding:0 6px;">算法参数</legend>
-        <span id="param-opt-scheme" style="font-size:12px;color:#c6d1f4;">
-          优化:<select id="opt-scheme-select" style="width:75px;padding:3px 5px;border-radius:6px;font-size:11px;border:1px solid rgba(106,132,255,.3);background:#0d1528;color:#eef2ff;margin-left:4px;">
-            <option value="1" selected>牛顿法</option>
-            <option value="0">梯度下降</option>
-            <option value="3">LBFGS</option>
-          </select>
-        </span>
-      </fieldset>
-
-      <button id="cone-btn" title="点击模型顶点添加锥奇异点">🎯 锥奇异点</button>
-      <button id="auto-cone-btn" title="按 Ben-Chen 曲率处方自动计算锥奇异点">Ben-Chen锥点</button>
-      <span id="cone-info">0 个</span>
 
       <button id="reload-btn">展开!</button>
 
@@ -125,7 +104,6 @@
 
 <script>
 (function(){
-  const PAGE_FAMILY = new URLSearchParams(window.location.search).get('family') === 'cone' ? 'cone' : 'quadcover';
 
   // ============ Models2 ============
   const MODELS = {
@@ -518,180 +496,8 @@
     return dirs;
   }
 
-  // ============ 锥奇异点交互 ============
-  let coneMode = false;
-  let coneVertices = [];  // [{index, angle}]  angle 为目标角度和（默认 2π）
-  let coneMarkers = null;
-  const raycaster = new THREE.Raycaster();
-
-  function toggleConeMode(){
-    coneMode = !coneMode;
-    const btn = document.getElementById('cone-btn');
-    btn.classList.toggle('active', coneMode);
-    btn.textContent = coneMode ? '🎯 选择中...' : '🎯 锥奇异点';
-    controls.enabled = !coneMode;
-    // 点选模式下鼠标变为十字
-    modelCanvas.style.cursor = coneMode ? 'crosshair' : '';
-  }
-
-  function addConeVertex(vertexIndex, angle){
-    if (!angle || angle < 0) angle = 2 * Math.PI;
-    const exist = coneVertices.find(c => c.index === vertexIndex);
-    if (exist) { exist.angle = angle; } else { coneVertices.push({index: vertexIndex, angle}); }
-    updateConeDisplay();
-  }
-
-  function removeConeVertex(vertexIndex){
-    coneVertices = coneVertices.filter(c => c.index !== vertexIndex);
-    updateConeDisplay();
-  }
-
-  function clearCones(){
-    coneVertices = [];
-    updateConeDisplay();
-  }
-
-  function computeBenChenCones(meshData){
-    if(!meshData||!meshData.positions||!meshData.faces)return[];
-    const n=meshData.positions.length,angleSum=new Array(n).fill(0),edgeCount=new Map();
-    const boundary=new Array(n).fill(false);
-    function key(a,b){return a<b?a+"_"+b:b+"_"+a}
-    function angleAt(pa,pb,pc){
-      const ux=pb[0]-pa[0],uy=pb[1]-pa[1],uz=pb[2]-pa[2];
-      const vx=pc[0]-pa[0],vy=pc[1]-pa[1],vz=pc[2]-pa[2];
-      const lu=Math.hypot(ux,uy,uz),lv=Math.hypot(vx,vy,vz);
-      if(lu<1e-12||lv<1e-12)return 0;
-      const c=Math.max(-1,Math.min(1,(ux*vx+uy*vy+uz*vz)/(lu*lv)));
-      return Math.acos(c);
-    }
-    for(const f of meshData.faces){
-      const a=f[0],b=f[1],c=f[2],pa=meshData.positions[a],pb=meshData.positions[b],pc=meshData.positions[c];
-      angleSum[a]+=angleAt(pa,pb,pc);
-      angleSum[b]+=angleAt(pb,pc,pa);
-      angleSum[c]+=angleAt(pc,pa,pb);
-      for(const e of [[a,b],[b,c],[c,a]]){
-        const k=key(e[0],e[1]);
-        edgeCount.set(k,(edgeCount.get(k)||0)+1);
-      }
-    }
-    edgeCount.forEach(function(count,k){
-      if(count===1){
-        const parts=k.split('_').map(Number);
-        boundary[parts[0]]=true;boundary[parts[1]]=true;
-      }
-    });
-
-    let minX=Infinity,minY=Infinity,minZ=Infinity,maxX=-Infinity,maxY=-Infinity,maxZ=-Infinity;
-    for(const p of meshData.positions){
-      if(p[0]<minX)minX=p[0];if(p[0]>maxX)maxX=p[0];
-      if(p[1]<minY)minY=p[1];if(p[1]>maxY)maxY=p[1];
-      if(p[2]<minZ)minZ=p[2];if(p[2]>maxZ)maxZ=p[2];
-    }
-    const diag=Math.hypot(maxX-minX,maxY-minY,maxZ-minZ)||1;
-    const minSep=diag*0.08,base=2*Math.PI;
-    const candidates=[];
-    for(let i=0;i<n;i++){
-      if(boundary[i])continue;
-      const curvature=base-angleSum[i];
-      const targetAngle=Math.max(Math.PI*0.5,Math.min(Math.PI*4,base-curvature));
-      if(Math.abs(targetAngle-base)>0.08)candidates.push({index:i,angle:targetAngle,score:Math.abs(curvature)});
-    }
-    if(candidates.length===0){
-      for(let i=0;i<n;i++){
-        const baseAngle=boundary[i]?Math.PI:base;
-        const curvature=baseAngle-angleSum[i];
-        const targetAngle=Math.max(Math.PI*0.5,Math.min(Math.PI*4,base-curvature));
-        if(Math.abs(targetAngle-base)>0.08)candidates.push({index:i,angle:targetAngle,score:Math.abs(curvature)});
-      }
-    }
-    candidates.sort((a,b)=>b.score-a.score);
-    const maxCount=Math.max(4,Math.min(24,Math.ceil(Math.sqrt(n)/8)));
-    const chosen=[];
-    for(const c of candidates){
-      const p=meshData.positions[c.index];
-      let far=true;
-      for(const s of chosen){
-        const q=meshData.positions[s.index];
-        if(Math.hypot(p[0]-q[0],p[1]-q[1],p[2]-q[2])<minSep){far=false;break}
-      }
-      if(far)chosen.push({index:c.index,angle:c.angle});
-      if(chosen.length>=maxCount)break;
-    }
-    return chosen;
-  }
-
-  function applyBenChenCones(){
-    if(!currentMeshData)return;
-    coneVertices=computeBenChenCones(currentMeshData);
-    updateConeDisplay();
-    setStatus("Ben-Chen 锥奇异点已计算: "+coneVertices.length+" 个","#89f0b6");
-  }
-
-  function updateConeDisplay(){
-    const info = document.getElementById('cone-info');
-    info.style.display = coneVertices.length > 0 ? '' : 'none';
-    info.textContent = coneVertices.length + ' 个';
-    // 更新 3D 标记
-    if (coneMarkers){ modelScene.remove(coneMarkers); coneMarkers = null; }
-    if (coneVertices.length === 0 || !currentMeshData) return;
-    const pts = [];
-    for (const c of coneVertices){
-      if (c.index < currentMeshData.positions.length){
-        const p = currentMeshData.positions[c.index];
-        pts.push(p[0], p[1], p[2]);
-      }
-    }
-    if (pts.length === 0) return;
-    const geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-    coneMarkers = new THREE.Points(geom, new THREE.PointsMaterial({color: 0xff3377, size: .04, sizeAttenuation: true}));
-    modelScene.add(coneMarkers);
-  }
-
-  modelCanvas.addEventListener('click', function(e){
-    if (!coneMode || !currentMeshData || !currentPickMesh) return;
-    const rect = modelCanvas.getBoundingClientRect();
-    const mouse = new THREE.Vector2(
-      ((e.clientX - rect.left) / rect.width) * 2 - 1,
-      -((e.clientY - rect.top) / rect.height) * 2 + 1
-    );
-    raycaster.setFromCamera(mouse, modelCam);
-    const hits = raycaster.intersectObject(currentPickMesh, false);
-    if (hits.length > 0){
-      // 使用专用拾取网格，face.a/b/c 就是 currentMeshData 的真实顶点索引。
-      const face = hits[0].face ? [hits[0].face.a, hits[0].face.b, hits[0].face.c] : null;
-      if (!face) return;
-      const pos = currentMeshData.positions;
-      let bestVi = face[0], bestD2 = Infinity;
-      const hp = hits[0].point;
-      for (let k = 0; k < 3; k++){
-        const idx = face[k], p = pos[idx];
-        const d2 = (hp.x-p[0])**2 + (hp.y-p[1])**2 + (hp.z-p[2])**2;
-        if (d2 < bestD2){ bestD2 = d2; bestVi = idx; }
-      }
-      // Ctrl+Click 删除，普通点击添加
-      if (e.ctrlKey || e.metaKey){
-        removeConeVertex(bestVi);
-      } else {
-        const existing = coneVertices.find(c => c.index === bestVi);
-        if (existing) {
-          removeConeVertex(bestVi);
-        } else {
-          addConeVertex(bestVi, 2 * Math.PI);
-        }
-      }
-    }
-  });
-
-  document.getElementById('cone-btn').addEventListener('click', toggleConeMode);
-  document.getElementById('auto-cone-btn').addEventListener('click', applyBenChenCones);
-
   // ============ WASM 求解器 ============
-  let cpInst=null,cpReady=false,cpFailed=false;
-  let cetmInst=null,cetmReady=false,cetmFailed=false;
-  let ricciInst=null,ricciReady=false,ricciFailed=false;
   let qcInst=null,qcReady=false,qcFailed=false;
-  let unifiedInst=null,unifiedReady=false,unifiedFailed=false,unifiedPromise=null;
   const solverScriptPromises = {};
 
   function loadSolverScript(src,globalName){
@@ -708,61 +514,14 @@
     return solverScriptPromises[src];
   }
 
-  async function initUnifiedConeSolver(){
-    if(unifiedReady)return true;
-    if(unifiedFailed)return false;
-    try{
-      if(typeof UnifiedSolver==='undefined')throw new Error('UnifiedSolver 未定义');
-      if(!unifiedPromise)unifiedPromise=UnifiedSolver();
-      unifiedInst=await unifiedPromise;
-      unifiedReady=true;
-      return true;
-    }catch(e){
-      unifiedFailed=true;
-      return false;
-    }
-  }
-  async function initCPSolver(){if(cpReady)return true;if(cpFailed)return false;try{await loadSolverScript('assets/wasm/cp_solver.js','CPSolver');cpInst=await CPSolver();cpReady=true;return true}catch(e){cpFailed=true;return false}}
-  async function initCETMSolver(){if(cetmReady)return true;if(cetmFailed)return false;try{if(!await initUnifiedConeSolver())throw new Error('UnifiedSolver 初始化失败');cetmInst=unifiedInst;cetmReady=true;return true}catch(e){cetmFailed=true;return false}}
-  async function initRicciSolver(){if(ricciReady)return true;if(ricciFailed)return false;try{if(!await initUnifiedConeSolver())throw new Error('UnifiedSolver 初始化失败');ricciInst=unifiedInst;ricciReady=true;return true}catch(e){ricciFailed=true;return false}}
   async function initQCSolver(){if(qcReady)return true;if(qcFailed)return false;try{await loadSolverScript('assets/wasm/quadcover_solver.js','QuadCoverSolver');qcInst=await QuadCoverSolver();qcReady=true;return true}catch(e){qcFailed=true;return false}}
 
-  function configurePageFamily(){
-    const isConePage = PAGE_FAMILY === 'cone';
-    document.title = isConePage ? '锥奇异点全局参数化 - Circle Pattern / CETM / Ricci Flow' : '全局参数化 - QuadCover';
-    document.querySelectorAll('.cone-method').forEach(function(el){el.style.display = isConePage ? '' : 'none'});
-    document.querySelectorAll('.quadcover-method').forEach(function(el){el.style.display = isConePage ? 'none' : ''});
-    const entryLink = document.getElementById('family-entry-link');
-    if(entryLink){
-      entryLink.href = isConePage ? 'uv_unwrap_global.html' : 'uv_unwrap_cone_global.html';
-      entryLink.textContent = isConePage ? 'QuadCover 全局参数化' : '锥奇异点全局参数化';
-      entryLink.target = isConePage ? '_parent' : '_self';
-    }
-    const defaultMethod = isConePage ? 'cp' : 'quadcover';
-    const checked = document.querySelector('input[name="method"][value="'+defaultMethod+'"]');
-    if(checked)checked.checked = true;
-  }
-
-  function getMethod(){const c=document.querySelector('input[name="method"]:checked');return c?c.value:(PAGE_FAMILY==='cone'?'cp':'quadcover')}
-  function getOptScheme(){const v=parseInt(document.getElementById('opt-scheme-select').value);return(v===0||v===1||v===3)?v:1}
-
-  function onParamChange(){
-    const m=getMethod();
-    document.getElementById('param-panel').style.display = (PAGE_FAMILY === 'cone') ? '' : 'none';
-    document.getElementById('param-opt-scheme').style.display=(m==='quadcover'||m==='quadcover_full')?'none':'';
-    document.getElementById('cone-btn').style.display = (PAGE_FAMILY === 'cone' && m==='cp') ? '' : 'none';
-    document.getElementById('auto-cone-btn').style.display = (PAGE_FAMILY === 'cone') ? '' : 'none';
-    document.getElementById('cone-info').style.display = (PAGE_FAMILY === 'cone' && m==='cp' && coneVertices.length>0) ? '' : 'none';
-    if (m==='cetm'||m==='ricci'||m==='quadcover'||m==='quadcover_full'){ coneMode=false; document.getElementById('cone-btn').classList.remove('active'); document.getElementById('cone-btn').textContent='🎯 锥奇异点'; controls.enabled=true; modelCanvas.style.cursor=''; }
-    updateButtonState();
-  }
-  window.onParamChange=onParamChange;
-  document.querySelectorAll('input[name="method"]').forEach(r=>r.addEventListener('change',onParamChange));
+  function getMethod(){const c=document.querySelector('input[name="method"]:checked');return c?c.value:'quadcover'}
 
   function updateButtonState(){
     const m=getMethod();
-    const failed=(m==='cp'&&cpFailed)||(m==='cetm'&&cetmFailed)||(m==='ricci'&&ricciFailed)||((m==='quadcover'||m==='quadcover_full')&&qcFailed);
-    const loading=(m==='cp'&&!cpReady&&!cpFailed)||(m==='cetm'&&!cetmReady&&!cetmFailed)||(m==='ricci'&&!ricciReady&&!ricciFailed)||((m==='quadcover'||m==='quadcover_full')&&!qcReady&&!qcFailed);
+    const failed=(m==='quadcover'||m==='quadcover_full')&&qcFailed;
+    const loading=(m==='quadcover'||m==='quadcover_full')&&!qcReady&&!qcFailed;
     if(failed){reloadBtn.textContent='引擎加载失败';reloadBtn.disabled=true}
     else if(loading){reloadBtn.textContent='引擎加载中...';reloadBtn.disabled=true}
     else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
@@ -786,68 +545,6 @@
   }
 
   // ============ 求解器调用 ============
-  async function solveCP(meshData){
-    await initCPSolver();const v=meshData.positions,f=meshData.faces;
-    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
-    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
-    const pp=wasmWritePosInst(cpInst,fp),fpt=wasmWriteFacesInst(cpInst,ff);
-    // 锥奇异点
-    const cones = coneVertices.length > 0 ? coneVertices : [];
-    let ciPtr = 0, caPtr = 0;
-    if (cones.length > 0){
-      const ci = new Int32Array(cones.map(c => c.index));
-      const ca = new Float64Array(cones.map(c => c.angle));
-      ciPtr = cpInst._malloc(ci.length * 4);
-      for(let i=0;i<ci.length;i++)cpInst.setValue(ciPtr+i*4,ci[i],'i32');
-      caPtr = cpInst._malloc(ca.length * 8);
-      for(let i=0;i<ca.length;i++)cpInst.setValue(caPtr+i*8,ca[i],'double');
-    }
-    try{
-      const rc=cpInst.ccall('solve_cp','number',['number','number','number','number','number','number','number','number','number'],[pp,fp.length,fpt,ff.length,getOptScheme(),ciPtr,cones.length,caPtr,cones.length]);
-      if(rc!==0)throw new Error("solve_cp 错误:"+rc);
-      const us=wasmReadUV(cpInst,'get_cp_uv_result_size','get_cp_uv_result');
-      cpInst.ccall('cp_dispose','void',[],[]);
-      const t=cpInst.ccall('get_cp_last_time_ms','number',[],[]);
-      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
-      return{uv,timeMs:t,method:'cp',cones:cones.length};
-    }finally{
-      cpInst._free(pp);cpInst._free(fpt);
-      if(ciPtr)cpInst._free(ciPtr);if(caPtr)cpInst._free(caPtr);
-    }
-  }
-
-  async function solveCETM(meshData){
-    await initCETMSolver();const v=meshData.positions,f=meshData.faces;
-    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
-    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
-    const pp=wasmWritePosInst(cetmInst,fp),fpt=wasmWriteFacesInst(cetmInst,ff);
-    try{
-      const rc=cetmInst.ccall('solve_cetm','number',['number','number','number','number','number'],[pp,fp.length,fpt,ff.length,getOptScheme()]);
-      if(rc!==0)throw new Error("solve_cetm 错误:"+rc);
-      const us=wasmReadUV(cetmInst,'get_cetm_uv_result_size','get_cetm_uv_result');
-      cetmInst.ccall('cetm_dispose','void',[],[]);
-      const t=cetmInst.ccall('get_cetm_last_time_ms','number',[],[]);
-      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
-      return{uv,timeMs:t,method:'cetm'};
-    }finally{cetmInst._free(pp);cetmInst._free(fpt)}
-  }
-
-  async function solveRicci(meshData){
-    await initRicciSolver();const v=meshData.positions,f=meshData.faces;
-    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
-    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
-    const pp=wasmWritePosInst(ricciInst,fp),fpt=wasmWriteFacesInst(ricciInst,ff);
-    try{
-      const rc=ricciInst.ccall('solve_ricci','number',['number','number','number','number','number'],[pp,fp.length,fpt,ff.length,getOptScheme()]);
-      if(rc!==0)throw new Error("solve_ricci 错误:"+rc);
-      const us=wasmReadUV(ricciInst,'get_ricci_uv_result_size','get_ricci_uv_result');
-      ricciInst.ccall('ricci_dispose','void',[],[]);
-      const t=ricciInst.ccall('get_ricci_last_time_ms','number',[],[]);
-      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
-      return{uv,timeMs:t,method:'ricci'};
-    }finally{ricciInst._free(pp);ricciInst._free(fpt)}
-  }
-
   async function solveQuadCover(meshData,pcData,full){
     await initQCSolver();const v=meshData.positions,f=meshData.faces;
     if(!qcInst)throw new Error("QuadCover WASM 初始化失败");
@@ -877,7 +574,6 @@
       let root=null,rawText=null;
       for(const u of urls){try{root=await loadOBJ(u);rawText=await fetchObjText(u);break}catch(e){}}
       if(!root)throw new Error("模型加载失败");
-      clearCones();  // 切换模型时清空锥奇异点
       normalizeObject(root);
       if(currentModelGroup){modelScene.remove(currentModelGroup)}if(currentUvLines){uvScene.remove(currentUvLines)}if(currentUvPins){uvScene.remove(currentUvPins)}
       resetTextureRadios();
@@ -890,32 +586,22 @@
       currentModelGroup=buildModelGroup(root,anchors,meshData.positions);modelScene.add(currentModelGroup);
       currentPickMesh=buildPickMesh(meshData);
       controls.target.set(0,0,0);controls.update();currentMeshData=meshData;
-      if(PAGE_FAMILY==='cone')coneVertices=computeBenChenCones(currentMeshData);
-      updateConeDisplay();
-      const coneText=PAGE_FAMILY==='cone'?" / Ben-Chen 锥点 "+coneVertices.length+" 个":"";
-      setStatus("就绪: "+m.label+" / "+meshData.positions.length+" 顶点 / "+meshData.faces.length+" 三角面"+coneText+"，点击展开","#89f0b6");
+      setStatus("就绪: "+m.label+" / "+meshData.positions.length+" 顶点 / "+meshData.faces.length+" 三角面，点击展开","#89f0b6");
     }catch(e){console.error(e);setStatus("加载失败: "+e.message,"#ff9d9d")}
     finally{setBusy(false)}
   }
 
   async function doUnwrap(){
     if(busy||!currentMeshData)return;
-    const method=getMethod(),mNames={cp:'Circle Pattern',cetm:'CETM',ricci:'Ricci 流',quadcover:'QuadCover简化',quadcover_full:'QuadCover完整'};
-    const label=mNames[method]||method,optNames={0:'梯度下降',1:'牛顿法',3:'LBFGS'};
+    const method=getMethod(),mNames={quadcover:'QuadCover简化',quadcover_full:'QuadCover完整'};
+    const label=mNames[method]||method;
     setBusy(true);setStatus(label+" 求解中...");
     const t0=performance.now();
     try{
-      let r;
-      if(PAGE_FAMILY==='cone'&&coneVertices.length===0){coneVertices=computeBenChenCones(currentMeshData);updateConeDisplay()}
-      if(method==='cp')r=await solveCP(currentMeshData);
-      else if(method==='cetm')r=await solveCETM(currentMeshData);
-      else if(method==='ricci')r=await solveRicci(currentMeshData);
-      else{
-        setStatus("QuadCover: 正在计算主曲率...");
-        const pcData=await ensurePrincipalCurvatureData(currentMeshData);
-        setStatus(label+" 求解中...");
-        r=await solveQuadCover(currentMeshData,pcData,method==='quadcover_full');
-      }
+      setStatus("QuadCover: 正在计算主曲率...");
+      const pcData=await ensurePrincipalCurvatureData(currentMeshData);
+      setStatus(label+" 求解中...");
+      const r=await solveQuadCover(currentMeshData,pcData,method==='quadcover_full');
       const ms=r.timeMs>0?r.timeMs:(performance.now()-t0);
       currentUnwrapUv=r.uv;
       clearDistortionMesh();distortionEnabled=false;
@@ -930,10 +616,8 @@
       const uvV=buildUvMesh(r.uv,currentMeshData.faces,anchors);
       currentUvLines=uvV.lines;currentUvPins=uvV.pins;uvScene.add(currentUvLines);if(currentUvPins)uvScene.add(currentUvPins);
       const fc=countFlippedFaces(r.uv,currentMeshData.faces);
-      const coneInfo = (r.cones > 0) ? (' / 锥奇异点 ' + r.cones + ' 个') : '';
-      const optInfo=(method==='quadcover'||method==='quadcover_full')?'主曲率场':optNames[getOptScheme()];
-      showTiming(ms,label+' / '+optInfo+' / '+MODELS[modelSel.value].label+' / '+currentMeshData.positions.length+' 顶点 / '+currentMeshData.faces.length+' 三角面'+coneInfo,fc);
-      setStatus(label+" 完成，翻转面 "+fc+" 个"+(r.cones>0?"，锥 "+r.cones+" 个":""),fc===0?"#89f0b6":"#ffd38a");
+      showTiming(ms,label+' / '+MODELS[modelSel.value].label+' / '+currentMeshData.positions.length+' 顶点 / '+currentMeshData.faces.length+' 三角面',fc);
+      setStatus(label+" 完成，翻转面 "+fc+" 个",fc===0?"#89f0b6":"#ffd38a");
     }catch(e){console.error(e);setStatus("失败: "+e.message,"#ff9d9d")}
     finally{setBusy(false)}
   }
@@ -952,19 +636,16 @@
   const gc=[];for(let i=-10;i<=10;i++){const t=i/10;gc.push(-1,t,0,1,t,0,t,-1,0,t,1,0)}
   const gg=new THREE.BufferGeometry();gg.setAttribute("position",new THREE.Float32BufferAttribute(gc,3));uvScene.add(new THREE.LineSegments(gg,grid));
 
-  configurePageFamily();
   populateSelect();resize();setStatus("就绪 — 选择模型后点击展开","#8cc4ff");
   window.addEventListener("resize",resize);
   modelSel.addEventListener("change",loadModel);
   reloadBtn.addEventListener("click",doUnwrap);
   if(radioCheckerboard)radioCheckerboard.addEventListener("change",function(){if(radioCheckerboard.checked)setTextureDisplayEnabled(true)});
   if(radioDistortion)radioDistortion.addEventListener("change",function(){if(radioDistortion.checked){setTextureDisplayEnabled(false);setDistortionEnabled(true)}});
-  onParamChange();
   updateButtonState();
 
   // 预加载 WASM
-  const startupSolvers = PAGE_FAMILY === 'cone' ? [initCPSolver(),initCETMSolver(),initRicciSolver()] : [initQCSolver()];
-  Promise.all(startupSolvers).then(()=>{updateButtonState();loadModel()});
+  initQCSolver().then(()=>{updateButtonState();loadModel()});
   animate();
 })();
 </script>
