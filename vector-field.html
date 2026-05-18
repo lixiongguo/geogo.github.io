@@ -555,9 +555,8 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     return projected.map(p => p.fi);
   }
 
-  // Singularity render group
-  let singGroup = new THREE.Group();
-  scene.add(singGroup);
+  // Singularity render group (initialized after scene creation)
+  let singGroup = null;
 
   function renderSingularities(singularities) {
     // Clear previous
@@ -940,14 +939,10 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   // ============================================================
   // (arrowGroups is already accessible in closure)
 
-  // ============================================================
-  // Update visualization — call singularity update
-  // ============================================================
-  const _origUpdateVis = updateVisualization;
-  updateVisualization = function() {
-    _origUpdateVis();
-    if (!window._hodgeActive) updateSingularities();
-  };
+  // Shared state between IIFE and outer functions (singularities, render, etc.)
+  let trivialResult = null;
+  let currentV = null;
+  let currentF = null;
 (function() {
   const canvas = document.getElementById('main-canvas');
   const loader = document.getElementById('loader');
@@ -963,13 +958,13 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   let animationPhase = 0;
 
   /** N-RoSy result: per-face angle θ in tangent plane, bases (T1,T2), normals */
-  let trivialResult = null;
+  trivialResult = null;
 
   // WASM principal curvature state
   let pcModule = null;          // Emscripten module instance
   let pcResult = null;          // { numV, numF, PD1_face, PD2_face, PV1_face, PV2_face, PD1_vert, PD2_vert, PV1_vert, PV2_vert }
-  let currentV = null;          // Float32Array of vertex positions (V_rows x 3)
-  let currentF = null;          // Int32Array of face indices (F_rows x 3)
+  currentV = null;              // Float32Array of vertex positions (V_rows x 3)
+  currentF = null;              // Int32Array of face indices (F_rows x 3)
 
   // Three.js setup
   function sizeCanvas() {
@@ -989,6 +984,10 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0a0a1a);
+
+  // Singularity render group
+  singGroup = new THREE.Group();
+  scene.add(singGroup);
 
   const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
   camera.position.set(0, 2, 5);
@@ -2021,6 +2020,13 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
       if (streamlineGroup) scene.remove(streamlineGroup);
     }
   }
+
+  // Wrap updateVisualization to also update singularities
+  const _origUpdateVis = updateVisualization;
+  updateVisualization = function() {
+    _origUpdateVis();
+    if (!window._hodgeActive) updateSingularities();
+  };
 
   // Event listeners
   document.getElementById('model-select').addEventListener('change', (e) => {
