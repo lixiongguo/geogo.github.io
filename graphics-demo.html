@@ -71,6 +71,23 @@
     .progress-bar-bg { height: 6px; background: rgba(99, 102, 241, 0.15); border-radius: 3px; overflow: hidden; }
     .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #a78bfa, #c084fc); border-radius: 3px; transition: width 0.3s ease; width: 0%; }
     .progress-text { font-size: 10px; color: #7778aa; margin-top: 4px; text-align: center; }
+
+    .control-row {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(99, 102, 241, 0.06); border: 1px solid rgba(99, 102, 241, 0.15);
+      border-radius: 8px; padding: 12px;
+    }
+    .control-row label { font-size: 12px; color: #9999bb; flex-shrink: 0; }
+    .control-row input[type="range"] {
+      flex: 1; height: 4px; accent-color: #6366f1; cursor: pointer;
+    }
+    .control-row input[type="number"] {
+      width: 52px; padding: 4px 6px; border: 1px solid rgba(99, 102, 241, 0.35);
+      background: rgba(10, 10, 30, 0.8); color: #b4b4ff; border-radius: 4px;
+      font-size: 12px; font-family: inherit; text-align: center;
+    }
+    .control-row input[type="number"]:focus { outline: none; border-color: #6366f1; }
+    .control-hint { font-size: 10px; color: #667; margin-top: 6px; }
   </style>
 </head>
 <body>
@@ -79,7 +96,7 @@
     <h1>📦 三维装箱问题 (3D Bin Packing)</h1>
     <div class="header-actions">
       <button class="btn" id="btn-reset">重置</button>
-      <button class="btn btn-primary" id="btn-pack">开始装箱</button>
+      <button class="btn btn-primary" id="btn-pack">重新装箱</button>
       <button class="btn" id="btn-view">切换视角</button>
     </div>
   </div>
@@ -87,7 +104,7 @@
   <div class="main-content">
     <div class="canvas-area">
       <div id="canvas-container"></div>
-      <div id="loading">正在计算最优装箱方案...</div>
+      <div id="loading">正在装箱...</div>
     </div>
 
     <div class="side-panel">
@@ -95,9 +112,9 @@
         <div class="panel-title">装箱统计</div>
         <div class="stat-grid">
           <div class="stat-card"><div class="stat-value" id="stat-total">0</div><div class="stat-label">装箱数量</div></div>
-          <div class="stat-card"><div class="stat-value" id="stat-util">0%</div><div class="stat-label">空间利用率</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-util">0%</div><div class="stat-label">相对上限</div></div>
           <div class="stat-card"><div class="stat-value" id="stat-volume">0</div><div class="stat-label">已用体积</div></div>
-          <div class="stat-card"><div class="stat-value" id="stat-types">5</div><div class="stat-label">箱子种类</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-types">3</div><div class="stat-label">小箱数量</div></div>
         </div>
         <div class="progress-wrap">
           <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill"></div></div>
@@ -106,10 +123,27 @@
       </div>
 
       <div class="panel-section">
-        <div class="panel-title">集装箱尺寸</div>
+        <div class="panel-title">小箱设置</div>
+        <div class="control-row">
+          <label for="box-count">数量</label>
+          <input type="range" id="box-count" min="1" max="100" value="3">
+          <input type="number" id="box-count-num" min="1" max="100" value="3">
+        </div>
+        <p class="control-hint">红 / 蓝 / 黄循环着色，调节后自动重新放置</p>
+        <div class="control-row" style="margin-top:10px">
+          <label for="volume-limit">用量上限</label>
+          <input type="range" id="volume-limit" min="10" max="100" value="100">
+          <input type="number" id="volume-limit-num" min="10" max="100" value="100">
+        </div>
+        <p class="control-hint">已用体积不超过集装箱容量的百分比</p>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-title">集装箱与坐标系</div>
         <div class="container-info">
-          <p>长 × 宽 × 高 = <span>10 × 8 × 8</span> 单位</p>
-          <p>总体积 = <span>640</span> 立方单位</p>
+          <p>长 × 宽 × 高 = <span>10 × 8 × 8</span>，总体积 <span>640</span></p>
+          <p>原点 <span>O</span>：左下角最内侧 (0, 0, 0)</p>
+          <p><span>X</span> 向右 · <span>Y</span> 向上 · <span>Z</span> 由里向外</p>
         </div>
       </div>
 
@@ -121,9 +155,11 @@
       <div class="panel-section">
         <div class="panel-title">算法说明</div>
         <div class="algo-info">
-          采用<strong style="color:#a78bfa">层架贪心法</strong>(Shelf FFD)，
-          按体积降序排列，逐层填充集装箱。支持6方向旋转，
-          每层内使用最佳适应策略放置。
+          大集装箱<strong style="color:#c084fc">紫色半透明</strong>显示；
+          小箱按<strong style="color:#ef4444">红</strong>、
+          <strong style="color:#3b82f6">蓝</strong>、
+          <strong style="color:#eab308">黄</strong>循环半透明着色；
+          从左下角最内侧原点起紧挨装箱（无间隙）；侧栏可设小箱数量与用量上限。
         </div>
       </div>
     </div>
@@ -143,118 +179,146 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // ==================== Configuration ====================
+// 逻辑坐标：原点 O 在集装箱左下角最内侧 (0,0,0)
+// X→右(宽)  Y→上(高)  Z→由里向外(深)
 const CONTAINER = { w: 10, d: 8, h: 8 };
+const CONTAINER_VOL = CONTAINER.w * CONTAINER.d * CONTAINER.h;
 
-const BOX_TYPES = [
-  { name: '大型箱',   w: 3, d: 2.5, h: 2,   color: 0xef4444, hex: '#ef4444' },
-  { name: '中型箱A',  w: 2.5, d: 2, h: 1.8,  color: 0xf97316, hex: '#f97316' },
-  { name: '中型箱B',  w: 2,   d: 2, h: 2.5,  color: 0xeab308, hex: '#eab308' },
-  { name: '小型箱A',  w: 1.5, d: 1.5, h: 1.5, color: 0x22c55e, hex: '#22c55e' },
-  { name: '小型箱B',  w: 1,   d: 1.8, h: 1.2, color: 0x3b82f6, hex: '#3b82f6' },
+const SMALL_BOX_TYPES = [
+  { name: '红色小箱', w: 2.2, d: 1.6, h: 1.5, color: 0xef4444, hex: '#ef4444' },
+  { name: '蓝色小箱', w: 1.8, d: 1.8, h: 1.4, color: 0x3b82f6, hex: '#3b82f6' },
+  { name: '黄色小箱', w: 1.6, d: 2.0, h: 1.6, color: 0xeab308, hex: '#eab308' },
 ];
 
-// Gap between adjacent boxes (for visual separation)
-const GAP = 0.04;
+const BOX_OPACITY = 0.52;
+const EPS = 1e-6;
+const MIN_BOX_COUNT = 1;
+const MAX_BOX_COUNT = 100;
+const MIN_VOLUME_LIMIT_PCT = 10;
+const MAX_VOLUME_LIMIT_PCT = 100;
 
-// ==================== Bin Packing Algorithm (Layer-based) ====================
-function runBinPacking(binW, binD, binH) {
+let boxCount = 3;
+let volumeLimitPct = 100;
+let packDebounce = null;
+const boxCountSlider = document.getElementById('box-count');
+const boxCountInput = document.getElementById('box-count-num');
+const volumeLimitSlider = document.getElementById('volume-limit');
+const volumeLimitInput = document.getElementById('volume-limit-num');
+
+function boxVolume(b) {
+  return b.w * b.d * b.h;
+}
+
+function getVolumeLimit() {
+  return CONTAINER_VOL * volumeLimitPct / 100;
+}
+
+function boxesOverlap(a, b) {
+  return (
+    a.x < b.x + b.w - EPS && a.x + a.w > b.x + EPS &&
+    a.y < b.y + b.h - EPS && a.y + a.h > b.y + EPS &&
+    a.z < b.z + b.d - EPS && a.z + a.d > b.z + EPS
+  );
+}
+
+function fitsInContainer(x, y, z, w, h, d) {
+  return x >= 0 && y >= 0 && z >= 0 &&
+    x + w <= CONTAINER.w && y + h <= CONTAINER.h && z + d <= CONTAINER.d;
+}
+
+/** 从左下角最内侧原点起紧挨放置，按 Y→Z→X 优先（底-里-左） */
+function collectSeedPositions(type, placed) {
+  const seen = new Set();
+  const seeds = [];
+  const add = (x, y, z) => {
+    if (!fitsInContainer(x, y, z, type.w, type.h, type.d)) return;
+    const k = `${x.toFixed(5)},${y.toFixed(5)},${z.toFixed(5)}`;
+    if (seen.has(k)) return;
+    seen.add(k);
+    seeds.push({ x, y, z });
+  };
+
+  add(0, 0, 0);
+  for (const p of placed) {
+    add(p.x + p.w, p.y, p.z);
+    add(p.x, p.y + p.h, p.z);
+    add(p.x, p.y, p.z + p.d);
+    add(0, p.y, p.z);
+    add(p.x, 0, p.z);
+    add(p.x, p.y, 0);
+  }
+  return seeds;
+}
+
+function findPositionFromOrigin(type, placed) {
+  const seeds = collectSeedPositions(type, placed);
+
+  let best = null;
+  let bestScore = Infinity;
+  for (const { x, y, z } of seeds) {
+    if (!fitsInContainer(x, y, z, type.w, type.h, type.d)) continue;
+    const candidate = { ...type, x, y, z };
+    if (placed.some(p => boxesOverlap(candidate, p))) continue;
+    const score = y * 1e6 + z * 1e3 + x;
+    if (score < bestScore) {
+      bestScore = score;
+      best = candidate;
+    }
+  }
+  return best;
+}
+
+function packFromOrigin(count = boxCount, maxUsedVol = getVolumeLimit()) {
   const placed = [];
+  let usedVol = 0;
+  const n = Math.max(MIN_BOX_COUNT, Math.min(MAX_BOX_COUNT, count));
 
-  // Generate orientations for a box (all 6 rotations)
-  function getOrientations(box) {
-    return [
-      { w: box.w, d: box.d, h: box.h },
-      { w: box.w, d: box.h, h: box.d },
-      { w: box.d, d: box.w, h: box.h },
-      { w: box.d, d: box.h, h: box.w },
-      { w: box.h, d: box.w, h: box.d },
-      { w: box.h, d: box.d, h: box.w },
-    ];
-  }
+  for (let i = 0; i < n; i++) {
+    const base = SMALL_BOX_TYPES[i % SMALL_BOX_TYPES.length];
+    const type = { ...base, typeIndex: i % SMALL_BOX_TYPES.length };
+    const vol = boxVolume(type);
+    if (usedVol + vol > maxUsedVol + 1e-6) break;
 
-  // Check if a box at given position collides with any placed box
-  function collides(px, py, pz, pw, pd, ph) {
-    for (const b of placed) {
-      if (
-        px < b.x + b.w + GAP && px + pw + GAP > b.x &&
-        py < b.y + b.h + GAP && py + ph + GAP > b.y &&
-        pz < b.z + b.d + GAP && pz + pd + GAP > b.z
-      ) return true;
-    }
-    return false;
-  }
+    const pos = findPositionFromOrigin(type, placed);
+    if (!pos) break;
 
-  // Try to find best position for a box (bottom-left-front strategy)
-  function findPosition(bw, bh, bd) {
-    if (bw > binW || bh > binH || bd > binD) return null;
-
-    let best = null;
-    let minY = Infinity;
-
-    // Scan positions from bottom to top, left to right, front to back
-    for (let y = 0; y <= binH - bh; y += 0.1) {
-      for (let z = 0; z <= binD - bd; z += 0.1) {
-        for (let x = 0; x <= binW - bw; x += 0.1) {
-          if (!collides(x, y, z, bw, bd, bh)) {
-            // Prefer lower Y (gravity), then lower Z, then lower X
-            if (!best || y < best.y || (y === best.y && z < best.z)) {
-              best = { x, y, z, w: bw, h: bh, d: bd };
-              minY = y;
-              break; // found lowest x at this (y,z), move to next
-            }
-          }
-        }
-      }
-    }
-    return best;
-  }
-
-  // Create a large pool of boxes sorted by volume descending (FFD)
-  const pool = [];
-  const sortedTypes = [...BOX_TYPES].sort((a, b) => (b.w * b.d * b.h) - (a.w * a.d * a.h));
-  // Each type gets many copies
-  for (let round = 0; round < 200; round++) {
-    for (const t of sortedTypes) {
-      pool.push({ ...t });
-    }
-  }
-
-  // Greedy placement: for each box, try all orientations, pick best fit
-  for (const box of pool) {
-    const oris = getOrientations(box);
-
-    let bestPos = null;
-    let bestOriIdx = 0;
-    let bestVol = Infinity; // prefer orientation with smallest leftover volume
-
-    for (let oi = 0; oi < oris.length; oi++) {
-      const o = oris[oi];
-      const pos = findPosition(o.w, o.h, o.d);
-      if (pos) {
-        // Score by how tightly it fits
-        const score = pos.y * 10000 + pos.z * 100 + pos.x;
-        if (score < bestVol) {
-          bestVol = score;
-          bestPos = pos;
-          bestOriIdx = oi;
-        }
-      }
-    }
-
-    if (bestPos) {
-      placed.push({
-        ...box,
-        x: bestPos.x,
-        y: bestPos.y,
-        z: bestPos.z,
-        w: bestPos.w,
-        h: bestPos.h,
-        d: bestPos.d,
-      });
-    }
+    placed.push(pos);
+    usedVol += vol;
   }
 
   return placed;
+}
+
+function clampBoxCount(value) {
+  const n = Math.round(Number(value));
+  if (Number.isNaN(n)) return boxCount;
+  return Math.max(MIN_BOX_COUNT, Math.min(MAX_BOX_COUNT, n));
+}
+
+function clampVolumeLimitPct(value) {
+  const n = Math.round(Number(value));
+  if (Number.isNaN(n)) return volumeLimitPct;
+  return Math.max(MIN_VOLUME_LIMIT_PCT, Math.min(MAX_VOLUME_LIMIT_PCT, n));
+}
+
+function setBoxCount(value, { rerun = false } = {}) {
+  boxCount = clampBoxCount(value);
+  boxCountSlider.value = boxCount;
+  boxCountInput.value = boxCount;
+  document.getElementById('stat-types').textContent = boxCount;
+  if (rerun) schedulePacking();
+}
+
+function setVolumeLimitPct(value, { rerun = false } = {}) {
+  volumeLimitPct = clampVolumeLimitPct(value);
+  volumeLimitSlider.value = volumeLimitPct;
+  volumeLimitInput.value = volumeLimitPct;
+  if (rerun) schedulePacking();
+}
+
+function schedulePacking() {
+  clearTimeout(packDebounce);
+  packDebounce = setTimeout(() => runPacking(), 180);
 }
 
 // ==================== Three.js Setup ====================
@@ -298,7 +362,9 @@ function initThree() {
   dirLight.shadow.camera.top = 15;
   dirLight.shadow.camera.bottom = -15;
   scene.add(dirLight);
-  scene.add(new THREE.DirectionalLight(0x8888ff, 0.25).setPosition(-10, 8, -10));
+  const fillLight = new THREE.DirectionalLight(0x8888ff, 0.25);
+  fillLight.position.set(-10, 8, -10);
+  scene.add(fillLight);
 
   // Ground grid
   const grid = new THREE.GridHelper(40, 40, 0x222244, 0x16162e);
@@ -326,7 +392,27 @@ function initThree() {
   boxGroup = new THREE.Group();
   scene.add(boxGroup);
 
+  addCoordinateAxes();
+
   controls.update();
+}
+
+function addCoordinateAxes() {
+  const axisLen = Math.min(CONTAINER.w, CONTAINER.h, CONTAINER.d) * 0.85;
+  const origin = new THREE.Vector3(0, 0, 0);
+
+  const axes = [
+    { dir: new THREE.Vector3(1, 0, 0), color: 0xef4444, label: 'X' },
+    { dir: new THREE.Vector3(0, 1, 0), color: 0x22c55e, label: 'Y' },
+    { dir: new THREE.Vector3(0, 0, 1), color: 0x3b82f6, label: 'Z' },
+  ];
+  axes.forEach(({ dir, color }) => {
+    scene.add(new THREE.ArrowHelper(dir, origin, axisLen, color, axisLen * 0.08, axisLen * 0.05));
+  });
+
+  const oGeo = new THREE.SphereGeometry(0.12, 16, 16);
+  const oMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  scene.add(new THREE.Mesh(oGeo, oMat));
 }
 
 function setCameraView(name) {
@@ -346,7 +432,7 @@ function setCameraView(name) {
 function buildLegend() {
   const el = document.getElementById('box-legend');
   el.innerHTML = '';
-  BOX_TYPES.forEach((t, i) => {
+  SMALL_BOX_TYPES.forEach((t, i) => {
     const li = document.createElement('li');
     li.className = 'legend-item';
     li.innerHTML = `
@@ -360,26 +446,30 @@ function buildLegend() {
 }
 
 function updateStats(placedBoxes) {
-  const totalVol = CONTAINER.w * CONTAINER.d * CONTAINER.h;
+  const limitVol = getVolumeLimit();
   let usedVol = 0;
   const counts = {};
-  BOX_TYPES.forEach((_, i) => counts[i] = 0);
+  SMALL_BOX_TYPES.forEach((_, i) => counts[i] = 0);
   placedBoxes.forEach(b => {
-    usedVol += b.w * b.d * b.h;
-    for (let i = 0; i < BOX_TYPES.length; i++) {
-      if (BOX_TYPES[i].name === b.name) { counts[i]++; break; }
-    }
+    usedVol += boxVolume(b);
+    const idx = b.typeIndex ?? SMALL_BOX_TYPES.findIndex(t => t.name === b.name);
+    if (idx >= 0) counts[idx]++;
   });
+  const overLimit = usedVol > limitVol + 1e-6;
   document.getElementById('stat-total').textContent = placedBoxes.length;
-  document.getElementById('stat-util').textContent = ((usedVol / totalVol) * 100).toFixed(1) + '%';
+  document.getElementById('stat-util').textContent = ((usedVol / limitVol) * 100).toFixed(1) + '%';
   document.getElementById('stat-volume').textContent = usedVol.toFixed(1);
-  for (let i = 0; i < BOX_TYPES.length; i++) {
+  for (let i = 0; i < SMALL_BOX_TYPES.length; i++) {
     const el = document.getElementById(`count-${i}`);
     if (el) el.textContent = counts[i];
   }
-  const pct = Math.min((usedVol / totalVol) * 100, 100);
+  const pct = Math.min((usedVol / limitVol) * 100, 100);
   document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('progress-text').textContent = `已利用 ${usedVol.toFixed(1)} / ${totalVol} 立方单位`;
+  const limitNote = volumeLimitPct < 100 ? `（上限 ${volumeLimitPct}%）` : '';
+  document.getElementById('progress-text').textContent =
+    `已用 ${usedVol.toFixed(1)} / ${limitVol.toFixed(1)}${limitNote}` +
+    (placedBoxes.length < boxCount ? ` · 仅装入 ${placedBoxes.length}/${boxCount} 个` : '') +
+    (overLimit ? ' · 超出上限' : '');
 }
 
 // ==================== Rendering ====================
@@ -395,13 +485,11 @@ function clearBoxes() {
 function renderBoxes(boxes) {
   clearBoxes();
   boxes.forEach((b, idx) => {
-    const geo = new THREE.BoxGeometry(
-      Math.max(0.01, b.w - GAP * 2),
-      Math.max(0.01, b.h - GAP * 2),
-      Math.max(0.01, b.d - GAP * 2)
-    );
-    const mat = new THREE.MeshStandardMaterial({
-      color: b.color, metalness: 0.12, roughness: 0.35,
+    const geo = new THREE.BoxGeometry(b.w, b.h, b.d);
+    const mat = new THREE.MeshPhysicalMaterial({
+      color: b.color, metalness: 0.05, roughness: 0.2,
+      transparent: true, opacity: BOX_OPACITY,
+      side: THREE.DoubleSide, depthWrite: false,
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(b.x + b.w / 2, b.y + b.h / 2, b.z + b.d / 2);
@@ -453,7 +541,7 @@ async function runPacking() {
   // Yield so loading shows
   await new Promise(r => setTimeout(r, 30));
 
-  const result = runBinPacking(CONTAINER.w, CONTAINER.d, CONTAINER.h);
+  const result = packFromOrigin();
 
   loadingEl.classList.add('hidden');
   document.getElementById('btn-pack').disabled = false;
@@ -464,10 +552,12 @@ async function runPacking() {
 
 function resetScene() {
   clearBoxes();
+  setBoxCount(3, { rerun: false });
+  setVolumeLimitPct(100, { rerun: false });
   updateStats([]);
   document.getElementById('progress-fill').style.width = '0%';
   document.getElementById('progress-text').textContent = '等待开始...';
-  for (let i = 0; i < BOX_TYPES.length; i++) {
+  for (let i = 0; i < SMALL_BOX_TYPES.length; i++) {
     const el = document.getElementById(`count-${i}`);
     if (el) el.textContent = '0';
   }
@@ -480,6 +570,17 @@ const views = ['default', 'top', 'front', 'side'];
 
 document.getElementById('btn-pack').addEventListener('click', runPacking);
 document.getElementById('btn-reset').addEventListener('click', resetScene);
+
+boxCountSlider.addEventListener('input', () => setBoxCount(boxCountSlider.value, { rerun: true }));
+boxCountInput.addEventListener('change', () => setBoxCount(boxCountInput.value, { rerun: true }));
+boxCountInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') setBoxCount(boxCountInput.value, { rerun: true });
+});
+volumeLimitSlider.addEventListener('input', () => setVolumeLimitPct(volumeLimitSlider.value, { rerun: true }));
+volumeLimitInput.addEventListener('change', () => setVolumeLimitPct(volumeLimitInput.value, { rerun: true }));
+volumeLimitInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') setVolumeLimitPct(volumeLimitInput.value, { rerun: true });
+});
 document.getElementById('btn-view').addEventListener('click', () => {
   viewIndex = (viewIndex + 1) % views.length;
   setCameraView(views[viewIndex]);
@@ -502,6 +603,8 @@ function mainLoop(time) {
 // ==================== Init & Auto-start ====================
 initThree();
 buildLegend();
+setBoxCount(3, { rerun: false });
+setVolumeLimitPct(100, { rerun: false });
 updateStats([]);
 setTimeout(runPacking, 500);
 mainLoop();
