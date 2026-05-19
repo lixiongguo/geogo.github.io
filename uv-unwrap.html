@@ -222,6 +222,26 @@
         transform: translateY(0) scale(0.97);
         box-shadow: 0 2px 6px rgba(255, 107, 53, 0.4);
       }
+      #clear-btn {
+        padding: 9px 18px;
+        background: linear-gradient(135deg, #2a3a5a 0%, #3a4a6a 100%);
+        color: #c6d1f4;
+        border: 1px solid rgba(106,132,255,0.25);
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      #clear-btn:not(:disabled):hover {
+        background: linear-gradient(135deg, #3a4a6a 0%, #4a5a7a 100%);
+        color: #fff;
+        border-color: rgba(106,132,255,0.5);
+      }
+      #clear-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
       #change-pin-btn {
         padding: 4px 10px;
         font-size: 12px;
@@ -312,6 +332,7 @@
           </div>
         </fieldset>
         <button id="reload-btn"><span class="btn-text">展开</span><span class="btn-excl">!</span></button>
+        <button id="clear-btn">清除</button>
         <fieldset id="texture-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:6px 10px;margin:0;display:flex;gap:12px;align-items:center;">
           <legend style="color:#8a9dd4;font-size:11px;padding:0 4px;">纹理显示</legend>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;">
@@ -370,6 +391,7 @@
       const uvCanvas = document.getElementById("uv-canvas");
       const modelSelect = document.getElementById("model-select");
       const reloadBtn = document.getElementById("reload-btn");
+      const clearBtn = document.getElementById("clear-btn");
       const textureBtn = null;
       const radioCheckerboard = document.getElementById("radio-checkerboard");
       const radioDistortion = document.getElementById("radio-distortion");
@@ -456,6 +478,7 @@
       function setBusy(nextBusy) {
         busy = nextBusy;
         reloadBtn.disabled = nextBusy;
+        clearBtn.disabled = nextBusy;
         modelSelect.disabled = nextBusy;
         // 单选框在展开完成前保持禁用
         if (!nextBusy && currentUnwrapUv) {
@@ -1306,6 +1329,42 @@
         return{uv,anchors,flippedFaceCount:countFlippedFaces(uv,faces),timeMs:result.time_ms||0,method:'cp',optScheme:optNames[opt]||'牛顿法'};
       }
 
+      // ==================== WASM 驱动的 QuadCover 求解 ====================
+
+      async function solveQCAsync(meshData, onProgress) {
+        const vertices=meshData.positions,faces=meshData.faces;
+        if(vertices.length<3||faces.length<1)throw new Error("顶点或三角形不足");
+        if(!wasmReady){const ok=await initUnifiedSolver();if(!ok)throw new Error("QC WASM 初始化失败");}
+        if(onProgress)onProgress(0,faces.length);
+        const flatPos=new Float64Array(vertices.length*3);
+        for(let i=0;i<vertices.length;i++){flatPos[i*3]=vertices[i][0];flatPos[i*3+1]=vertices[i][1];flatPos[i*3+2]=vertices[i][2];}
+        const flatF=new Int32Array(faces.length*3);
+        for(let i=0;i<faces.length;i++){flatF[i*3]=faces[i][0];flatF[i*3+1]=faces[i][1];flatF[i*3+2]=faces[i][2];}
+        if(onProgress)onProgress(faces.length*0.2,faces.length);
+        let result;
+        try{
+          const pp=wasmInstance._malloc(flatPos.length*8);
+          for(let i=0;i<flatPos.length;i++)wasmInstance.setValue(pp+i*8,flatPos[i],'double');
+          const fp=wasmInstance._malloc(flatF.length*4);
+          for(let i=0;i<flatF.length;i++)wasmInstance.setValue(fp+i*4,flatF[i],'i32');
+          try{
+            const ret=wasmInstance.ccall('solve_qc','number',['number','number','number','number'],[pp,flatPos.length,fp,flatF.length]);
+            if(ret!==0)throw new Error("solve_qc 错误: "+ret);
+            const sz=wasmInstance.ccall('get_qc_uv_result_size','number',[],[]);
+            const uvp=wasmInstance.ccall('get_qc_uv_result','number',[],[]);
+            const uvs=[];for(let i=0;i<sz;i++)uvs.push(wasmInstance.getValue(uvp+i*8,'double'));
+            wasmInstance.ccall('qc_dispose','void',[],[]);
+            result={uv:uvs,time_ms:wasmInstance.ccall('get_qc_last_time_ms','number',[],[])};
+          }finally{wasmInstance._free(pp);wasmInstance._free(fp);}
+        }catch(err){throw new Error("QuadCover WASM 失败: "+err.message);}
+        if(onProgress)onProgress(faces.length*0.9,faces.length);
+        const uvA=result.uv,n=vertices.length,uv=new Array(n);
+        for(let i=0;i<n;i++)uv[i]=[uvA[i*2],uvA[i*2+1]];
+        if(onProgress)onProgress(faces.length,faces.length);
+        const anchors=chooseAnchorPair(vertices);
+        return{uv,anchors,flippedFaceCount:countFlippedFaces(uv,faces),timeMs:result.time_ms||0,method:'quadcover'};
+      }
+
       // ==================== WASM 驱动的 BFF 求解 ====================
 
       async function solveBFFAsync(meshData, onProgress) {
@@ -1339,6 +1398,40 @@
         if(onProgress)onProgress(faces.length,faces.length);
         const anchors=chooseAnchorPair(vertices);
         return{uv,anchors,flippedFaceCount:countFlippedFaces(uv,faces),timeMs:result.time_ms||0,method:'bff'};
+      }
+
+      // ==================== WASM 驱动的 MIQ 求解 ====================
+      async function solveMIQAsync(meshData,onProgress){
+        const v=meshData.positions,f=meshData.faces;
+        if(v.length<3||f.length<1)throw new Error("顶点或三角形不足");
+        if(!wasmReady){if(!await initUnifiedSolver())throw new Error("MIQ WASM失败");}
+        if(onProgress)onProgress(0,f.length);
+        const fp=new Float64Array(v.length*3);
+        for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2];}
+        const ff=new Int32Array(f.length*3);
+        for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2];}
+        if(onProgress)onProgress(f.length*0.2,f.length);
+        let r;
+        try{
+          const pp=wasmInstance._malloc(fp.length*8);
+          for(let i=0;i<fp.length;i++)wasmInstance.setValue(pp+i*8,fp[i],'double');
+          const fpt=wasmInstance._malloc(ff.length*4);
+          for(let i=0;i<ff.length;i++)wasmInstance.setValue(fpt+i*4,ff[i],'i32');
+          try{
+            if(wasmInstance.ccall('solve_miq','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length])!==0)
+              throw new Error("MIQ solve失败");
+            const sz=wasmInstance.ccall('get_miq_uv_result_size','number',[],[]);
+            const up=wasmInstance.ccall('get_miq_uv_result','number',[],[]);
+            const us=[];for(let i=0;i<sz;i++)us.push(wasmInstance.getValue(up+i*8,'double'));
+            wasmInstance.ccall('miq_dispose','void',[],[]);
+            r={uv:us,time_ms:wasmInstance.ccall('get_miq_last_time_ms','number',[],[])};
+          }finally{wasmInstance._free(pp);wasmInstance._free(fpt);}
+        }catch(e){throw new Error("MIQ WASM失败: "+e.message);}
+        if(onProgress)onProgress(f.length*0.9,f.length);
+        const ua=r.uv,n=v.length,uv=new Array(n);
+        for(let i=0;i<n;i++)uv[i]=[ua[i*2],ua[i*2+1]];
+        if(onProgress)onProgress(f.length,f.length);
+        return{uv,anchors:chooseAnchorPair(v),flippedFaceCount:countFlippedFaces(uv,f),timeMs:r.time_ms||0,method:'miq'};
       }
 
       // ==================== WASM 驱动的 Tutte + ARAP 求解 ====================
@@ -2415,7 +2508,7 @@
         const srcLabel = getCurrentSourceLabel();
         setStatus(
           "已更换 pin 点: " + newAnchors[0] + " & " + newAnchors[1] +
-          "（原: " + currentAnchors[0] + " & " + currentAnchors[1] + "）" +
+          "（原: " + currentAnchors[0] + " & " + currentAnchors[1] + "），点击展开!" +
           " / " + srcLabel,
           "#89f0b6"
         );
@@ -2472,7 +2565,7 @@
           }
           pins = new THREE.Points(
             new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pinPositions, 3)),
-            new THREE.PointsMaterial({ color: 0xffa94d, size: 0.06, sizeAttenuation: false })
+            new THREE.PointsMaterial({ color: 0xffa94d, size: 8, sizeAttenuation: false })
           );
         }
 
@@ -2559,6 +2652,16 @@
         currentTexturedMesh = null;
       }
 
+      /**
+       * 切换模型组的实心面显隐，线框始终可见
+       */
+      function setModelSolidVisible(visible) {
+        if (!currentModelGroup) return;
+        currentModelGroup.children.forEach(function(child) {
+          if (child.isMesh) child.visible = visible;
+        });
+      }
+
       function setTextureDistortionEnabled(enabled) {
         if (enabled && (!currentMeshData || !currentUnwrapUv)) {
           setStatus('请先点击"展开!"生成 UV，再开启纹理扭曲', '#ffd38a');
@@ -2571,16 +2674,12 @@
           clearTexturedMesh();
           currentTexturedMesh = buildTexturedMesh(currentMeshData, currentUnwrapUv);
           modelScene.add(currentTexturedMesh);
-          if (currentModelGroup) {
-            currentModelGroup.visible = false;
-          }
+          setModelSolidVisible(false);
           if (currentDistortionMesh) currentDistortionMesh.visible = false;
           setStatus("已开启纹理扭曲（棋盘格贴图）", "#89f0b6");
         } else {
           clearTexturedMesh();
-          if (currentModelGroup) {
-            currentModelGroup.visible = true;
-          }
+          setModelSolidVisible(true);
           setStatus("已关闭纹理扭曲", "#8cc4ff");
         }
       }
@@ -2596,7 +2695,7 @@
         if (!enabled) {
           distortionEnabled = false;
           clearDistortionMesh();
-          if (currentModelGroup) currentModelGroup.visible = true;
+          setModelSolidVisible(true);
           if (currentTexturedMesh && textureEnabled) currentTexturedMesh.visible = true;
           return;
         }
@@ -2708,7 +2807,7 @@
           modelScene.add(currentDistortionMesh);
 
           // hide normal model and checkerboard
-          if (currentModelGroup) currentModelGroup.visible = false;
+          setModelSolidVisible(false);
           if (currentTexturedMesh) currentTexturedMesh.visible = false;
 
           distortionEnabled = true;
@@ -2749,6 +2848,17 @@
       function getCurrentSourceLabel() {
         const m = getCurrentModelObj();
         return m ? m.label : "未知模型";
+      }
+
+      /**
+       * 清除当前展开结果并重新加载模型
+       */
+      async function clearAndReload() {
+        if (busy) return;
+        // 隐藏耗时信息
+        hideTiming();
+        // 重新加载模型（内部已完成 UV/纹理/扭曲的清理和 pin 点重置）
+        await loadModelPreview();
       }
 
       async function loadModelPreview() {
@@ -2843,7 +2953,9 @@
         else if (method === 'cetm') methodLabel = 'CETM (共形因子)';
         else if (method === 'ricci') methodLabel = 'Ricci 流';
         else if (method === 'cp') methodLabel = 'Circle Pattern';
+        else if (method === 'quadcover') methodLabel = 'QuadCover';
         else if (method === 'bff') methodLabel = 'BFF';
+        else if (method === 'miq') methodLabel = 'MIQ';
         else if (method === 'holo') methodLabel = '全纯1-形式';
         else if (method === 'scp') methodLabel = 'SCP (谱共形)';
         else if (method === 'abfpp') methodLabel = 'ABF++';
@@ -2885,8 +2997,16 @@
             unwrapResult = await solveCPAsync(currentMeshData, function(p, t) {
               updateTimingProgress(p, t);
             });
+          } else if (method === 'quadcover') {
+            unwrapResult = await solveQCAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
           } else if (method === 'bff') {
             unwrapResult = await solveBFFAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
+          } else if (method === 'miq') {
+            unwrapResult = await solveMIQAsync(currentMeshData, function(p, t) {
               updateTimingProgress(p, t);
             });
           } else if (method === 'holo') {
@@ -2944,7 +3064,7 @@
           }
 
           // 更新 UV 面板标签
-          const methodNames = { lscm:'LSCM', tutte:'Tutte', arap:'ARAP', cetm:'CETM', ricci:'Ricci', cp:'CirclePat', bff:'BFF', holo:'Holo', scp:'SCP', abfpp:'ABF++', linabf:'linABF' };
+          const methodNames = { lscm:'LSCM', tutte:'Tutte', arap:'ARAP', cetm:'CETM', ricci:'Ricci', cp:'CirclePat', quadcover:'QuadCover', bff:'BFF', miq:'MIQ', holo:'Holo', scp:'SCP', abfpp:'ABF++', linabf:'linABF' };
           document.getElementById('uv-panel-label').textContent =
             (methodNames[unwrapResult.method] || unwrapResult.method) + ' UV 网格';
 
@@ -2994,6 +3114,7 @@
       window.addEventListener("resize", resize);
       modelSelect.addEventListener("change", loadModelPreview);
       reloadBtn.addEventListener("click", updateModel);
+      clearBtn.addEventListener("click", clearAndReload);
 
       // 纹理显示单选框切换
       if (radioCheckerboard) {

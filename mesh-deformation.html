@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>网格变形 - ARAP + QC 扭曲度量</title>
+  <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #060b14;
+      color: #c6d1f4;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+    }
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      background: #0a1020;
+      border-bottom: 1px solid rgba(106,132,255,0.15);
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .toolbar label { font-size: 13px; color: #8a9dd4; }
+    .toolbar select {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(106,132,255,0.3);
+      background: #0d1528;
+      color: #eef2ff;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .toolbar button {
+      padding: 7px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(106,132,255,0.3);
+      background: #111b31;
+      color: #c6d1f4;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .toolbar button:hover:not(:disabled) {
+      background: #1a2848;
+      border-color: rgba(106,132,255,0.6);
+    }
+    .toolbar button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .toolbar button.primary {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff8f5e 100%);
+      color: #fff;
+      border: none;
+      
+    box-shadow: 0 3px 10px rgba(255,107,53,0.3); }
+    .toolbar button.primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 5px 15px rgba(255,107,53,0.5);
+    }
+    .toolbar .spacer { flex: 1; }
+    .status {
+      font-size: 12px;
+      color: #5a6791;
+      max-width: 360px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr;
+      flex: 1;
+      min-height: 0;
+    }
+    .panel {
+      position: relative;
+      border: 1px solid rgba(106,132,255,0.1);
+      overflow: hidden;
+    }
+    .panel canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .panel-label {
+      position: absolute;
+      top: 10px; left: 12px;
+      font-size: 12px;
+      color: rgba(138,157,212,0.7);
+      pointer-events: none;
+      z-index: 2;
+    }
+    .panel-info {
+      position: absolute;
+      bottom: 10px; left: 12px;
+      font-size: 11px;
+      color: rgba(255,180,70,0.8);
+      pointer-events: none;
+      z-index: 2;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="toolbar">
+    <label>2D 字母:</label>
+    <select id="letter-select"></select>
+    <button id="add-handle-btn">+ 手柄模式</button>
+    <button id="clear-handles-btn">清除手柄</button>
+    <span style="font-size:13px;color:#8a9dd4;" id="handle-count">0 个手柄</span>
+    <span class="spacer"></span>
+    <button id="deform-btn" class="primary">ARAP 变形</button>
+    <span class="status" id="status-text">选择字母开始</span>
+  </div>
+  <div class="main">
+    <div class="panel" id="left-panel">
+      <div class="panel-label">2D 模型 — 点击放置/拖拽手柄</div>
+      <canvas id="model-canvas"></canvas>
+      <div class="panel-info" id="model-info"></div>
+    </div>
+    <div class="panel" id="right-panel">
+      <div class="panel-label">变形结果 / QC 扭曲 (绿≈1 无扭曲, 红扭曲大，可旋转)</div>
+      <canvas id="result-canvas"></canvas>
+      <div class="panel-info" id="result-info"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // ==================== DOM ====================
+  const letterSelect = document.getElementById('letter-select');
+  const addHandleBtn = document.getElementById('add-handle-btn');
+  const clearHandlesBtn = document.getElementById('clear-handles-btn');
+  const handleCountEl = document.getElementById('handle-count');
+  const deformBtn = document.getElementById('deform-btn');
+  const statusText = document.getElementById('status-text');
+  const modelCanvas = document.getElementById('model-canvas');
+  const resultCanvas = document.getElementById('result-canvas');
+  const modelInfo = document.getElementById('model-info');
+  const resultInfo = document.getElementById('result-info');
+
+  // ==================== Three.js 场景 ====================
+  const modelRenderer = new THREE.WebGLRenderer({ canvas: modelCanvas, antialias: true, alpha: true });
+  const resultRenderer = new THREE.WebGLRenderer({ canvas: resultCanvas, antialias: true, alpha: true });
+  modelRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  resultRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  const modelScene = new THREE.Scene();
+  const resultScene = new THREE.Scene();
+  modelScene.background = new THREE.Color(0x08101d);
+  resultScene.background = new THREE.Color(0x091120);
+
+  // 左侧模型相机：2D 正交视图，固定不可旋转
+  const modelCamera = new THREE.OrthographicCamera(-1.2, 1.2, 1.2, -1.2, 0.1, 10);
+  modelCamera.position.set(0, 0, 5);
+  modelCamera.lookAt(0, 0, 0);
+
+  const resultCamera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
+  resultCamera.position.set(0, 0, 4);
+
+  const resultControls = new THREE.OrbitControls(resultCamera, resultCanvas);
+  resultControls.enableDamping = true;
+  resultControls.dampingFactor = 0.08;
+
+  // 光照
+  const addLights = (scene) => {
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const d = new THREE.DirectionalLight(0xffffff, 0.8);
+    d.position.set(2, 3, 4);
+    scene.add(d);
+    const d2 = new THREE.DirectionalLight(0xffffff, 0.3);
+    d2.position.set(-2, -1, -2);
+    scene.add(d2);
+  };
+  addLights(modelScene);
+  addLights(resultScene);
+
+  // ==================== 状态 ====================
+  let currentMeshData = null;       // { positions: [[x,y,z],...], faces: [[a,b,c],...] }
+  let currentModelGroup = null;     // 左场景模型组
+  let currentDeformedGroup = null;  // 右场景变形结果组
+  let handles = [];                 // [{ index, restPos: [x,y,z], currentPos: [x,y,z] }]
+  let handleMode = false;           // 是否在手柄放置模式
+  let isDragging = false;
+  let draggedHandle = null;
+  let restPositions = null;        // 原始顶点位置 (deep copy)
+  let deformedPositions = null;    // 当前变形后顶点位置
+  let arapAdj = null;              // ARAP 邻接权重 [{ neighbors: [idx,...], weights: [w,...] }]
+
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+
+  function setStatus(msg, color) {
+    statusText.textContent = msg;
+    statusText.style.color = color || '#5a6791';
+  }
+
+  // ==================== OBJ 模型加载 ====================
+  function loadOBJLetter(letter) {
+    return new Promise((resolve, reject) => {
+      const loader = new THREE.OBJLoader();
+      loader.load('assets/charaters/' + letter + '_2d.obj',
+        (obj) => { resolve(obj); },
+        undefined,
+        () => { reject(new Error('加载失败: ' + letter)); }
+      );
+    });
+  }
+
+  function extractMeshData(geometry) {
+    // 兼容旧版 Geometry (有 vertices/faces) 和新版 BufferGeometry (有 attributes)
+    let positions, faces;
+
+    if (geometry.attributes && geometry.attributes.position) {
+      // BufferGeometry
+      const posAttr = geometry.attributes.position;
+      const idx = geometry.index;
+      positions = [];
+      for (let i = 0; i < posAttr.count; i++) {
+        positions.push([posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)]);
+      }
+      if (idx) {
+        faces = [];
+        const arr = idx.array;
+        for (let i = 0; i < arr.length; i += 3) {
+          faces.push([arr[i], arr[i+1], arr[i+2]]);
+        }
+      } else {
+        faces = [];
+        for (let i = 0; i < posAttr.count; i += 3) {
+          faces.push([i, i+1, i+2]);
+        }
+      }
+    } else if (geometry.vertices && geometry.faces) {
+      // 旧版 Geometry
+      positions = geometry.vertices.map(v => [v.x, v.y, v.z]);
+      faces = geometry.faces.map(f => [f.a, f.b, f.c]);
+    } else {
+      throw new Error('无法解析几何体数据');
+    }
+
+    return { positions, faces };
+  }
+
+  function buildModelVisual(positions, faces) {
+    const group = new THREE.Group();
+
+    // 实心面
+    const geom = new THREE.BufferGeometry();
+    const flatPos = new Float32Array(positions.length * 3);
+    for (let i = 0; i < positions.length; i++) {
+      flatPos[i*3] = positions[i][0];
+      flatPos[i*3+1] = positions[i][1];
+      flatPos[i*3+2] = positions[i][2];
+    }
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(flatPos, 3));
+    const flatIdx = new Uint32Array(faces.length * 3);
+    for (let i = 0; i < faces.length; i++) {
+      flatIdx[i*3] = faces[i][0];
+      flatIdx[i*3+1] = faces[i][1];
+      flatIdx[i*3+2] = faces[i][2];
+    }
+    geom.setIndex(new THREE.BufferAttribute(flatIdx, 1));
+    geom.computeVertexNormals();
+
+    const mesh = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({
+      color: 0x7fa7ff, roughness: 0.5, metalness: 0.05, side: THREE.DoubleSide
+    }));
+    group.add(mesh);
+
+    // 线框
+    const wireGeom = new THREE.BufferGeometry();
+    const edgeSet = new Set();
+    const segments = [];
+    function addEdge(a, b) {
+      const key = a < b ? a + '_' + b : b + '_' + a;
+      if (edgeSet.has(key)) return;
+      edgeSet.add(key);
+      segments.push(positions[a][0], positions[a][1], positions[a][2]);
+      segments.push(positions[b][0], positions[b][1], positions[b][2]);
+    }
+    for (let i = 0; i < faces.length; i++) {
+      addEdge(faces[i][0], faces[i][1]);
+      addEdge(faces[i][1], faces[i][2]);
+      addEdge(faces[i][2], faces[i][0]);
+    }
+    wireGeom.setAttribute('position', new THREE.Float32BufferAttribute(segments, 3));
+    const wire = new THREE.LineSegments(wireGeom,
+      new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent: true, opacity: 0.6 }));
+    group.add(wire);
+
+    return group;
+  }
+
+  function clearGroup(scene, obj) {
+    if (obj && obj.parent) obj.parent.remove(obj);
+  }
+
+  // ==================== 手柄可视化 ====================
+  function updateHandleVisuals() {
+    // 清除旧手柄
+    if (currentModelGroup) {
+      const toRemove = [];
+      currentModelGroup.children.forEach(c => {
+        if (c.userData && c.userData.isHandle) toRemove.push(c);
+      });
+      toRemove.forEach(c => currentModelGroup.remove(c));
+    }
+
+    if (!currentMeshData) return;
+
+    const positions = deformedPositions || currentMeshData.positions;
+    for (let i = 0; i < handles.length; i++) {
+      const h = handles[i];
+      const p = h.currentPos;
+      const sph = new THREE.Mesh(
+        new THREE.SphereGeometry(0.04, 16, 16),
+        new THREE.MeshBasicMaterial({ color: h === draggedHandle ? 0xffd700 : 0xff6b35 })
+      );
+      sph.position.set(p[0], p[1], p[2]);
+      sph.userData = { isHandle: true, handleIndex: i };
+      currentModelGroup.add(sph);
+    }
+
+    handleCountEl.textContent = handles.length + ' 个手柄';
+  }
+
+  // 可视化变形结果到右侧场景
+  function updateDeformedVisual() {
+    clearGroup(resultScene, currentDeformedGroup);
+    if (!deformedPositions || !currentMeshData) {
+      currentDeformedGroup = null;
+      return;
+    }
+
+    const positions = deformedPositions;
+    const faces = currentMeshData.faces;
+    const group = new THREE.Group();
+
+    const geom = new THREE.BufferGeometry();
+    const flatPos = new Float32Array(positions.length * 3);
+    for (let i = 0; i < positions.length; i++) {
+      flatPos[i*3] = positions[i][0];
+      flatPos[i*3+1] = positions[i][1];
+      flatPos[i*3+2] = positions[i][2];
+    }
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(flatPos, 3));
+    const flatIdx = new Uint32Array(faces.length * 3);
+    for (let i = 0; i < faces.length; i++) {
+      flatIdx[i*3] = faces[i][0];
+      flatIdx[i*3+1] = faces[i][1];
+      flatIdx[i*3+2] = faces[i][2];
+    }
+    geom.setIndex(new THREE.BufferAttribute(flatIdx, 1));
+    geom.computeVertexNormals();
+
+    const mesh = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({
+      color: 0x7fa7ff, roughness: 0.5, metalness: 0.05, side: THREE.DoubleSide
+    }));
+    group.add(mesh);
+
+    // 线框
+    const wireGeom = new THREE.BufferGeometry();
+    const edgeSet = new Set();
+    const segs = [];
+    function addE(a, b) {
+      const key = a < b ? a + '_' + b : b + '_' + a;
+      if (edgeSet.has(key)) return;
+      edgeSet.add(key);
+      segs.push(positions[a][0], positions[a][1], positions[a][2]);
+      segs.push(positions[b][0], positions[b][1], positions[b][2]);
+    }
+    for (let i = 0; i < faces.length; i++) {
+      addE(faces[i][0], faces[i][1]);
+      addE(faces[i][1], faces[i][2]);
+      addE(faces[i][2], faces[i][0]);
+    }
+    wireGeom.setAttribute('position', new THREE.Float32BufferAttribute(segs, 3));
+    group.add(new THREE.LineSegments(wireGeom,
+      new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent: true, opacity: 0.6 })));
+
+    // 手柄点（变形后位置）
+    for (const h of handles) {
+      const p = h.currentPos;
+      const sph = new THREE.Mesh(
+        new THREE.SphereGeometry(0.04, 16, 16),
+        new THREE.MeshBasicMaterial({ color: 0xff6b35 })
+      );
+      sph.position.set(p[0], p[1], p[2]);
+      group.add(sph);
+    }
+
+    currentDeformedGroup = group;
+    resultScene.add(group);
+  }
+
+  // ==================== QC 扭曲可视化 ====================
+  function computeQCVisualization(restPos, defPos, faces) {
+    const group = new THREE.Group();
+
+    const positions = [];
+    const colors = [];
+
+    // 收集所有变形后顶点
+    const allVerts = {};
+    const vertFaces = new Array(defPos.length);
+    for (let i = 0; i < defPos.length; i++) vertFaces[i] = [];
+
+    for (let fi = 0; fi < faces.length; fi++) {
+      const [a, b, c] = faces[fi];
+      vertFaces[a].push(fi);
+      vertFaces[b].push(fi);
+      vertFaces[c].push(fi);
+    }
+
+    // 每三角形计算 QC 扭曲
+    const triQC = new Float32Array(faces.length);
+    let maxQC = 1.0;
+
+    for (let fi = 0; fi < faces.length; fi++) {
+      const [a, b, c] = faces[fi];
+
+      // 2D 局部坐标：以 a 为原点，ab ac 为基
+      const restAB = [restPos[b][0] - restPos[a][0], restPos[b][1] - restPos[a][1], restPos[b][2] - restPos[a][2]];
+      const restAC = [restPos[c][0] - restPos[a][0], restPos[c][1] - restPos[a][1], restPos[c][2] - restPos[a][2]];
+
+      const defAB = [defPos[b][0] - defPos[a][0], defPos[b][1] - defPos[a][1], defPos[b][2] - defPos[a][2]];
+      const defAC = [defPos[c][0] - defPos[a][0], defPos[c][1] - defPos[a][1], defPos[c][2] - defPos[a][2]];
+
+      // 在 rest 三角形平面建立局部坐标系
+      const n = cross3(restAB, restAC);
+      const nLen = Math.sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2]);
+      if (nLen < 1e-12) { triQC[fi] = 1; continue; }
+
+      const e1 = norm3(restAB);
+      const e2 = norm3(cross3(n, e1));
+
+      // 投影到局部 2D 坐标
+      const restAB2d = [dot3(restAB, e1), dot3(restAB, e2)];
+      const restAC2d = [dot3(restAC, e1), dot3(restAC, e2)];
+      const defAB2d = [dot3(defAB, e1), dot3(defAB, e2)];
+      const defAC2d = [dot3(defAC, e1), dot3(defAC, e2)];
+
+      // Jacobian: J = D * R^{-1}
+      const detR = restAB2d[0]*restAC2d[1] - restAB2d[1]*restAC2d[0];
+      if (Math.abs(detR) < 1e-12) { triQC[fi] = 1; continue; }
+      const invDet = 1.0 / detR;
+
+      const J00 = invDet * (defAB2d[0]*restAC2d[1] - defAC2d[0]*restAB2d[1]);
+      const J01 = invDet * (defAC2d[0]*restAB2d[0] - defAB2d[0]*restAC2d[0]);
+      const J10 = invDet * (defAB2d[1]*restAC2d[1] - defAC2d[1]*restAB2d[1]);
+      const J11 = invDet * (defAC2d[1]*restAB2d[0] - defAB2d[1]*restAC2d[0]);
+
+      // SVD of 2x2: singular values
+      const E = J00*J00 + J10*J10;
+      const F = J00*J01 + J10*J11;
+      const G = J01*J01 + J11*J11;
+      const tmp = Math.sqrt((E - G)*(E - G) + 4*F*F);
+      const s2 = (E + G + tmp) / 2;
+      const s1 = (E + G - tmp) / 2;
+      const sigma1 = Math.sqrt(Math.max(s1, 1e-12));
+      const sigma2 = Math.sqrt(Math.max(s2, 1e-12));
+
+      const qc = Math.max(sigma1 / sigma2, sigma2 / sigma1);
+      triQC[fi] = qc;
+      if (qc > maxQC) maxQC = qc;
+    }
+
+    // 逐顶点平均 QC 值并着色
+    for (let vi = 0; vi < defPos.length; vi++) {
+      positions.push(defPos[vi][0], defPos[vi][1], defPos[vi][2]);
+
+      let sumQC = 0, cnt = 0;
+      for (const fi of vertFaces[vi]) {
+        sumQC += triQC[fi];
+        cnt++;
+      }
+      const avgQC = cnt > 0 ? sumQC / cnt : 1.0;
+
+      // 颜色映射：绿 (QC≈1) → 黄 → 红 (QC 大)
+      const t = Math.min((avgQC - 1.0) / Math.max(maxQC - 1.0, 0.01), 1.0);
+      const r = Math.min(1, t * 2);
+      const g = Math.min(1, 2 - t * 2);
+      const b = 0.1;
+      colors.push(r, g, b);
+    }
+
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geom.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    const flatIdx = new Uint32Array(faces.length * 3);
+    for (let i = 0; i < faces.length; i++) {
+      flatIdx[i*3] = faces[i][0];
+      flatIdx[i*3+1] = faces[i][1];
+      flatIdx[i*3+2] = faces[i][2];
+    }
+    geom.setIndex(new THREE.BufferAttribute(flatIdx, 1));
+    geom.computeVertexNormals();
+
+    const mat = new THREE.MeshPhongMaterial({
+      vertexColors: true, side: THREE.DoubleSide,
+      flatShading: false, specular: 0x111111, shininess: 10
+    });
+    group.add(new THREE.Mesh(geom, mat));
+
+    // 线框
+    const wireGeom = new THREE.BufferGeometry();
+    const edgeSet = new Set();
+    const segs = [];
+    function addE(a, b) {
+      const key = a < b ? a + '_' + b : b + '_' + a;
+      if (edgeSet.has(key)) return;
+      edgeSet.add(key);
+      segs.push(defPos[a][0], defPos[a][1], defPos[a][2]);
+      segs.push(defPos[b][0], defPos[b][1], defPos[b][2]);
+    }
+    for (let i = 0; i < faces.length; i++) {
+      addE(faces[i][0], faces[i][1]);
+      addE(faces[i][1], faces[i][2]);
+      addE(faces[i][2], faces[i][0]);
+    }
+    wireGeom.setAttribute('position', new THREE.Float32BufferAttribute(segs, 3));
+    group.add(new THREE.LineSegments(wireGeom,
+      new THREE.LineBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.5 })));
+
+    // 统计信息
+    let minQC = Infinity, sumQC = 0;
+    for (let i = 0; i < triQC.length; i++) {
+      if (triQC[i] < minQC) minQC = triQC[i];
+      sumQC += triQC[i];
+    }
+    const avgQC = sumQC / triQC.length;
+
+    return { group, minQC, avgQC, maxQC };
+  }
+
+  // ==================== 向量工具 ====================
+  function cross3(a, b) {
+    return [a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]];
+  }
+  function dot3(a, b) {
+    return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+  }
+  function norm3(v) {
+    const len = Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+    if (len < 1e-12) return [1, 0, 0];
+    return [v[0]/len, v[1]/len, v[2]/len];
+  }
+  function vec3Sub(a, b) { return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
+  function vec3Add(a, b) { return [a[0]+b[0], a[1]+b[1], a[2]+b[2]]; }
+  function vec3Scale(v, s) { return [v[0]*s, v[1]*s, v[2]*s]; }
+
+  // ==================== ARAP 邻接表 ====================
+  function buildArapAdjacency(positions, faces) {
+    const n = positions.length;
+    const adj = new Array(n);
+    for (let i = 0; i < n; i++) adj[i] = { neighbors: [], weights: [] };
+
+    // 收集每个顶点的 one-ring 邻居和边权重（面面积加权）
+    const edgeWeight = new Map();
+    const edgeVertices = new Map();
+
+    function edgeKey(a, b) {
+      return a < b ? a + '_' + b : b + '_' + a;
+    }
+
+    for (let fi = 0; fi < faces.length; fi++) {
+      const [a, b, c] = faces[fi];
+      const pa = positions[a], pb = positions[b], pc = positions[c];
+      const area = triangleArea(pa, pb, pc);
+
+      [[a,b], [b,c], [c,a]].forEach(([u, v]) => {
+        const key = edgeKey(u, v);
+        edgeWeight.set(key, (edgeWeight.get(key) || 0) + area);
+        if (!edgeVertices.has(key)) edgeVertices.set(key, [u, v]);
+      });
+    }
+
+    // 构建邻接
+    edgeVertices.forEach(([u, v], key) => {
+      const w = edgeWeight.get(key) || 1;
+      adj[u].neighbors.push(v);
+      adj[u].weights.push(w);
+      adj[v].neighbors.push(u);
+      adj[v].weights.push(w);
+    });
+
+    // 归一化权重
+    for (let i = 0; i < n; i++) {
+      const sumW = adj[i].weights.reduce((s, w) => s + w, 0);
+      if (sumW > 0) {
+        for (let j = 0; j < adj[i].weights.length; j++) {
+          adj[i].weights[j] /= sumW;
+        }
+      }
+    }
+
+    return adj;
+  }
+
+  function triangleArea(a, b, c) {
+    const ab = [b[0]-a[0], b[1]-a[1], b[2]-a[2]];
+    const ac = [c[0]-a[0], c[1]-a[1], c[2]-a[2]];
+    const cr = cross3(ab, ac);
+    return 0.5 * Math.sqrt(cr[0]*cr[0] + cr[1]*cr[1] + cr[2]*cr[2]);
+  }
+
+  // ==================== ARAP 变形求解 ====================
+  function gramSchmidtR3x3(S) {
+    // S 为 column-major 3x3 矩阵 (9 元素数组)
+    // 列 Gram-Schmidt 正交化 → 旋转矩阵
+    const c0 = [S[0], S[3], S[6]];
+    const c1 = [S[1], S[4], S[7]];
+    const c2 = [S[2], S[5], S[8]];
+
+    // Normalize c0
+    let len0 = Math.sqrt(c0[0]*c0[0] + c0[1]*c0[1] + c0[2]*c0[2]);
+    if (len0 < 1e-12) len0 = 1;
+    const u0 = [c0[0]/len0, c0[1]/len0, c0[2]/len0];
+
+    // c1 - proj_u0(c1)
+    const dot10 = u0[0]*c1[0] + u0[1]*c1[1] + u0[2]*c1[2];
+    const v1 = [c1[0] - dot10*u0[0], c1[1] - dot10*u0[1], c1[2] - dot10*u0[2]];
+    let len1 = Math.sqrt(v1[0]*v1[0] + v1[1]*v1[1] + v1[2]*v1[2]);
+    if (len1 < 1e-12) {
+      // 退化：选垂直于 u0 的向量
+      if (Math.abs(u0[0]) < 0.9) {
+        v1[0] = 1 - u0[0]*u0[0]; v1[1] = -u0[0]*u0[1]; v1[2] = -u0[0]*u0[2];
+      } else {
+        v1[0] = -u0[1]*u0[0]; v1[1] = 1 - u0[1]*u0[1]; v1[2] = -u0[1]*u0[2];
+      }
+      len1 = Math.sqrt(v1[0]*v1[0] + v1[1]*v1[1] + v1[2]*v1[2]);
+    }
+    const u1 = [v1[0]/len1, v1[1]/len1, v1[2]/len1];
+
+    // u2 = u0 × u1
+    const u2 = cross3(u0, u1);
+
+    // 返回 column-major 3x3
+    return [
+      u0[0], u1[0], u2[0],
+      u0[1], u1[1], u2[1],
+      u0[2], u1[2], u2[2]
+    ];
+  }
+
+  function solveARAP(handles, restPos, adj, numIter) {
+    const n = restPos.length;
+    let currentPos = new Array(n);
+    for (let i = 0; i < n; i++) {
+      currentPos[i] = [restPos[i][0], restPos[i][1], restPos[i][2]];
+    }
+
+    // 移动手柄到目标位置
+    for (const h of handles) {
+      currentPos[h.index] = [h.currentPos[0], h.currentPos[1], h.currentPos[2]];
+    }
+
+    const pinned = new Set();
+    for (const h of handles) pinned.add(h.index);
+
+    for (let iter = 0; iter < numIter; iter++) {
+      // === Local Step: 计算每个顶点的最优旋转 ===
+      const rotations = new Array(n);
+      for (let i = 0; i < n; i++) {
+        // 计算协方差矩阵 S (3x3)
+        const S = [0,0,0, 0,0,0, 0,0,0]; // column-major
+        const pi = restPos[i];
+        const qi = currentPos[i];
+        const nb = adj[i].neighbors;
+        const wt = adj[i].weights;
+
+        for (let j = 0; j < nb.length; j++) {
+          const pj = restPos[nb[j]];
+          const qj = currentPos[nb[j]];
+          const w = wt[j];
+          const dp = [pj[0]-pi[0], pj[1]-pi[1], pj[2]-pi[2]];
+          const dq = [qj[0]-qi[0], qj[1]-qi[1], qj[2]-qi[2]];
+          // S += w * dq * dp^T (column-major 3x3)
+          // S_{kl} = sum w * dq_k * dp_l
+          S[0] += w * dq[0] * dp[0];  // S_00
+          S[1] += w * dq[0] * dp[1];  // S_01
+          S[2] += w * dq[0] * dp[2];  // S_02
+          S[3] += w * dq[1] * dp[0];  // S_10
+          S[4] += w * dq[1] * dp[1];  // S_11
+          S[5] += w * dq[1] * dp[2];  // S_12
+          S[6] += w * dq[2] * dp[0];  // S_20
+          S[7] += w * dq[2] * dp[1];  // S_21
+          S[8] += w * dq[2] * dp[2];  // S_22
+        }
+        rotations[i] = gramSchmidtR3x3(S);
+      }
+
+      // === Global Step: 用旋转后的邻居均值更新位置 ===
+      const newPos = new Array(n);
+      for (let i = 0; i < n; i++) {
+        if (pinned.has(i)) {
+          newPos[i] = [currentPos[i][0], currentPos[i][1], currentPos[i][2]];
+          continue;
+        }
+        const ri = rotations[i];
+        const pi = restPos[i];
+        const nb = adj[i].neighbors;
+        const wt = adj[i].weights;
+
+        const accum = [0, 0, 0];
+        for (let j = 0; j < nb.length; j++) {
+          const pj = restPos[nb[j]];
+          const qj = currentPos[nb[j]];
+          const w = wt[j];
+          const dp = [pj[0]-pi[0], pj[1]-pi[1], pj[2]-pi[2]];
+          // rot * dp (column-major 3x3 * vector)
+          const rdp = [
+            ri[0]*dp[0] + ri[1]*dp[1] + ri[2]*dp[2],
+            ri[3]*dp[0] + ri[4]*dp[1] + ri[5]*dp[2],
+            ri[6]*dp[0] + ri[7]*dp[1] + ri[8]*dp[2]
+          ];
+          const term = [qj[0] - rdp[0], qj[1] - rdp[1], qj[2] - rdp[2]];
+          accum[0] += w * term[0];
+          accum[1] += w * term[1];
+          accum[2] += w * term[2];
+        }
+        newPos[i] = accum;
+      }
+      currentPos = newPos;
+    }
+
+    return currentPos;
+  }
+
+  // ==================== 鼠标交互 ====================
+  function getCanvasCoords(canvas, e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      y: -((e.clientY - rect.top) / rect.height) * 2 + 1
+    };
+  }
+
+  modelCanvas.addEventListener('click', (e) => {
+    if (!handleMode || !currentMeshData || isDragging) return;
+
+    const coords = getCanvasCoords(modelCanvas, e);
+    mouse.set(coords.x, coords.y);
+    raycaster.setFromCamera(mouse, modelCamera);
+
+    // 对当前模型组做射线检测
+    if (!currentModelGroup) return;
+    const meshes = [];
+    currentModelGroup.children.forEach(c => {
+      if (c.isMesh && !c.userData.isHandle) meshes.push(c);
+    });
+    const intersects = raycaster.intersectObjects(meshes, false);
+
+    if (intersects.length === 0) return;
+
+    const hit = intersects[0];
+    const positions = deformedPositions || currentMeshData.positions;
+
+    // 找最近顶点
+    let minDist = Infinity, bestIdx = -1;
+    const hitPoint = hit.point;
+    for (let i = 0; i < positions.length; i++) {
+      const dx = hitPoint.x - positions[i][0];
+      const dy = hitPoint.y - positions[i][1];
+      const dz = hitPoint.z - positions[i][2];
+      const dist = dx*dx + dy*dy + dz*dz;
+      if (dist < minDist) { minDist = dist; bestIdx = i; }
+    }
+
+    // 检查是否已存在
+    const existing = handles.findIndex(h => h.index === bestIdx);
+    if (existing >= 0) {
+      // 移除该手柄
+      handles.splice(existing, 1);
+    } else {
+      const pos = positions[bestIdx];
+      handles.push({ index: bestIdx, restPos: [...pos], currentPos: [...pos] });
+    }
+    updateHandleVisuals();
+  });
+
+  modelCanvas.addEventListener('mousedown', (e) => {
+    if (!handleMode || handles.length === 0 || !currentModelGroup) return;
+
+    const coords = getCanvasCoords(modelCanvas, e);
+    mouse.set(coords.x, coords.y);
+    raycaster.setFromCamera(mouse, modelCamera);
+
+    // 检测手柄球
+    const handleMeshes = [];
+    currentModelGroup.children.forEach(c => {
+      if (c.userData && c.userData.isHandle) handleMeshes.push(c);
+    });
+    const intersects = raycaster.intersectObjects(handleMeshes, false);
+    if (intersects.length > 0) {
+      isDragging = true;
+      const idx = intersects[0].object.userData.handleIndex;
+      draggedHandle = handles[idx];
+      updateHandleVisuals();
+    }
+  });
+
+  modelCanvas.addEventListener('mousemove', (e) => {
+    if (!isDragging || !draggedHandle || !currentModelGroup) return;
+
+    const coords = getCanvasCoords(modelCanvas, e);
+    mouse.set(coords.x, coords.y);
+    raycaster.setFromCamera(mouse, modelCamera);
+
+    // 在垂直于相机的平面上移动
+    const camDir = new THREE.Vector3();
+    modelCamera.getWorldDirection(camDir);
+    const plane = new THREE.Plane(new THREE.Vector3(camDir.x, camDir.y, camDir.z).negate(), 0);
+    const intersect = new THREE.Vector3();
+    raycaster.ray.intersectPlane(plane, intersect);
+
+    if (intersect) {
+      draggedHandle.currentPos = [intersect.x, intersect.y, intersect.z];
+      updateHandleVisuals();
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      draggedHandle = null;
+      updateHandleVisuals();
+    }
+  });
+
+  // ==================== 按钮事件 ====================
+  addHandleBtn.addEventListener('click', () => {
+    handleMode = !handleMode;
+    if (handleMode) {
+      addHandleBtn.textContent = '✓ 手柄模式';
+      addHandleBtn.style.background = '#1a2848';
+      addHandleBtn.style.borderColor = '#ff6b35';
+      setStatus('点击模型放置/移除手柄，拖拽手柄调整位置', '#ffb446');
+    } else {
+      addHandleBtn.textContent = '+ 手柄模式';
+      addHandleBtn.style.background = '';
+      addHandleBtn.style.borderColor = '';
+      setStatus('手柄模式已关闭', '#5a6791');
+    }
+  });
+
+  clearHandlesBtn.addEventListener('click', () => {
+    handles = [];
+    updateHandleVisuals();
+    setStatus('手柄已清除', '#5a6791');
+  });
+
+  deformBtn.addEventListener('click', async () => {
+    if (!currentMeshData) {
+      setStatus('请先选择字母', '#ff9d9d');
+      return;
+    }
+    if (handles.length < 2) {
+      setStatus('请至少放置 2 个手柄', '#ffd38a');
+      return;
+    }
+
+    setStatus('ARAP 变形计算中...', '#ffb446');
+    deformBtn.disabled = true;
+
+    // 延迟到下一帧
+    await new Promise(r => requestAnimationFrame(r));
+
+    try {
+      const restPos = restPositions;
+      if (!arapAdj) {
+        arapAdj = buildArapAdjacency(restPos, currentMeshData.faces);
+      }
+
+      const numIter = 20;
+      const result = solveARAP(handles, restPos, arapAdj, numIter);
+      deformedPositions = result;
+
+      // 更新右侧：变形结果 + QC 扭曲
+      updateDeformedVisual();
+
+      const qc = computeQCVisualization(restPos, deformedPositions, currentMeshData.faces);
+      clearGroup(resultScene, currentDeformedGroup);
+      resultScene.add(qc.group);
+      currentDeformedGroup = qc.group;
+
+      resultInfo.textContent =
+        'QC: min=' + qc.minQC.toFixed(4) +
+        ' avg=' + qc.avgQC.toFixed(4) +
+        ' max=' + qc.maxQC.toFixed(4) +
+        ' (绿≈1, 红扭曲大)';
+      setStatus('ARAP 变形完成 (' + numIter + ' 次迭代)', '#89f0b6');
+    } catch (err) {
+      console.error(err);
+      setStatus('变形失败: ' + err.message, '#ff9d9d');
+    } finally {
+      deformBtn.disabled = false;
+    }
+  });
+
+  // ==================== 字母选择 ====================
+  async function loadLetter(letter) {
+    setStatus('加载中...', '#ffd38a');
+    try {
+      const obj = await loadOBJLetter(letter);
+
+      // 从 OBJ 对象提取所有 mesh 的几何数据
+      const allPos = [];
+      const allFaces = [];
+      let vertOffset = 0;
+      obj.traverse(function(child) {
+        if (!child.isMesh || !child.geometry) return;
+        const data = extractMeshData(child.geometry);
+        for (const p of data.positions) {
+          allPos.push([p[0], p[1], p[2]]);
+        }
+        for (const f of data.faces) {
+          allFaces.push([f[0] + vertOffset, f[1] + vertOffset, f[2] + vertOffset]);
+        }
+        vertOffset += data.positions.length;
+      });
+
+      if (allPos.length === 0) throw new Error('模型无数据');
+      const meshData = { positions: allPos, faces: allFaces };
+
+      currentMeshData = meshData;
+      restPositions = meshData.positions.map(p => [p[0], p[1], p[2]]);
+      deformedPositions = null;
+      arapAdj = null;
+      handles = [];
+
+      // 左场景
+      clearGroup(modelScene, currentModelGroup);
+      currentModelGroup = buildModelVisual(meshData.positions, meshData.faces);
+      modelScene.add(currentModelGroup);
+
+      // 右场景清空
+      clearGroup(resultScene, currentDeformedGroup);
+      currentDeformedGroup = null;
+
+      // 正交相机适配：计算包围盒
+      const box = new THREE.Box3();
+      for (const p of meshData.positions) box.expandByPoint(new THREE.Vector3(p[0], p[1], p[2]));
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, 0.5) * 0.65;
+      modelCamera.left = -maxDim;
+      modelCamera.right = maxDim;
+      modelCamera.top = maxDim;
+      modelCamera.bottom = -maxDim;
+      modelCamera.updateProjectionMatrix();
+
+      // 右侧相机适配
+      const dist = maxDim * 3.5;
+      resultCamera.position.set(0, 0, dist);
+      resultCamera.lookAt(0, 0, 0);
+      resultControls.target.set(0, 0, 0);
+
+      updateHandleVisuals();
+      modelInfo.textContent = '字母 ' + letter + ' | ' + meshData.positions.length + ' 顶点 | ' + meshData.faces.length + ' 面';
+      resultInfo.textContent = '';
+      setStatus('已加载字母 ' + letter, '#89f0b6');
+    } catch (err) {
+      console.error(err);
+      setStatus('加载失败: ' + err.message, '#ff9d9d');
+    }
+  }
+
+  // 填充字母选择器
+  for (let i = 65; i <= 90; i++) {
+    const letter = String.fromCharCode(i);
+    const opt = document.createElement('option');
+    opt.value = letter;
+    opt.textContent = letter;
+    letterSelect.appendChild(opt);
+  }
+  letterSelect.addEventListener('change', () => loadLetter(letterSelect.value));
+
+  // ==================== 响应式 ====================
+  function resize() {
+    const leftRect = document.getElementById('left-panel').getBoundingClientRect();
+    const rightRect = document.getElementById('right-panel').getBoundingClientRect();
+
+    modelRenderer.setSize(leftRect.width, leftRect.height, false);
+    const a = leftRect.width / Math.max(leftRect.height, 1);
+    const curHalf = (modelCamera.right - modelCamera.left) / 2;
+    modelCamera.left = -curHalf * a;
+    modelCamera.right = curHalf * a;
+    modelCamera.top = curHalf;
+    modelCamera.bottom = -curHalf;
+    modelCamera.updateProjectionMatrix();
+
+    resultRenderer.setSize(rightRect.width, rightRect.height, false);
+    resultCamera.aspect = rightRect.width / Math.max(rightRect.height, 1);
+    resultCamera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+
+  // ==================== 渲染循环 ====================
+  function animate() {
+    requestAnimationFrame(animate);
+    resultControls.update();
+    modelRenderer.render(modelScene, modelCamera);
+    resultRenderer.render(resultScene, resultCamera);
+  }
+
+  // ==================== 初始化 ====================
+  resize();
+  letterSelect.value = 'A';
+  loadLetter('A');
+  animate();
+})();
+</script>
+</body>
+</html>
