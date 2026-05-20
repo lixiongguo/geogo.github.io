@@ -229,6 +229,100 @@
     return meshData;
   }
 
+  function findNonManifoldVertices(meshData){
+    const positions=meshData.positions,faces=meshData.faces,n=positions.length,nm=[];
+    for(let v=0;v<n;v++){
+      const incident=[];
+      for(let fi=0;fi<faces.length;fi++){
+        const f=faces[fi];
+        if(f[0]===v||f[1]===v||f[2]===v)incident.push(fi);
+      }
+      if(incident.length===0)continue;
+      const adj=new Map();
+      for(const fi of incident)adj.set(fi,new Set());
+      for(let i=0;i<incident.length;i++){
+        const fi=incident[i],f=faces[fi],others=f.filter(function(x){return x!==v});
+        for(let j=i+1;j<incident.length;j++){
+          const fj=incident[j],f2=faces[fj],shared=f2.filter(function(x){return x!==v});
+          if(others.some(function(u){return shared.indexOf(u)>=0})){
+            adj.get(fi).add(fj);adj.get(fj).add(fi);
+          }
+        }
+      }
+      const seen=new Set(),stack=[incident[0]];
+      seen.add(incident[0]);
+      while(stack.length){
+        const cur=stack.pop();
+        for(const nb of adj.get(cur)){
+          if(!seen.has(nb)){seen.add(nb);stack.push(nb)}
+        }
+      }
+      if(seen.size!==incident.length)nm.push(v);
+    }
+    return nm;
+  }
+
+  function splitNonManifoldVertex(meshData,v){
+    const positions=meshData.positions,faces=meshData.faces;
+    const incident=[];
+    for(let fi=0;fi<faces.length;fi++){
+      const f=faces[fi];
+      if(f[0]===v||f[1]===v||f[2]===v)incident.push(fi);
+    }
+    const adj=new Map();
+    for(const fi of incident)adj.set(fi,new Set());
+    for(let i=0;i<incident.length;i++){
+      const fi=incident[i],f=faces[fi],others=f.filter(function(x){return x!==v});
+      for(let j=i+1;j<incident.length;j++){
+        const fj=incident[j],f2=faces[fj],shared=f2.filter(function(x){return x!==v});
+        if(others.some(function(u){return shared.indexOf(u)>=0})){
+          adj.get(fi).add(fj);adj.get(fj).add(fi);
+        }
+      }
+    }
+    const components=[],visited=new Set();
+    for(const start of incident){
+      if(visited.has(start))continue;
+      const comp=[],stack=[start];
+      visited.add(start);
+      while(stack.length){
+        const cur=stack.pop();
+        comp.push(cur);
+        for(const nb of adj.get(cur)){
+          if(!visited.has(nb)){visited.add(nb);stack.push(nb)}
+        }
+      }
+      components.push(comp);
+    }
+    if(components.length<=1)return false;
+    const faceVertex=new Map();
+    for(const fi of components[0])faceVertex.set(fi,v);
+    for(let c=1;c<components.length;c++){
+      const newV=positions.length;
+      positions.push(positions[v].slice());
+      for(const fi of components[c])faceVertex.set(fi,newV);
+    }
+    faceVertex.forEach(function(newV,fi){
+      faces[fi]=faces[fi].map(function(x){return x===v?newV:x});
+    });
+    return true;
+  }
+
+  function repairMeshForSolver(meshData){
+    const data={
+      positions:meshData.positions.map(function(p){return[p[0],p[1],p[2]]}),
+      faces:meshData.faces.map(function(f){return[f[0],f[1],f[2]]})
+    };
+    let splits=0;
+    for(let iter=0;iter<data.positions.length;iter++){
+      const nm=findNonManifoldVertices(data);
+      if(nm.length===0)break;
+      if(!splitNonManifoldVertex(data,nm[0]))break;
+      splits++;
+    }
+    return{splits:splits,meshData:data};
+  }
+
   function collectMeshData(root){
     root.updateMatrixWorld(true);
     const pos=[],faces=[],vm=new Map(),t=new THREE.Vector3();
@@ -457,6 +551,7 @@
   let coneMode = false;
   let coneVertices = [];
   let coneMarkers = null;
+  let coneConnectionLines = null;
   const raycaster = new THREE.Raycaster();
 
   function toggleConeMode(){
@@ -561,6 +656,7 @@
     info.style.display = coneVertices.length > 0 ? '' : 'none';
     info.textContent = coneVertices.length + ' 个';
     if (coneMarkers){ modelScene.remove(coneMarkers); coneMarkers = null; }
+    if (coneConnectionLines){ modelScene.remove(coneConnectionLines); coneConnectionLines = null; }
     if (coneVertices.length === 0 || !currentMeshData) return;
     const pts = [];
     for (const c of coneVertices){
@@ -572,8 +668,186 @@
     if (pts.length === 0) return;
     const geom = new THREE.BufferGeometry();
     geom.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-    coneMarkers = new THREE.Points(geom, new THREE.PointsMaterial({color: 0xff3377, size: .04, sizeAttenuation: true}));
+    coneMarkers = new THREE.Points(geom, new THREE.PointsMaterial({
+      color: 0xff4488,
+      size: 0.055,
+      sizeAttenuation: true,
+      depthTest: false,
+      depthWrite: false
+    }));
+    coneMarkers.renderOrder = 12;
     modelScene.add(coneMarkers);
+    coneConnectionLines = buildConeConnectionLines(currentMeshData, coneVertices);
+    if (coneConnectionLines) modelScene.add(coneConnectionLines);
+  }
+
+  function buildConeConnectionLines(meshData, cones){
+    const ids=[];
+    const seen=new Set();
+    for(const c of cones){
+      if(c.index>=0&&c.index<meshData.positions.length&&!seen.has(c.index)){
+        ids.push(c.index);seen.add(c.index);
+      }
+    }
+    if(ids.length<2)return null;
+    const graph=buildMeshAdjacency(meshData);
+    const shortest=[];
+    for(let i=0;i<ids.length;i++)shortest[i]=dijkstraAll(graph,ids[i]);
+    const used=new Array(ids.length).fill(false),parent=new Array(ids.length).fill(-1),best=new Array(ids.length).fill(Infinity);
+    used[0]=true;
+    for(let j=1;j<ids.length;j++){best[j]=shortest[0].dist[ids[j]];parent[j]=0}
+    for(let step=1;step<ids.length;step++){
+      let next=-1,bd=Infinity;
+      for(let j=0;j<ids.length;j++)if(!used[j]&&best[j]<bd){bd=best[j];next=j}
+      if(next<0||!Number.isFinite(bd))break;
+      used[next]=true;
+      for(let j=0;j<ids.length;j++){
+        const d=shortest[next].dist[ids[j]];
+        if(!used[j]&&d<best[j]){best[j]=d;parent[j]=next}
+      }
+    }
+    const seg=[],edgeSeen=new Set();
+    function addPath(a,b){
+      const prev=shortest[a].prev;
+      let cur=ids[b],guard=0;
+      while(cur!==ids[a]&&cur>=0&&guard++<meshData.positions.length+5){
+        const p=prev[cur];
+        if(p<0)break;
+        const key=cur<p?cur+"_"+p:p+"_"+cur;
+        if(!edgeSeen.has(key)){
+          edgeSeen.add(key);
+          const pa=meshData.positions[cur],pb=meshData.positions[p];
+          seg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2]);
+        }
+        cur=p;
+      }
+    }
+    for(let i=1;i<ids.length;i++){
+      if(parent[i]>=0)addPath(parent[i],i);
+    }
+    if(seg.length===0)return null;
+
+    const group=new THREE.Group();
+    group.renderOrder=10;
+
+    const lineGeom=new THREE.BufferGeometry();
+    lineGeom.setAttribute('position',new THREE.Float32BufferAttribute(seg,3));
+    const lineMat=new THREE.LineBasicMaterial({
+      color:0xffffff,
+      transparent:true,
+      opacity:1,
+      depthTest:false,
+      depthWrite:false
+    });
+    const lines=new THREE.LineSegments(lineGeom,lineMat);
+    lines.renderOrder=12;
+    group.add(lines);
+
+    const glowMat=new THREE.MeshBasicMaterial({
+      color:0xff5500,
+      transparent:true,
+      opacity:0.5,
+      depthTest:false,
+      depthWrite:false
+    });
+    const coreMat=new THREE.MeshBasicMaterial({
+      color:0xffee22,
+      transparent:true,
+      opacity:0.98,
+      depthTest:false,
+      depthWrite:false
+    });
+    const up=new THREE.Vector3(0,1,0);
+    const qa=new THREE.Quaternion();
+    const mid=new THREE.Vector3();
+    const dir=new THREE.Vector3();
+    const rGlow=0.009,rCore=0.0045;
+
+    for(let i=0;i<seg.length;i+=6){
+      const ax=seg[i],ay=seg[i+1],az=seg[i+2];
+      const bx=seg[i+3],by=seg[i+4],bz=seg[i+5];
+      dir.set(bx-ax,by-ay,bz-az);
+      const len=dir.length();
+      if(len<1e-8)continue;
+      dir.multiplyScalar(1/len);
+      mid.set((ax+bx)*0.5,(ay+by)*0.5,(az+bz)*0.5);
+      qa.setFromUnitVectors(up,dir);
+
+      const glow=new THREE.Mesh(new THREE.CylinderGeometry(rGlow,rGlow,len,8,1),glowMat);
+      glow.position.copy(mid);
+      glow.quaternion.copy(qa);
+      glow.renderOrder=10;
+      group.add(glow);
+
+      const core=new THREE.Mesh(new THREE.CylinderGeometry(rCore,rCore,len,8,1),coreMat);
+      core.position.copy(mid);
+      core.quaternion.copy(qa);
+      core.renderOrder=11;
+      group.add(core);
+    }
+
+    return group;
+  }
+
+  function buildMeshAdjacency(meshData){
+    const n=meshData.positions.length,adj=new Array(n);
+    for(let i=0;i<n;i++)adj[i]=[];
+    const seen=new Set();
+    function add(a,b){
+      if(a===b)return;
+      const k=a<b?a+"_"+b:b+"_"+a;
+      if(seen.has(k))return;
+      seen.add(k);
+      const pa=meshData.positions[a],pb=meshData.positions[b];
+      const w=Math.hypot(pa[0]-pb[0],pa[1]-pb[1],pa[2]-pb[2]);
+      adj[a].push({to:b,w:w});adj[b].push({to:a,w:w});
+    }
+    for(const f of meshData.faces){add(f[0],f[1]);add(f[1],f[2]);add(f[2],f[0])}
+    return adj;
+  }
+
+  function dijkstraAll(adj,source){
+    const n=adj.length,dist=new Array(n).fill(Infinity),prev=new Array(n).fill(-1),heap=[];
+    dist[source]=0;heapPush(heap,{v:source,d:0});
+    while(heap.length){
+      const item=heapPop(heap);
+      if(item.d!==dist[item.v])continue;
+      const row=adj[item.v];
+      for(let i=0;i<row.length;i++){
+        const nb=row[i],nd=item.d+nb.w;
+        if(nd<dist[nb.to]){
+          dist[nb.to]=nd;prev[nb.to]=item.v;heapPush(heap,{v:nb.to,d:nd});
+        }
+      }
+    }
+    return{dist:dist,prev:prev};
+  }
+
+  function heapPush(h,x){
+    h.push(x);
+    let i=h.length-1;
+    for(;i>0;){
+      const p=(i-1)>>1;
+      if(h[p].d<=x.d)break;
+      h[i]=h[p];i=p;
+    }
+    h[i]=x;
+  }
+
+  function heapPop(h){
+    const r=h[0],x=h.pop();
+    if(h.length&&x){
+      let i=0;
+      while(true){
+        let c=i*2+1;
+        if(c>=h.length)break;
+        if(c+1<h.length&&h[c+1].d<h[c].d)c++;
+        if(h[c].d>=x.d)break;
+        h[i]=h[c];i=c;
+      }
+      h[i]=x;
+    }
+    return r;
   }
 
   modelCanvas.addEventListener('click', function(e){
@@ -660,11 +934,24 @@
 
   // ============ 求解器调用 ============
   async function solveCP(meshData){
-    await initUnifiedConeSolver();const v=meshData.positions,f=meshData.faces;
+    await initUnifiedConeSolver();
+    const repair=repairMeshForSolver(meshData);
+    if(repair.splits>0){
+      meshData=repair.meshData;
+      currentMeshData=meshData;
+      coneVertices=computeBenChenCones(meshData);
+      updateConeDisplay();
+      clearPickMesh();
+      currentPickMesh=buildPickMesh(meshData);
+      setStatus("已修复非流形顶点 "+repair.splits+" 处，继续求解...", "#ffd38a");
+    }
+    const remaining=findNonManifoldVertices(meshData);
+    if(remaining.length>0)throw new Error("网格仍有非流形顶点: "+remaining.slice(0,8).join(", "));
+    const v=meshData.positions,f=meshData.faces;
     const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
     const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
     const pp=wasmWritePosInst(unifiedInst,fp),fpt=wasmWriteFacesInst(unifiedInst,ff);
-    const cones = coneVertices.length > 0 ? coneVertices : [];
+    const cones = coneVertices.length > 0 ? coneVertices.filter(function(c){return c.index>=0&&c.index<v.length}) : [];
     let ciPtr = 0, caPtr = 0;
     if (cones.length > 0){
       const ci = new Int32Array(cones.map(c => c.index));
@@ -739,19 +1026,30 @@
       currentUvLines=null;currentUvPins=null;currentUnwrapUv=null;
       let meshData=rawText?parseObjMeshData(rawText):null;
       meshData=meshData?normalizeMeshData(meshData):collectMeshData(root);
+      const repair=repairMeshForSolver(meshData);
+      meshData=repair.meshData;
       const anchors=chooseAnchorPair(meshData.positions);
       currentModelGroup=buildModelGroup(root,anchors,meshData.positions);modelScene.add(currentModelGroup);
       currentPickMesh=buildPickMesh(meshData);
       controls.target.set(0,0,0);controls.update();currentMeshData=meshData;
       coneVertices=computeBenChenCones(currentMeshData);
       updateConeDisplay();
-      setStatus("就绪: "+m.label+" / "+meshData.positions.length+" 顶点 / "+meshData.faces.length+" 三角面 / Ben-Chen 锥点 "+coneVertices.length+" 个，点击展开","#89f0b6");
+      const repairNote=repair.splits>0?(" / 已修复非流形顶点 "+repair.splits+" 处"):"";
+      setStatus("就绪: "+m.label+" / "+meshData.positions.length+" 顶点 / "+meshData.faces.length+" 三角面 / Ben-Chen 锥点 "+coneVertices.length+" 个"+repairNote+"，点击展开","#89f0b6");
     }catch(e){console.error(e);setStatus("加载失败: "+e.message,"#ff9d9d")}
     finally{setBusy(false)}
   }
 
   async function doUnwrap(){
     if(busy||!currentMeshData)return;
+    const repair=repairMeshForSolver(currentMeshData);
+    if(repair.splits>0){
+      currentMeshData=repair.meshData;
+      coneVertices=[];
+      updateConeDisplay();
+      clearPickMesh();
+      currentPickMesh=buildPickMesh(currentMeshData);
+    }
     const method=getMethod(),mNames={cp:'Circle Pattern',cetm:'CETM',ricci:'Ricci 流'};
     const label=mNames[method]||method,optNames={0:'梯度下降',1:'牛顿法',3:'LBFGS'};
     setBusy(true);setStatus(label+" 求解中...");

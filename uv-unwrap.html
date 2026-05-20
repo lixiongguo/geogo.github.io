@@ -284,6 +284,7 @@
           <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开算法</legend>
           <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte" checked> Tutte</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Discrete Conformal Parameterization: cot-Laplace 调和映射 + 固定边界"><input type="radio" name="method" value="dcp"> DCP</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="lscm"> LSCM</label>
             <label id="lscm-bd-chk" style="color:#8a9dd4;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;margin-right:8px;"><input type="checkbox" id="bd-chk-lscm" onchange="onParamChange()"><span style="line-height:1">BD</span></label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="arap"> ARAP</label>
@@ -673,6 +674,149 @@
         return { positions: positions, faces: faces };
       }
 
+      function repairMeshForSolver(meshData) {
+        const data = {
+          positions: meshData.positions.map(function(p) { return [p[0], p[1], p[2]]; }),
+          faces: []
+        };
+        for (let i = 0; i < meshData.faces.length; i++) {
+          const f = meshData.faces[i];
+          if (f.length < 3) continue;
+          if (f[0] === f[1] || f[1] === f[2] || f[2] === f[0]) continue;
+          if (f[0] < 0 || f[1] < 0 || f[2] < 0) continue;
+          if (f[0] >= data.positions.length || f[1] >= data.positions.length || f[2] >= data.positions.length) continue;
+          data.faces.push([f[0], f[1], f[2]]);
+        }
+
+        let edgeSplits = 0, vertexSplits = 0;
+        function edgeKey(a, b) { return a < b ? a + "_" + b : b + "_" + a; }
+        function buildEdgeFaces() {
+          const edges = new Map();
+          for (let fi = 0; fi < data.faces.length; fi++) {
+            const f = data.faces[fi];
+            for (const e of [[f[0], f[1]], [f[1], f[2]], [f[2], f[0]]]) {
+              const k = edgeKey(e[0], e[1]);
+              if (!edges.has(k)) edges.set(k, { a: Math.min(e[0], e[1]), b: Math.max(e[0], e[1]), faces: [] });
+              edges.get(k).faces.push(fi);
+            }
+          }
+          return edges;
+        }
+        function splitNonManifoldEdges() {
+          let changed = false;
+          buildEdgeFaces().forEach(function(info) {
+            if (info.faces.length <= 2) return;
+            for (let i = 2; i < info.faces.length; i++) {
+              const fi = info.faces[i], f = data.faces[fi];
+              const na = data.positions.length;
+              data.positions.push(data.positions[info.a].slice());
+              const nb = data.positions.length;
+              data.positions.push(data.positions[info.b].slice());
+              data.faces[fi] = f.map(function(v) {
+                if (v === info.a) return na;
+                if (v === info.b) return nb;
+                return v;
+              });
+              edgeSplits++;
+              changed = true;
+            }
+          });
+          return changed;
+        }
+        function findNonManifoldVertex() {
+          for (let v = 0; v < data.positions.length; v++) {
+            const incident = [];
+            for (let fi = 0; fi < data.faces.length; fi++) {
+              const f = data.faces[fi];
+              if (f[0] === v || f[1] === v || f[2] === v) incident.push(fi);
+            }
+            if (incident.length <= 1) continue;
+            const adj = new Map();
+            for (const fi of incident) adj.set(fi, new Set());
+            for (let i = 0; i < incident.length; i++) {
+              const fi = incident[i], f = data.faces[fi], others = f.filter(function(x) { return x !== v; });
+              for (let j = i + 1; j < incident.length; j++) {
+                const fj = incident[j], f2 = data.faces[fj], shared = f2.filter(function(x) { return x !== v; });
+                if (others.some(function(u) { return shared.indexOf(u) >= 0; })) {
+                  adj.get(fi).add(fj); adj.get(fj).add(fi);
+                }
+              }
+            }
+            const seen = new Set([incident[0]]), stack = [incident[0]];
+            while (stack.length) {
+              const cur = stack.pop();
+              for (const nb of adj.get(cur)) {
+                if (!seen.has(nb)) { seen.add(nb); stack.push(nb); }
+              }
+            }
+            if (seen.size !== incident.length) return v;
+          }
+          return -1;
+        }
+        function splitNonManifoldVertex(v) {
+          const incident = [];
+          for (let fi = 0; fi < data.faces.length; fi++) {
+            const f = data.faces[fi];
+            if (f[0] === v || f[1] === v || f[2] === v) incident.push(fi);
+          }
+          const adj = new Map();
+          for (const fi of incident) adj.set(fi, new Set());
+          for (let i = 0; i < incident.length; i++) {
+            const fi = incident[i], f = data.faces[fi], others = f.filter(function(x) { return x !== v; });
+            for (let j = i + 1; j < incident.length; j++) {
+              const fj = incident[j], f2 = data.faces[fj], shared = f2.filter(function(x) { return x !== v; });
+              if (others.some(function(u) { return shared.indexOf(u) >= 0; })) {
+                adj.get(fi).add(fj); adj.get(fj).add(fi);
+              }
+            }
+          }
+          const components = [], visited = new Set();
+          for (const start of incident) {
+            if (visited.has(start)) continue;
+            const comp = [], stack = [start];
+            visited.add(start);
+            while (stack.length) {
+              const cur = stack.pop();
+              comp.push(cur);
+              for (const nb of adj.get(cur)) {
+                if (!visited.has(nb)) { visited.add(nb); stack.push(nb); }
+              }
+            }
+            components.push(comp);
+          }
+          if (components.length <= 1) return false;
+          for (let c = 1; c < components.length; c++) {
+            const nv = data.positions.length;
+            data.positions.push(data.positions[v].slice());
+            for (const fi of components[c]) {
+              data.faces[fi] = data.faces[fi].map(function(x) { return x === v ? nv : x; });
+            }
+            vertexSplits++;
+          }
+          return true;
+        }
+
+        for (let iter = 0; iter < 32; iter++) {
+          const changedEdges = splitNonManifoldEdges();
+          const v = findNonManifoldVertex();
+          const changedVertex = v >= 0 ? splitNonManifoldVertex(v) : false;
+          if (!changedEdges && !changedVertex) break;
+        }
+        return { meshData: data, edgeSplits: edgeSplits, vertexSplits: vertexSplits };
+      }
+
+      function getValidatedAnchors(vertices) {
+        const autoAnchors = chooseAnchorPair(vertices);
+        const anchors = currentCustomAnchors || autoAnchors;
+        if (!anchors || anchors.length < 2) return autoAnchors;
+        if (anchors[0] === anchors[1]) return autoAnchors;
+        if (anchors[0] < 0 || anchors[1] < 0 || anchors[0] >= vertices.length || anchors[1] >= vertices.length) {
+          currentCustomAnchors = null;
+          return autoAnchors;
+        }
+        return anchors;
+      }
+
       function chooseAnchorPair(vertices) {
         let bestA = 0;
         let bestB = 1;
@@ -861,11 +1005,11 @@
         const showBD = bdLscm || bdArap;
 
         // 显隐参数面板
-        const hasParams = (m === 'tutte' || showBD || m === 'arap' || m === 'cetm' || m === 'ricci' || m === 'cp');
+        const hasParams = (m === 'tutte' || m === 'dcp' || showBD || m === 'arap' || m === 'cetm' || m === 'ricci' || m === 'cp');
         document.getElementById('param-none').style.display = hasParams ? 'none' : '';
 
         // Tutte 边界
-        document.getElementById('param-tutte-boundary').style.display = (m === 'tutte') ? '' : 'none';
+        document.getElementById('param-tutte-boundary').style.display = (m === 'tutte' || m === 'dcp') ? '' : 'none';
         // BD C 值
         document.getElementById('param-bd-c').style.display = showBD ? '' : 'none';
         // ARAP 迭代（ARAP 时始终显示）
@@ -928,14 +1072,38 @@
 
       // ==================== WASM 驱动的 LSCM 求解 ====================
 
+      async function solveLSCMFallbackAsync(meshData, onProgress, cause, anchors, usingCustomAnchors) {
+        if (usingCustomAnchors) {
+          const msg = cause && cause.message ? cause.message : String(cause || "");
+          throw new Error("LSCM 使用自定义 pin 点 " + anchors[0] + " & " + anchors[1] + " 求解失败: " + msg + "。为避免忽略新 pin 点，已取消 ARAP 兜底。");
+        }
+        console.warn("LSCM WASM 失败，改用 ARAP/Tutte 引擎兜底:", cause);
+        setStatus("LSCM WASM 失败，正在改用 ARAP 兜底求解...", "#ffd38a");
+        const result = await solveARAPAsync(meshData, onProgress);
+        result.method = 'lscm_fallback';
+        result.fallbackCause = cause && cause.message ? cause.message : String(cause || "");
+        return result;
+      }
+
       async function solveLSCMAsync(meshData, onProgress) {
+        const repair = repairMeshForSolver(meshData);
+        if (repair.edgeSplits > 0 || repair.vertexSplits > 0) {
+          meshData = repair.meshData;
+          currentMeshData = meshData;
+          currentCustomAnchors = null;
+          setStatus("已修复非流形结构，继续执行 LSCM...", "#ffd38a");
+        }
         const vertices = meshData.positions;
         const faces = meshData.faces;
         if (vertices.length < 3 || faces.length < 1) {
           throw new Error("模型顶点或三角形数量不足");
         }
 
-        const anchors = currentCustomAnchors || chooseAnchorPair(vertices);
+        const anchors = getValidatedAnchors(vertices);
+        const usingCustomAnchors = !!(currentCustomAnchors &&
+          currentCustomAnchors.length >= 2 &&
+          currentCustomAnchors[0] === anchors[0] &&
+          currentCustomAnchors[1] === anchors[1]);
 
         if (!wasmReady) {
           const loaded = await initUnifiedSolver();
@@ -981,6 +1149,9 @@
             if (ret !== 0) throw new Error("WASM solve_lscm 返回错误码: " + ret);
 
             const uvSize = wasmInstance.ccall('get_uv_result_size', 'number', [], []);
+            if (uvSize !== vertices.length * 2) {
+              throw new Error("UV 结果长度异常: " + uvSize + "，期望 " + (vertices.length * 2));
+            }
             const uvPtr = wasmInstance.ccall('get_uv_result', 'number', [], []);
 
             const uvs = [];
@@ -996,7 +1167,11 @@
             wasmInstance._free(facePtr);
           }
         } catch (err) {
-          throw new Error("WASM LSCM 求解失败: " + err.message);
+          const msg = err && err.message ? err.message : String(err);
+          if (msg.indexOf("memory access out of bounds") >= 0 || msg.indexOf("non manifold") >= 0 || msg.indexOf("nonmanifold") >= 0) {
+            return await solveLSCMFallbackAsync(meshData, onProgress, err, anchors, usingCustomAnchors);
+          }
+          throw new Error("WASM LSCM 求解失败: " + msg);
         }
 
         if (onProgress) onProgress(faces.length * 0.9, faces.length);
@@ -1010,12 +1185,19 @@
 
         if (onProgress) onProgress(faces.length, faces.length);
 
-        return { uv: uv, anchors: anchors, flippedFaceCount: countFlippedFaces(uv, faces), timeMs: result.time_ms || 0, method: 'lscm' };
+        return { uv: uv, anchors: anchors, flippedFaceCount: countFlippedFaces(uv, faces), timeMs: result.time_ms || 0, method: 'lscm', pinInfo: anchors[0] + " & " + anchors[1] };
       }
 
       // ==================== WASM 驱动的 BD-LSCM 求解 ====================
 
       async function solveBDLSCMAsync(meshData, onProgress) {
+        const repair = repairMeshForSolver(meshData);
+        if (repair.edgeSplits > 0 || repair.vertexSplits > 0) {
+          meshData = repair.meshData;
+          currentMeshData = meshData;
+          currentCustomAnchors = null;
+          setStatus("已修复非流形结构，继续执行 BD-LSCM...", "#ffd38a");
+        }
         const vertices = meshData.positions;
         const faces = meshData.faces;
         if (vertices.length < 3 || faces.length < 1) {
@@ -1029,7 +1211,7 @@
 
         if (onProgress) onProgress(0, faces.length);
 
-        const anchors = currentCustomAnchors || chooseAnchorPair(vertices);
+        const anchors = getValidatedAnchors(vertices);
 
         const flatPositions = new Float64Array(vertices.length * 3);
         for (let i = 0; i < vertices.length; i++) {
@@ -1072,6 +1254,9 @@
             if (ret !== 0) throw new Error("WASM solve_bd_lscm 返回错误码: " + ret);
 
             const uvSize = wasmInstance.ccall('get_bd_uv_result_size', 'number', [], []);
+            if (uvSize !== vertices.length * 2) {
+              throw new Error("UV 结果长度异常: " + uvSize + "，期望 " + (vertices.length * 2));
+            }
             const uvPtr = wasmInstance.ccall('get_bd_uv_result', 'number', [], []);
 
             const uvs = [];
@@ -1623,7 +1808,7 @@
         const V = new Array(m + 1);
         for (let i = 0; i <= m; i++) V[i] = new Float64Array(n);
         const H = [];
-        for (let i = 0; i < m; i++) H[i] = new Float64Array(m);
+        for (let i = 0; i <= m; i++) H[i] = new Float64Array(m);
 
         let total = 0;
         while (total < maxIter) {
@@ -1775,6 +1960,122 @@
           isBnd[boundaryEdges[e][1]] = true;
         }
         return { boundaryEdges: boundaryEdges, isBnd: isBnd };
+      }
+
+      function _buildBoundaryLoops(boundaryEdges) {
+        const adj = new Map();
+        function add(a, b) {
+          if (!adj.has(a)) adj.set(a, []);
+          adj.get(a).push(b);
+        }
+        for (let e = 0; e < boundaryEdges.length; e++) {
+          const a = boundaryEdges[e][0], b = boundaryEdges[e][1];
+          add(a, b); add(b, a);
+        }
+        const usedEdges = new Set();
+        function ekey(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
+        const loops = [];
+        adj.forEach(function(nei, start) {
+          for (let s = 0; s < nei.length; s++) {
+            const firstNext = nei[s];
+            if (usedEdges.has(ekey(start, firstNext))) continue;
+            const loop = [start];
+            let prev = start, cur = firstNext;
+            usedEdges.add(ekey(prev, cur));
+            while (cur !== start) {
+              loop.push(cur);
+              const ns = adj.get(cur) || [];
+              let next = -1;
+              for (let i = 0; i < ns.length; i++) {
+                if (ns[i] !== prev && !usedEdges.has(ekey(cur, ns[i]))) { next = ns[i]; break; }
+              }
+              if (next < 0) {
+                for (let i = 0; i < ns.length; i++) {
+                  if (ns[i] !== prev) { next = ns[i]; break; }
+                }
+              }
+              if (next < 0 || usedEdges.has(ekey(cur, next))) break;
+              prev = cur;
+              cur = next;
+              usedEdges.add(ekey(prev, cur));
+            }
+            if (loop.length >= 3 && cur === start) loops.push(loop);
+          }
+        });
+        loops.sort(function(a, b) { return b.length - a.length; });
+        return loops;
+      }
+
+      function _mapBoundaryLoop(vertices, loop, boundaryType) {
+        const nb = loop.length;
+        const lens = new Float64Array(nb);
+        let total = 0;
+        for (let i = 0; i < nb; i++) {
+          const a = vertices[loop[i]], b = vertices[loop[(i + 1) % nb]];
+          const len = edgeLen(a, b);
+          lens[i] = len; total += len;
+        }
+        total = total || 1;
+        const uv = new Map();
+        let acc = 0;
+        for (let i = 0; i < nb; i++) {
+          const t = acc / total;
+          let u, v;
+          if (boundaryType === 'square') {
+            const q = t * 4;
+            if (q < 1) { u = q; v = 0; }
+            else if (q < 2) { u = 1; v = q - 1; }
+            else if (q < 3) { u = 3 - q; v = 1; }
+            else { u = 0; v = 4 - q; }
+          } else {
+            const a = 2 * Math.PI * t;
+            u = 0.5 + 0.5 * Math.cos(a);
+            v = 0.5 + 0.5 * Math.sin(a);
+          }
+          uv.set(loop[i], [u, v]);
+          acc += lens[i];
+        }
+        return uv;
+      }
+
+      function discreteConformalParameterizationJs(vertices, faces, boundaryType) {
+        const n = vertices.length;
+        const bd = _buildBoundaryData(faces, n);
+        if (bd.boundaryEdges.length === 0) {
+          throw new Error("DCP 需要带边界的网格；封闭曲面请先切开。");
+        }
+        const loops = _buildBoundaryLoops(bd.boundaryEdges);
+        if (loops.length !== 1) {
+          throw new Error("DCP 当前实现需要单一边界环，检测到 " + loops.length + " 个边界环。");
+        }
+        const boundaryUv = _mapBoundaryLoop(vertices, loops[0], boundaryType);
+        const rowsL = _cotanLaplacianTriplets(vertices, faces);
+        const A = new Array(n);
+        const bu = new Float64Array(n), bv = new Float64Array(n);
+        for (let i = 0; i < n; i++) {
+          if (boundaryUv.has(i)) {
+            A[i] = [{ j: i, v: 1 }];
+            bu[i] = boundaryUv.get(i)[0];
+            bv[i] = boundaryUv.get(i)[1];
+          } else {
+            A[i] = rowsL[i].slice();
+          }
+        }
+        function applyA(x, out) {
+          for (let i = 0; i < n; i++) {
+            let s = 0;
+            const ri = A[i];
+            for (let k = 0; k < ri.length; k++) s += ri[k].v * x[ri[k].j];
+            out[i] = s;
+          }
+        }
+        const maxIter = Math.min(1800, Math.max(250, n));
+        const restart = Math.min(80, n);
+        const u = _gmresSolve(applyA, bu, 1e-9, maxIter, restart);
+        const v = _gmresSolve(applyA, bv, 1e-9, maxIter, restart);
+        const uv = new Array(n);
+        for (let i = 0; i < n; i++) uv[i] = [u[i], v[i]];
+        return _normalizeUvBox(uv);
       }
 
       /** libigl::vector_area_matrix：仅边界边贡献 */
@@ -2353,6 +2654,24 @@
         };
       }
 
+      async function solveDCPAsync(meshData, onProgress) {
+        const vertices = meshData.positions, faces = meshData.faces;
+        if (onProgress) onProgress(0, 1);
+        const t0 = performance.now();
+        const boundaryType = getTutteBoundary();
+        const uv = discreteConformalParameterizationJs(vertices, faces, boundaryType);
+        const timeMs = performance.now() - t0;
+        if (onProgress) onProgress(1, 1);
+        return {
+          uv: uv,
+          anchors: chooseAnchorPair(vertices),
+          flippedFaceCount: countFlippedFaces(uv, faces),
+          timeMs: timeMs,
+          method: 'dcp',
+          boundary: boundaryType === 'square' ? '方形边界' : '圆形边界'
+        };
+      }
+
       async function solveLinABFAsync(meshData, onProgress) {
         const vertices = meshData.positions, faces = meshData.faces;
         if (onProgress) onProgress(0, 2);
@@ -2501,6 +2820,9 @@
         const vertices = currentMeshData.positions;
         const currentAnchors = currentCustomAnchors || chooseAnchorPair(vertices);
         const newAnchors = chooseAlternativeAnchorPair(vertices, currentAnchors);
+        const bdCheckbox = document.getElementById('bd-chk-lscm');
+        const disabledBD = !!(bdCheckbox && bdCheckbox.checked);
+        if (disabledBD) bdCheckbox.checked = false;
 
         currentCustomAnchors = newAnchors;
         updateModelPinPoints(newAnchors);
@@ -2509,6 +2831,7 @@
         setStatus(
           "已更换 pin 点: " + newAnchors[0] + " & " + newAnchors[1] +
           "（原: " + currentAnchors[0] + " & " + currentAnchors[1] + "），点击展开!" +
+          (disabledBD ? "（已关闭 BD，以使用新的 pin 约束）" : "") +
           " / " + srcLabel,
           "#89f0b6"
         );
@@ -2889,7 +3212,9 @@
           if (radioDistortion) radioDistortion.checked = false;
 
           setStatus("正在提取三角网格...");
-          const meshData = collectMeshData(root);
+          let meshData = collectMeshData(root);
+          const repair = repairMeshForSolver(meshData);
+          meshData = repair.meshData;
           currentCustomAnchors = null;  // 加载新模型时重置自定义 pin 点
           const anchors = chooseAnchorPair(meshData.positions);
 
@@ -2919,9 +3244,12 @@
           const faceType = isQuadMesh ? "四边面" : "三角形";
 
           const faceCount = currentRawFaces ? currentRawFaces.length : meshData.faces.length;
+          const repairNote = (repair.edgeSplits > 0 || repair.vertexSplits > 0)
+            ? " / 已修复非流形结构"
+            : "";
           setStatus(
             "3D 预览: " + getCurrentSourceLabel() + " / " + meshData.positions.length + " 顶点 / " +
-            faceCount + " " + faceType + "，点击「开始展开」执行 UV",
+            faceCount + " " + faceType + repairNote + "，点击「开始展开」执行 UV",
             "#89f0b6"
           );
         } catch (error) {
@@ -2949,6 +3277,7 @@
         if (bd) methodLabel = 'BD-LSCM (C=' + C.toFixed(1) + ')';
         else if (method === 'lscm') methodLabel = 'LSCM';
         else if (method === 'tutte') methodLabel = 'Tutte (' + (getTutteBoundary() === 'circle' ? '圆' : '方') + ')';
+        else if (method === 'dcp') methodLabel = 'DCP (' + (getTutteBoundary() === 'circle' ? '圆' : '方') + ')';
         else if (method === 'arap') methodLabel = 'ARAP (iter=' + getARAPIter() + ')';
         else if (method === 'cetm') methodLabel = 'CETM (共形因子)';
         else if (method === 'ricci') methodLabel = 'Ricci 流';
@@ -2983,6 +3312,10 @@
             unwrapResult = (getTutteBoundary() === 'circle')
               ? await solveTutteCircleAsync(currentMeshData, function() {})
               : await solveTutteSquareAsync(currentMeshData, function() {});
+          } else if (method === 'dcp') {
+            unwrapResult = await solveDCPAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
           } else if (method === 'arap') {
             unwrapResult = await solveARAPAsync(currentMeshData, function() {});
           } else if (method === 'cetm') {
@@ -3064,7 +3397,7 @@
           }
 
           // 更新 UV 面板标签
-          const methodNames = { lscm:'LSCM', tutte:'Tutte', arap:'ARAP', cetm:'CETM', ricci:'Ricci', cp:'CirclePat', quadcover:'QuadCover', bff:'BFF', miq:'MIQ', holo:'Holo', scp:'SCP', abfpp:'ABF++', linabf:'linABF' };
+          const methodNames = { lscm:'LSCM', lscm_fallback:'LSCM(ARAP兜底)', tutte:'Tutte', dcp:'DCP', arap:'ARAP', cetm:'CETM', ricci:'Ricci', cp:'CirclePat', quadcover:'QuadCover', bff:'BFF', miq:'MIQ', holo:'Holo', scp:'SCP', abfpp:'ABF++', linabf:'linABF' };
           document.getElementById('uv-panel-label').textContent =
             (methodNames[unwrapResult.method] || unwrapResult.method) + ' UV 网格';
 
@@ -3084,11 +3417,14 @@
           if (unwrapResult.C) details += " / C=" + unwrapResult.C.toFixed(1);
           if (unwrapResult.maxIter) details += " / 迭代=" + unwrapResult.maxIter;
           if (unwrapResult.optScheme) details += " / " + unwrapResult.optScheme;
+          if (unwrapResult.pinInfo) details += " / pin=" + unwrapResult.pinInfo;
+          if (unwrapResult.boundary) details += " / " + unwrapResult.boundary;
+          if (unwrapResult.fallbackCause) details += " / ARAP兜底";
           showTiming(elapsedMs, details, unwrapResult.flippedFaceCount);
 
           const color = unwrapResult.flippedFaceCount === 0 ? "#89f0b6" : "#ffd38a";
           setStatus(
-            methodLabel + " 展开完成，翻转面 " + unwrapResult.flippedFaceCount + " 个",
+            methodLabel + (unwrapResult.fallbackCause ? " 使用 ARAP 兜底完成，翻转面 " : " 展开完成，翻转面 ") + unwrapResult.flippedFaceCount + " 个",
             color
           );
         } catch (error) {
