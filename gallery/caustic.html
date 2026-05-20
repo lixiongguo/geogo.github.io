@@ -225,7 +225,7 @@
   let shark, rock1, rock2, plant;
 
   const sharkLoaded = new Promise(function (resolve) {
-    objLoader.load('assets/gallery/caustic/WhiteShark.obj', function (g) {
+    objLoader.load('/assets/gallery/caustic/WhiteShark.obj', function (g) {
       g = g.children[0].geometry;
       g.computeVertexNormals();
       g.scale(0.12, 0.12, 0.12);
@@ -236,7 +236,7 @@
     });
   });
   const rockLoaded = new Promise(function (resolve) {
-    objLoader.load('assets/gallery/caustic/rock.obj', function (g) {
+    objLoader.load('/assets/gallery/caustic/rock.obj', function (g) {
       g = g.children[0].geometry;
       g.computeVertexNormals();
       rock1 = new THREE.BufferGeometry().copy(g);
@@ -250,7 +250,7 @@
     });
   });
   const plantLoaded = new Promise(function (resolve) {
-    objLoader.load('assets/gallery/caustic/plant.obj', function (g) {
+    objLoader.load('/assets/gallery/caustic/plant.obj', function (g) {
       g = g.children[0].geometry;
       g.computeVertexNormals();
       plant = g;
@@ -263,9 +263,9 @@
 
   const cubetextureloader = new THREE.CubeTextureLoader();
   const skybox = cubetextureloader.load([
-    'assets/gallery/caustic/TropicalSunnyDay_px.jpg', 'assets/gallery/caustic/TropicalSunnyDay_nx.jpg',
-    'assets/gallery/caustic/TropicalSunnyDay_py.jpg', 'assets/gallery/caustic/TropicalSunnyDay_ny.jpg',
-    'assets/gallery/caustic/TropicalSunnyDay_pz.jpg', 'assets/gallery/caustic/TropicalSunnyDay_nz.jpg',
+    '/assets/gallery/caustic/TropicalSunnyDay_px.jpg', '/assets/gallery/caustic/TropicalSunnyDay_nx.jpg',
+    '/assets/gallery/caustic/TropicalSunnyDay_py.jpg', '/assets/gallery/caustic/TropicalSunnyDay_ny.jpg',
+    '/assets/gallery/caustic/TropicalSunnyDay_pz.jpg', '/assets/gallery/caustic/TropicalSunnyDay_nz.jpg',
   ]);
   scene.background = skybox;
 
@@ -279,9 +279,9 @@
       this.target = this._targetA;
 
       this.loaded = Promise.all([
-        loadFile('shaders/simulation/vertex.glsl'),
-        loadFile('shaders/simulation/drop_fragment.glsl'),
-        loadFile('shaders/simulation/update_fragment.glsl'),
+        loadFile('/assets/gallery/caustic/shaders/simulation/vertex.glsl'),
+        loadFile('/assets/gallery/caustic/shaders/simulation/drop_fragment.glsl'),
+        loadFile('/assets/gallery/caustic/shaders/simulation/update_fragment.glsl'),
       ]).then(([vs, dropFs, updateFs]) => {
         this._dropMesh = new THREE.Mesh(this._geometry, new THREE.RawShaderMaterial({
           uniforms: { center: { value: [0, 0] }, radius: { value: 0 }, strength: { value: 0 }, texture: { value: null } },
@@ -317,8 +317,8 @@
     constructor() {
       this.geometry = waterGeometry;
       this.loaded = Promise.all([
-        loadFile('shaders/water/vertex.glsl'),
-        loadFile('shaders/water/fragment.glsl'),
+        loadFile('/assets/gallery/caustic/shaders/water/vertex.glsl'),
+        loadFile('/assets/gallery/caustic/shaders/water/fragment.glsl'),
       ]).then(([vs, fs]) => {
         this.material = new THREE.ShaderMaterial({
           uniforms: { light: { value: light }, water: { value: null }, envMap: { value: null }, skybox: { value: skybox } },
@@ -340,8 +340,8 @@
       this.target = new THREE.WebGLRenderTarget(this.size, this.size, { type: THREE.FloatType });
       this._meshes = [];
       this.loaded = Promise.all([
-        loadFile('shaders/environment_mapping/vertex.glsl'),
-        loadFile('shaders/environment_mapping/fragment.glsl'),
+        loadFile('/assets/gallery/caustic/shaders/environment_mapping/vertex.glsl'),
+        loadFile('/assets/gallery/caustic/shaders/environment_mapping/fragment.glsl'),
       ]).then(([vs, fs]) => {
         this._material = new THREE.ShaderMaterial({ vertexShader: vs, fragmentShader: fs });
       });
@@ -365,8 +365,8 @@
       this.target = new THREE.WebGLRenderTarget(waterSize * 3, waterSize * 3, { type: THREE.FloatType });
       this._waterGeometry = new THREE.PlaneBufferGeometry(2, 2, waterSize, waterSize);
       this.loaded = Promise.all([
-        loadFile('shaders/caustics/water_vertex.glsl'),
-        loadFile('shaders/caustics/water_fragment.glsl'),
+        loadFile('/assets/gallery/caustic/shaders/caustics/water_vertex.glsl'),
+        loadFile('/assets/gallery/caustic/shaders/caustics/water_fragment.glsl'),
       ]).then(([vs, fs]) => {
         const mat = new THREE.ShaderMaterial({
           uniforms: { light: { value: light }, env: { value: null }, water: { value: null }, deltaEnvTexture: { value: null } },
@@ -404,8 +404,8 @@
     constructor() {
       this._meshes = [];
       this.loaded = Promise.all([
-        loadFile('shaders/environment/vertex.glsl'),
-        loadFile('shaders/environment/fragment.glsl'),
+        loadFile('/assets/gallery/caustic/shaders/environment/vertex.glsl'),
+        loadFile('/assets/gallery/caustic/shaders/environment/fragment.glsl'),
       ]).then(([vs, fs]) => {
         this._material = new THREE.ShaderMaterial({
           uniforms: {
@@ -431,8 +431,8 @@
       this._camera = new THREE.OrthographicCamera(0, 1, 1, 0, 0, 1);
       this._geometry = new THREE.PlaneBufferGeometry();
       this.loaded = Promise.all([
-        loadFile('shaders/debug/vertex.glsl'),
-        loadFile('shaders/debug/fragment.glsl'),
+        loadFile('/assets/gallery/caustic/shaders/debug/vertex.glsl'),
+        loadFile('/assets/gallery/caustic/shaders/debug/fragment.glsl'),
       ]).then(([vs, fs]) => {
         this._material = new THREE.RawShaderMaterial({
           uniforms: { texture: { value: null } },
