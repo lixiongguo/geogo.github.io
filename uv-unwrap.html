@@ -3014,10 +3014,20 @@
         currentDistortionMesh = null;
       }
 
+      let currentUvDistortionMesh = null;  // UV 面板上的扭曲显示 mesh
+
+      function clearUvDistortionMesh() {
+        if (currentUvDistortionMesh && currentUvDistortionMesh.parent) {
+          currentUvDistortionMesh.parent.remove(currentUvDistortionMesh);
+        }
+        currentUvDistortionMesh = null;
+      }
+
       async function setDistortionEnabled(enabled) {
         if (!enabled) {
           distortionEnabled = false;
           clearDistortionMesh();
+          clearUvDistortionMesh();
           setModelSolidVisible(true);
           if (currentTexturedMesh && textureEnabled) currentTexturedMesh.visible = true;
           return;
@@ -3093,11 +3103,10 @@
           for (let i=0;i<errors.length;i++) { avgErr += errors[i]; if (errors[i]>maxErr) maxErr=errors[i]; }
           avgErr /= errors.length;
 
-          // 6. build colored mesh (per-vertex colors averaged from adjacent faces)
+          // 6. build colored mesh for 3D model (per-vertex colors averaged from adjacent faces)
           const nV = currentMeshData.positions.length;
           const vCol = new Float32Array(nV * 3);
           const vCount = new Float32Array(nV);
-          const nF = currentMeshData.faces.length;
           let fi = 0;
           for (let i = 0; i < currentMeshData.faces.length; i++) {
             const f = currentMeshData.faces[i];
@@ -3126,15 +3135,33 @@
           geom.computeVertexNormals();
 
           const mat = new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: false, specular: 0x111111, shininess: 10 });
+          clearDistortionMesh();
           currentDistortionMesh = new THREE.Mesh(geom, mat);
           modelScene.add(currentDistortionMesh);
+
+          // 7. build colored mesh for UV panel (flat 2D mesh with same distortion colors)
+          const uvPositions = [];
+          for (let i = 0; i < currentUnwrapUv.length; i++) {
+            uvPositions.push(currentUnwrapUv[i][0], currentUnwrapUv[i][1], 0);
+          }
+          const uvGeom = new THREE.BufferGeometry();
+          uvGeom.setAttribute('position', new THREE.Float32BufferAttribute(uvPositions, 3));
+          // share same color array (per-vertex colors already computed above)
+          uvGeom.setAttribute('color', new THREE.Float32BufferAttribute(vCol, 3));
+          uvGeom.setIndex(indices.slice());  // copy indices
+          uvGeom.computeVertexNormals();
+
+          const uvMat = new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: false, specular: 0x111111, shininess: 10 });
+          clearUvDistortionMesh();
+          currentUvDistortionMesh = new THREE.Mesh(uvGeom, uvMat);
+          uvScene.add(currentUvDistortionMesh);
 
           // hide normal model and checkerboard
           setModelSolidVisible(false);
           if (currentTexturedMesh) currentTexturedMesh.visible = false;
 
           distortionEnabled = true;
-          setStatus('QC 扭曲: avg=' + avgErr.toFixed(4) + '  max=' + maxErr.toFixed(4) + '  (绿=1.0无扭曲, 红>1.5)', '#89f0b6');
+          setStatus('共形扭曲: avg=' + avgErr.toFixed(4) + '  max=' + maxErr.toFixed(4) + '  (绿=1.0无扭曲, 红>1.5)', '#89f0b6');
         } catch (err) {
           console.error('QC error:', err);
           setStatus('扭曲计算失败: ' + err.message, '#ff9d9d');
