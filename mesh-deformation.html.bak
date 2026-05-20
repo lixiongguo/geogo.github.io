@@ -76,6 +76,9 @@
       white-space: nowrap;
     }
     .main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr;
       flex: 1;
       min-height: 0;
     }
@@ -112,8 +115,6 @@
   <div class="toolbar">
     <label>2D 字母:</label>
     <select id="letter-select"></select>
-    <label style="margin-left:4px;">2D 模型:</label>
-    <select id="model-select"></select>
     <button id="add-handle-btn">+ 手柄模式</button>
     <button id="clear-handles-btn">清除手柄</button>
     <button id="confirm-btn">确定选择</button>
@@ -124,10 +125,15 @@
     <span class="status" id="status-text">选择字母开始</span>
   </div>
   <div class="main">
-    <div class="panel" id="main-panel">
+    <div class="panel" id="left-panel">
       <div class="panel-label">2D 模型 — 点击面选中，拖动变形</div>
-      <canvas id="main-canvas"></canvas>
-      <div class="panel-info" id="panel-info"></div>
+      <canvas id="model-canvas"></canvas>
+      <div class="panel-info" id="model-info"></div>
+    </div>
+    <div class="panel" id="right-panel">
+      <div class="panel-label">变形结果 — 也可点击选中、拖动</div>
+      <canvas id="result-canvas"></canvas>
+      <div class="panel-info" id="result-info"></div>
     </div>
   </div>
 </div>
@@ -136,7 +142,6 @@
 (function() {
   // ==================== DOM ====================
   const letterSelect = document.getElementById('letter-select');
-  const modelSelect = document.getElementById('model-select');
   const addHandleBtn = document.getElementById('add-handle-btn');
   const clearHandlesBtn = document.getElementById('clear-handles-btn');
   const confirmBtn = document.getElementById('confirm-btn');
@@ -144,38 +149,64 @@
   const dragBtn = document.getElementById('drag-btn');
   const ruppertBtn = document.getElementById('ruppert-btn');
   const statusText = document.getElementById('status-text');
-  const mainCanvas = document.getElementById('main-canvas');
-  const panelInfo = document.getElementById('panel-info');
+  const modelCanvas = document.getElementById('model-canvas');
+  const resultCanvas = document.getElementById('result-canvas');
+  const modelInfo = document.getElementById('model-info');
+  const resultInfo = document.getElementById('result-info');
 
   // ==================== Three.js 场景 ====================
-  const renderer = new THREE.WebGLRenderer({ canvas: mainCanvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const modelRenderer = new THREE.WebGLRenderer({ canvas: modelCanvas, antialias: true, alpha: true });
+  const resultRenderer = new THREE.WebGLRenderer({ canvas: resultCanvas, antialias: true, alpha: true });
+  modelRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  resultRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x08101d);
+  const modelScene = new THREE.Scene();
+  const resultScene = new THREE.Scene();
+  modelScene.background = new THREE.Color(0x08101d);
+  resultScene.background = new THREE.Color(0x091120);
 
-  const camera = new THREE.OrthographicCamera(-1.2, 1.2, 1.2, -1.2, 0.1, 10);
-  camera.position.set(0, 0, 5);
-  camera.lookAt(0, 0, 0);
+  // 左侧模型相机：2D 正交视图，固定不可旋转
+  const modelCamera = new THREE.OrthographicCamera(-1.2, 1.2, 1.2, -1.2, 0.1, 10);
+  modelCamera.position.set(0, 0, 5);
+  modelCamera.lookAt(0, 0, 0);
+
+  // 右侧结果相机：2D 正交视图，不可旋转
+  const resultCamera = new THREE.OrthographicCamera(-1.2, 1.2, 1.2, -1.2, 0.1, 10);
+  resultCamera.position.set(0, 0, 5);
+  resultCamera.lookAt(0, 0, 0);
 
   // 光照
-  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-  const d = new THREE.DirectionalLight(0xffffff, 0.8);
-  d.position.set(2, 3, 4); scene.add(d);
-  const d2 = new THREE.DirectionalLight(0xffffff, 0.3);
-  d2.position.set(-2, -1, -2); scene.add(d2);
+  const addLights = (scene) => {
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const d = new THREE.DirectionalLight(0xffffff, 0.8);
+    d.position.set(2, 3, 4);
+    scene.add(d);
+    const d2 = new THREE.DirectionalLight(0xffffff, 0.3);
+    d2.position.set(-2, -1, -2);
+    scene.add(d2);
+  };
+  addLights(modelScene);
+  addLights(resultScene);
 
   // ==================== 状态 ====================
   let currentMeshData = null;       // { positions: [[x,y,z],...], faces: [[a,b,c],...] }
-  let currentModelGroup = null;     // 场景模型组
-  let handles = [];                 // [{ faceIndex, indices, restCentroid, currentCentroid }]
-  let handlesConfirmed = false;
-  let handleMode = false;
-  let dragMode = false;
-  let isDragging = false;
-  let draggedHandle = null;
-  let restPositions = null;
-  let deformedPositions = null;
+  let restPositions = null;         // 原始顶点位置 (deep copy)
+
+  // 每窗口独立状态
+  function makePanelState() {
+    return {
+      handles: [],                  // [{ faceIndex, indices, restCentroid, currentCentroid }]
+      handlesConfirmed: false,
+      handleMode: false,
+      dragMode: false,
+      isDragging: false,
+      draggedHandle: null,
+      deformedPositions: null,
+      modelGroup: null
+    };
+  }
+  let L = makePanelState(); // 左侧
+  let R = makePanelState(); // 右侧
 
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
@@ -186,6 +217,17 @@
   }
 
   // ==================== OBJ 模型加载 ====================
+  function loadOBJLetter(letter) {
+    return new Promise((resolve, reject) => {
+      const loader = new THREE.OBJLoader();
+      loader.load('assets/charaters/' + letter + '_2d.obj',
+        (obj) => { resolve(obj); },
+        undefined,
+        () => { reject(new Error('加载失败: ' + letter)); }
+      );
+    });
+  }
+
   function extractMeshData(geometry) {
     // 兼容旧版 Geometry (有 vertices/faces) 和新版 BufferGeometry (有 attributes)
     let positions, faces;
@@ -282,7 +324,7 @@
     const faces = currentMeshData.faces;
 
     // 完全重建模型组（基础网格 + 线框 + 手柄）
-    clearGroup(scene, currentModelGroup);
+    clearGroup(modelScene, currentModelGroup);
     const group = new THREE.Group();
 
     // 基础面
@@ -329,64 +371,67 @@
     }
 
     currentModelGroup = group;
-    scene.add(group);
+    modelScene.add(group);
     handleCountEl.textContent = handles.length + ' 个面手柄';
   }
 
+  // 可视化右侧：镜像左侧模型（使用 deformedPositions 或原始位置）
+  function updateDeformedVisual() {
+    clearGroup(resultScene, currentDeformedGroup);
+    if (!currentMeshData) { currentDeformedGroup = null; return; }
 
+    const positions = deformedPositions || currentMeshData.positions;
+    const faces = currentMeshData.faces;
+    const group = new THREE.Group();
 
-  // ==================== BFS 洪水填充：保持网格连通 ====================
-  /** 构建面 → 邻居面列表的映射（通过共享边连接） */
-  function buildFaceAdjacency(faces) {
-    const adj = new Map(); // faceIndex → [neighborFaceIndex, ...]
-    const edgeMap = new Map(); // edgeKey → [faceIndex, ...]
-
-    for (let fi = 0; fi < faces.length; fi++) {
-      adj.set(fi, []);
+    const geom = new THREE.BufferGeometry();
+    const flatPos = new Float32Array(positions.length * 3);
+    for (let i = 0; i < positions.length; i++) {
+      flatPos[i*3] = positions[i][0];
+      flatPos[i*3+1] = positions[i][1];
+      flatPos[i*3+2] = positions[i][2];
     }
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(flatPos, 3));
+    const flatIdx = new Uint32Array(faces.length * 3);
+    for (let i = 0; i < faces.length; i++) {
+      flatIdx[i*3] = faces[i][0]; flatIdx[i*3+1] = faces[i][1]; flatIdx[i*3+2] = faces[i][2];
+    }
+    geom.setIndex(new THREE.BufferAttribute(flatIdx, 1));
+    geom.computeVertexNormals();
+    group.add(new THREE.Mesh(geom, new THREE.MeshStandardMaterial({
+      color: 0x7fa7ff, roughness: 0.5, metalness: 0.05, side: THREE.DoubleSide
+    })));
 
-    for (let fi = 0; fi < faces.length; fi++) {
-      const [a, b, c] = faces[fi];
-      for (const [u, v] of [[a, b], [b, c], [c, a]]) {
-        const k = edgeKey(u, v);
-        if (!edgeMap.has(k)) edgeMap.set(k, []);
-        edgeMap.get(k).push(fi);
+    // 线框
+    const edgeSet = new Set(); const segs = [];
+    for (let i = 0; i < faces.length; i++) {
+      for (const [u,v] of [[faces[i][0],faces[i][1]],[faces[i][1],faces[i][2]],[faces[i][2],faces[i][0]]]) {
+        const k = u<v ? u+'_'+v : v+'_'+u;
+        if (edgeSet.has(k)) continue; edgeSet.add(k);
+        segs.push(positions[u][0],positions[u][1],positions[u][2],positions[v][0],positions[v][1],positions[v][2]);
       }
     }
+    const wg = new THREE.BufferGeometry();
+    wg.setAttribute('position', new THREE.Float32BufferAttribute(segs, 3));
+    group.add(new THREE.LineSegments(wg, new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent:true, opacity:0.6 })));
 
-    for (const [k, fiList] of edgeMap) {
-      if (fiList.length === 2) {
-        adj.get(fiList[0]).push(fiList[1]);
-        adj.get(fiList[1]).push(fiList[0]);
-      }
+    // 手柄面高亮
+    for (let i = 0; i < handles.length; i++) {
+      const h = handles[i];
+      const [v0,v1,v2] = h.indices;
+      const p0=positions[v0],p1=positions[v1],p2=positions[v2];
+      const fg = new THREE.BufferGeometry();
+      fg.setAttribute('position', new THREE.Float32BufferAttribute([p0[0],p0[1],p0[2],p1[0],p1[1],p1[2],p2[0],p2[1],p2[2]],3));
+      fg.setIndex([0,1,2]);
+      const fm = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ color:0xffd700, transparent:true, opacity:0.35, side:THREE.DoubleSide, depthTest:true, depthWrite:false }));
+      fm.userData = { isHandle: true, handleIndex: i };
+      group.add(fm);
     }
 
-    return adj;
+    currentDeformedGroup = group;
+    resultScene.add(group);
   }
 
-  /** BFS：从 handleFaces 出发，收集所有通过边相连的面的顶点 */
-  function collectConnectedVertices(handleFaceIndices, faces, faceAdjacency) {
-    const visited = new Set();
-    const queue = [...handleFaceIndices];
-    const allVertexIndices = new Set();
-
-    while (queue.length > 0) {
-      const fi = queue.shift();
-      if (visited.has(fi)) continue;
-      visited.add(fi);
-
-      const [v0, v1, v2] = faces[fi];
-      allVertexIndices.add(v0);
-      allVertexIndices.add(v1);
-      allVertexIndices.add(v2);
-
-      for (const nei of faceAdjacency.get(fi) || []) {
-        if (!visited.has(nei)) queue.push(nei);
-      }
-    }
-
-    return allVertexIndices;
-  }
 
   // ==================== 向量工具 ====================
   function cross3(a, b) {
@@ -413,12 +458,12 @@
     };
   }
 
-  mainCanvas.addEventListener('click', (e) => {
+  modelCanvas.addEventListener('click', (e) => {
     if (!handleMode || handlesConfirmed || !currentMeshData || isDragging) return;
 
-    const coords = getCanvasCoords(mainCanvas, e);
+    const coords = getCanvasCoords(modelCanvas, e);
     mouse.set(coords.x, coords.y);
-    raycaster.setFromCamera(mouse, camera);
+    raycaster.setFromCamera(mouse, modelCamera);
 
     // 对当前模型组做射线检测
     if (!currentModelGroup) return;
@@ -457,17 +502,18 @@
       });
     }
     updateHandleVisuals();
-    
+    updateDeformedVisual();
   });
 
-  mainCanvas.addEventListener('mousedown', (e) => {
-    if (!dragMode || !currentModelGroup || handles.length === 0) return;
+  modelCanvas.addEventListener('mousedown', (e) => {
+    if (!currentModelGroup || handles.length === 0) return;
+    if (!handleMode && !dragMode) return;
 
-    const coords = getCanvasCoords(mainCanvas, e);
+    const coords = getCanvasCoords(modelCanvas, e);
     mouse.set(coords.x, coords.y);
-    raycaster.setFromCamera(mouse, camera);
+    raycaster.setFromCamera(mouse, modelCamera);
 
-    // 检测手柄面
+    // 检测手柄球
     const handleMeshes = [];
     currentModelGroup.children.forEach(c => {
       if (c.userData && c.userData.isHandle) handleMeshes.push(c);
@@ -475,20 +521,22 @@
     const intersects = raycaster.intersectObjects(handleMeshes, false);
     if (intersects.length > 0) {
       isDragging = true;
-      draggedHandle = handles[intersects[0].object.userData.handleIndex];
+      const idx = intersects[0].object.userData.handleIndex;
+      draggedHandle = handles[idx];
       updateHandleVisuals();
     }
   });
 
-  mainCanvas.addEventListener('mousemove', (e) => {
+  modelCanvas.addEventListener('mousemove', (e) => {
     if (!isDragging || !draggedHandle || !currentModelGroup) return;
 
-    const coords = getCanvasCoords(mainCanvas, e);
+    const coords = getCanvasCoords(modelCanvas, e);
     mouse.set(coords.x, coords.y);
-    raycaster.setFromCamera(mouse, camera);
+    raycaster.setFromCamera(mouse, modelCamera);
 
+    // 在垂直于相机的平面上移动
     const camDir = new THREE.Vector3();
-    camera.getWorldDirection(camDir);
+    modelCamera.getWorldDirection(camDir);
     const plane = new THREE.Plane(new THREE.Vector3(camDir.x, camDir.y, camDir.z).negate(), 0);
     const intersect = new THREE.Vector3();
     raycaster.ray.intersectPlane(plane, intersect);
@@ -502,26 +550,29 @@
         deformedPositions = restPositions.map(p => [p[0], p[1], p[2]]);
       }
 
-      // BFS 洪水填充：收集所有选中手柄面的连通区域顶点，整体移动
-      const faceAdj = buildFaceAdjacency(currentMeshData.faces);
-      const handleFaceIndices = handles.map(h => h.faceIndex);
-      const connectedVerts = collectConnectedVertices(handleFaceIndices, currentMeshData.faces, faceAdj);
-
-      // 更新所有连通顶点
-      for (const vi of connectedVerts) {
-        deformedPositions[vi][0] += delta[0];
-        deformedPositions[vi][1] += delta[1];
-        deformedPositions[vi][2] += delta[2];
+      if (handlesConfirmed) {
+        // 整体移动：所有手柄同步平移
+        for (const h of handles) {
+          h.currentCentroid[0] += delta[0];
+          h.currentCentroid[1] += delta[1];
+          h.currentCentroid[2] += delta[2];
+          for (const vi of h.indices) {
+            deformedPositions[vi][0] += delta[0];
+            deformedPositions[vi][1] += delta[1];
+            deformedPositions[vi][2] += delta[2];
+          }
+        }
+      } else {
+        // 独立移动
+        draggedHandle.currentCentroid = newC;
+        for (const vi of draggedHandle.indices) {
+          deformedPositions[vi][0] += delta[0];
+          deformedPositions[vi][1] += delta[1];
+          deformedPositions[vi][2] += delta[2];
+        }
       }
-
-      // 更新所有手柄重心
-      for (const h of handles) {
-        h.currentCentroid[0] += delta[0];
-        h.currentCentroid[1] += delta[1];
-        h.currentCentroid[2] += delta[2];
-      }
-
       updateHandleVisuals();
+      updateDeformedVisual();
     }
   });
 
@@ -530,8 +581,88 @@
       isDragging = false;
       draggedHandle = null;
       updateHandleVisuals();
-      
+      updateDeformedVisual();
     }
+  });
+
+  // ==================== 右侧窗口交互 ====================
+  const resultRaycaster = new THREE.Raycaster();
+  const resultMouse = new THREE.Vector2();
+
+  function getResultGroup() { return currentDeformedGroup; }
+
+  resultCanvas.addEventListener('click', (e) => {
+    if (!handleMode || handlesConfirmed || !currentMeshData || isDragging) return;
+    const coords = getCanvasCoords(resultCanvas, e);
+    resultMouse.set(coords.x, coords.y);
+    resultRaycaster.setFromCamera(resultMouse, resultCamera);
+
+    const meshes = [];
+    if (currentDeformedGroup) {
+      currentDeformedGroup.children.forEach(c => {
+        if (c.isMesh && !c.userData.isHandle) meshes.push(c);
+      });
+    }
+    if (meshes.length === 0) return;
+    const intersects = resultRaycaster.intersectObjects(meshes, false);
+    if (intersects.length === 0) return;
+
+    const hit = intersects[0];
+    const faceIdx = hit.faceIndex;
+    if (faceIdx === undefined || faceIdx >= currentMeshData.faces.length) return;
+    const face = currentMeshData.faces[faceIdx];
+    const [v0, v1, v2] = face;
+
+    const positions = deformedPositions || currentMeshData.positions;
+    const cx = (positions[v0][0] + positions[v1][0] + positions[v2][0]) / 3;
+    const cy = (positions[v0][1] + positions[v1][1] + positions[v2][1]) / 3;
+    const cz = (positions[v0][2] + positions[v1][2] + positions[v2][2]) / 3;
+
+    const existing = handles.findIndex(h => h.faceIndex === faceIdx);
+    if (existing >= 0) {
+      handles.splice(existing, 1);
+    } else {
+      handles.push({
+        faceIndex: faceIdx,
+        indices: [v0, v1, v2],
+        restCentroid: [cx, cy, cz],
+        currentCentroid: [cx, cy, cz]
+      });
+    }
+    updateHandleVisuals();
+    updateDeformedVisual();
+  });
+
+  resultCanvas.addEventListener('mousedown', (e) => {
+    if (!currentMeshData || handles.length === 0) return;
+    if (!handleMode && !dragMode) return;
+
+    const coords = getCanvasCoords(resultCanvas, e);
+    resultMouse.set(coords.x, coords.y);
+    resultRaycaster.setFromCamera(resultMouse, resultCamera);
+
+    const handleMeshes = [];
+    if (currentDeformedGroup) {
+      currentDeformedGroup.children.forEach(c => {
+        if (c.userData && c.userData.isHandle) handleMeshes.push(c);
+      });
+    }
+    const intersects = resultRaycaster.intersectObjects(handleMeshes, false);
+    if (intersects.length > 0) {
+      isDragging = true;
+      const idx = intersects[0].object.userData.handleIndex;
+      draggedHandle = handles[idx];
+      updateHandleVisuals();
+      updateDeformedVisual();
+    }
+  });
+
+  resultCanvas.addEventListener('mousemove', (e) => {
+    if (!isDragging || !draggedHandle) return;
+
+    // reuse existing delta calculation from model mousemove
+    // the actual delta is already applied; just update visuals
+    updateDeformedVisual();
   });
 
   // ==================== 按钮事件 ====================
@@ -545,7 +676,7 @@
       addHandleBtn.textContent = '✓ 手柄模式';
       addHandleBtn.style.background = '#1a2848';
       addHandleBtn.style.borderColor = '#ff6b35';
-      setStatus('点击模型面放置/移除手柄（每个面3个控制点），选好后点"开始拖动"', '#ffb446');
+      setStatus('点击模型放置/移除手柄，拖拽手柄调整位置', '#ffb446');
     } else {
       addHandleBtn.textContent = '+ 手柄模式';
       addHandleBtn.style.background = '';
@@ -578,7 +709,7 @@
       addHandleBtn.textContent = '+ 手柄模式';
       addHandleBtn.style.background = '';
       addHandleBtn.style.borderColor = '';
-      setStatus('手柄已组合为整体，点"开始拖动"后整体移动', '#89f0b6');
+      setStatus('手柄已组合为整体，拖拽任一▼整体移动', '#89f0b6');
     } else {
       confirmBtn.textContent = '确定选择';
       confirmBtn.style.background = '';
@@ -601,7 +732,7 @@
       addHandleBtn.textContent = '+ 手柄模式';
       addHandleBtn.style.background = '';
       addHandleBtn.style.borderColor = '';
-      setStatus('拖动模式：拖拽手柄▼变形', '#89f0b6');
+      setStatus('拖动模式：拖拽手柄▼变形（左右窗口均可操作）', '#89f0b6');
     } else {
       dragBtn.textContent = '开始拖动';
       dragBtn.style.background = '';
@@ -867,7 +998,7 @@
         const refined = ruppertRefine(meshData.positions, meshData.faces, 25, 200);
 
         // 显示在右侧
-        clearGroup(scene, currentModelGroup);
+        clearGroup(resultScene, currentDeformedGroup);
 
         const positions = refined.positions;
         const faces = refined.faces;
@@ -914,10 +1045,10 @@
         group.add(new THREE.LineSegments(wireGeom,
           new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent: true, opacity: 0.6 })));
 
-        currentModelGroup = group;
-        scene.add(group);
+        currentDeformedGroup = group;
+        resultScene.add(group);
 
-        panelInfo.textContent = 'Ruppert: ' + positions.length + ' 顶点 | ' + faces.length + ' 面 (最小角 ≥ 25°)';
+        resultInfo.textContent = 'Ruppert: ' + positions.length + ' 顶点 | ' + faces.length + ' 面 (最小角 ≥ 25°)';
         setStatus('Ruppert 三角化完成', '#89f0b6');
       } catch (err) {
         console.error(err);
@@ -926,23 +1057,25 @@
     }, 10);
   });
 
-  // ==================== 模型加载 ====================
-  async function loadMesh(path, label) {
+  // ==================== 字母选择 ====================
+  async function loadLetter(letter) {
     setStatus('加载中...', '#ffd38a');
     try {
-      const obj = await new Promise((resolve, reject) => {
-        const loader = new THREE.OBJLoader();
-        loader.load(path, resolve, undefined, () => reject(new Error('加载失败')));
-      });
+      const obj = await loadOBJLetter(letter);
 
+      // 从 OBJ 对象提取所有 mesh 的几何数据
       const allPos = [];
       const allFaces = [];
       let vertOffset = 0;
       obj.traverse(function(child) {
         if (!child.isMesh || !child.geometry) return;
         const data = extractMeshData(child.geometry);
-        for (const p of data.positions) allPos.push([p[0], p[1], p[2]]);
-        for (const f of data.faces) allFaces.push([f[0]+vertOffset, f[1]+vertOffset, f[2]+vertOffset]);
+        for (const p of data.positions) {
+          allPos.push([p[0], p[1], p[2]]);
+        }
+        for (const f of data.faces) {
+          allFaces.push([f[0] + vertOffset, f[1] + vertOffset, f[2] + vertOffset]);
+        }
         vertOffset += data.positions.length;
       });
 
@@ -958,35 +1091,45 @@
       confirmBtn.style.background = '';
       confirmBtn.style.borderColor = '';
 
-      clearGroup(scene, currentModelGroup);
+      // 左场景
+      clearGroup(modelScene, currentModelGroup);
       currentModelGroup = buildModelVisual(meshData.positions, meshData.faces);
-      scene.add(currentModelGroup);
+      modelScene.add(currentModelGroup);
 
-      dragMode = false;
-      dragBtn.textContent = '开始拖动';
-      dragBtn.style.background = '';
+      // 右侧镜像显示
+      updateDeformedVisual();
 
+      // 正交相机适配：计算包围盒
       const box = new THREE.Box3();
       for (const p of meshData.positions) box.expandByPoint(new THREE.Vector3(p[0], p[1], p[2]));
-      const maxDim = Math.max(box.getSize(new THREE.Vector3()).x, box.getSize(new THREE.Vector3()).y, 0.5) * 0.65;
-      camera.left = -maxDim;
-      camera.right = maxDim;
-      camera.top = maxDim;
-      camera.bottom = -maxDim;
-      camera.updateProjectionMatrix();
-      camera.position.set(0, 0, 5);
-      camera.lookAt(0, 0, 0);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, 0.5) * 0.65;
+      modelCamera.left = -maxDim;
+      modelCamera.right = maxDim;
+      modelCamera.top = maxDim;
+      modelCamera.bottom = -maxDim;
+      modelCamera.updateProjectionMatrix();
 
-      handleCountEl.textContent = '0 个面手柄';
-      panelInfo.textContent = label + ' | ' + meshData.positions.length + ' 顶点 | ' + meshData.faces.length + ' 面';
-      setStatus('已加载 ' + label, '#89f0b6');
+      // 右侧相机适配（正交）
+      resultCamera.left = -maxDim;
+      resultCamera.right = maxDim;
+      resultCamera.top = maxDim;
+      resultCamera.bottom = -maxDim;
+      resultCamera.updateProjectionMatrix();
+      resultCamera.position.set(0, 0, 5);
+      resultCamera.lookAt(0, 0, 0);
+
+      updateHandleVisuals();
+      modelInfo.textContent = '字母 ' + letter + ' | ' + meshData.positions.length + ' 顶点 | ' + meshData.faces.length + ' 面';
+      resultInfo.textContent = '';
+      setStatus('已加载字母 ' + letter, '#89f0b6');
     } catch (err) {
       console.error(err);
       setStatus('加载失败: ' + err.message, '#ff9d9d');
     }
   }
 
-  // ==================== 字母选择 ====================
+  // 填充字母选择器
   for (let i = 65; i <= 90; i++) {
     const letter = String.fromCharCode(i);
     const opt = document.createElement('option');
@@ -994,52 +1137,44 @@
     opt.textContent = letter;
     letterSelect.appendChild(opt);
   }
-  letterSelect.addEventListener('change', () => {
-    const letter = letterSelect.value;
-    modelSelect.value = '';
-    loadMesh('assets/charaters/' + letter + '_2d.obj', '字母 ' + letter);
-  });
-
-  // ==================== 2D 模型选择 ====================
-  const d2Models = [
-    { file: 'alligator.obj', label: 'alligator' }
-  ];
-  for (const m of d2Models) {
-    const opt = document.createElement('option');
-    opt.value = m.file;
-    opt.textContent = m.label;
-    modelSelect.appendChild(opt);
-  }
-  modelSelect.addEventListener('change', () => {
-    if (!modelSelect.value) return;
-    letterSelect.value = '';
-    loadMesh('assets/2dmodels/' + modelSelect.value, modelSelect.options[modelSelect.selectedIndex].textContent);
-  });
+  letterSelect.addEventListener('change', () => loadLetter(letterSelect.value));
 
   // ==================== 响应式 ====================
   function resize() {
-    const rect = document.getElementById('main-panel').getBoundingClientRect();
-    renderer.setSize(rect.width, rect.height, false);
-    const a = rect.width / Math.max(rect.height, 1);
-    const curHalf = (camera.right - camera.left) / 2;
-    camera.left = -curHalf * a;
-    camera.right = curHalf * a;
-    camera.top = curHalf;
-    camera.bottom = -curHalf;
-    camera.updateProjectionMatrix();
+    const leftRect = document.getElementById('left-panel').getBoundingClientRect();
+    const rightRect = document.getElementById('right-panel').getBoundingClientRect();
+
+    modelRenderer.setSize(leftRect.width, leftRect.height, false);
+    const a = leftRect.width / Math.max(leftRect.height, 1);
+    const curHalf = (modelCamera.right - modelCamera.left) / 2;
+    modelCamera.left = -curHalf * a;
+    modelCamera.right = curHalf * a;
+    modelCamera.top = curHalf;
+    modelCamera.bottom = -curHalf;
+    modelCamera.updateProjectionMatrix();
+
+    resultRenderer.setSize(rightRect.width, rightRect.height, false);
+    const ra = rightRect.width / Math.max(rightRect.height, 1);
+    const rCurHalf = (resultCamera.right - resultCamera.left) / 2;
+    resultCamera.left = -rCurHalf * ra;
+    resultCamera.right = rCurHalf * ra;
+    resultCamera.top = rCurHalf;
+    resultCamera.bottom = -rCurHalf;
+    resultCamera.updateProjectionMatrix();
   }
   window.addEventListener('resize', resize);
 
   // ==================== 渲染循环 ====================
   function animate() {
     requestAnimationFrame(animate);
-    renderer.render(scene, camera);
+    modelRenderer.render(modelScene, modelCamera);
+    resultRenderer.render(resultScene, resultCamera);
   }
 
   // ==================== 初始化 ====================
   resize();
   letterSelect.value = 'A';
-  loadMesh('assets/charaters/A_2d.obj', '字母 A');
+  loadLetter('A');
   animate();
 })();
 </script>
