@@ -1,14 +1,18 @@
+- slug: littlest-tokyo
+  title: 小小东京 Littlest Tokyo
+  description: 基于 Three.js 构建的赛博朋克风格东京城市景观。
+  thumbnail: /assets/gallery/littlest-tokyo/thumb.svg
+  cover: /assets/gallery/littlest-tokyo/cover.svg
+  detail_url: /gallery/little-tokyo.html
+
+- slug: bookshelf
+  title: 书架
+  description: 个人藏书展示，以精美的书架布局呈现阅读收藏。
+  detail_url: /gallery/bookshelf.html
+
 - slug: water-caustics
   title: Water Caustics
   description: 水体焦散由波面折射与反射共同形成，效果受 Fresnel 权重影响。
   thumbnail: /assets/gallery/water-caustics/thumb.svg
   cover: /assets/gallery/water-caustics/cover.svg
-  detail_url: /gallery/water-caustics/
-  demo_url: /gallery.html?view=caustics
-
-- slug: suiboku-ca
-  title: Suiboku Cellular Automata
-  description: 基于元胞自动机的水墨扩散与洇墨演化效果。
-  thumbnail: /assets/gallery/suiboku-ca/thumb.svg
-  cover: /assets/gallery/suiboku-ca/cover.svg
-  detail_url: /gallery/suiboku-ca/
+  detail_url: /gallery/caustic.html
