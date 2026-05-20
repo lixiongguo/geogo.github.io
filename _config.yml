@@ -12,6 +12,11 @@ category_dir: category
 keep_files:
   - assets/wasm/*.wasm
   - assets/wasm/*.js
+
+# 排除不需要 Jekyll 处理的目录
+exclude:
+  - cpp/
+  - docs/cpp/
 plugins:
   - jekyll-feed
   - jekyll-paginate-v2
