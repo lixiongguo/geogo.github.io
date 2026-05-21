@@ -47,9 +47,6 @@
   #auto-cone-btn{padding:9px 12px;background:#1b263d;border:1px solid rgba(140,170,255,.35);color:#c8d6ff;font-size:13px}
   #cone-info{display:none;font-size:11px;color:#c9a0e0;margin-left:6px}
   .cone-angle{width:50px;padding:2px 4px;border-radius:4px;text-align:center;font-size:11px;border:1px solid rgba(200,120,220,.3);background:#0d1528;color:#e0c0ff}
-  .tree-btn{padding:9px 14px;background:#1a2e1a;border:1px solid rgba(100,220,120,.35);color:#a0f0b0;font-size:13px}
-  .tree-btn:disabled{opacity:.35;cursor:not-allowed;background:#0d180d;color:#506050}
-  #tc-info{display:none;font-size:11px;color:#a0e0c0;margin-left:6px}
 </style>
 </head>
 <body>
@@ -77,11 +74,6 @@
         </div>
       </fieldset>
 
-      <button id="tree-btn-step1" class="tree-btn" title="Step 1: BFS 构建生成树">🌳 生成树</button>
-      <button id="tree-btn-step2" class="tree-btn" title="Step 2: 对偶图上构建余树" disabled>🌲 余树</button>
-      <button id="tree-btn-step3" class="tree-btn" title="Step 3: 非树非余树边 = 同调基底" disabled>🪓 同调基底</button>
-      <span id="tc-info">0 条割边</span>
-
       <button id="reload-btn">展开!</button>
 
       <fieldset id="texture-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:6px 10px;margin:0;display:flex;gap:12px;align-items:center;">
@@ -102,7 +94,7 @@
     <section class="panel">
       <div class="panel-header"><span>3D 模型</span><span>拖拽旋转 / 滚轮缩放</span></div>
       <div class="canvas-wrap"><canvas id="model-canvas"></canvas></div>
-      <div class="footer-note">左侧显示原始三角网格。<span style="color:#ddbb22;font-weight:700;">金色</span>生成树 → <span style="color:#22ccdd;font-weight:700;">青色</span>余树 → <span style="color:#60e060;font-weight:700;">绿色</span>同调基底割边。</div>
+      <div class="footer-note">左侧显示原始三角网格，拖拽旋转 / 滚轮缩放。</div>
     </section>
     <section class="panel">
       <div class="panel-header"><span id="uv-panel-label">UV 网格</span><span>边界归一化到 0..1</span></div>
@@ -158,7 +150,6 @@
   let currentMeshData=null,currentUnwrapUv=null;
   let textureEnabled=false,currentTexturedMesh=null,checkerTexture=null;
   let distortionEnabled=false,currentDistortionMesh=null,taInst=null,taReady=false,taFailed=false;
-  let homologyEdges=[],tcData=null,tcTree=null,tcCotree=null,tcDisplayGroup=null;
 
   function setStatus(msg,c){statusText.textContent=msg;statusText.style.color=c||"#8cc4ff"}
 
@@ -507,153 +498,6 @@
     return dirs;
   }
 
-  // ============ Tree-Cotree 算法（三步分步执行） ============
-  function resetTcState(){
-    tcData=null;tcTree=null;tcCotree=null;
-    homologyEdges=[];updateTcInfo();
-    clearTcDisplay();
-    document.getElementById('tree-btn-step1').disabled=false;
-    document.getElementById('tree-btn-step2').disabled=true;
-    document.getElementById('tree-btn-step3').disabled=true;
-  }
-
-  function buildTcEdgeData(meshData){
-    if(tcData)return tcData;
-    const V=meshData.positions.length,F=meshData.faces;
-    const edgeMap=new Map();
-    for(let fi=0;fi<F.length;fi++){
-      const f=F[fi];
-      for(const uv of [[f[0],f[1]],[f[1],f[2]],[f[2],f[0]]]){
-        const u=uv[0],v=uv[1];
-        const key=u<v?u+"_"+v:v+"_"+u;
-        if(!edgeMap.has(key)){edgeMap.set(key,{a:Math.min(u,v),b:Math.max(u,v),faces:[]});}
-        edgeMap.get(key).faces.push(fi);
-      }
-    }
-    const edges=Array.from(edgeMap.values());
-    const edgeIdx=new Map();edges.forEach((e,i)=>edgeIdx.set(e.a+"_"+e.b,i));
-    const adj=Array.from({length:V},()=>[]);
-    for(const e of edges){
-      const ei=edgeIdx.get(e.a+"_"+e.b);
-      adj[e.a].push({to:e.b,edgeIdx:ei});adj[e.b].push({to:e.a,edgeIdx:ei});
-    }
-    tcData={edges,edgeIdx,adj,nF:F.length};
-    return tcData;
-  }
-
-  function step1SpanningTree(){
-    if(!currentMeshData)return;
-    const d=buildTcEdgeData(currentMeshData);
-    const V=currentMeshData.positions.length;
-    const inTree=new Array(d.edges.length).fill(false);
-    const visited=new Array(V).fill(false);
-    const queue=[0];visited[0]=true;
-    while(queue.length>0){
-      const u=queue.shift();
-      for(const nb of d.adj[u]){
-        if(!visited[nb.to]){visited[nb.to]=true;queue.push(nb.to);inTree[nb.edgeIdx]=true;}
-      }
-    }
-    tcTree=inTree;tcCotree=null;
-    homologyEdges=[];updateTcInfo();
-    displayTreeEdges(d.edges,inTree,0xddbb22);
-    document.getElementById('tree-btn-step1').disabled=true;
-    document.getElementById('tree-btn-step2').disabled=false;
-    document.getElementById('tree-btn-step3').disabled=true;
-    setStatus("Step1 生成树: "+inTree.filter(Boolean).length+" 条金色边 (BFS)","#89f0b6");
-  }
-
-  function step2Cotree(){
-    if(!currentMeshData||!tcTree)return;
-    const d=buildTcEdgeData(currentMeshData);
-    const dualAdj=Array.from({length:d.nF},()=>[]);
-    for(let ei=0;ei<d.edges.length;ei++){
-      if(tcTree[ei])continue;
-      const e=d.edges[ei];
-      if(e.faces.length===2){
-        dualAdj[e.faces[0]].push({to:e.faces[1],edgeIdx:ei});
-        dualAdj[e.faces[1]].push({to:e.faces[0],edgeIdx:ei});
-      }
-    }
-    const inCotree=new Array(d.edges.length).fill(false);
-    const dualVisited=new Array(d.nF).fill(false);
-    let startFace=-1;
-    for(let fi=0;fi<d.nF;fi++){if(!dualVisited[fi]&&dualAdj[fi].length>0){startFace=fi;break}}
-    if(startFace<0){for(let fi=0;fi<d.nF;fi++)if(!dualVisited[fi]){startFace=fi;break}}
-    if(startFace>=0){
-      const dualQueue=[startFace];dualVisited[startFace]=true;
-      while(dualQueue.length>0){
-        const fi=dualQueue.shift();
-        for(const nb of dualAdj[fi]){
-          if(!dualVisited[nb.to]){dualVisited[nb.to]=true;dualQueue.push(nb.to);inCotree[nb.edgeIdx]=true;}
-        }
-      }
-    }
-    tcCotree=inCotree;
-    displayTreePlusCotree(d.edges,tcTree,inCotree);
-    document.getElementById('tree-btn-step2').disabled=true;
-    document.getElementById('tree-btn-step3').disabled=false;
-    setStatus("Step2 余树: "+tcTree.filter(Boolean).length+" 金色 + "+inCotree.filter(Boolean).length+" 条青色边","#89f0b6");
-  }
-
-  function step3HomologyBasis(){
-    if(!currentMeshData||!tcTree||!tcCotree)return;
-    const d=buildTcEdgeData(currentMeshData);
-    homologyEdges=[];
-    for(let ei=0;ei<d.edges.length;ei++){
-      if(!tcTree[ei]&&!tcCotree[ei]){homologyEdges.push(d.edges[ei]);}
-    }
-    updateTcInfo();displayHomologyBasis(currentMeshData);
-    document.getElementById('tree-btn-step3').disabled=true;
-    setStatus("Step3 同调基底: "+homologyEdges.length+" 条绿色割边，可点击展开!","#89f0b6");
-  }
-
-  function clearTcDisplay(){if(tcDisplayGroup){modelScene.remove(tcDisplayGroup);tcDisplayGroup=null;}}
-
-  function displayTreeEdges(edges,inTree,treeColor){
-    clearTcDisplay();if(!currentMeshData)return;
-    const group=new THREE.Group();group.renderOrder=10;
-    const seg=[];for(let ei=0;ei<edges.length;ei++){if(!inTree[ei])continue;const e=edges[ei],pa=currentMeshData.positions[e.a],pb=currentMeshData.positions[e.b];seg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2]);}
-    if(seg.length===0)return;
-    const geom=new THREE.BufferGeometry();geom.setAttribute('position',new THREE.Float32BufferAttribute(seg,3));
-    group.add(new THREE.LineSegments(geom,new THREE.LineBasicMaterial({color:treeColor,transparent:true,opacity:.85,depthTest:true,depthWrite:true})));
-    modelScene.add(group);tcDisplayGroup=group;
-  }
-
-  function displayTreePlusCotree(edges,inTree,inCotree){
-    clearTcDisplay();if(!currentMeshData)return;
-    const group=new THREE.Group();group.renderOrder=10;
-    const tSeg=[];for(let ei=0;ei<edges.length;ei++){if(!inTree[ei])continue;const e=edges[ei],pa=currentMeshData.positions[e.a],pb=currentMeshData.positions[e.b];tSeg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2]);}
-    if(tSeg.length>0){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(tSeg,3));group.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0xddbb22,transparent:true,opacity:.5,depthTest:true,depthWrite:true})));}
-    const cSeg=[];for(let ei=0;ei<edges.length;ei++){if(!inCotree[ei])continue;const e=edges[ei],pa=currentMeshData.positions[e.a],pb=currentMeshData.positions[e.b];cSeg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2]);}
-    if(cSeg.length>0){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(cSeg,3));group.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0x22ccdd,transparent:true,opacity:.85,depthTest:true,depthWrite:true})));}
-    modelScene.add(group);tcDisplayGroup=group;
-  }
-
-  function displayHomologyBasis(meshData){
-    clearTcDisplay();if(homologyEdges.length===0)return;
-    const group=new THREE.Group();group.renderOrder=10;
-    const seg=[];for(const e of homologyEdges){const pa=meshData.positions[e.a],pb=meshData.positions[e.b];seg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2]);}
-    // 外层光晕（半透明绿色）
-    const gG=new THREE.BufferGeometry();gG.setAttribute('position',new THREE.Float32BufferAttribute(seg,3));
-    group.add(new THREE.LineSegments(gG,new THREE.LineBasicMaterial({color:0x40ff40,transparent:true,opacity:.35,depthTest:true,depthWrite:true})));
-    // 核心线
-    const cG=new THREE.BufferGeometry();cG.setAttribute('position',new THREE.Float32BufferAttribute(seg.slice(),3));
-    group.add(new THREE.LineSegments(cG,new THREE.LineBasicMaterial({color:0x80ff80,transparent:false,opacity:1,depthTest:true,depthWrite:true})));
-    // 端点绿点
-    const ptSet=new Set();for(const e of homologyEdges){ptSet.add(e.a);ptSet.add(e.b);}
-    const pts=[];for(const vi of ptSet){const p=meshData.positions[vi];pts.push(p[0],p[1],p[2]);}
-    const pG=new THREE.BufferGeometry();pG.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
-    group.add(new THREE.Points(pG,new THREE.PointsMaterial({color:0x00ff44,size:0.025,sizeAttenuation:true,depthTest:false,depthWrite:false})));
-    modelScene.add(group);tcDisplayGroup=group;
-  }
-
-  function updateTcInfo(){
-    const info=document.getElementById('tc-info');
-    info.style.display=homologyEdges.length>0?'':'none';
-    info.textContent=homologyEdges.length+' 条割边';
-  }
-
   // ============ WASM 求解器 ============
   let qcInst=null,qcReady=false,qcFailed=false;
   let unifiedInst=null,unifiedReady=false,unifiedFailed=false,unifiedPromise=null;
@@ -766,7 +610,6 @@
       resetTextureRadios();
       clearPickMesh();
       principalCurvCache=null;
-      resetTcState();
       currentUvLines=null;currentUvPins=null;currentUnwrapUv=null;
       let meshData=rawText?parseObjMeshData(rawText):null;
       meshData=meshData?normalizeMeshData(meshData):collectMeshData(root);
@@ -774,7 +617,7 @@
       currentModelGroup=buildModelGroup(root,anchors,meshData.positions);modelScene.add(currentModelGroup);
       currentPickMesh=buildPickMesh(meshData);
       controls.target.set(0,0,0);controls.update();currentMeshData=meshData;
-      setStatus("就绪: "+m.label+" / "+meshData.positions.length+" 顶点 / "+meshData.faces.length+" 三角面，请依次点击 生成树→余树→同调基底，再点击展开","#89f0b6");
+      setStatus("就绪: "+m.label+" / "+meshData.positions.length+" 顶点 / "+meshData.faces.length+" 三角面","#89f0b6");
     }catch(e){console.error(e);setStatus("加载失败: "+e.message,"#ff9d9d")}
     finally{setBusy(false)}
   }
@@ -835,9 +678,6 @@
   window.addEventListener("resize",resize);
   modelSel.addEventListener("change",loadModel);
   reloadBtn.addEventListener("click",doUnwrap);
-  document.getElementById('tree-btn-step1').addEventListener("click",step1SpanningTree);
-  document.getElementById('tree-btn-step2').addEventListener("click",step2Cotree);
-  document.getElementById('tree-btn-step3').addEventListener("click",step3HomologyBasis);
   if(radioCheckerboard)radioCheckerboard.addEventListener("change",function(){if(radioCheckerboard.checked)setTextureDisplayEnabled(true)});
   if(radioDistortion)radioDistortion.addEventListener("change",function(){if(radioDistortion.checked){setTextureDisplayEnabled(false);setDistortionEnabled(true)}});
   updateButtonState();

@@ -80,10 +80,17 @@
         </span>
       </fieldset>
 
-      <button id="tree-btn-step1" class="tree-btn" title="Step 1: BFS 构建生成树 (Spanning Tree)">🌳 Step1 生成树</button>
-      <button id="tree-btn-step2" class="tree-btn" title="Step 2: 对偶图上构建余树 (Co-tree)" disabled>🌲 Step2 余树</button>
-      <button id="tree-btn-step3" class="tree-btn" title="Step 3: 非树非余树边 = 同调基底" disabled>🪓 Step3 同调基底</button>
-      <span id="tc-info">0 条割边</span>
+      <fieldset id="tree-cotree-box" style="border:1px solid rgba(100,220,120,0.22);border-radius:10px;padding:7px 10px;margin:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <legend style="color:#a0f0b0;font-size:11px;padding:0 6px;">Tree-Cotree 同调基底</legend>
+        <button id="tree-btn-step1" class="tree-btn" title="Step 1: BFS 构建生成树 (Spanning Tree)">🌳 Step1 生成树</button>
+        <button id="tree-btn-step2" class="tree-btn" title="Step 2: 对偶图上构建余树 (Co-tree)" disabled>🌲 Step2 余树</button>
+        <button id="tree-btn-step3" class="tree-btn" title="Step 3: 非树非余树边 = 同调基底" disabled>🪓 Step3 同调基底</button>
+        <button id="tree-btn-link" class="tree-btn" style="background:#2a1a3a;border-color:rgba(220,120,240,.4);color:#e0a0f0" title="用生成树边连接同调基底顶点形成闭合圈" disabled>🔗 连结</button>
+        <button id="tree-btn-auto" class="tree-btn" style="background:#1a2e3a;border-color:rgba(80,200,240,.45);color:#80d8ff" title="自动执行 Step1→Step2→Step3">🚀 一键执行</button>
+        <span style="color:#8aad9a;font-size:11px;margin-left:4px;">粗细</span>
+        <input type="range" id="tc-thickness" min="0.5" max="1.5" value="1" style="width:50px;height:14px;accent-color:#60d060;cursor:pointer;">
+        <span id="tc-info">0 条割边</span>
+      </fieldset>
 
       <button id="reload-btn">展开!</button>
 
@@ -550,14 +557,34 @@
   let tcData=null; // { edges, edgeIdx, adj }
   let tcTree=null; // boolean[]
   let tcCotree=null; // boolean[]
+  let tcSliceEl=document.getElementById('tc-thickness');
+
+  /** 读取滑块 → 光晕管半径（0.002~0.020） */
+  function getTcThickness(){const v=parseInt(tcSliceEl.value)||7;return v/1000;}
+
+  /** 当前可视化类型: 'tree' | 'tree+cotree' | 'homology' | '' */
+  let tcCurrView='';
+
+  /** 滑块拖动时重绘当前视图 */
+  function onTcThicknessChange(){
+    if(!currentMeshData||tcCurrView==='')return;
+    const d=buildTcEdgeData(currentMeshData);
+    if(tcCurrView==='tree')displayTreeEdges(d.edges,tcTree,0xddbb22);
+    else if(tcCurrView==='tree+cotree')displayTreePlusCotree(d.edges,tcTree,tcCotree);
+    else if(tcCurrView==='homology')displayHomologyBasis(currentMeshData);
+    else if(tcCurrView==='homology+link')displayHomologyWithLinks(currentMeshData);
+  }
+  tcSliceEl.addEventListener('input',onTcThicknessChange);
 
   function resetTcState(){
     tcData=null;tcTree=null;tcCotree=null;
-    homologyEdges=[];updateTcInfo();
+    homologyEdges=[];tcLinkEdges=[];tcCurrView='';updateTcInfo();
     clearTcDisplay();
     document.getElementById('tree-btn-step1').disabled=false;
     document.getElementById('tree-btn-step2').disabled=true;
     document.getElementById('tree-btn-step3').disabled=true;
+    document.getElementById('tree-btn-link').disabled=true;
+    document.getElementById('tree-btn-auto').disabled=false;
   }
 
   // Step 0（内部）: 构建边列表 & 顶点邻接
@@ -603,7 +630,7 @@
     }
     tcTree=inTree;tcCotree=null;
     homologyEdges=[];updateTcInfo();
-    displayTreeEdges(d.edges,inTree,0xddbb22); // 金色
+    tcCurrView='tree';displayTreeEdges(d.edges,inTree,0xddbb22); // 金色
     document.getElementById('tree-btn-step1').disabled=true;
     document.getElementById('tree-btn-step2').disabled=false;
     document.getElementById('tree-btn-step3').disabled=true;
@@ -640,7 +667,7 @@
       }
     }
     tcCotree=inCotree;
-    displayTreePlusCotree(d.edges,tcTree,inCotree);
+    tcCurrView='tree+cotree';displayTreePlusCotree(d.edges,tcTree,inCotree);
     document.getElementById('tree-btn-step2').disabled=true;
     document.getElementById('tree-btn-step3').disabled=false;
     setStatus("Step 2 完成: "+tcTree.filter(Boolean).length+" 生成树边 + "+inCotree.filter(Boolean).length+" 条余树边，点击 Step 3","#89f0b6");
@@ -655,52 +682,137 @@
       if(!tcTree[ei]&&!tcCotree[ei]){homologyEdges.push(d.edges[ei]);}
     }
     updateTcInfo();
-    displayHomologyBasis(currentMeshData);
+    tcCurrView='homology';displayHomologyBasis(currentMeshData);
     document.getElementById('tree-btn-step3').disabled=true;
-    setStatus("Step 3 完成: "+homologyEdges.length+" 条同调基底割边（绿色），可点击展开!","#89f0b6");
+    document.getElementById('tree-btn-link').disabled=false;
+    setStatus("Step 3 完成: "+homologyEdges.length+" 条同调基底割边（绿色），可点击「连结」形成圈","#89f0b6");
   }
 
-  // ============ 分步可视化 ============
+  // Step 4: 用生成树边连接同调基底顶点，形成闭合圈
+  let tcLinkEdges=[]; // 用于连结补充显示的树边
+
+  function step4LinkLoop(){
+    if(!currentMeshData||!tcTree||homologyEdges.length===0)return;
+    const d=buildTcEdgeData(currentMeshData);
+
+    // 收集所有同调基底顶点
+    const hvSet=new Set();
+    for(const e of homologyEdges){hvSet.add(e.a);hvSet.add(e.b);}
+    const hv=Array.from(hvSet);
+    if(hv.length<2)return;
+
+    // 在生成树上做 BFS 找两顶点的最短路径
+    function treeBfsPath(from,to){
+      const V=currentMeshData.positions.length;
+      const prev=new Int32Array(V).fill(-1);
+      const queue=[from];prev[from]=from;
+      while(queue.length>0){
+        const v=queue.shift();
+        if(v===to){
+          // 回溯路径
+          const path=[];
+          let cur=to;
+          while(cur!==from){
+            const p=prev[cur];
+            if(p<0)return[];
+            path.push({a:Math.min(cur,p),b:Math.max(cur,p)});
+            cur=p;
+          }
+          return path;
+        }
+        for(const nb of d.adj[v]){
+          const ei=nb.edgeIdx;
+          if(!tcTree[ei])continue; // 只在生成树上走
+          if(prev[nb.to]>=0)continue;
+          prev[nb.to]=v;
+          queue.push(nb.to);
+        }
+      }
+      return [];
+    }
+
+    // 对排好序的顶点两两连线
+    tcLinkEdges=[];
+    const seenPath=new Set();
+    for(let i=1;i<hv.length;i++){
+      const path=treeBfsPath(hv[0],hv[i]);
+      for(const seg of path){
+        const k=seg.a+'_'+seg.b;
+        if(!seenPath.has(k)){
+          seenPath.add(k);
+          tcLinkEdges.push(seg);
+        }
+      }
+    }
+
+    // 叠加显示：现有同调基底 + 紫色连结树边
+    tcCurrView='homology+link';
+    displayHomologyWithLinks(currentMeshData);
+    document.getElementById('tree-btn-link').disabled=true;
+    setStatus("连结完成: "+tcLinkEdges.length+" 条树边连通 "+hv.length+" 个基底顶点，形成闭合圈","#d0a0f0");
+  }
+
+  // ============ 分步可视化（升级为管状圆柱体，更显著） ============
   let tcDisplayGroup=null;
+  const upVec=new THREE.Vector3(0,1,0);
+  const tmpQ=new THREE.Quaternion();
+  const tmpMid=new THREE.Vector3();
+  const tmpDir=new THREE.Vector3();
+
   function clearTcDisplay(){
     if(tcDisplayGroup){modelScene.remove(tcDisplayGroup);tcDisplayGroup=null;}
+  }
+
+  /** 为一段线段构建光晕管 + 核心管 */
+  function addCylinderEdge(group,ax,ay,az,bx,by,bz,rGlow,rCore,glowColor,coreColor,glowOpacity,renderBase){
+    tmpDir.set(bx-ax,by-ay,bz-az);
+    const len=tmpDir.length();
+    if(len<1e-8)return;
+    tmpDir.multiplyScalar(1/len);
+    tmpMid.set((ax+bx)*0.5,(ay+by)*0.5,(az+bz)*0.5);
+    tmpQ.setFromUnitVectors(upVec,tmpDir);
+
+    // 光晕管
+    const glowMat=new THREE.MeshBasicMaterial({color:glowColor,transparent:true,opacity:glowOpacity,depthTest:false,depthWrite:false});
+    const glow=new THREE.Mesh(new THREE.CylinderGeometry(rGlow,rGlow,len,6,1),glowMat);
+    glow.position.copy(tmpMid);glow.quaternion.copy(tmpQ);
+    glow.renderOrder=renderBase;group.add(glow);
+    // 核心管
+    const coreMat=new THREE.MeshBasicMaterial({color:coreColor,transparent:true,opacity:.95,depthTest:false,depthWrite:false});
+    const core=new THREE.Mesh(new THREE.CylinderGeometry(rCore,rCore,len,6,1),coreMat);
+    core.position.copy(tmpMid);core.quaternion.copy(tmpQ);
+    core.renderOrder=renderBase+1;group.add(core);
   }
 
   function displayTreeEdges(edges,inTree,treeColor){
     clearTcDisplay();
     if(!currentMeshData)return;
+    const r=getTcThickness(),rc=r*.5;
     const group=new THREE.Group();group.renderOrder=10;
-    const seg=[];
     for(let ei=0;ei<edges.length;ei++){
       if(!inTree[ei])continue;
       const e=edges[ei],pa=currentMeshData.positions[e.a],pb=currentMeshData.positions[e.b];
-      seg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2]);
+      addCylinderEdge(group,pa[0],pa[1],pa[2],pb[0],pb[1],pb[2],r,rc,0xffaa00,0xffd700,0.6,12);
     }
-    if(seg.length===0)return;
-    const geom=new THREE.BufferGeometry();
-    geom.setAttribute('position',new THREE.Float32BufferAttribute(seg,3));
-    const lines=new THREE.LineSegments(geom,new THREE.LineBasicMaterial({
-      color:treeColor,transparent:true,opacity:.85,depthTest:true,depthWrite:true
-    }));
-    lines.renderOrder=12;group.add(lines);
     modelScene.add(group);tcDisplayGroup=group;
   }
 
   function displayTreePlusCotree(edges,inTree,inCotree){
     clearTcDisplay();
     if(!currentMeshData)return;
+    const r=getTcThickness(),rc=r*.5;
     const group=new THREE.Group();group.renderOrder=10;
     // 生成树 (金色)
-    const tSeg=[];for(let ei=0;ei<edges.length;ei++){if(!inTree[ei])continue;const e=edges[ei],pa=currentMeshData.positions[e.a],pb=currentMeshData.positions[e.b];tSeg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2]);}
-    if(tSeg.length>0){
-      const tGeom=new THREE.BufferGeometry();tGeom.setAttribute('position',new THREE.Float32BufferAttribute(tSeg,3));
-      group.add(new THREE.LineSegments(tGeom,new THREE.LineBasicMaterial({color:0xddbb22,transparent:true,opacity:.5,depthTest:true,depthWrite:true})));
+    for(let ei=0;ei<edges.length;ei++){
+      if(!inTree[ei])continue;
+      const e=edges[ei],pa=currentMeshData.positions[e.a],pb=currentMeshData.positions[e.b];
+      addCylinderEdge(group,pa[0],pa[1],pa[2],pb[0],pb[1],pb[2],r,rc,0xdd9922,0xffd700,0.45,12);
     }
     // 余树 (青色)
-    const cSeg=[];for(let ei=0;ei<edges.length;ei++){if(!inCotree[ei])continue;const e=edges[ei],pa=currentMeshData.positions[e.a],pb=currentMeshData.positions[e.b];cSeg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2]);}
-    if(cSeg.length>0){
-      const cGeom=new THREE.BufferGeometry();cGeom.setAttribute('position',new THREE.Float32BufferAttribute(cSeg,3));
-      group.add(new THREE.LineSegments(cGeom,new THREE.LineBasicMaterial({color:0x22ccdd,transparent:true,opacity:.85,depthTest:true,depthWrite:true})));
+    for(let ei=0;ei<edges.length;ei++){
+      if(!inCotree[ei])continue;
+      const e=edges[ei],pa=currentMeshData.positions[e.a],pb=currentMeshData.positions[e.b];
+      addCylinderEdge(group,pa[0],pa[1],pa[2],pb[0],pb[1],pb[2],r,rc,0x00aaff,0x33eeff,0.75,14);
     }
     modelScene.add(group);tcDisplayGroup=group;
   }
@@ -708,26 +820,69 @@
   function displayHomologyBasis(meshData){
     clearTcDisplay();
     if(homologyEdges.length===0)return;
+    const r=getTcThickness()*2.5,rc=r*.55; // 割边比树边粗 ~2.5x
     const group=new THREE.Group();group.renderOrder=10;
-    const seg=[];
+    // 割边：光晕管 + 核心管
     for(const e of homologyEdges){
       const pa=meshData.positions[e.a],pb=meshData.positions[e.b];
-      seg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2]);
+      addCylinderEdge(group,pa[0],pa[1],pa[2],pb[0],pb[1],pb[2],r,rc,0x20ff20,0x66ff66,0.55,16);
     }
-    // 外层光晕
-    const glowGeom=new THREE.BufferGeometry();glowGeom.setAttribute('position',new THREE.Float32BufferAttribute(seg,3));
-    const glowLines=new THREE.LineSegments(glowGeom,new THREE.LineBasicMaterial({color:0x40ff40,transparent:true,opacity:.35,linewidth:1,depthTest:true,depthWrite:true}));
-    glowLines.renderOrder=12;group.add(glowLines);
-    // 核心线
-    const coreGeom=new THREE.BufferGeometry();coreGeom.setAttribute('position',new THREE.Float32BufferAttribute(seg.slice(),3));
-    const coreLines=new THREE.LineSegments(coreGeom,new THREE.LineBasicMaterial({color:0x80ff80,transparent:false,opacity:1,linewidth:1,depthTest:true,depthWrite:true}));
-    coreLines.renderOrder=13;group.add(coreLines);
-    // 端点标记
-    const ptSet=new Set();for(const e of homologyEdges){ptSet.add(e.a);ptSet.add(e.b);}
-    const pts=[];for(const vi of ptSet){const p=meshData.positions[vi];pts.push(p[0],p[1],p[2]);}
-    const ptGeom=new THREE.BufferGeometry();ptGeom.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
-    const ptDots=new THREE.Points(ptGeom,new THREE.PointsMaterial({color:0x00ff44,size:0.025,sizeAttenuation:true,depthTest:false,depthWrite:false}));
-    ptDots.renderOrder=14;group.add(ptDots);
+    // 端点：双层球体标记
+    const ptSet=new Set();
+    for(const e of homologyEdges){ptSet.add(e.a);ptSet.add(e.b);}
+    for(const vi of ptSet){
+      const p=meshData.positions[vi];
+      const sg=r*3.5,sc=sg*.55;
+      // 光晕球
+      const glowSphere=new THREE.Mesh(
+        new THREE.SphereGeometry(sg,16,8),
+        new THREE.MeshBasicMaterial({color:0x20ff20,transparent:true,opacity:.6,depthTest:false,depthWrite:false})
+      );
+      glowSphere.position.set(p[0],p[1],p[2]);glowSphere.renderOrder=18;group.add(glowSphere);
+      // 核心球
+      const coreSphere=new THREE.Mesh(
+        new THREE.SphereGeometry(sc,16,8),
+        new THREE.MeshBasicMaterial({color:0x44ff44,transparent:true,opacity:.98,depthTest:false,depthWrite:false})
+      );
+      coreSphere.position.set(p[0],p[1],p[2]);coreSphere.renderOrder=19;group.add(coreSphere);
+      // Points 高亮叠加
+      const ptGeom=new THREE.BufferGeometry();
+      ptGeom.setAttribute('position',new THREE.Float32BufferAttribute([p[0],p[1],p[2]],3));
+      const ptDots=new THREE.Points(ptGeom,new THREE.PointsMaterial({color:0x00ff00,size:sg*1.2,sizeAttenuation:true,depthTest:false,depthWrite:false}));
+      ptDots.renderOrder=20;group.add(ptDots);
+    }
+    modelScene.add(group);tcDisplayGroup=group;
+  }
+
+  /** 同调基底 + 紫色连结树边（形成闭合圈） */
+  function displayHomologyWithLinks(meshData){
+    clearTcDisplay();
+    if(homologyEdges.length===0)return;
+    const tr=getTcThickness();
+    const r=tr*2.5,rc=r*.55;
+    const group=new THREE.Group();group.renderOrder=10;
+    // 同调基底：绿色
+    for(const e of homologyEdges){
+      const pa=meshData.positions[e.a],pb=meshData.positions[e.b];
+      addCylinderEdge(group,pa[0],pa[1],pa[2],pb[0],pb[1],pb[2],r,rc,0x20ff20,0x66ff66,0.55,16);
+    }
+    // 连结树边：紫色
+    const lr=tr*1.8,lrc=lr*.5;
+    for(const seg of tcLinkEdges){
+      const pa=meshData.positions[seg.a],pb=meshData.positions[seg.b];
+      addCylinderEdge(group,pa[0],pa[1],pa[2],pb[0],pb[1],pb[2],lr,lrc,0xd040f0,0xf080ff,0.7,15);
+    }
+    // 端点：双层球体
+    const ptSet=new Set();
+    for(const e of homologyEdges){ptSet.add(e.a);ptSet.add(e.b);}
+    for(const vi of ptSet){
+      const p=meshData.positions[vi];
+      const sg=r*3.5,sc=sg*.55;
+      const glowSphere=new THREE.Mesh(new THREE.SphereGeometry(sg,16,8),new THREE.MeshBasicMaterial({color:0x20ff20,transparent:true,opacity:.6,depthTest:false,depthWrite:false}));
+      glowSphere.position.set(p[0],p[1],p[2]);glowSphere.renderOrder=18;group.add(glowSphere);
+      const coreSphere=new THREE.Mesh(new THREE.SphereGeometry(sc,16,8),new THREE.MeshBasicMaterial({color:0x44ff44,transparent:true,opacity:.98,depthTest:false,depthWrite:false}));
+      coreSphere.position.set(p[0],p[1],p[2]);coreSphere.renderOrder=19;group.add(coreSphere);
+    }
     modelScene.add(group);tcDisplayGroup=group;
   }
 
@@ -735,6 +890,31 @@
     const info=document.getElementById('tc-info');
     info.style.display=homologyEdges.length>0?'':'none';
     info.textContent=homologyEdges.length+' 条割边';
+  }
+
+  /** 延时辅助 */
+  function sleepMs(ms){return new Promise(function(resolve){setTimeout(resolve,ms)})}
+
+  /** 一键执行：Step1 → Step2 → Step3 自动连续运行 */
+  async function autoRunAllTreeCotreeSteps(){
+    if(!currentMeshData){setStatus('请先选择模型','#ffd38a');return;}
+    const btnAuto=document.getElementById('tree-btn-auto');
+    const btn1=document.getElementById('tree-btn-step1');
+    const btn2=document.getElementById('tree-btn-step2');
+    const btn3=document.getElementById('tree-btn-step3');
+    btnAuto.disabled=true;btn1.disabled=true;btn2.disabled=true;btn3.disabled=true;
+
+    setStatus('🚀 一键执行 Step 1/3: 生成树...', '#ffd38a');
+    await sleepMs(200);
+    step1SpanningTree();
+    setStatus('🚀 一键执行 Step 2/3: 余树...', '#ffd38a');
+    await sleepMs(400);
+    step2Cotree();
+    setStatus('🚀 一键执行 Step 3/3: 同调基底...', '#ffd38a');
+    await sleepMs(400);
+    step3HomologyBasis();
+    setStatus('Tree-Cotree 完成! '+homologyEdges.length+' 条割边，可点击展开!', '#89f0b6');
+    btnAuto.disabled=false;
   }
 
   // ============ WASM 求解器 ============
@@ -905,6 +1085,8 @@
   document.getElementById('tree-btn-step1').addEventListener("click",step1SpanningTree);
   document.getElementById('tree-btn-step2').addEventListener("click",step2Cotree);
   document.getElementById('tree-btn-step3').addEventListener("click",step3HomologyBasis);
+  document.getElementById('tree-btn-link').addEventListener("click",step4LinkLoop);
+  document.getElementById('tree-btn-auto').addEventListener("click",autoRunAllTreeCotreeSteps);
   if(radioCheckerboard)radioCheckerboard.addEventListener("change",function(){if(radioCheckerboard.checked)setTextureDisplayEnabled(true)});
   if(radioDistortion)radioDistortion.addEventListener("change",function(){if(radioDistortion.checked){setTextureDisplayEnabled(false);setDistortionEnabled(true)}});
   updateButtonState();
