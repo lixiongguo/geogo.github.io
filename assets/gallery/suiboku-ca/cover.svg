@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-label="Suiboku Cellular Automata cover">
-  <rect width="1280" height="720" fill="#f4f1ea" />
-  <ellipse cx="360" cy="350" rx="250" ry="190" fill="#1f2937" opacity="0.45" />
-  <ellipse cx="520" cy="380" rx="220" ry="160" fill="#111827" opacity="0.3" />
-  <ellipse cx="760" cy="320" rx="280" ry="200" fill="#374151" opacity="0.26" />
-  <ellipse cx="980" cy="400" rx="210" ry="150" fill="#4b5563" opacity="0.24" />
-  <text x="80" y="120" fill="#111827" font-size="72" font-family="Arial, sans-serif">Suiboku Cellular Automata</text>
-</svg>

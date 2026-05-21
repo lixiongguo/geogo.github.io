@@ -12,6 +12,7 @@ category_dir: category
 keep_files:
   - assets/wasm/*.wasm
   - assets/wasm/*.js
+  - gallery/
 
 # 排除不需要 Jekyll 处理的目录
 exclude:
@@ -27,6 +28,9 @@ pagination:
   permalink: "/page/:num/"
   sort_reverse: false
 github_username: David Lee
+
+# 解决中文文件名编码问题
+encoding: utf-8
 
 # ============================================
 # 微信公众号发布配置
