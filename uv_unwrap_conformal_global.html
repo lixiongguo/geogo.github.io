@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>全局参数化 - MIQ / QuadCover</title>
+  <title>Tree-Cotree & Holomorphic 1-Form 全局参数化</title>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
 
   <script src="assets/wasm/unified_solver.js"></script>
-  <script src="assets/wasm/principal_curvature.js"></script>
 <style>
   *{box-sizing:border-box}html,body{margin:0;height:100%}
   body{overflow:hidden;background:#070b14;color:#d8def7;font-family:"Segoe UI",Arial,sans-serif}
@@ -42,13 +41,8 @@
   #reload-btn{padding:9px 22px;background:linear-gradient(135deg,#ff6b35 0%,#ff8f5e 100%);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .25s cubic-bezier(.4,0,.2,1);box-shadow:0 3px 10px rgba(255,107,53,.4);letter-spacing:1px}
   #reload-btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
   #reload-btn:not(:disabled):hover{transform:translateY(-2px) scale(1.04);box-shadow:0 6px 18px rgba(255,107,53,.6)}
-  #cone-btn{padding:9px 14px;background:#2a1a3e;border:1px solid rgba(200,120,220,.35);color:#d4a0f0;font-size:13px}
-  #cone-btn.active{background:#4a2060;border-color:#c060e0;box-shadow:0 0 12px rgba(180,80,220,.4)}
-  #auto-cone-btn{padding:9px 12px;background:#1b263d;border:1px solid rgba(140,170,255,.35);color:#c8d6ff;font-size:13px}
-  #cone-info{display:none;font-size:11px;color:#c9a0e0;margin-left:6px}
-  .cone-angle{width:50px;padding:2px 4px;border-radius:4px;text-align:center;font-size:11px;border:1px solid rgba(200,120,220,.3);background:#0d1528;color:#e0c0ff}
   .tree-btn{padding:9px 14px;background:#1a2e1a;border:1px solid rgba(100,220,120,.35);color:#a0f0b0;font-size:13px}
-  .tree-btn:disabled{opacity:.35;cursor:not-allowed;background:#0d180d;color:#506050}
+  .tree-btn.active{background:#206030;border-color:#60e060;box-shadow:0 0 12px rgba(80,220,80,.4)}
   #tc-info{display:none;font-size:11px;color:#a0e0c0;margin-left:6px}
 </style>
 </head>
@@ -70,16 +64,25 @@
       <fieldset style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:8px 12px;margin:0;">
         <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开算法</legend>
         <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="miq" checked> MIQ (向量场引导)</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="pgp"> PGP (周期全局参数化)</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover"> QuadCover简化</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover_full"> QuadCover完整</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="holo" checked> Holomorphic 1-Form</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="ricci"> Ricci 流</label>
         </div>
       </fieldset>
 
-      <button id="tree-btn-step1" class="tree-btn" title="Step 1: BFS 构建生成树">🌳 生成树</button>
-      <button id="tree-btn-step2" class="tree-btn" title="Step 2: 对偶图上构建余树" disabled>🌲 余树</button>
-      <button id="tree-btn-step3" class="tree-btn" title="Step 3: 非树非余树边 = 同调基底" disabled>🪓 同调基底</button>
+      <fieldset style="border:1px solid rgba(255,180,70,0.35);border-radius:10px;padding:8px 12px;margin:0;background:rgba(20,25,45,.7);">
+        <legend style="color:#ffb446;font-size:11px;padding:0 6px;">算法参数</legend>
+        <span style="font-size:12px;color:#c6d1f4;">
+          优化:<select id="opt-scheme-select" style="width:75px;padding:3px 5px;border-radius:6px;font-size:11px;border:1px solid rgba(106,132,255,.3);background:#0d1528;color:#eef2ff;margin-left:4px;">
+            <option value="1" selected>牛顿法</option>
+            <option value="0">梯度下降</option>
+            <option value="3">LBFGS</option>
+          </select>
+        </span>
+      </fieldset>
+
+      <button id="tree-btn-step1" class="tree-btn" title="Step 1: BFS 构建生成树 (Spanning Tree)">🌳 Step1 生成树</button>
+      <button id="tree-btn-step2" class="tree-btn" title="Step 2: 对偶图上构建余树 (Co-tree)" disabled>🌲 Step2 余树</button>
+      <button id="tree-btn-step3" class="tree-btn" title="Step 3: 非树非余树边 = 同调基底" disabled>🪓 Step3 同调基底</button>
       <span id="tc-info">0 条割边</span>
 
       <button id="reload-btn">展开!</button>
@@ -102,7 +105,7 @@
     <section class="panel">
       <div class="panel-header"><span>3D 模型</span><span>拖拽旋转 / 滚轮缩放</span></div>
       <div class="canvas-wrap"><canvas id="model-canvas"></canvas></div>
-      <div class="footer-note">左侧显示原始三角网格。<span style="color:#ddbb22;font-weight:700;">金色</span>生成树 → <span style="color:#22ccdd;font-weight:700;">青色</span>余树 → <span style="color:#60e060;font-weight:700;">绿色</span>同调基底割边。</div>
+      <div class="footer-note">分步展示 Tree-Cotree：<span style="color:#ddbb22;font-weight:700;">金色</span>生成树 → <span style="color:#22ccdd;font-weight:700;">青色</span>余树 → <span style="color:#60e060;font-weight:700;">绿色</span>同调基底割边。</div>
     </section>
     <section class="panel">
       <div class="panel-header"><span id="uv-panel-label">UV 网格</span><span>边界归一化到 0..1</span></div>
@@ -114,7 +117,6 @@
 
 <script>
 (function(){
-
   // ============ Models2 ============
   const MODELS = {
     cow: { label: "Cow (5.8K)", file: "cow_F5804.obj" },
@@ -158,7 +160,7 @@
   let currentMeshData=null,currentUnwrapUv=null;
   let textureEnabled=false,currentTexturedMesh=null,checkerTexture=null;
   let distortionEnabled=false,currentDistortionMesh=null,taInst=null,taReady=false,taFailed=false;
-  let homologyEdges=[],tcData=null,tcTree=null,tcCotree=null,tcDisplayGroup=null;
+  let homologyEdges=[];
 
   function setStatus(msg,c){statusText.textContent=msg;statusText.style.color=c||"#8cc4ff"}
 
@@ -224,6 +226,100 @@
     const s=Math.max(maxX-minX,maxY-minY,maxZ-minZ)||1;
     for(const p of meshData.positions){p[0]=(p[0]-cx)/s;p[1]=(p[1]-cy)/s;p[2]=(p[2]-cz)/s}
     return meshData;
+  }
+
+  function findNonManifoldVertices(meshData){
+    const positions=meshData.positions,faces=meshData.faces,n=positions.length,nm=[];
+    for(let v=0;v<n;v++){
+      const incident=[];
+      for(let fi=0;fi<faces.length;fi++){
+        const f=faces[fi];
+        if(f[0]===v||f[1]===v||f[2]===v)incident.push(fi);
+      }
+      if(incident.length===0)continue;
+      const adj=new Map();
+      for(const fi of incident)adj.set(fi,new Set());
+      for(let i=0;i<incident.length;i++){
+        const fi=incident[i],f=faces[fi],others=f.filter(function(x){return x!==v});
+        for(let j=i+1;j<incident.length;j++){
+          const fj=incident[j],f2=faces[fj],shared=f2.filter(function(x){return x!==v});
+          if(others.some(function(u){return shared.indexOf(u)>=0})){
+            adj.get(fi).add(fj);adj.get(fj).add(fi);
+          }
+        }
+      }
+      const seen=new Set(),stack=[incident[0]];
+      seen.add(incident[0]);
+      while(stack.length){
+        const cur=stack.pop();
+        for(const nb of adj.get(cur)){
+          if(!seen.has(nb)){seen.add(nb);stack.push(nb)}
+        }
+      }
+      if(seen.size!==incident.length)nm.push(v);
+    }
+    return nm;
+  }
+
+  function splitNonManifoldVertex(meshData,v){
+    const positions=meshData.positions,faces=meshData.faces;
+    const incident=[];
+    for(let fi=0;fi<faces.length;fi++){
+      const f=faces[fi];
+      if(f[0]===v||f[1]===v||f[2]===v)incident.push(fi);
+    }
+    const adj=new Map();
+    for(const fi of incident)adj.set(fi,new Set());
+    for(let i=0;i<incident.length;i++){
+      const fi=incident[i],f=faces[fi],others=f.filter(function(x){return x!==v});
+      for(let j=i+1;j<incident.length;j++){
+        const fj=incident[j],f2=faces[fj],shared=f2.filter(function(x){return x!==v});
+        if(others.some(function(u){return shared.indexOf(u)>=0})){
+          adj.get(fi).add(fj);adj.get(fj).add(fi);
+        }
+      }
+    }
+    const components=[],visited=new Set();
+    for(const start of incident){
+      if(visited.has(start))continue;
+      const comp=[],stack=[start];
+      visited.add(start);
+      while(stack.length){
+        const cur=stack.pop();
+        comp.push(cur);
+        for(const nb of adj.get(cur)){
+          if(!visited.has(nb)){visited.add(nb);stack.push(nb)}
+        }
+      }
+      components.push(comp);
+    }
+    if(components.length<=1)return false;
+    const faceVertex=new Map();
+    for(const fi of components[0])faceVertex.set(fi,v);
+    for(let c=1;c<components.length;c++){
+      const newV=positions.length;
+      positions.push(positions[v].slice());
+      for(const fi of components[c])faceVertex.set(fi,newV);
+    }
+    faceVertex.forEach(function(newV,fi){
+      faces[fi]=faces[fi].map(function(x){return x===v?newV:x});
+    });
+    return true;
+  }
+
+  function repairMeshForSolver(meshData){
+    const data={
+      positions:meshData.positions.map(function(p){return[p[0],p[1],p[2]]}),
+      faces:meshData.faces.map(function(f){return[f[0],f[1],f[2]]})
+    };
+    let splits=0;
+    for(let iter=0;iter<data.positions.length;iter++){
+      const nm=findNonManifoldVertices(data);
+      if(nm.length===0)break;
+      if(!splitNonManifoldVertex(data,nm[0]))break;
+      splits++;
+    }
+    return{splits:splits,meshData:data};
   }
 
   function collectMeshData(root){
@@ -450,64 +546,11 @@
     }
   }
 
-  // ============ 主曲率计算（libigl WASM，供 QuadCover 内部使用）============
-  let pcInst=null,pcReady=false,pcFailed=false;
-  let principalCurvCache=null;
-
-  async function initPC(){
-    if(pcReady)return true;if(pcFailed)return false;
-    try{if(typeof PrincipalCurvatureSolver!=='function')throw new Error('PrincipalCurvatureSolver 未加载');pcInst=await PrincipalCurvatureSolver();pcReady=true;return true}
-    catch(e){pcFailed=true;console.error(e);return false}
-  }
-  async function computePrincipalCurvatureWASM(positions,faces){
-    const ok=await initPC();if(!ok)throw new Error('主曲率 WASM 初始化失败');
-    const nV=positions.length,fp=new Float64Array(nV*3);
-    for(let i=0;i<nV;i++){fp[i*3]=positions[i][0];fp[i*3+1]=positions[i][1];fp[i*3+2]=positions[i][2]}
-    const ff=new Int32Array(faces.length*3);for(let i=0;i<faces.length;i++){ff[i*3]=faces[i][0];ff[i*3+1]=faces[i][1];ff[i*3+2]=faces[i][2]}
-    const pp=pcInst._malloc(fp.length*8),fpt=pcInst._malloc(ff.length*4);
-    for(let i=0;i<fp.length;i++)pcInst.setValue(pp+i*8,fp[i],'double');
-    for(let i=0;i<ff.length;i++)pcInst.setValue(fpt+i*4,ff[i],'i32');
-    const rc=pcInst.ccall('compute_principal_curvature','number',['number','number','number','number','number'],[pp,nV,fpt,faces.length,5]);
-    pcInst._free(pp);pcInst._free(fpt);
-    if(rc!==0)throw new Error('compute_principal_curvature 返回错误码: '+rc);
-    const count=pcInst.ccall('get_pc_num_verts','number',[],[]),pd1Ptr=pcInst.ccall('get_pc_pd1','number',[],[]),pd2Ptr=pcInst.ccall('get_pc_pd2','number',[],[]),pv1Ptr=pcInst.ccall('get_pc_pv1','number',[],[]),pv2Ptr=pcInst.ccall('get_pc_pv2','number',[],[]);
-    const pd1=new Float64Array(count*3),pd2=new Float64Array(count*3),pv1=new Float64Array(count),pv2=new Float64Array(count);
-    for(let i=0;i<count*3;i++){pd1[i]=pcInst.getValue(pd1Ptr+i*8,'double');pd2[i]=pcInst.getValue(pd2Ptr+i*8,'double')}
-    for(let i=0;i<count;i++){pv1[i]=pcInst.getValue(pv1Ptr+i*8,'double');pv2[i]=pcInst.getValue(pv2Ptr+i*8,'double')}
-    pcInst.ccall('pc_dispose','void',[],[]);
-    return{pd1,pd2,pv1,pv2};
-  }
-
-  function averagedPrincipalDirection(field,face,normal){
-    const base=[field[face[0]*3]||0,field[face[0]*3+1]||0,field[face[0]*3+2]||0];let x=base[0],y=base[1],z=base[2];
-    for(let k=1;k<3;k++){const vi=face[k]*3;let dx=field[vi]||0,dy=field[vi+1]||0,dz=field[vi+2]||0;if(dx*base[0]+dy*base[1]+dz*base[2]<0){dx=-dx;dy=-dy;dz=-dz}x+=dx;y+=dy;z+=dz}
-    const dotN=x*normal[0]+y*normal[1]+z*normal[2];x-=dotN*normal[0];y-=dotN*normal[1];z-=dotN*normal[2];
-    const len=Math.hypot(x,y,z);return len>1e-10?[x/len,y/len,z/len]:null;
-  }
-
-  async function ensurePrincipalCurvatureData(meshData){
-    if(!meshData)throw new Error('缺少网格数据');
-    if(principalCurvCache)return principalCurvCache;
-    principalCurvCache=await computePrincipalCurvatureWASM(meshData.positions,meshData.faces);
-    return principalCurvCache;
-  }
-
-  function buildQuadCoverFaceDirections(meshData,pcData){
-    const dirs=new Float64Array(meshData.faces.length*3);
-    for(let i=0;i<meshData.faces.length;i++){
-      const f=meshData.faces[i],a=meshData.positions[f[0]],b=meshData.positions[f[1]],c=meshData.positions[f[2]];
-      const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
-      let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;const nLen=Math.hypot(nx,ny,nz);
-      if(nLen<=1e-12){dirs[i*3]=1;dirs[i*3+1]=0;dirs[i*3+2]=0;continue}
-      nx/=nLen;ny/=nLen;nz/=nLen;
-      const d=averagedPrincipalDirection(pcData.pd1,f,[nx,ny,nz])||averagedPrincipalDirection(pcData.pd2,f,[nx,ny,nz]);
-      if(d){dirs[i*3]=d[0];dirs[i*3+1]=d[1];dirs[i*3+2]=d[2]}
-      else{dirs[i*3]=1;dirs[i*3+1]=0;dirs[i*3+2]=0}
-    }
-    return dirs;
-  }
-
   // ============ Tree-Cotree 算法（三步分步执行） ============
+  let tcData=null; // { edges, edgeIdx, adj }
+  let tcTree=null; // boolean[]
+  let tcCotree=null; // boolean[]
+
   function resetTcState(){
     tcData=null;tcTree=null;tcCotree=null;
     homologyEdges=[];updateTcInfo();
@@ -517,6 +560,7 @@
     document.getElementById('tree-btn-step3').disabled=true;
   }
 
+  // Step 0（内部）: 构建边列表 & 顶点邻接
   function buildTcEdgeData(meshData){
     if(tcData)return tcData;
     const V=meshData.positions.length,F=meshData.faces;
@@ -531,16 +575,19 @@
       }
     }
     const edges=Array.from(edgeMap.values());
-    const edgeIdx=new Map();edges.forEach((e,i)=>edgeIdx.set(e.a+"_"+e.b,i));
+    const edgeIdx=new Map();
+    edges.forEach((e,i)=>edgeIdx.set(e.a+"_"+e.b,i));
     const adj=Array.from({length:V},()=>[]);
     for(const e of edges){
       const ei=edgeIdx.get(e.a+"_"+e.b);
-      adj[e.a].push({to:e.b,edgeIdx:ei});adj[e.b].push({to:e.a,edgeIdx:ei});
+      adj[e.a].push({to:e.b,edgeIdx:ei});
+      adj[e.b].push({to:e.a,edgeIdx:ei});
     }
     tcData={edges,edgeIdx,adj,nF:F.length};
     return tcData;
   }
 
+  // Step 1: 生成树 (Spanning Tree) — BFS 从顶点 0
   function step1SpanningTree(){
     if(!currentMeshData)return;
     const d=buildTcEdgeData(currentMeshData);
@@ -556,23 +603,26 @@
     }
     tcTree=inTree;tcCotree=null;
     homologyEdges=[];updateTcInfo();
-    displayTreeEdges(d.edges,inTree,0xddbb22);
+    displayTreeEdges(d.edges,inTree,0xddbb22); // 金色
     document.getElementById('tree-btn-step1').disabled=true;
     document.getElementById('tree-btn-step2').disabled=false;
     document.getElementById('tree-btn-step3').disabled=true;
-    setStatus("Step1 生成树: "+inTree.filter(Boolean).length+" 条金色边 (BFS)","#89f0b6");
+    setStatus("Step 1 完成: "+inTree.filter(Boolean).length+" 条生成树边 (BFS)，点击 Step 2","#89f0b6");
   }
 
+  // Step 2: 余树 (Co-tree) — 对偶图 BFS
   function step2Cotree(){
     if(!currentMeshData||!tcTree)return;
     const d=buildTcEdgeData(currentMeshData);
+    // 对偶图：仅非树边连接的面
     const dualAdj=Array.from({length:d.nF},()=>[]);
     for(let ei=0;ei<d.edges.length;ei++){
       if(tcTree[ei])continue;
       const e=d.edges[ei];
       if(e.faces.length===2){
-        dualAdj[e.faces[0]].push({to:e.faces[1],edgeIdx:ei});
-        dualAdj[e.faces[1]].push({to:e.faces[0],edgeIdx:ei});
+        const f0=e.faces[0],f1=e.faces[1];
+        dualAdj[f0].push({to:f1,edgeIdx:ei});
+        dualAdj[f1].push({to:f0,edgeIdx:ei});
       }
     }
     const inCotree=new Array(d.edges.length).fill(false);
@@ -593,9 +643,10 @@
     displayTreePlusCotree(d.edges,tcTree,inCotree);
     document.getElementById('tree-btn-step2').disabled=true;
     document.getElementById('tree-btn-step3').disabled=false;
-    setStatus("Step2 余树: "+tcTree.filter(Boolean).length+" 金色 + "+inCotree.filter(Boolean).length+" 条青色边","#89f0b6");
+    setStatus("Step 2 完成: "+tcTree.filter(Boolean).length+" 生成树边 + "+inCotree.filter(Boolean).length+" 条余树边，点击 Step 3","#89f0b6");
   }
 
+  // Step 3: 同调基底 = 既不在树也不在余树中的边
   function step3HomologyBasis(){
     if(!currentMeshData||!tcTree||!tcCotree)return;
     const d=buildTcEdgeData(currentMeshData);
@@ -603,48 +654,80 @@
     for(let ei=0;ei<d.edges.length;ei++){
       if(!tcTree[ei]&&!tcCotree[ei]){homologyEdges.push(d.edges[ei]);}
     }
-    updateTcInfo();displayHomologyBasis(currentMeshData);
+    updateTcInfo();
+    displayHomologyBasis(currentMeshData);
     document.getElementById('tree-btn-step3').disabled=true;
-    setStatus("Step3 同调基底: "+homologyEdges.length+" 条绿色割边，可点击展开!","#89f0b6");
+    setStatus("Step 3 完成: "+homologyEdges.length+" 条同调基底割边（绿色），可点击展开!","#89f0b6");
   }
 
-  function clearTcDisplay(){if(tcDisplayGroup){modelScene.remove(tcDisplayGroup);tcDisplayGroup=null;}}
+  // ============ 分步可视化 ============
+  let tcDisplayGroup=null;
+  function clearTcDisplay(){
+    if(tcDisplayGroup){modelScene.remove(tcDisplayGroup);tcDisplayGroup=null;}
+  }
 
   function displayTreeEdges(edges,inTree,treeColor){
-    clearTcDisplay();if(!currentMeshData)return;
+    clearTcDisplay();
+    if(!currentMeshData)return;
     const group=new THREE.Group();group.renderOrder=10;
-    const seg=[];for(let ei=0;ei<edges.length;ei++){if(!inTree[ei])continue;const e=edges[ei],pa=currentMeshData.positions[e.a],pb=currentMeshData.positions[e.b];seg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2]);}
+    const seg=[];
+    for(let ei=0;ei<edges.length;ei++){
+      if(!inTree[ei])continue;
+      const e=edges[ei],pa=currentMeshData.positions[e.a],pb=currentMeshData.positions[e.b];
+      seg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2]);
+    }
     if(seg.length===0)return;
-    const geom=new THREE.BufferGeometry();geom.setAttribute('position',new THREE.Float32BufferAttribute(seg,3));
-    group.add(new THREE.LineSegments(geom,new THREE.LineBasicMaterial({color:treeColor,transparent:true,opacity:.85,depthTest:true,depthWrite:true})));
+    const geom=new THREE.BufferGeometry();
+    geom.setAttribute('position',new THREE.Float32BufferAttribute(seg,3));
+    const lines=new THREE.LineSegments(geom,new THREE.LineBasicMaterial({
+      color:treeColor,transparent:true,opacity:.85,depthTest:true,depthWrite:true
+    }));
+    lines.renderOrder=12;group.add(lines);
     modelScene.add(group);tcDisplayGroup=group;
   }
 
   function displayTreePlusCotree(edges,inTree,inCotree){
-    clearTcDisplay();if(!currentMeshData)return;
+    clearTcDisplay();
+    if(!currentMeshData)return;
     const group=new THREE.Group();group.renderOrder=10;
+    // 生成树 (金色)
     const tSeg=[];for(let ei=0;ei<edges.length;ei++){if(!inTree[ei])continue;const e=edges[ei],pa=currentMeshData.positions[e.a],pb=currentMeshData.positions[e.b];tSeg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2]);}
-    if(tSeg.length>0){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(tSeg,3));group.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0xddbb22,transparent:true,opacity:.5,depthTest:true,depthWrite:true})));}
+    if(tSeg.length>0){
+      const tGeom=new THREE.BufferGeometry();tGeom.setAttribute('position',new THREE.Float32BufferAttribute(tSeg,3));
+      group.add(new THREE.LineSegments(tGeom,new THREE.LineBasicMaterial({color:0xddbb22,transparent:true,opacity:.5,depthTest:true,depthWrite:true})));
+    }
+    // 余树 (青色)
     const cSeg=[];for(let ei=0;ei<edges.length;ei++){if(!inCotree[ei])continue;const e=edges[ei],pa=currentMeshData.positions[e.a],pb=currentMeshData.positions[e.b];cSeg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2]);}
-    if(cSeg.length>0){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(cSeg,3));group.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0x22ccdd,transparent:true,opacity:.85,depthTest:true,depthWrite:true})));}
+    if(cSeg.length>0){
+      const cGeom=new THREE.BufferGeometry();cGeom.setAttribute('position',new THREE.Float32BufferAttribute(cSeg,3));
+      group.add(new THREE.LineSegments(cGeom,new THREE.LineBasicMaterial({color:0x22ccdd,transparent:true,opacity:.85,depthTest:true,depthWrite:true})));
+    }
     modelScene.add(group);tcDisplayGroup=group;
   }
 
   function displayHomologyBasis(meshData){
-    clearTcDisplay();if(homologyEdges.length===0)return;
+    clearTcDisplay();
+    if(homologyEdges.length===0)return;
     const group=new THREE.Group();group.renderOrder=10;
-    const seg=[];for(const e of homologyEdges){const pa=meshData.positions[e.a],pb=meshData.positions[e.b];seg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2]);}
-    // 外层光晕（半透明绿色）
-    const gG=new THREE.BufferGeometry();gG.setAttribute('position',new THREE.Float32BufferAttribute(seg,3));
-    group.add(new THREE.LineSegments(gG,new THREE.LineBasicMaterial({color:0x40ff40,transparent:true,opacity:.35,depthTest:true,depthWrite:true})));
+    const seg=[];
+    for(const e of homologyEdges){
+      const pa=meshData.positions[e.a],pb=meshData.positions[e.b];
+      seg.push(pa[0],pa[1],pa[2],pb[0],pb[1],pb[2]);
+    }
+    // 外层光晕
+    const glowGeom=new THREE.BufferGeometry();glowGeom.setAttribute('position',new THREE.Float32BufferAttribute(seg,3));
+    const glowLines=new THREE.LineSegments(glowGeom,new THREE.LineBasicMaterial({color:0x40ff40,transparent:true,opacity:.35,linewidth:1,depthTest:true,depthWrite:true}));
+    glowLines.renderOrder=12;group.add(glowLines);
     // 核心线
-    const cG=new THREE.BufferGeometry();cG.setAttribute('position',new THREE.Float32BufferAttribute(seg.slice(),3));
-    group.add(new THREE.LineSegments(cG,new THREE.LineBasicMaterial({color:0x80ff80,transparent:false,opacity:1,depthTest:true,depthWrite:true})));
-    // 端点绿点
+    const coreGeom=new THREE.BufferGeometry();coreGeom.setAttribute('position',new THREE.Float32BufferAttribute(seg.slice(),3));
+    const coreLines=new THREE.LineSegments(coreGeom,new THREE.LineBasicMaterial({color:0x80ff80,transparent:false,opacity:1,linewidth:1,depthTest:true,depthWrite:true}));
+    coreLines.renderOrder=13;group.add(coreLines);
+    // 端点标记
     const ptSet=new Set();for(const e of homologyEdges){ptSet.add(e.a);ptSet.add(e.b);}
     const pts=[];for(const vi of ptSet){const p=meshData.positions[vi];pts.push(p[0],p[1],p[2]);}
-    const pG=new THREE.BufferGeometry();pG.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
-    group.add(new THREE.Points(pG,new THREE.PointsMaterial({color:0x00ff44,size:0.025,sizeAttenuation:true,depthTest:false,depthWrite:false})));
+    const ptGeom=new THREE.BufferGeometry();ptGeom.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
+    const ptDots=new THREE.Points(ptGeom,new THREE.PointsMaterial({color:0x00ff44,size:0.025,sizeAttenuation:true,depthTest:false,depthWrite:false}));
+    ptDots.renderOrder=14;group.add(ptDots);
     modelScene.add(group);tcDisplayGroup=group;
   }
 
@@ -655,63 +738,21 @@
   }
 
   // ============ WASM 求解器 ============
-  let qcInst=null,qcReady=false,qcFailed=false;
   let unifiedInst=null,unifiedReady=false,unifiedFailed=false,unifiedPromise=null;
-  const solverScriptPromises = {};
 
-  function loadSolverScript(src,globalName){
-    if(window[globalName])return Promise.resolve(true);
-    if(!solverScriptPromises[src]){
-      solverScriptPromises[src]=new Promise(function(resolve,reject){
-        const s=document.createElement('script');
-        s.src=src;
-        s.onload=function(){resolve(true)};
-        s.onerror=function(){reject(new Error('求解器脚本加载失败: '+src))};
-        document.head.appendChild(s);
-      });
-    }
-    return solverScriptPromises[src];
-  }
-
-  async function initQCSolver(){if(qcReady)return true;if(qcFailed)return false;try{await loadSolverScript('assets/wasm/quadcover_solver.js','QuadCoverSolver');qcInst=await QuadCoverSolver();qcReady=true;return true}catch(e){qcFailed=true;return false}}
-
-  function getMethod(){const c=document.querySelector('input[name="method"]:checked');return c?c.value:'quadcover'}
-
-  function updateButtonState(){
-    const m=getMethod();
-    if(m==='miq'){
-      if(unifiedFailed){reloadBtn.textContent='引擎加载失败';reloadBtn.disabled=true}
-      else if(!unifiedReady){reloadBtn.textContent='引擎加载中...';reloadBtn.disabled=true}
-      else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
-      return;
-    }
-    if(m==='pgp'){reloadBtn.textContent='展开!';reloadBtn.disabled=false;return;}
-    const failed=(m==='quadcover'||m==='quadcover_full')&&qcFailed;
-    const loading=(m==='quadcover'||m==='quadcover_full')&&!qcReady&&!qcFailed;
-    if(failed){reloadBtn.textContent='引擎加载失败';reloadBtn.disabled=true}
-    else if(loading){reloadBtn.textContent='引擎加载中...';reloadBtn.disabled=true}
-    else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
-  }
-
-  async function initUnifiedSolver(){
-    if(unifiedReady)return true;if(unifiedFailed)return false;
-    try{if(typeof UnifiedSolver==='undefined')throw new Error('UnifiedSolver 未定义');if(!unifiedPromise)unifiedPromise=UnifiedSolver();unifiedInst=await unifiedPromise;unifiedReady=true;return true}catch(e){unifiedFailed=true;return false}
-  }
-
-  async function solveMiq(meshData){
-    await initUnifiedSolver();const v=meshData.positions,f=meshData.faces;
-    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
-    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
-    const pp=wasmWritePosInst(unifiedInst,fp),fpt=wasmWriteFacesInst(unifiedInst,ff);
+  async function initUnifiedConeSolver(){
+    if(unifiedReady)return true;
+    if(unifiedFailed)return false;
     try{
-      const rc=unifiedInst.ccall('solve_miq','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length]);
-      if(rc!==0)throw new Error("solve_miq 错误:"+rc);
-      const us=wasmReadUV(unifiedInst,'get_miq_uv_result_size','get_miq_uv_result');
-      unifiedInst.ccall('miq_dispose','void',[],[]);
-      const t=unifiedInst.ccall('get_miq_last_time_ms','number',[],[]);
-      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
-      return{uv,timeMs:t,method:'miq'};
-    }finally{unifiedInst._free(pp);unifiedInst._free(fpt)}
+      if(typeof UnifiedSolver==='undefined')throw new Error('UnifiedSolver 未定义');
+      if(!unifiedPromise)unifiedPromise=UnifiedSolver();
+      unifiedInst=await unifiedPromise;
+      unifiedReady=true;
+      return true;
+    }catch(e){
+      unifiedFailed=true;
+      return false;
+    }
   }
 
   function wasmWritePosInst(inst,flat){
@@ -731,24 +772,46 @@
     return uvs;
   }
 
+  function getMethod(){const c=document.querySelector('input[name="method"]:checked');return c?c.value:'holo'}
+  function getOptScheme(){const v=parseInt(document.getElementById('opt-scheme-select').value);return(v===0||v===1||v===3)?v:1}
+
+  function updateButtonState(){
+    if(unifiedFailed){reloadBtn.textContent='引擎加载失败';reloadBtn.disabled=true}
+    else if(!unifiedReady){reloadBtn.textContent='引擎加载中...';reloadBtn.disabled=true}
+    else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
+  }
+
   // ============ 求解器调用 ============
-  async function solveQuadCover(meshData,pcData,full){
-    await initQCSolver();const v=meshData.positions,f=meshData.faces;
-    if(!qcInst)throw new Error("QuadCover WASM 初始化失败");
+  async function solveRicci(meshData){
+    await initUnifiedConeSolver();const v=meshData.positions,f=meshData.faces;
     const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
     const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
-    const fd=buildQuadCoverFaceDirections(meshData,pcData);
-    const pp=wasmWritePosInst(qcInst,fp),fpt=wasmWriteFacesInst(qcInst,ff),dpt=wasmWritePosInst(qcInst,fd);
+    const pp=wasmWritePosInst(unifiedInst,fp),fpt=wasmWriteFacesInst(unifiedInst,ff);
     try{
-      const fn=full?'solve_qc_full_with_field':'solve_qc_with_field';
-      const rc=qcInst.ccall(fn,'number',['number','number','number','number','number','number'],[pp,fp.length,fpt,ff.length,dpt,fd.length]);
-      if(rc!==0)throw new Error(full&&rc===-2?"QuadCover完整 cover integration failed":"solve_qc 错误:"+rc);
-      const us=wasmReadUV(qcInst,'get_qc_uv_result_size','get_qc_uv_result');
-      qcInst.ccall('qc_dispose','void',[],[]);
-      const t=qcInst.ccall('get_qc_last_time_ms','number',[],[]);
+      const rc=unifiedInst.ccall('solve_ricci','number',['number','number','number','number','number'],[pp,fp.length,fpt,ff.length,getOptScheme()]);
+      if(rc!==0)throw new Error("solve_ricci 错误:"+rc);
+      const us=wasmReadUV(unifiedInst,'get_ricci_uv_result_size','get_ricci_uv_result');
+      unifiedInst.ccall('ricci_dispose','void',[],[]);
+      const t=unifiedInst.ccall('get_ricci_last_time_ms','number',[],[]);
       const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
-      return{uv,timeMs:t,method:full?'quadcover_full':'quadcover'};
-    }finally{qcInst._free(pp);qcInst._free(fpt);qcInst._free(dpt)}
+      return{uv,timeMs:t,method:'ricci'};
+    }finally{unifiedInst._free(pp);unifiedInst._free(fpt)}
+  }
+
+  async function solveHolo(meshData){
+    await initUnifiedConeSolver();const v=meshData.positions,f=meshData.faces;
+    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
+    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
+    const pp=wasmWritePosInst(unifiedInst,fp),fpt=wasmWriteFacesInst(unifiedInst,ff);
+    try{
+      const rc=unifiedInst.ccall('solve_holo','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length]);
+      if(rc!==0)throw new Error("solve_holo 错误:"+rc);
+      const us=wasmReadUV(unifiedInst,'get_holo_uv_result_size','get_holo_uv_result');
+      unifiedInst.ccall('holo_dispose','void',[],[]);
+      const t=unifiedInst.ccall('get_holo_last_time_ms','number',[],[]);
+      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
+      return{uv,timeMs:t,method:'holo'};
+    }finally{unifiedInst._free(pp);unifiedInst._free(fpt)}
   }
 
   // ============ 加载 & 展开 ============
@@ -761,42 +824,46 @@
       let root=null,rawText=null;
       for(const u of urls){try{root=await loadOBJ(u);rawText=await fetchObjText(u);break}catch(e){}}
       if(!root)throw new Error("模型加载失败");
+
+      resetTcState();
+
       normalizeObject(root);
       if(currentModelGroup){modelScene.remove(currentModelGroup)}if(currentUvLines){uvScene.remove(currentUvLines)}if(currentUvPins){uvScene.remove(currentUvPins)}
       resetTextureRadios();
       clearPickMesh();
-      principalCurvCache=null;
-      resetTcState();
       currentUvLines=null;currentUvPins=null;currentUnwrapUv=null;
       let meshData=rawText?parseObjMeshData(rawText):null;
       meshData=meshData?normalizeMeshData(meshData):collectMeshData(root);
+      const repair=repairMeshForSolver(meshData);
+      meshData=repair.meshData;
       const anchors=chooseAnchorPair(meshData.positions);
       currentModelGroup=buildModelGroup(root,anchors,meshData.positions);modelScene.add(currentModelGroup);
       currentPickMesh=buildPickMesh(meshData);
       controls.target.set(0,0,0);controls.update();currentMeshData=meshData;
-      setStatus("就绪: "+m.label+" / "+meshData.positions.length+" 顶点 / "+meshData.faces.length+" 三角面，请依次点击 生成树→余树→同调基底，再点击展开","#89f0b6");
+
+      const repairNote=repair.splits>0?(" / 已修复非流形顶点 "+repair.splits+" 处"):"";
+      setStatus("就绪: "+m.label+" / "+meshData.positions.length+" 顶点 / "+meshData.faces.length+" 三角面"+repairNote+"，请依次点击 Step1→Step2→Step3 运行 Tree-Cotree","#89f0b6");
     }catch(e){console.error(e);setStatus("加载失败: "+e.message,"#ff9d9d")}
     finally{setBusy(false)}
   }
 
   async function doUnwrap(){
     if(busy||!currentMeshData)return;
-    const method=getMethod(),mNames={miq:'MIQ 向量场引导',pgp:'PGP 周期全局参数化',quadcover:'QuadCover简化',quadcover_full:'QuadCover完整'};
-    const label=mNames[method]||method;
+    const repair=repairMeshForSolver(currentMeshData);
+    if(repair.splits>0){
+      currentMeshData=repair.meshData;
+      resetTcState();
+      clearPickMesh();
+      currentPickMesh=buildPickMesh(currentMeshData);
+    }
+    const method=getMethod(),mNames={holo:'Holomorphic 1-Form',ricci:'Ricci 流'};
+    const label=mNames[method]||method,optNames={0:'梯度下降',1:'牛顿法',3:'LBFGS'};
     setBusy(true);setStatus(label+" 求解中...");
     const t0=performance.now();
     try{
       let r;
-      if(method==='miq'){
-        r=await solveMiq(currentMeshData);
-      }else if(method==='pgp'){
-        setStatus("PGP 暂未实现，请选择其他方法","#ffd38a");setBusy(false);return;
-      }else{
-        setStatus("QuadCover: 正在计算主曲率...");
-        const pcData=await ensurePrincipalCurvatureData(currentMeshData);
-        setStatus(label+" 求解中...");
-        r=await solveQuadCover(currentMeshData,pcData,method==='quadcover_full');
-      }
+      if(method==='holo')r=await solveHolo(currentMeshData);
+      else if(method==='ricci')r=await solveRicci(currentMeshData);
       const ms=r.timeMs>0?r.timeMs:(performance.now()-t0);
       currentUnwrapUv=r.uv;
       clearDistortionMesh();distortionEnabled=false;
@@ -811,8 +878,8 @@
       const uvV=buildUvMesh(r.uv,currentMeshData.faces,anchors);
       currentUvLines=uvV.lines;currentUvPins=uvV.pins;uvScene.add(currentUvLines);if(currentUvPins)uvScene.add(currentUvPins);
       const fc=countFlippedFaces(r.uv,currentMeshData.faces);
-      showTiming(ms,label+' / '+MODELS[modelSel.value].label+' / '+currentMeshData.positions.length+' 顶点 / '+currentMeshData.faces.length+' 三角面',fc);
-      setStatus(label+" 完成，翻转面 "+fc+" 个",fc===0?"#89f0b6":"#ffd38a");
+      showTiming(ms,label+' / '+optNames[getOptScheme()]+' / '+MODELS[modelSel.value].label+' / '+currentMeshData.positions.length+' 顶点 / '+currentMeshData.faces.length+' 三角面 / 割边 '+homologyEdges.length+' 条',fc);
+      setStatus(label+" 完成，翻转面 "+fc+" 个 / 割边 "+homologyEdges.length+" 条",fc===0?"#89f0b6":"#ffd38a");
     }catch(e){console.error(e);setStatus("失败: "+e.message,"#ff9d9d")}
     finally{setBusy(false)}
   }
@@ -842,8 +909,7 @@
   if(radioDistortion)radioDistortion.addEventListener("change",function(){if(radioDistortion.checked){setTextureDisplayEnabled(false);setDistortionEnabled(true)}});
   updateButtonState();
 
-  // 预加载 WASM
-  Promise.all([initQCSolver(), initUnifiedSolver()]).then(()=>{updateButtonState();loadModel()});
+  initUnifiedConeSolver().then(()=>{updateButtonState();loadModel()});
   animate();
 })();
 </script>
