@@ -9,7 +9,8 @@ categories: [TechRelated]
 ![image-20251107134929739](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107134929739.png)
 
 这篇工作的核心不是先固定奇异点、再去解参数化，而是直接对曲面的**度量(metric)**做优化：**不断扩大零高斯曲率区域的占比，最后把曲率压缩到少量锥奇异点上。**  
-因此它是在“先把曲面变成尽量 flat 的度量，再从这个度量恢复无缝参数化”。
+
+
 
 ## 全局参数化
 
@@ -17,55 +18,40 @@ categories: [TechRelated]
 
 ![image-20251107151137430](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107151137430.png)
 
-一个全局参数化会诱导出一个平面度量：
+一个全局参数化$f$会诱导出一个平面度量$g$：
+$$
+g= {\nabla f}^T\nabla f
+$$
+除了锥奇异点这个**度量是平整的(flat)**(高斯曲率为0)。
+接缝两侧在参数域中的像不能随意错开，而必须只差一个**刚性变换(rigid transform)**。  
 
-![image-20251107154351591](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107154351591.png)
-
-除了锥奇异点与接缝端点外，这个度量应当是 flat 的。  
-因此，接缝两侧在参数域中的像不能随意错开，而必须只差一个**刚性变换(rigid transform)**。  
-反过来说，若给定一个满足这些条件的平展度量(flat metric)，参数化 $f$ 基本就被唯一确定了。
-
-无缝全局参数化的要求如下：
-
-![image-20251107170622714](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107170622714.png)
-
-跨边时两个局部 Jacobian 必须相差一个 $\frac{\pi}{2}$ 的整数倍旋转：
+无缝参数化的要求跨边时两个局部 **Jacobian** 必须相差一个 $\frac{\pi}{2}$ 的整数倍旋转：
 
 $$
-J_j e_{ij} = r_{ij} J_i e_{ij}.
+J_j e_{ij} = r_{ij} J_i e_{ij} + t_{ij}
 $$
 
-也就是说，相邻两个三角形 $T_i,T_j$ 的局部参数坐标系只能发生 quarter-turn 对齐。
+也就是说，相邻两个三角形 $T_i,T_j$ 的局部参数坐标系只能发生 **quarter-turn** 对齐，同时跨边的平移量 $t_{ij}$ 也是整数。
 
 ![image-20251107170756014](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107170756014.png)
 
-如果目标不仅是无缝纹理参数化，而是要进一步做**四边形网格化**，那么还需要跨边的平移量 $t_{ij}$ 也是整数。“无缝”不只是视觉上的连续，而是要求参数线在穿过三角形边界之后，仍然落在同一套整数格结构上。  只有这样，后面提取整数等值线时才会真的拼成规则 quad layout，而不会在接缝处断裂或错位。
 
-## 和乐性(holonomy)
 
-![image-20251109172609603](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251109172609603.png)
+### 和乐性(holonomy)
 
-一条闭链的 holonomy，记录的是局部坐标沿闭环平行移动一圈以后，累计获得了多少旋转和位移。
+一条环路的和乐记录的是局部坐标沿闭环平行移动一圈以后，回到起点时它相对初始状态产生的累计变化,即累计获得了多少旋转
+
+
 
 ![image-20251107171257260](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107171257260.png)
 
 ![image-20251107171701999](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107171701999.png)
 
-对无缝参数化来说，holonomy 是全局一致性的核心约束：
+![image-20251109172609603](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251109172609603.png)
 
-1. 围绕锥奇异点走一圈，累计旋转必须落在允许的 quarter-turn 集合里。
-2. 沿非平凡同调环走一圈，累计平移必须与整数格兼容。
+对无缝参数化来说，和乐是全局一致性的核心约束：**围绕锥奇异点走一圈，累计旋转必须落在允许的 quarter-turn** 集合里。
 
-更进一步，
 
-![image-20251107171823887](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107171823887.png)
-
-可以把这件事理解成：  
-局部 flat 只保证“每一小块都像平面”，但是否能把这些小块**全局无缝地拼回去**，要看所有闭环上的 holonomy 是否满足离散约束。  
-所以这篇文章实际上是在同时处理两类问题：
-
-1. 如何把曲率集中成少量锥奇异点。
-2. 如何让这些奇异点和拓扑环路的 holonomy 一起满足 seamless 条件。
 
 ## 算法
 
@@ -87,23 +73,15 @@ Flatten 的过程会把曲率逐渐集中：黄色正曲率区域收缩到红色
 
 ![image-20251107175529244](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107175529244.png)
 
-它的几何意义是：  
-不是直接优化 UV 坐标，而是在优化一个更底层的对象，即曲面的局部尺度分布。  
-尺度一旦被重新分配，原来分散的高斯曲率就会被“挤压”到少量锥点，这些点就是后续参数化中的奇异点。  
+ 尺度一旦被重新分配，原来分散的高斯曲率就会被“挤压”到少量锥点，这些点就是后续参数化中的奇异点。  
 因此，这篇方法最突出的特点之一，就是**奇异点位置不是预先指定的，而是随着度量优化被自动找出来的**。
 
 #### 2. Rounding
 
 Rounding 主要是对 holonomy 施加离散控制，从而实现无缝参数化。它分成两部分：  
-一部分是 rounding 锥奇异点，另一部分是 rounding 同调环。
-
-对锥奇异点的处理，是把旋转 holonomy 调整到 $\frac{\pi}{2}$ 的整数倍上：
+一部分是 rounding 锥奇异点，把旋转 holonomy 调整到 $\frac{\pi}{2}$ 的整数倍上：
 
 ![image-20251107172058288](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107172058288.png)
-
-这一步可以理解为：  
-Flatten 先给出一个“连续的、近似 flat 的”度量；  
-而 Rounding 则把它投影到一个真正适合四边形网格化的离散可行集合里。
 
 对 homology loop 的处理如下：
 
@@ -113,9 +91,11 @@ Flatten 先给出一个“连续的、近似 flat 的”度量；
 因为局部可积还不够，参数在线性空间里闭合，不代表它在曲面拓扑上也能闭合成无缝结构。  
 只有当这些非平凡环路上的周期也被 round 到兼容整数格的值时，最终的 UV 才是一个真正的 seamless parameterization。
 
+
+
 ### 从旋转场恢复参数化
 
-最后使用 ARAP 风格的参数化与全局优化，把前面得到的离散 holonomy 约束转回到具体的 UV 映射。
+最后使用 ARAP 方法将前面得到的离散 holonomy 约束转回到具体的 UV 映射。
 
 Rotation field：
 
@@ -129,171 +109,11 @@ cross field 可以用每个面上的一个角度 $\theta$ 来表达：
 
 ![image-20251107191121676](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107191121676.png)
 
-最后进行 global optimization：
+最后进行 global 步：
 
 ![image-20251107191353231](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107191353231.png)
 
-这一阶段做的事情，可以理解为：  
-在已经满足离散拓扑约束的前提下，寻找一个尽量贴合这些旋转关系、同时扭曲更小的具体参数化。  
-所以整篇文章的流程其实是
+优化过程可以理解为：  在已经满足离散拓扑约束的前提下，寻找一个尽量贴合这些旋转关系、同时扭曲更小的具体参数化。  
 
-1. 先优化度量，让大部分区域变 flat；
-2. 再把 holonomy round 到四边形网格需要的离散结构上；
-3. 最后从这个离散一致的度量与旋转场恢复出实际参数化。
 
-## 与 QuadCover 的对比
 
-和 `A.1 全局参数化-QuadCover算法.md` 对照看，两篇文章都在解决**无缝参数化(seamless parameterization)**，但切入点很不一样。
-
-### 相同点
-
-两者都要求相邻面之间的过渡只能是：
-
-1. $\frac{\pi}{2}$ 的整数倍旋转；
-2. 与整数格兼容的平移。
-
-也就是说，两者的最终目标都是让局部参数块在全局上能按照 grid automorphism 无缝拼接起来，从而支持 quad layout 的提取。
-
-### QuadCover 在解决什么
-
-QuadCover 的重点，是从一个给定的 4-RoSy/frame field 出发，处理其**多值性与全局可积性**问题。  
-它通过 matching 构造 branch cover，把原曲面上带 quarter-turn 对称的 cross field 提升成 cover 上的单值 vector field；然后再借助 Hodge 分解、对称标量函数等工具，求得可积且全局一致的参数方向。
-
-所以 QuadCover 解决 seamless 问题的方式更像是：
-
-1. 先接受一个方向场输入；
-2. 处理这个方向场在拓扑上的不一致；
-3. 再从它恢复参数函数。
-
-它更关注的是**field 到 parameterization**这条链条。
-
-### 本文在解决什么
-
-本文虽然最后也要恢复一个无缝参数化，但它的着力点更靠前：  
-它先问的是，**什么样的 flat metric 最适合做无缝参数化**。
-
-因此它主要通过：
-
-1. flatten 把曲率集中到少数锥奇异点；
-2. rounding 把锥点和同调环的 holonomy 量化到可行离散值；
-3. 再从这个满足条件的度量中恢复参数化。
-
-换句话说，这篇文章更关注的是**metric 到 parameterization**这条链条。
-
-### 对无缝参数化问题的差别
-
-如果只看“无缝参数化为什么难”，两篇文章针对的是同一个根源：  
-局部坐标虽然容易定义，但一旦绕过奇异点或拓扑环路，局部坐标之间就可能出现不允许的旋转与平移累积，导致全局拼不起来。
-
-但它们的处理方式不同：
-
-1. `QuadCover` 是把这种全局不一致搬到 branch cover 上，在覆盖空间里把多值方向场变成单值、可积的对象。
-2. 本文是直接在原曲面的度量层面操作，通过 flatten + rounding 让 holonomy 本身变得满足 seamless 条件。
-
-因此可以把两者理解成两种互补视角：
-
-1. `QuadCover` 更偏“方向场/覆盖空间/可积性”的观点。
-2. 本文更偏“平展度量/锥奇异点/holonomy 量化”的观点。
-
-前者强调如何把一个已有方向场无缝地积分成参数化；后者强调如何主动调整度量与奇异点配置，使最终参数化更容易既无缝又低扭曲。
-本文给出了一种**自动寻找奇异点**的方法，以减少全局参数化的扭曲
-
-![image-20251107134929739](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107134929739.png)
-
-本文的方法也是对度量进行优化，从曲面的原始度量不断增加零高斯曲率区域的占比，最终将高斯曲率集中在几个锥奇异点上。
-
-本文主要用到的方法：
-
-(1)将参数化Fit到一个某个向量场（或某个标量场的梯度）的引导如MIQ以及PGP,QuadCover (2)ARAP的参数化 (3)共形参数化方法(CPMS,CETM等)
-
-
-
-## 全局参数化
-
-原始三角网格为M，沿割缝割开后的网格记为$M_c$，原始网格M的割缝上的一个顶点p被分为两个点p1和p2,如图中的两个绿色点
-
-![image-20251107151137430](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107151137430.png)
-
-全局参数化诱导出映射的度量
-
-![image-20251107154351591](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107154351591.png)
-
-并且这个度量除了接缝的两端外也都是flat，这要求接缝在参数域种的两条像曲线是一个刚性变换(rigid transform)。反过来说，一个平展度量(flat metric)也能唯一确定参数化f
-
-无缝全局参数化的要求
-
-![image-20251107170622714](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107170622714.png)
-
-$J_j e_{ij} = r_{ij} J_ie_{ij}$,满足$\frac {\pi} 2$的整数倍旋转
-
-,如图两个三角形Ti，Tj
-
-![image-20251107170756014](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107170756014.png)
-
-如果是需要四边形网格化，还需要$t_{ij}$是整数
-
-![image-20251107170834395](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107170834395.png)
-
-![image-20251107170910784](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107170910784.png)
-
-## 和乐性(holonomy)
-
-![image-20251109172609603](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251109172609603.png)
-
-一条闭链的和乐
-
-![image-20251107171257260](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107171257260.png)
-
-![image-20251107171701999](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107171701999.png)
-
-更进一步
-
-![image-20251107171823887](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107171823887.png)
-
-## 算法
-
-![image-20251107171847753](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107171847753.png)
-
-### 先是Flatten和Rounding
-
-1.Flatten，类似于Benchen
-
-![image-20251107172009324](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107172009324.png)
-
-Flatten的过程将曲率逐渐集中(黄色正曲率面积集中到红色的正曲率点上，青色负曲率面积集中到蓝色的负曲率点上)
-
-![image-20251107175302658](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107175302658.png)
-
-对于离散的三角网格，这个过程相当于一个Poisson方程
-
-![image-20251107175529244](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107175529244.png)
-
-2.Rounding，主要是对和乐角施加控制，从而实现无缝的参数化。分两个部分，一个是Rounding锥奇异点，一个是Rounding同调环
-
-对$\frac {\pi} 2$的整数倍旋转的条件进行贪心选择
-
-![image-20251107172058288](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107172058288.png)
-
-对homology loop的处理
-
-![image-20251107180455682](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107180455682.png)
-
-最后ARAP参数化
-
-Rotation filed
-
-![image-20251107190904459](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107190904459.png)
-
-cross_field的表达，每个面assign一个角度$\theta$
-
-
-
-![image-20251107181215621](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107181215621.png)
-
-求得$\theta$后进而求得R
-
-![image-20251107191121676](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107191121676.png)
-
-最后进行Global优化
-
-![image-20251107191353231](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107191353231.png)
