@@ -82,6 +82,9 @@
           <input type="radio" name="texture-display" value="checkerboard" id="radio-checkerboard" disabled> 棋盘格
         </label>
         <label style="color:#d8def7;font-size:13px;cursor:pointer;">
+          <input type="radio" name="texture-display" value="dots" id="radio-dots" disabled> 圆点贴图
+        </label>
+        <label style="color:#d8def7;font-size:13px;cursor:pointer;">
           <input type="radio" name="texture-display" value="distortion" id="radio-distortion" disabled> 共形扭曲
         </label>
       </fieldset>
@@ -126,6 +129,7 @@
   const modelSel=document.getElementById("model-select");
   const reloadBtn=document.getElementById("reload-btn");
   const radioCheckerboard=document.getElementById("radio-checkerboard");
+  const radioDots=document.getElementById("radio-dots");
   const radioDistortion=document.getElementById("radio-distortion");
   const statusText=document.getElementById("status-text");
   const objLoader=new THREE.OBJLoader();
@@ -148,7 +152,7 @@
   // ============ 状态 ============
   let currentModelGroup=null,currentUvLines=null,currentUvPins=null,currentPickMesh=null,busy=false;
   let currentMeshData=null,currentUnwrapUv=null;
-  let textureEnabled=false,currentTexturedMesh=null,checkerTexture=null;
+  let textureEnabled=false,currentTexturedMesh=null,checkerTexture=null,dotTexture=null,currentTextureMode="checkerboard";
   let distortionEnabled=false,currentDistortionMesh=null,taInst=null,taReady=false,taFailed=false;
 
   function setStatus(msg,c){statusText.textContent=msg;statusText.style.color=c||"#8cc4ff"}
@@ -313,7 +317,24 @@
     return texture;
   }
 
-  function buildTexturedMesh(meshData,uv){
+  function createDotTexture(){
+    const texSize=512,cells=16,cellSize=texSize/cells,canvas=document.createElement("canvas");
+    canvas.width=texSize;canvas.height=texSize;
+    const ctx=canvas.getContext("2d");
+    ctx.fillStyle="#f4f8ff";ctx.fillRect(0,0,texSize,texSize);
+    for(let y=0;y<cells;y++)for(let x=0;x<cells;x++){const cx=(x+.5)*cellSize,cy=(y+.5)*cellSize,r=cellSize*.27;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle="#3f7cff";ctx.fill();ctx.lineWidth=2;ctx.strokeStyle="rgba(17,39,84,0.45)";ctx.stroke()}
+    const texture=new THREE.CanvasTexture(canvas);
+    texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(1,1);texture.needsUpdate=true;
+    return texture;
+  }
+
+  function getUvTexture(textureMode){
+    if(textureMode==="dots"){if(!dotTexture)dotTexture=createDotTexture();return dotTexture}
+    if(!checkerTexture)checkerTexture=createCheckerTexture();
+    return checkerTexture;
+  }
+
+  function buildTexturedMesh(meshData,uv,textureMode){
     const pos=[],idx=[],uvFlat=[];
     for(let i=0;i<meshData.positions.length;i++)pos.push(meshData.positions[i][0],meshData.positions[i][1],meshData.positions[i][2]);
     for(let i=0;i<meshData.faces.length;i++)idx.push(meshData.faces[i][0],meshData.faces[i][1],meshData.faces[i][2]);
@@ -322,8 +343,7 @@
     geom.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
     geom.setAttribute("uv",new THREE.Float32BufferAttribute(uvFlat,2));
     geom.setIndex(idx);geom.computeVertexNormals();
-    if(!checkerTexture)checkerTexture=createCheckerTexture();
-    return new THREE.Mesh(geom,new THREE.MeshStandardMaterial({map:checkerTexture,metalness:.05,roughness:.75,side:THREE.DoubleSide}));
+    return new THREE.Mesh(geom,new THREE.MeshStandardMaterial({map:getUvTexture(textureMode),metalness:.05,roughness:.75,side:THREE.DoubleSide}));
   }
 
   function clearTexturedMesh(){
@@ -344,25 +364,28 @@
     textureEnabled=false;distortionEnabled=false;
     clearTexturedMesh();clearDistortionMesh();
     if(radioCheckerboard){radioCheckerboard.checked=false;radioCheckerboard.disabled=true}
+    if(radioDots){radioDots.checked=false;radioDots.disabled=true}
     if(radioDistortion){radioDistortion.checked=false;radioDistortion.disabled=true}
     if(currentModelGroup)currentModelGroup.visible=true;
   }
 
-  function setTextureDisplayEnabled(enabled){
+  function setTextureDisplayEnabled(enabled,textureMode){
     if(enabled&&(!currentMeshData||!currentUnwrapUv)){
-      setStatus('请先点击"展开!"生成 UV，再开启棋盘格', '#ffd38a');
+      setStatus('请先点击"展开!"生成 UV，再开启纹理贴图', '#ffd38a');
       if(radioCheckerboard)radioCheckerboard.checked=false;
+      if(radioDots)radioDots.checked=false;
       return;
     }
     textureEnabled=enabled;
     if(textureEnabled){
+      currentTextureMode=textureMode||currentTextureMode||"checkerboard";
       clearTexturedMesh();
-      currentTexturedMesh=buildTexturedMesh(currentMeshData,currentUnwrapUv);
+      currentTexturedMesh=buildTexturedMesh(currentMeshData,currentUnwrapUv,currentTextureMode);
       modelScene.add(currentTexturedMesh);
       if(currentModelGroup)currentModelGroup.visible=false;
       if(currentDistortionMesh)currentDistortionMesh.visible=false;
       distortionEnabled=false;
-      setStatus("已开启棋盘格贴图", "#89f0b6");
+      setStatus("已开启"+(currentTextureMode==="dots"?"圆点贴图":"棋盘格贴图"), "#89f0b6");
     }else{
       clearTexturedMesh();
       if(currentModelGroup)currentModelGroup.visible=true;
@@ -379,14 +402,14 @@
     if(!currentMeshData||!currentUnwrapUv){
       setStatus('请先点击"展开!"生成 UV', '#ffd38a');
       if(radioDistortion)radioDistortion.checked=false;
-      if(radioCheckerboard){radioCheckerboard.checked=true;setTextureDisplayEnabled(true)}
+      if(radioCheckerboard){radioCheckerboard.checked=true;setTextureDisplayEnabled(true,"checkerboard")}
       return;
     }
     if(!taReady&& !taFailed){setStatus('正在加载共形扭曲引擎...', '#ffd38a');await initTextureAtlasSolver()}
     if(!taReady){
       setStatus('共形扭曲引擎加载失败', '#ff9d9d');
       if(radioDistortion)radioDistortion.checked=false;
-      if(radioCheckerboard){radioCheckerboard.checked=true;setTextureDisplayEnabled(true)}
+      if(radioCheckerboard){radioCheckerboard.checked=true;setTextureDisplayEnabled(true,"checkerboard")}
       return;
     }
     setStatus('共形扭曲计算中...', '#ffd38a');
@@ -435,7 +458,7 @@
     }catch(e){
       console.error(e);setStatus('扭曲计算失败: '+e.message, '#ff9d9d');
       if(radioDistortion)radioDistortion.checked=false;
-      if(radioCheckerboard){radioCheckerboard.checked=true;setTextureDisplayEnabled(true)}
+      if(radioCheckerboard){radioCheckerboard.checked=true;setTextureDisplayEnabled(true,"checkerboard")}
     }finally{
       if(pp)taInst._free(pp);if(fpt)taInst._free(fpt);if(uvp)taInst._free(uvp);
     }
@@ -643,10 +666,10 @@
       const ms=r.timeMs>0?r.timeMs:(performance.now()-t0);
       currentUnwrapUv=r.uv;
       clearDistortionMesh();distortionEnabled=false;
-      if(radioCheckerboard&&radioDistortion){
-        radioCheckerboard.disabled=false;radioDistortion.disabled=false;
-        radioCheckerboard.checked=true;radioDistortion.checked=false;
-        setTextureDisplayEnabled(true);
+      if(radioCheckerboard&&radioDots&&radioDistortion){
+        radioCheckerboard.disabled=false;radioDots.disabled=false;radioDistortion.disabled=false;
+        radioCheckerboard.checked=true;radioDots.checked=false;radioDistortion.checked=false;
+        setTextureDisplayEnabled(true,"checkerboard");
       }
       document.getElementById('uv-panel-label').textContent=label+' UV 网格';
       if(currentUvLines)uvScene.remove(currentUvLines);if(currentUvPins)uvScene.remove(currentUvPins);
@@ -678,7 +701,8 @@
   window.addEventListener("resize",resize);
   modelSel.addEventListener("change",loadModel);
   reloadBtn.addEventListener("click",doUnwrap);
-  if(radioCheckerboard)radioCheckerboard.addEventListener("change",function(){if(radioCheckerboard.checked)setTextureDisplayEnabled(true)});
+  if(radioCheckerboard)radioCheckerboard.addEventListener("change",function(){if(radioCheckerboard.checked){setTextureDisplayEnabled(true,"checkerboard");if(radioDots)radioDots.checked=false}});
+  if(radioDots)radioDots.addEventListener("change",function(){if(radioDots.checked){setTextureDisplayEnabled(true,"dots");if(radioCheckerboard)radioCheckerboard.checked=false;if(radioDistortion)radioDistortion.checked=false}});
   if(radioDistortion)radioDistortion.addEventListener("change",function(){if(radioDistortion.checked){setTextureDisplayEnabled(false);setDistortionEnabled(true)}});
   updateButtonState();
 

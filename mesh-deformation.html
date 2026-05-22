@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2D网格变形 - 拖动变形 + Ruppert 三角化</title>
+  <title>2D网格变形 - 拖动变形</title>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
   <style>
@@ -110,22 +110,21 @@
 <body>
 <div class="app">
   <div class="toolbar">
-    <label>2D 字母:</label>
-    <select id="letter-select"></select>
-    <label style="margin-left:4px;">2D 模型:</label>
+    <label>2D 模型:</label>
     <select id="model-select"></select>
-    <button id="add-handle-btn">+ 手柄模式</button>
+    <button id="fixed-point-btn">+ 固定点</button>
+    <button id="clear-fixed-btn">清除固定点</button>
+    <span style="font-size:13px;color:#8a9dd4;" id="fixed-count">0 个固定点</span>
+    <button id="add-handle-btn">+ 拖动手柄</button>
     <button id="clear-handles-btn">清除手柄</button>
-    <button id="confirm-btn">确定选择</button>
     <span style="font-size:13px;color:#8a9dd4;" id="handle-count">0 个手柄</span>
     <span class="spacer"></span>
     <button id="drag-btn" class="primary">开始拖动</button>
-    <button id="ruppert-btn">Ruppert 三角化</button>
-    <span class="status" id="status-text">选择字母开始</span>
+    <span class="status" id="status-text">选择模型开始</span>
   </div>
   <div class="main">
     <div class="panel" id="main-panel">
-      <div class="panel-label">2D 模型 — 点击面选中，拖动变形</div>
+      <div class="panel-label">2D 模型 — 固定点自动保存，换模型后自动恢复</div>
       <canvas id="main-canvas"></canvas>
       <div class="panel-info" id="panel-info"></div>
     </div>
@@ -135,14 +134,14 @@
 <script>
 (function() {
   // ==================== DOM ====================
-  const letterSelect = document.getElementById('letter-select');
   const modelSelect = document.getElementById('model-select');
+  const fixedPointBtn = document.getElementById('fixed-point-btn');
+  const clearFixedBtn = document.getElementById('clear-fixed-btn');
+  const fixedCountEl = document.getElementById('fixed-count');
   const addHandleBtn = document.getElementById('add-handle-btn');
   const clearHandlesBtn = document.getElementById('clear-handles-btn');
-  const confirmBtn = document.getElementById('confirm-btn');
   const handleCountEl = document.getElementById('handle-count');
   const dragBtn = document.getElementById('drag-btn');
-  const ruppertBtn = document.getElementById('ruppert-btn');
   const statusText = document.getElementById('status-text');
   const mainCanvas = document.getElementById('main-canvas');
   const panelInfo = document.getElementById('panel-info');
@@ -168,14 +167,19 @@
   // ==================== 状态 ====================
   let currentMeshData = null;       // { positions: [[x,y,z],...], faces: [[a,b,c],...] }
   let currentModelGroup = null;     // 场景模型组
+  let fixedVertices = new Set();    // 用户手动选择的固定点顶点索引
   let handles = [];                 // [{ faceIndex, indices, restCentroid, currentCentroid }]
-  let handlesConfirmed = false;
+  let fixedPointMode = false;
   let handleMode = false;
   let dragMode = false;
   let isDragging = false;
   let draggedHandle = null;
   let restPositions = null;
   let deformedPositions = null;
+  let currentModelFile = '';
+
+  const PIN_STORAGE_KEY = 'mesh-deformation-pins-v1';
+  const PIN_MATCH_EPS = 1e-3;
 
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
@@ -183,6 +187,59 @@
   function setStatus(msg, color) {
     statusText.textContent = msg;
     statusText.style.color = color || '#5a6791';
+  }
+
+  function persistFixedPins() {
+    if (!currentModelFile || !restPositions) return;
+    let store = {};
+    try {
+      store = JSON.parse(localStorage.getItem(PIN_STORAGE_KEY) || '{}');
+    } catch (e) { store = {}; }
+    if (fixedVertices.size === 0) {
+      delete store[currentModelFile];
+    } else {
+      const indices = Array.from(fixedVertices);
+      store[currentModelFile] = {
+        vertexCount: restPositions.length,
+        indices,
+        points: indices.map(i => [restPositions[i][0], restPositions[i][1], restPositions[i][2]])
+      };
+    }
+    localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(store));
+  }
+
+  function loadPersistedFixedPins(modelFile, positions) {
+    let store = {};
+    try {
+      store = JSON.parse(localStorage.getItem(PIN_STORAGE_KEY) || '{}');
+    } catch (e) { return new Set(); }
+    const entry = store[modelFile];
+    if (!entry || !entry.points || entry.points.length === 0) return new Set();
+
+    const eps2 = PIN_MATCH_EPS * PIN_MATCH_EPS;
+    const out = new Set();
+
+    if (entry.vertexCount === positions.length && Array.isArray(entry.indices)) {
+      let indicesOk = true;
+      for (let k = 0; k < entry.indices.length; k++) {
+        const i = entry.indices[k];
+        const pt = entry.points[k];
+        if (i < 0 || i >= positions.length || !pt) { indicesOk = false; break; }
+        const p = positions[i];
+        const dx = p[0] - pt[0], dy = p[1] - pt[1], dz = p[2] - pt[2];
+        if (dx * dx + dy * dy + dz * dz > eps2) { indicesOk = false; break; }
+      }
+      if (indicesOk) {
+        for (const i of entry.indices) out.add(i);
+        return out;
+      }
+    }
+
+    for (const pt of entry.points) {
+      const vi = findNearestVertexIndex({ x: pt[0], y: pt[1], z: pt[2] }, positions);
+      if (vi >= 0) out.add(vi);
+    }
+    return out;
   }
 
   // ==================== OBJ 模型加载 ====================
@@ -275,7 +332,38 @@
     if (obj && obj.parent) obj.parent.remove(obj);
   }
 
-  // ==================== 手柄可视化 ====================
+  function findNearestVertexIndex(point, positions) {
+    let best = -1, bestD = Infinity;
+    for (let i = 0; i < positions.length; i++) {
+      const dx = positions[i][0] - point.x;
+      const dy = positions[i][1] - point.y;
+      const dz = positions[i][2] - point.z;
+      const d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 < bestD) { bestD = d2; best = i; }
+    }
+    return best;
+  }
+
+  function enforceFixedConstraints() {
+    if (!deformedPositions || !restPositions) return;
+    for (const vi of fixedVertices) {
+      const r = restPositions[vi];
+      deformedPositions[vi][0] = r[0];
+      deformedPositions[vi][1] = r[1];
+      deformedPositions[vi][2] = r[2];
+    }
+  }
+
+  function getBaseMeshes() {
+    const meshes = [];
+    if (!currentModelGroup) return meshes;
+    currentModelGroup.children.forEach(c => {
+      if (c.isMesh && !c.userData.isHandle && !c.userData.isFixedMarker) meshes.push(c);
+    });
+    return meshes;
+  }
+
+  // ==================== 可视化（网格 + 固定点 + 手柄） ====================
   function updateHandleVisuals() {
     if (!currentMeshData) return;
     const positions = deformedPositions || currentMeshData.positions;
@@ -315,6 +403,21 @@
     wg.setAttribute('position', new THREE.Float32BufferAttribute(segs, 3));
     group.add(new THREE.LineSegments(wg, new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent:true, opacity:0.6 })));
 
+    // 固定点标记
+    const box = new THREE.Box3();
+    for (const p of positions) box.expandByPoint(new THREE.Vector3(p[0], p[1], p[2]));
+    const meshSize = box.getSize(new THREE.Vector3());
+    const markerR = Math.max(meshSize.x, meshSize.y, 0.5) * 0.015;
+    const fixedGeom = new THREE.SphereGeometry(markerR, 10, 10);
+    const fixedMat = new THREE.MeshBasicMaterial({ color: 0x44e8a0, depthTest: true, depthWrite: false });
+    for (const vi of fixedVertices) {
+      const p = restPositions[vi];
+      const marker = new THREE.Mesh(fixedGeom, fixedMat);
+      marker.position.set(p[0], p[1], p[2]);
+      marker.userData = { isFixedMarker: true, vertexIndex: vi };
+      group.add(marker);
+    }
+
     // 手柄面高亮
     for (let i = 0; i < handles.length; i++) {
       const h = handles[i];
@@ -330,12 +433,15 @@
 
     currentModelGroup = group;
     scene.add(group);
-    handleCountEl.textContent = handles.length + ' 个面手柄';
+    fixedCountEl.textContent = fixedVertices.size + ' 个固定点';
+    handleCountEl.textContent = handles.length + ' 个手柄';
   }
 
 
 
   // ==================== BFS 洪水填充：保持网格连通 ====================
+  function edgeKey(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
+
   /** 构建面 → 邻居面列表的映射（通过共享边连接） */
   function buildFaceAdjacency(faces) {
     const adj = new Map(); // faceIndex → [neighborFaceIndex, ...]
@@ -388,22 +494,6 @@
     return allVertexIndices;
   }
 
-  // ==================== 向量工具 ====================
-  function cross3(a, b) {
-    return [a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]];
-  }
-  function dot3(a, b) {
-    return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
-  }
-  function norm3(v) {
-    const len = Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-    if (len < 1e-12) return [1, 0, 0];
-    return [v[0]/len, v[1]/len, v[2]/len];
-  }
-  function vec3Sub(a, b) { return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
-  function vec3Add(a, b) { return [a[0]+b[0], a[1]+b[1], a[2]+b[2]]; }
-  function vec3Scale(v, s) { return [v[0]*s, v[1]*s, v[2]*s]; }
-
   // ==================== 鼠标交互 ====================
   function getCanvasCoords(canvas, e) {
     const rect = canvas.getBoundingClientRect();
@@ -414,37 +504,44 @@
   }
 
   mainCanvas.addEventListener('click', (e) => {
-    if (!handleMode || handlesConfirmed || !currentMeshData || isDragging) return;
+    if (!currentMeshData || isDragging) return;
+    if (!fixedPointMode && !handleMode) return;
 
     const coords = getCanvasCoords(mainCanvas, e);
     mouse.set(coords.x, coords.y);
     raycaster.setFromCamera(mouse, camera);
 
-    // 对当前模型组做射线检测
-    if (!currentModelGroup) return;
-    const meshes = [];
-    currentModelGroup.children.forEach(c => {
-      if (c.isMesh && !c.userData.isHandle) meshes.push(c);
-    });
-    const intersects = raycaster.intersectObjects(meshes, false);
-
+    const intersects = raycaster.intersectObjects(getBaseMeshes(), false);
     if (intersects.length === 0) return;
 
     const hit = intersects[0];
     const positions = deformedPositions || currentMeshData.positions;
 
-    // 根据射线相交的面索引获取三角面
+    if (fixedPointMode) {
+      const vi = findNearestVertexIndex(hit.point, positions);
+      if (vi < 0) return;
+      if (fixedVertices.has(vi)) {
+        fixedVertices.delete(vi);
+      } else {
+        fixedVertices.add(vi);
+      }
+      updateHandleVisuals();
+      persistFixedPins();
+      setStatus('已选 ' + fixedVertices.size + ' 个固定点（已自动保存）', '#89f0b6');
+      return;
+    }
+
+    if (!handleMode) return;
+
     const faceIdx = hit.faceIndex;
     if (faceIdx === undefined || faceIdx >= currentMeshData.faces.length) return;
     const face = currentMeshData.faces[faceIdx];
     const [v0, v1, v2] = face;
 
-    // 计算面重心
     const cx = (positions[v0][0] + positions[v1][0] + positions[v2][0]) / 3;
     const cy = (positions[v0][1] + positions[v1][1] + positions[v2][1]) / 3;
     const cz = (positions[v0][2] + positions[v1][2] + positions[v2][2]) / 3;
 
-    // 检查此面是否已作为手柄
     const existing = handles.findIndex(h => h.faceIndex === faceIdx);
     if (existing >= 0) {
       handles.splice(existing, 1);
@@ -457,7 +554,6 @@
       });
     }
     updateHandleVisuals();
-    
   });
 
   mainCanvas.addEventListener('mousedown', (e) => {
@@ -507,14 +603,15 @@
       const handleFaceIndices = handles.map(h => h.faceIndex);
       const connectedVerts = collectConnectedVertices(handleFaceIndices, currentMeshData.faces, faceAdj);
 
-      // 更新所有连通顶点
+      // 更新连通顶点（跳过固定点）
       for (const vi of connectedVerts) {
+        if (fixedVertices.has(vi)) continue;
         deformedPositions[vi][0] += delta[0];
         deformedPositions[vi][1] += delta[1];
         deformedPositions[vi][2] += delta[2];
       }
+      enforceFixedConstraints();
 
-      // 更新所有手柄重心
       for (const h of handles) {
         h.currentCentroid[0] += delta[0];
         h.currentCentroid[1] += delta[1];
@@ -534,74 +631,69 @@
     }
   });
 
-  // ==================== 按钮事件 ====================
-  addHandleBtn.addEventListener('click', () => {
-    if (handlesConfirmed) {
-      setStatus('请先取消组合（点击"取消组合"按钮）', '#ffd38a');
-      return;
+  function setModeButton(btn, active, activeLabel, idleLabel) {
+    btn.textContent = active ? activeLabel : idleLabel;
+    btn.style.background = active ? '#1a2848' : '';
+    btn.style.borderColor = active ? '#ff6b35' : '';
+  }
+
+  fixedPointBtn.addEventListener('click', () => {
+    fixedPointMode = !fixedPointMode;
+    if (fixedPointMode) {
+      handleMode = false;
+      setModeButton(addHandleBtn, false, '✓ 拖动手柄', '+ 拖动手柄');
     }
+    setModeButton(fixedPointBtn, fixedPointMode, '✓ 固定点', '+ 固定点');
+    setStatus(
+      fixedPointMode ? '点击网格选择/取消固定点（绿色球）' : '固定点模式已关闭',
+      fixedPointMode ? '#89f0b6' : '#5a6791'
+    );
+  });
+
+  clearFixedBtn.addEventListener('click', () => {
+    fixedVertices.clear();
+    persistFixedPins();
+    updateHandleVisuals();
+    setStatus('固定点已清除（已删除保存）', '#5a6791');
+  });
+
+  addHandleBtn.addEventListener('click', () => {
     handleMode = !handleMode;
     if (handleMode) {
-      addHandleBtn.textContent = '✓ 手柄模式';
-      addHandleBtn.style.background = '#1a2848';
-      addHandleBtn.style.borderColor = '#ff6b35';
-      setStatus('点击模型面放置/移除手柄（每个面3个控制点），选好后点"开始拖动"', '#ffb446');
-    } else {
-      addHandleBtn.textContent = '+ 手柄模式';
-      addHandleBtn.style.background = '';
-      addHandleBtn.style.borderColor = '';
-      setStatus('手柄模式已关闭', '#5a6791');
+      fixedPointMode = false;
+      setModeButton(fixedPointBtn, false, '✓ 固定点', '+ 固定点');
     }
+    setModeButton(addHandleBtn, handleMode, '✓ 拖动手柄', '+ 拖动手柄');
+    setStatus(
+      handleMode ? '点击模型面放置/移除拖动手柄' : '手柄模式已关闭',
+      handleMode ? '#ffb446' : '#5a6791'
+    );
   });
 
   clearHandlesBtn.addEventListener('click', () => {
     handles = [];
-    handlesConfirmed = false;
-    confirmBtn.textContent = '确定选择';
-    confirmBtn.style.background = '';
-    confirmBtn.style.borderColor = '';
     updateHandleVisuals();
     setStatus('手柄已清除', '#5a6791');
   });
 
-  confirmBtn.addEventListener('click', () => {
-    if (handles.length === 0) {
-      setStatus('请先放置手柄', '#ffd38a');
+  dragBtn.addEventListener('click', () => {
+    if (fixedVertices.size === 0) {
+      setStatus('请先选择至少一个固定点', '#ffd38a');
       return;
     }
-    handlesConfirmed = !handlesConfirmed;
-    if (handlesConfirmed) {
-      confirmBtn.textContent = '取消组合';
-      confirmBtn.style.background = '#1a2848';
-      confirmBtn.style.borderColor = '#ffd700';
-      handleMode = false;
-      addHandleBtn.textContent = '+ 手柄模式';
-      addHandleBtn.style.background = '';
-      addHandleBtn.style.borderColor = '';
-      setStatus('手柄已组合为整体，点"开始拖动"后整体移动', '#89f0b6');
-    } else {
-      confirmBtn.textContent = '确定选择';
-      confirmBtn.style.background = '';
-      confirmBtn.style.borderColor = '';
-      setStatus('已取消组合，手柄恢复独立', '#8cc4ff');
-    }
-  });
-
-  // ==================== 拖动模式 ====================
-  dragBtn.addEventListener('click', () => {
     if (handles.length === 0) {
-      setStatus('请先放置手柄', '#ffd38a');
+      setStatus('请先放置拖动手柄', '#ffd38a');
       return;
     }
     dragMode = !dragMode;
     if (dragMode) {
       dragBtn.textContent = '结束拖动';
       dragBtn.style.background = 'linear-gradient(135deg, #cc5500 0%, #ff6b35 100%)';
+      fixedPointMode = false;
       handleMode = false;
-      addHandleBtn.textContent = '+ 手柄模式';
-      addHandleBtn.style.background = '';
-      addHandleBtn.style.borderColor = '';
-      setStatus('拖动模式：拖拽手柄▼变形', '#89f0b6');
+      setModeButton(fixedPointBtn, false, '✓ 固定点', '+ 固定点');
+      setModeButton(addHandleBtn, false, '✓ 拖动手柄', '+ 拖动手柄');
+      setStatus('拖动模式：拖拽手柄变形，固定点保持不动', '#89f0b6');
     } else {
       dragBtn.textContent = '开始拖动';
       dragBtn.style.background = '';
@@ -609,325 +701,9 @@
     }
   });
 
-  // ==================== Ruppert 三角化 ====================
-
-  function circumcenter2D(a, b, c) {
-    // 计算三角形 (a,b,c) 的 2D 外接圆圆心
-    const ax = a[0], ay = a[1], bx = b[0], by = b[1], cx = c[0], cy = c[1];
-    const D = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
-    if (Math.abs(D) < 1e-12) return null;
-    const ax2 = ax * ax + ay * ay;
-    const by2 = bx * bx + by * by;
-    const cx2 = cx * cx + cy * cy;
-    const ux = (ax2 * (by - cy) + by2 * (cy - ay) + cx2 * (ay - by)) / D;
-    const uy = (ax2 * (cx - bx) + by2 * (ax - cx) + cx2 * (bx - ax)) / D;
-    return [ux, uy, 0];
-  }
-
-  function circumradius2D(a, b, c) {
-    const ax = a[0], ay = a[1], bx = b[0], by = b[1], cx = c[0], cy = c[1];
-    const ab = Math.hypot(bx - ax, by - ay);
-    const bc = Math.hypot(cx - bx, cy - by);
-    const ca = Math.hypot(ax - cx, cy - ay);
-    const s = (ab + bc + ca) / 2;
-    const area = Math.sqrt(Math.max(0, s * (s - ab) * (s - bc) * (s - ca)));
-    if (area < 1e-12) return Infinity;
-    return (ab * bc * ca) / (4 * area);
-  }
-
-  function shortestEdge2D(a, b, c) {
-    const dx1 = b[0] - a[0], dy1 = b[1] - a[1];
-    const dx2 = c[0] - b[0], dy2 = c[1] - b[1];
-    const dx3 = a[0] - c[0], dy3 = a[1] - c[1];
-    return Math.min(
-      Math.sqrt(dx1 * dx1 + dy1 * dy1),
-      Math.sqrt(dx2 * dx2 + dy2 * dy2),
-      Math.sqrt(dx3 * dx3 + dy3 * dy3)
-    );
-  }
-
-  function minAngle2D(a, b, c) {
-    const ab = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    const bc = Math.hypot(c[0] - b[0], c[1] - b[1]);
-    const ca = Math.hypot(a[0] - c[0], a[1] - c[1]);
-    // 余弦定理求各角
-    const cosA = (ab * ab + ca * ca - bc * bc) / (2 * ab * ca + 1e-12);
-    const cosB = (ab * ab + bc * bc - ca * ca) / (2 * ab * bc + 1e-12);
-    const cosC = (bc * bc + ca * ca - ab * ab) / (2 * bc * ca + 1e-12);
-    const clamp = v => Math.max(-1, Math.min(1, v));
-    const angleA = Math.acos(clamp(cosA));
-    const angleB = Math.acos(clamp(cosB));
-    const angleC = Math.acos(clamp(cosC));
-    return Math.min(angleA, angleB, angleC);
-  }
-
-  function edgeKey(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
-
-  /** 从 faces 提取边界边（只被一个三角形使用的边） */
-  function extractBoundaryEdges(faces) {
-    const ecount = new Map();
-    const efaces = new Map();
-    for (let fi = 0; fi < faces.length; fi++) {
-      const [a, b, c] = faces[fi];
-      for (const [u, v] of [[a,b],[b,c],[c,a]]) {
-        const k = edgeKey(u, v);
-        ecount.set(k, (ecount.get(k) || 0) + 1);
-        if (!efaces.has(k)) efaces.set(k, []);
-        efaces.get(k).push(fi);
-      }
-    }
-    const boundary = new Set();
-    for (const [k, cnt] of ecount) {
-      if (cnt === 1) boundary.add(k);
-    }
-    return boundary;
-  }
-
-  /** 检查点 p 是否侵入边界边 (u,v) 的直径圆 */
-  function encroachesEdge(p, u, v, positions) {
-    const pu = positions[u], pv = positions[v];
-    const mx = (pu[0] + pv[0]) / 2, my = (pu[1] + pv[1]) / 2;
-    const dx = p[0] - mx, dy = p[1] - my;
-    const halfLen = Math.hypot(pv[0] - pu[0], pv[1] - pu[1]) / 2;
-    return (dx * dx + dy * dy) < halfLen * halfLen * 1.001; // 加点容忍
-  }
-
-  /** 标准 incircle 测试：d 是否在三角形 abc 的外接圆内（CCW 时 >0 表示在内） */
-  function incircle2D(ax, ay, bx, by, cx, cy, dx, dy) {
-    const adx = ax - dx, ady = ay - dy;
-    const bdx = bx - dx, bdy = by - dy;
-    const cdx = cx - dx, cdy = cy - dy;
-    const al = adx*adx + ady*ady;
-    const bl = bdx*bdx + bdy*bdy;
-    const cl = cdx*cdx + cdy*cdy;
-    return al*(bdx*cdy - bdy*cdx)
-         - bl*(adx*cdy - ady*cdx)
-         + cl*(adx*bdy - ady*bdx);
-  }
-
-  function orient2D(ax, ay, bx, by, cx, cy) {
-    return (bx - ax)*(cy - ay) - (by - ay)*(cx - ax);
-  }
-
-  /** 构建 edge → [fi, fi] 映射 */
-  function buildEdgeFaceMap(triangles) {
-    const map = new Map();
-    for (let fi = 0; fi < triangles.length; fi++) {
-      const [a, b, c] = triangles[fi];
-      for (const [u, v] of [[a,b],[b,c],[c,a]]) {
-        const k = edgeKey(u, v);
-        if (!map.has(k)) map.set(k, []);
-        map.get(k).push(fi);
-      }
-    }
-    return map;
-  }
-
-  /** 找到包含边界边 (u,v) 的三角形索引 */
-  function findFaceWithEdge(tri, u, v) {
-    for (let fi = 0; fi < tri.length; fi++) {
-      const [a, b, c] = tri[fi];
-      if ((a===u||a===v) && (b===u||b===v) && (c===u||c===v)) {
-        // 这个面包含 u 和 v（但不一定是边）
-        const hasU = (a===u||b===u||c===u);
-        const hasV = (a===v||b===v||c===v);
-        if (hasU && hasV) return fi;
-      }
-    }
-    return -1;
-  }
-
-  function ruppertRefine(positions, faces, minAngleDeg, maxIter) {
-    const targetMinAngle = minAngleDeg * Math.PI / 180;
-    const B = 1.0 / Math.sin(targetMinAngle * 0.5);
-
-    let pos = positions.map(p => [p[0], p[1], 0]);
-    let tri = faces.map(f => [f[0], f[1], f[2]]);
-    const boundaryEdges = extractBoundaryEdges(tri);
-
-    // 确保所有面是 CCW
-    for (let fi = 0; fi < tri.length; fi++) {
-      const [a, b, c] = tri[fi];
-      if (orient2D(pos[a][0], pos[a][1], pos[b][0], pos[b][1], pos[c][0], pos[c][1]) < 0) {
-        tri[fi] = [a, c, b]; // 翻转为 CCW
-      }
-    }
-
-    for (let iter = 0; iter < maxIter; iter++) {
-      // 找最差三角形
-      let worstIdx = -1, worstAng = Infinity;
-      for (let fi = 0; fi < tri.length; fi++) {
-        const [a, b, c] = tri[fi];
-        const pa=pos[a], pb=pos[b], pc=pos[c];
-        const minAng = minAngle2D(pa, pb, pc);
-        if (minAng < worstAng) { worstAng = minAng; worstIdx = fi; }
-      }
-
-      if (worstIdx < 0 || worstAng >= targetMinAngle) break;
-
-      const [a, b, c] = tri[worstIdx];
-      const pa=pos[a], pb=pos[b], pc=pos[c];
-      const R = circumradius2D(pa, pb, pc);
-      const l = shortestEdge2D(pa, pb, pc);
-      if (R / l < B && worstAng >= targetMinAngle * 0.6) break;
-
-      const cc = circumcenter2D(pa, pb, pc);
-      if (!cc) continue;
-
-      // === 边界保护 ===
-      let encroached = false;
-      for (const ek of boundaryEdges) {
-        const [u, v] = ek.split('_').map(Number);
-        if (encroachesEdge(cc, u, v, pos)) {
-          encroached = true;
-
-          // 分裂边界边：在中点插入新点
-          const pu = pos[u], pv = pos[v];
-          const mid = [(pu[0]+pv[0])/2, (pu[1]+pv[1])/2, 0];
-          const newIdx = pos.length;
-          pos.push(mid);
-
-          // 更新边界
-          boundaryEdges.delete(ek);
-          boundaryEdges.add(edgeKey(u, newIdx));
-          boundaryEdges.add(edgeKey(v, newIdx));
-
-          // 找到包含此边界边的三角形，拆分为两个
-          const faceIdx = findFaceWithEdge(tri, u, v);
-          if (faceIdx >= 0) {
-            const [fv0, fv1, fv2] = tri[faceIdx];
-            const other = [fv0,fv1,fv2].find(x => x !== u && x !== v);
-            tri[faceIdx] = [u, other, newIdx];
-            tri.push([v, newIdx, other]);
-          }
-          break;
-        }
-      }
-      if (encroached) continue;
-
-      // === 插入 Steiner 点 ===
-      const newIdx = pos.length;
-      pos.push(cc);
-
-      // 拆分原三角形为 3 个子三角形（保持 CCW 朝向）
-      tri[worstIdx] = [a, b, newIdx];
-      tri.push([b, c, newIdx]);
-      tri.push([c, a, newIdx]);
-
-      // === Delaunay 边翻转 ===
-      let flipped = true;
-      while (flipped) {
-        flipped = false;
-        const efm = buildEdgeFaceMap(tri);
-        for (const [k, fiArr] of efm) {
-          if (fiArr.length !== 2) continue;
-          const [u, v] = k.split('_').map(Number);
-          const f0 = tri[fiArr[0]], f1 = tri[fiArr[1]];
-          // 找出不共享的顶点
-          const others = [];
-          for (const x of f0) if (x !== u && x !== v) others.push(x);
-          for (const x of f1) if (x !== u && x !== v) others.push(x);
-          if (others.length !== 2) continue;
-          const [p, q] = others;
-
-          const v_other_f0 = f0.find(x => x !== u && x !== v);
-          const v_other_f1 = f1.find(x => x !== u && x !== v);
-          if (v_other_f0 === undefined || v_other_f1 === undefined) continue;
-
-          // incircle 检查：q 是否在 (u,v,p) 的外接圆内？
-          const ic = incircle2D(
-            pos[u][0],pos[u][1], pos[v][0],pos[v][1],
-            pos[p][0],pos[p][1], pos[q][0],pos[q][1]
-          );
-          // (u,v,p) 是 CCW 的，ic > 0 表示 q 在内 → 需要翻转
-          if (ic > 1e-10) {
-            tri[fiArr[0]] = [u, p, q];
-            tri[fiArr[1]] = [v, q, p];
-            flipped = true;
-          }
-        }
-      }
-    }
-
-    return { positions: pos, faces: tri };
-  }
-
-  ruppertBtn.addEventListener('click', () => {
-    if (!currentMeshData) {
-      setStatus('请先选择字母', '#ffd38a');
-      return;
-    }
-
-    const meshData = currentMeshData;
-    setStatus('Ruppert 三角化中...', '#ffb446');
-
-    // 延迟到下一帧
-    setTimeout(() => {
-      try {
-        const refined = ruppertRefine(meshData.positions, meshData.faces, 25, 200);
-
-        // 显示在右侧
-        clearGroup(scene, currentModelGroup);
-
-        const positions = refined.positions;
-        const faces = refined.faces;
-        const group = new THREE.Group();
-
-        // 实心面
-        const geom = new THREE.BufferGeometry();
-        const flatPos = new Float32Array(positions.length * 3);
-        for (let i = 0; i < positions.length; i++) {
-          flatPos[i*3] = positions[i][0];
-          flatPos[i*3+1] = positions[i][1];
-          flatPos[i*3+2] = positions[i][2];
-        }
-        geom.setAttribute('position', new THREE.Float32BufferAttribute(flatPos, 3));
-        const flatIdx = new Uint32Array(faces.length * 3);
-        for (let i = 0; i < faces.length; i++) {
-          flatIdx[i*3] = faces[i][0];
-          flatIdx[i*3+1] = faces[i][1];
-          flatIdx[i*3+2] = faces[i][2];
-        }
-        geom.setIndex(new THREE.BufferAttribute(flatIdx, 1));
-        geom.computeVertexNormals();
-        group.add(new THREE.Mesh(geom, new THREE.MeshStandardMaterial({
-          color: 0x7fa7ff, roughness: 0.5, metalness: 0.05, side: THREE.DoubleSide
-        })));
-
-        // 线框
-        const wireGeom = new THREE.BufferGeometry();
-        const edgeSet = new Set();
-        const segs = [];
-        function addE(a, b) {
-          const key = a < b ? a + '_' + b : b + '_' + a;
-          if (edgeSet.has(key)) return;
-          edgeSet.add(key);
-          segs.push(positions[a][0], positions[a][1], positions[a][2]);
-          segs.push(positions[b][0], positions[b][1], positions[b][2]);
-        }
-        for (let i = 0; i < faces.length; i++) {
-          addE(faces[i][0], faces[i][1]);
-          addE(faces[i][1], faces[i][2]);
-          addE(faces[i][2], faces[i][0]);
-        }
-        wireGeom.setAttribute('position', new THREE.Float32BufferAttribute(segs, 3));
-        group.add(new THREE.LineSegments(wireGeom,
-          new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent: true, opacity: 0.6 })));
-
-        currentModelGroup = group;
-        scene.add(group);
-
-        panelInfo.textContent = 'Ruppert: ' + positions.length + ' 顶点 | ' + faces.length + ' 面 (最小角 ≥ 25°)';
-        setStatus('Ruppert 三角化完成', '#89f0b6');
-      } catch (err) {
-        console.error(err);
-        setStatus('三角化失败: ' + err.message, '#ff9d9d');
-      }
-    }, 10);
-  });
-
   // ==================== 模型加载 ====================
-  async function loadMesh(path, label) {
+  async function loadMesh(path, label, modelFile) {
+    currentModelFile = modelFile || path.split('/').pop();
     setStatus('加载中...', '#ffd38a');
     try {
       const obj = await new Promise((resolve, reject) => {
@@ -953,14 +729,14 @@
       restPositions = meshData.positions.map(p => [p[0], p[1], p[2]]);
       deformedPositions = null;
       handles = [];
-      handlesConfirmed = false;
-      confirmBtn.textContent = '确定选择';
-      confirmBtn.style.background = '';
-      confirmBtn.style.borderColor = '';
+      fixedVertices = loadPersistedFixedPins(currentModelFile, restPositions);
+      fixedPointMode = false;
+      handleMode = false;
+      setModeButton(fixedPointBtn, false, '✓ 固定点', '+ 固定点');
+      setModeButton(addHandleBtn, false, '✓ 拖动手柄', '+ 拖动手柄');
 
       clearGroup(scene, currentModelGroup);
-      currentModelGroup = buildModelVisual(meshData.positions, meshData.faces);
-      scene.add(currentModelGroup);
+      updateHandleVisuals();
 
       dragMode = false;
       dragBtn.textContent = '开始拖动';
@@ -977,32 +753,22 @@
       camera.position.set(0, 0, 5);
       camera.lookAt(0, 0, 0);
 
-      handleCountEl.textContent = '0 个面手柄';
+      handleCountEl.textContent = '0 个手柄';
       panelInfo.textContent = label + ' | ' + meshData.positions.length + ' 顶点 | ' + meshData.faces.length + ' 面';
-      setStatus('已加载 ' + label, '#89f0b6');
+      if (fixedVertices.size > 0) {
+        setStatus('已加载 ' + label + '，已恢复 ' + fixedVertices.size + ' 个固定点', '#89f0b6');
+      } else {
+        setStatus('已加载 ' + label + '，请选择固定点（将自动保存）', '#89f0b6');
+      }
     } catch (err) {
       console.error(err);
       setStatus('加载失败: ' + err.message, '#ff9d9d');
     }
   }
 
-  // ==================== 字母选择 ====================
-  for (let i = 65; i <= 90; i++) {
-    const letter = String.fromCharCode(i);
-    const opt = document.createElement('option');
-    opt.value = letter;
-    opt.textContent = letter;
-    letterSelect.appendChild(opt);
-  }
-  letterSelect.addEventListener('change', () => {
-    const letter = letterSelect.value;
-    modelSelect.value = '';
-    loadMesh('assets/charaters/' + letter + '_2d.obj', '字母 ' + letter);
-  });
-
-  // ==================== 2D 模型选择 ====================
   const d2Models = [
-    { file: 'alligator.obj', label: 'alligator' }
+    { file: 'alligator.obj', label: 'alligator' },
+    { file: 'woody.obj', label: 'woody' }
   ];
   for (const m of d2Models) {
     const opt = document.createElement('option');
@@ -1012,8 +778,11 @@
   }
   modelSelect.addEventListener('change', () => {
     if (!modelSelect.value) return;
-    letterSelect.value = '';
-    loadMesh('assets/2dmodels/' + modelSelect.value, modelSelect.options[modelSelect.selectedIndex].textContent);
+    loadMesh(
+      'assets/2dmodels/' + modelSelect.value,
+      modelSelect.options[modelSelect.selectedIndex].textContent,
+      modelSelect.value
+    );
   });
 
   // ==================== 响应式 ====================
@@ -1038,8 +807,8 @@
 
   // ==================== 初始化 ====================
   resize();
-  letterSelect.value = 'A';
-  loadMesh('assets/charaters/A_2d.obj', '字母 A');
+  modelSelect.value = d2Models[0].file;
+  loadMesh('assets/2dmodels/' + d2Models[0].file, d2Models[0].label, d2Models[0].file);
   animate();
 })();
 </script>

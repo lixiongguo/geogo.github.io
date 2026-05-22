@@ -340,6 +340,9 @@
             <input type="radio" name="texture-display" value="checkerboard" id="radio-checkerboard" disabled> 棋盘格
           </label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;">
+            <input type="radio" name="texture-display" value="dots" id="radio-dots" disabled> 圆点贴图
+          </label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;">
             <input type="radio" name="texture-display" value="distortion" id="radio-distortion" disabled> 共形扭曲
           </label>
         </fieldset>
@@ -395,6 +398,7 @@
       const clearBtn = document.getElementById("clear-btn");
       const textureBtn = null;
       const radioCheckerboard = document.getElementById("radio-checkerboard");
+      const radioDots = document.getElementById("radio-dots");
       const radioDistortion = document.getElementById("radio-distortion");
       const statusText = document.getElementById("status-text");
       const objLoader = new THREE.OBJLoader();
@@ -435,6 +439,8 @@
       let textureEnabled = false;
       let currentTexturedMesh = null;
       let checkerTexture = null;
+      let dotTexture = null;
+      let currentTextureMode = "checkerboard";
       let lastElapsedMs = 0;
       let distortionEnabled = false;
       let currentDistortionMesh = null;
@@ -2934,7 +2940,55 @@
         return texture;
       }
 
-      function buildTexturedMesh(meshData, uv) {
+      function createDotTexture() {
+        const texSize = 512;
+        const cells = 16;
+        const cellSize = texSize / cells;
+        const canvas = document.createElement("canvas");
+        canvas.width = texSize;
+        canvas.height = texSize;
+        const ctx = canvas.getContext("2d");
+
+        ctx.fillStyle = "#f4f8ff";
+        ctx.fillRect(0, 0, texSize, texSize);
+
+        for (let y = 0; y < cells; y++) {
+          for (let x = 0; x < cells; x++) {
+            const cx = (x + 0.5) * cellSize;
+            const cy = (y + 0.5) * cellSize;
+            const radius = cellSize * 0.27;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fillStyle = "#3f7cff";
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "rgba(17,39,84,0.45)";
+            ctx.stroke();
+          }
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(1, 1);
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      function getUvTexture(textureMode) {
+        if (textureMode === "dots") {
+          if (!dotTexture) {
+            dotTexture = createDotTexture();
+          }
+          return dotTexture;
+        }
+        if (!checkerTexture) {
+          checkerTexture = createCheckerTexture();
+        }
+        return checkerTexture;
+      }
+
+      function buildTexturedMesh(meshData, uv, textureMode) {
         const positions = [];
         for (let i = 0; i < meshData.positions.length; i++) {
           positions.push(meshData.positions[i][0], meshData.positions[i][1], meshData.positions[i][2]);
@@ -2954,12 +3008,8 @@
         geom.setIndex(indices);
         geom.computeVertexNormals();
 
-        if (!checkerTexture) {
-          checkerTexture = createCheckerTexture();
-        }
-
         const material = new THREE.MeshStandardMaterial({
-          map: checkerTexture,
+          map: getUvTexture(textureMode),
           metalness: 0.05,
           roughness: 0.75,
           side: THREE.DoubleSide
@@ -2985,21 +3035,23 @@
         });
       }
 
-      function setTextureDistortionEnabled(enabled) {
+      function setTextureDistortionEnabled(enabled, textureMode) {
         if (enabled && (!currentMeshData || !currentUnwrapUv)) {
           setStatus('请先点击"展开!"生成 UV，再开启纹理扭曲', '#ffd38a');
           if (radioCheckerboard) radioCheckerboard.checked = false;
+          if (radioDots) radioDots.checked = false;
           return;
         }
 
         textureEnabled = enabled;
         if (textureEnabled) {
+          currentTextureMode = textureMode || currentTextureMode || "checkerboard";
           clearTexturedMesh();
-          currentTexturedMesh = buildTexturedMesh(currentMeshData, currentUnwrapUv);
+          currentTexturedMesh = buildTexturedMesh(currentMeshData, currentUnwrapUv, currentTextureMode);
           modelScene.add(currentTexturedMesh);
           setModelSolidVisible(false);
           if (currentDistortionMesh) currentDistortionMesh.visible = false;
-          setStatus("已开启纹理扭曲（棋盘格贴图）", "#89f0b6");
+          setStatus("已开启纹理扭曲（" + (currentTextureMode === "dots" ? "圆点贴图" : "棋盘格贴图") + "）", "#89f0b6");
         } else {
           clearTexturedMesh();
           setModelSolidVisible(true);
@@ -3036,7 +3088,8 @@
         if (!currentMeshData || !currentUnwrapUv) {
           setStatus('请先点击"展开!"生成 UV', '#ffd38a');
           if (radioDistortion) radioDistortion.checked = false;
-          if (radioCheckerboard) { radioCheckerboard.checked = true; setTextureDistortionEnabled(true); }
+          if (radioDots) radioDots.checked = false;
+          if (radioCheckerboard) { radioCheckerboard.checked = true; setTextureDistortionEnabled(true, "checkerboard"); }
           return;
         }
 
@@ -3047,7 +3100,8 @@
         if (!wasmReady) {
           setStatus('QC 引擎加载失败', '#ff9d9d');
           if (radioDistortion) radioDistortion.checked = false;
-          if (radioCheckerboard) { radioCheckerboard.checked = true; setTextureDistortionEnabled(true); }
+          if (radioDots) radioDots.checked = false;
+          if (radioCheckerboard) { radioCheckerboard.checked = true; setTextureDistortionEnabled(true, "checkerboard"); }
           return;
         }
 
@@ -3166,7 +3220,8 @@
           console.error('QC error:', err);
           setStatus('扭曲计算失败: ' + err.message, '#ff9d9d');
           if (radioDistortion) radioDistortion.checked = false;
-          if (radioCheckerboard) { radioCheckerboard.checked = true; setTextureDistortionEnabled(true); }
+          if (radioDots) radioDots.checked = false;
+          if (radioCheckerboard) { radioCheckerboard.checked = true; setTextureDistortionEnabled(true, "checkerboard"); }
         }
       }
 
@@ -3236,6 +3291,7 @@
           textureEnabled = false;
           // 重置纹理显示单选框为未选中
           if (radioCheckerboard) radioCheckerboard.checked = false;
+          if (radioDots) radioDots.checked = false;
           if (radioDistortion) radioDistortion.checked = false;
 
           setStatus("正在提取三角网格...");
@@ -3416,11 +3472,14 @@
           clearDistortionMesh();
           distortionEnabled = false;
           // 展开完成后启用纹理显示单选框，默认选中"棋盘格"
-          if (radioCheckerboard && radioDistortion) {
+          if (radioCheckerboard && radioDots && radioDistortion) {
             radioCheckerboard.disabled = false;
+            radioDots.disabled = false;
             radioDistortion.disabled = false;
             radioCheckerboard.checked = true;
-            setTextureDistortionEnabled(true);
+            radioDots.checked = false;
+            radioDistortion.checked = false;
+            setTextureDistortionEnabled(true, "checkerboard");
           }
 
           // 更新 UV 面板标签
@@ -3483,8 +3542,18 @@
       if (radioCheckerboard) {
         radioCheckerboard.addEventListener("change", function () {
           if (this.checked) {
-            setTextureDistortionEnabled(true);
+            setTextureDistortionEnabled(true, "checkerboard");
+            if (radioDots) radioDots.checked = false;
             if (radioDistortion) radioDistortion.checked = false;
+          }
+        });
+      }
+      if (radioDots) {
+        radioDots.addEventListener("change", function () {
+          if (this.checked) {
+            setTextureDistortionEnabled(true, "dots");
+            if (radioDistortion) radioDistortion.checked = false;
+            if (radioCheckerboard) radioCheckerboard.checked = false;
           }
         });
       }
