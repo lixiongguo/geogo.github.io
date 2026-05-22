@@ -18,6 +18,8 @@
     button:disabled{opacity:.4;cursor:not-allowed}
     button.primary{background:linear-gradient(135deg,#ff6b35 0%,#ff8f5e 100%);color:#fff;border:none;box-shadow:0 3px 12px rgba(255,107,53,.35)}
     button.primary:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 20px rgba(255,107,53,.5)}
+    button.wasm-btn{background:linear-gradient(135deg,#00c48c 0%,#00e6a0 100%);color:#fff;border:none;box-shadow:0 3px 12px rgba(0,196,140,.35)}
+    button.wasm-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,196,140,.5)}
     .status-bar{font-size:12px;color:#7f9ac9;margin-bottom:12px;min-height:18px;text-align:center}
     .main-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:1100px;width:100%;padding:0 20px}
     .col{display:flex;flex-direction:column;align-items:center;gap:10px}
@@ -39,13 +41,17 @@
     </label>
     <button class="primary" id="compute-btn">⚡ Power 图</button>
     <button id="iter-btn" style="display:none">优化权重 (Newton)</button>
+    <button class="wasm-btn" id="wasm-btn" disabled>🧬 WASM 测试</button>
     <label>
       <input id="show-sites" type="checkbox" checked>
       <span style="font-size:13px;color:#9fb2df">显示站点</span>
     </label>
   </div>
   <div class="status-bar" id="status-bar">调整站点数量，点击"Power 图"开始计算</div>
-  <div class="status-bar" id="timing-bar" style="font-size:15px;font-weight:700;color:#f0c040;background:rgba(240,192,64,0.12);border-radius:8px;padding:6px 16px;margin-top:4px;min-height:22px"></div>
+  <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:8px">
+    <div id="js-timing" style="font-size:13px;font-weight:700;color:#f0c040;background:rgba(240,192,64,0.1);border-radius:8px;padding:5px 14px;min-width:200px;text-align:center">⚡ JS: 未运行</div>
+    <div id="wasm-timing" style="font-size:13px;font-weight:700;color:#00e6a0;background:rgba(0,230,160,0.1);border-radius:8px;padding:5px 14px;min-width:200px;text-align:center">🧬 WASM: 未运行</div>
+  </div>
 
   <div class="main-grid">
     <div class="col">
@@ -75,6 +81,26 @@
     </div>
   </div>
 
+  <div style="max-width:1100px;width:100%;padding:0 20px;margin-top:24px;border-top:1px solid rgba(106,132,255,.12);padding-top:18px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+        <h2 style="font-size:15px;color:#c6d4f7;margin:0">
+          <span style="color:#ffb446">JS</span> · Power 图（纯 JS 暴力逐像素）
+        </h2>
+        <div class="img-wrap"><canvas id="js-power-canvas"></canvas></div>
+        <div class="legend" id="js-legend">尚未计算</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+        <h2 style="font-size:15px;color:#c6d4f7;margin:0">
+          <span style="color:#00e6a0">WASM</span> · Power 图（Geogram 多边形提取）
+        </h2>
+        <div class="img-wrap"><canvas id="wasm-power-canvas"></canvas></div>
+        <div class="legend" id="wasm-legend">尚未计算</div>
+      </div>
+    </div>
+  </div>
+
+<script src="assets/wasm/wasm_power_diagram.js"></script>
 <script>
 (function(){
   const SIZE = 256;
@@ -82,15 +108,21 @@
   const tgtCanvas = document.getElementById('tgt-canvas');
   const srcPowerCanvas = document.getElementById('src-power-canvas');
   const tgtPowerCanvas = document.getElementById('tgt-power-canvas');
+  const jsPowerCanvas = document.getElementById('js-power-canvas');
+  const wasmPowerCanvas = document.getElementById('wasm-power-canvas');
   const siteCountSlider = document.getElementById('site-count');
   const siteValEl = document.getElementById('site-val');
   const computeBtn = document.getElementById('compute-btn');
   const iterBtn = document.getElementById('iter-btn');
+  const wasmBtn = document.getElementById('wasm-btn');
   const statusBar = document.getElementById('status-bar');
-  const timingBar = document.getElementById('timing-bar');
+  const jsTimingEl = document.getElementById('js-timing');
+  const wasmTimingEl = document.getElementById('wasm-timing');
+  const jsLegend = document.getElementById('js-legend');
+  const wasmLegend = document.getElementById('wasm-legend');
   const showSitesCheckbox = document.getElementById('show-sites');
 
-  [srcCanvas, tgtCanvas, srcPowerCanvas, tgtPowerCanvas].forEach(c=>{c.width=SIZE;c.height=SIZE});
+  [srcCanvas, tgtCanvas, srcPowerCanvas, tgtPowerCanvas, jsPowerCanvas, wasmPowerCanvas].forEach(c=>{c.width=SIZE;c.height=SIZE});
 
   let srcGray = null, tgtGray = null;
   let srcData = null, tgtData = null;
@@ -101,9 +133,10 @@
   function setStatus(msg){statusBar.textContent=msg}
   let t0=0;
   function tick(){t0=performance.now()}
-  function tock(label){
+  function tock(label, el){
     const dt=((performance.now()-t0)/1000).toFixed(2);
-    timingBar.textContent=label+'耗时: '+dt+'s';
+    const txt=label+'耗时: '+dt+'s';
+    if(el)el.textContent=txt;
   }
 
   // ============ 加载图像 ============
@@ -386,17 +419,21 @@
     // 优化：目标→源
     tgtWeights=optimizeWeights(tgtSites,tgtWeights,tgtGray,tgtTargetMasses,120,1.5);
 
-    // 绘制 Power 图
+    // 绘制 Power 图 — JS 版本渲染到独立 canvas
     setStatus('正在渲染 Power 图...');
     await sleep(50);
-    drawPowerDiagram(srcPowerCanvas,srcSites,srcWeights,srcGray,showSites);
+    drawPowerDiagram(jsPowerCanvas,srcSites,srcWeights,srcGray,showSites);
     drawPowerDiagram(tgtPowerCanvas,tgtSites,tgtWeights,tgtGray,showSites);
+    drawPowerDiagram(srcPowerCanvas,srcSites,srcWeights,srcGray,showSites);
+    tock('JS 总计（含 k-means+Lloyd+优化+暴力遍历）', jsTimingEl);
+    jsLegend.textContent = `JS 暴力逐像素遍历 · ${nSites} 站点`;
+    jsTimingEl.style.color = '#f0c040';
 
     iterBtn.style.display='';
     iterBtn.disabled=false;
     computeBtn.disabled=false;
-    tock('总计算');
-    setStatus('Power 图计算完成！站点数: '+nSites+'，可继续迭代优化');
+    wasmBtn.disabled=false;
+    setStatus('Power 图计算完成！站点数: '+nSites+'，点击 🧬 WASM 按钮对比效率');
   }
 
   function assignClusters(gray,sites){
@@ -437,19 +474,221 @@
 
     drawPowerDiagram(srcPowerCanvas,srcSites,srcWeights,srcGray,showSites);
     drawPowerDiagram(tgtPowerCanvas,tgtSites,tgtWeights,tgtGray,showSites);
+    drawPowerDiagram(jsPowerCanvas,srcSites,srcWeights,srcGray,showSites);
 
     iterBtn.disabled=false;computeBtn.disabled=false;
-    tock('额外迭代');
+    tock('JS 额外迭代', jsTimingEl);
     setStatus('额外迭代完成！');
   }
 
   function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+
+  // ============ WASM Power Diagram Integration ============
+  let wasmReady = false;
+
+  // Polygons → pixel labels rasterization (even-odd rule)
+  function rasterizePolygonCells(cells, S) {
+    const labels = new Int32Array(S * S).fill(-1);
+    for (let ci = 0; ci < cells.length; ci++) {
+      const poly = cells[ci];
+      if (poly.length < 6) continue; // need at least 3 vertices (6 floats)
+      // Compute bounding box
+      let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
+      const verts = [];
+      for (let j = 0; j < poly.length; j += 2) {
+        const vx = poly[j], vy = poly[j + 1];
+        verts.push({x: vx, y: vy});
+        if (vx < xmin) xmin = vx; if (vx > xmax) xmax = vx;
+        if (vy < ymin) ymin = vy; if (vy > ymax) ymax = vy;
+      }
+      const nv = verts.length;
+      // Clamp to [0,S) pixel range
+      const pxMin = Math.max(0, Math.floor(xmin * S));
+      const pxMax = Math.min(S - 1, Math.ceil(xmax * S));
+      const pyMin = Math.max(0, Math.floor(ymin * S));
+      const pyMax = Math.min(S - 1, Math.ceil(ymax * S));
+      // Even-odd rule: for each pixel in bounding box
+      for (let py = pyMin; py <= pyMax; py++) {
+        for (let px = pxMin; px <= pxMax; px++) {
+          const tx = (px + 0.5) / S, ty = (py + 0.5) / S;
+          let inside = false;
+          for (let j = 0, k = nv - 1; j < nv; k = j++) {
+            const yj = verts[j].y, yk = verts[k].y;
+            if ((yj > ty) !== (yk > ty)) {
+              const xi = verts[j].x + (ty - yj) * (verts[k].x - verts[j].x) / (yk - yj);
+              if (tx < xi) inside = !inside;
+            }
+          }
+          if (inside) labels[py * S + px] = ci;
+        }
+      }
+    }
+    return labels;
+  }
+
+  // Draw polygon-based power diagram (fills cells, draws edges)
+  function drawPolygonPowerDiagram(canvas, cells, showSitesFlag, sites) {
+    const S = SIZE;
+    const labels = rasterizePolygonCells(cells, S);
+
+    const ctx = canvas.getContext('2d');
+    const imgData = ctx.createImageData(S, S);
+    // Assign a unique hue per cell (for visual distinction)
+    const nCells = cells.length;
+    for (let y = 0; y < S; y++) {
+      for (let x = 0; x < S; x++) {
+        const idx = y * S + x, label = labels[idx];
+        if (label >= 0) {
+          const hue = (label * 137.508) % 360; // golden angle spacing
+          const [r, g, b] = hslToRgb(hue / 360, 0.65, 0.55);
+          imgData.data[idx * 4] = Math.round(r * 255);
+          imgData.data[idx * 4 + 1] = Math.round(g * 255);
+          imgData.data[idx * 4 + 2] = Math.round(b * 255);
+          imgData.data[idx * 4 + 3] = 255;
+        } else {
+          imgData.data[idx * 4] = 15;
+          imgData.data[idx * 4 + 1] = 15;
+          imgData.data[idx * 4 + 2] = 20;
+          imgData.data[idx * 4 + 3] = 255;
+        }
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    // Draw cell edges
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 1;
+    for (const poly of cells) {
+      if (poly.length < 6) continue;
+      ctx.beginPath();
+      ctx.moveTo(poly[0] * S, poly[1] * S);
+      for (let j = 2; j < poly.length; j += 2)
+        ctx.lineTo(poly[j] * S, poly[j + 1] * S);
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    // Draw sites
+    if (showSitesFlag && sites) {
+      for (const site of sites) {
+        ctx.beginPath();
+        ctx.arc(site[0] * S, site[1] * S, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+  }
+
+  function hslToRgb(h, s, l) {
+    let r, g, b;
+    if (s === 0) { r = g = b = l; }
+    else {
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1; if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      };
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1/3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1/3);
+    }
+    return [r, g, b];
+  }
+
+  async function runWasmTest() {
+    // Called only after the click handler has validated + disabled + waitForWasm
+    setStatus('正在用 WASM (Geogram) 计算 Power Diagram...');
+    tick();
+
+    await sleep(10);
+
+    const nSites = srcSites.length;
+    const xs = new Float64Array(nSites);
+    const ys = new Float64Array(nSites);
+    const ws = new Float64Array(nSites);
+    for (let i = 0; i < nSites; i++) {
+      xs[i] = srcSites[i][0];
+      ys[i] = srcSites[i][1];
+      ws[i] = srcWeights[i];
+    }
+
+    // Allocate WASM memory and copy data
+    const ptr_x = Module._malloc(nSites * 8);
+    const ptr_y = Module._malloc(nSites * 8);
+    const ptr_w = Module._malloc(nSites * 8);
+    Module.HEAPF64.set(xs, ptr_x >> 3);
+    Module.HEAPF64.set(ys, ptr_y >> 3);
+    Module.HEAPF64.set(ws, ptr_w >> 3);
+
+    // Call WASM — measure just the Geogram computation
+    const wasmT0 = performance.now();
+    const resultPtr = Module.ccall('compute_power_diagram_js', 'number',
+      ['number', 'number', 'number', 'number'],
+      [ptr_x, ptr_y, ptr_w, nSites]);
+    const wasmGeoTime = ((performance.now() - wasmT0) / 1000).toFixed(3);
+
+    const jsonStr = Module.UTF8ToString(resultPtr);
+    const cells = JSON.parse(jsonStr);
+
+    // Clean up
+    Module._free(ptr_x); Module._free(ptr_y); Module._free(ptr_w);
+    Module.ccall('free_buffer', null, ['number'], [resultPtr]);
+
+    // Draw polygon-based power diagram on WASM canvas
+    drawPolygonPowerDiagram(wasmPowerCanvas, cells, showSites, srcSites);
+
+    tock('WASM 总计（含传输+渲染）', wasmTimingEl);
+    // Show breakdown
+    const totalDt = ((performance.now()-t0)/1000).toFixed(2);
+    wasmTimingEl.textContent = `🧬 Geogram 计算: ${wasmGeoTime}s | 总计: ${totalDt}s`;
+    wasmTimingEl.style.color = '#00e6a0';
+    wasmLegend.textContent = `Geogram 多边形提取 · ${cells.length} cells · 无像素遍历`;
+    setStatus(`WASM (Geogram) 完成！${cells.length} 个 cell，Geogram 纯计算 ${wasmGeoTime}s`);
+
+    wasmBtn.disabled = false;
+  }
+
+  // WASM-ready check: poll until HEAPF64 is available
+  function waitForWasm() {
+    return new Promise(resolve => {
+      if (Module.HEAPF64) { resolve(); return; }
+      const check = setInterval(() => {
+        if (Module.HEAPF64) { clearInterval(check); resolve(); }
+      }, 50);
+    });
+  }
+
+  wasmBtn.addEventListener('click', async () => {
+    if (!srcSites || !srcWeights) {
+      setStatus('请先点击左侧"Power 图"按钮生成站点和权重');
+      return;
+    }
+    wasmBtn.disabled = true;
+    try {
+      setStatus('正在初始化 WASM 模块...');
+      await waitForWasm();
+      wasmReady = true;
+      await runWasmTest();
+    } catch(e) {
+      console.error('WASM error:', e);
+      setStatus('WASM 出错: ' + e.message);
+      wasmBtn.disabled = false;
+    }
+  });
 
   // ============ 重绘 Power 图（用于切换显示站点） ============
   function redrawPowerDiagrams(){
     if(!srcSites) return;
     drawPowerDiagram(srcPowerCanvas,srcSites,srcWeights,srcGray,showSites);
     drawPowerDiagram(tgtPowerCanvas,tgtSites,tgtWeights,tgtGray,showSites);
+    drawPowerDiagram(jsPowerCanvas,srcSites,srcWeights,srcGray,showSites);
   }
 
   // ============ 事件绑定 ============
