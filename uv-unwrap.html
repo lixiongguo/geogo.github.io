@@ -965,7 +965,8 @@
       }
 
       function shouldShowPinPoints() {
-        return getCurrentMethod() === 'lscm';
+        const m = getCurrentMethod();
+        return (m === 'lscm' || m === 'dcp');
       }
 
       /** 获取 Tutte 边界类型 */
@@ -1016,10 +1017,10 @@
           const sel = document.getElementById('opt-scheme-select');
           sel.value = '1';  // 默认牛顿法
         }
-        // 改pin点按钮仅在 LSCM 时显示
-        document.getElementById('param-lscm-pin').style.display = (m === 'lscm') ? '' : 'none';
-        // 切换出 LSCM 时重置自定义 pin 点
-        if (m !== 'lscm') {
+        // 改pin点按钮在 LSCM 与 DCP 时显示
+        document.getElementById('param-lscm-pin').style.display = (m === 'lscm' || m === 'dcp') ? '' : 'none';
+        // 切换到既非 LSCM 也非 DCP 时，重置自定义 pin 点
+        if (m !== 'lscm' && m !== 'dcp') {
           currentCustomAnchors = null;
         }
         if (currentMeshData) {
@@ -2136,9 +2137,65 @@
         return _harmonicParameterizationJs(vertices, faces, boundaryType, lapFn);
       }
 
+      /**
+       * DCP (Desbrun Discrete Conformal Parameterization):
+       * 自由边界共形参数化，只需固定 2 个 pin 点即可满秩。
+       * 求解 L u = 0, L v = 0（cotan Laplace），pin 两点消除平移+旋转零空间。
+       * 与 LSCM 类似：pin[0] → (0,0), pin[1] → (d, 0)。
+       */
       function discreteConformalParameterizationJs(vertices, faces) {
-        // Desbrun DNCP/DCP is a free-boundary conformal solve, not a fixed circle/square boundary map.
-        return spectralConformalParameterizationJs(vertices, faces);
+        const n = vertices.length;
+        // 获取 2 个 pin 点（与 LSCM 一致：支持自定义或自动选点）
+        const anchors = getValidatedAnchors(vertices);
+        const a = anchors[0], b = anchors[1];
+
+        // DCP = 自由边界的 cotan 调和映射：求解 L u = 0, L v = 0
+        const rowsL = _cotanLaplacianTriplets(vertices, faces);
+
+        // 计算 pin 两点间 3D 距离，作为 pin[1] 的 u 坐标
+        const dx = vertices[a][0] - vertices[b][0];
+        const dy = vertices[a][1] - vertices[b][1];
+        const dz = vertices[a][2] - vertices[b][2];
+        const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        // 构造带 Dirichlet 约束的矩阵：pin 顶点行 = 单位行，其余 = Laplace 行
+        const A = new Array(n);
+        const bu = new Float64Array(n), bv = new Float64Array(n);
+        for (let i = 0; i < n; i++) {
+          if (i === a) {
+            // pin[0] → (0, 0)，消除 u、v 平移
+            A[i] = [{ j: i, v: 1 }];
+            bu[i] = 0; bv[i] = 0;
+          } else if (i === b) {
+            // pin[1] → (d, 0)，v=0 消除旋转
+            A[i] = [{ j: i, v: 1 }];
+            bu[i] = d; bv[i] = 0;
+          } else {
+            // 自由顶点：Laplace 方程
+            A[i] = rowsL[i].slice();
+          }
+        }
+
+        // 稀疏矩阵-向量乘
+        function applyA(x, out) {
+          for (let i = 0; i < n; i++) {
+            let s = 0;
+            const ri = A[i];
+            for (let k = 0; k < ri.length; k++) s += ri[k].v * x[ri[k].j];
+            out[i] = s;
+          }
+        }
+
+        // GMRES 分别求解 u、v
+        const maxIter = Math.min(1800, Math.max(250, n));
+        const restart = Math.min(80, n);
+        const u = _gmresSolve(applyA, bu, 1e-9, maxIter, restart);
+        const v = _gmresSolve(applyA, bv, 1e-9, maxIter, restart);
+
+        // 组装 UV 并归一化到 [0,1]²
+        const uv = new Array(n);
+        for (let i = 0; i < n; i++) uv[i] = [u[i], v[i]];
+        return _normalizeUvBox(uv);
       }
 
       /** libigl::vector_area_matrix：仅边界边贡献 */
@@ -2720,17 +2777,19 @@
       async function solveDCPAsync(meshData, onProgress) {
         const vertices = meshData.positions, faces = meshData.faces;
         if (onProgress) onProgress(0, 1);
+        const anchors = getValidatedAnchors(vertices);
         const t0 = performance.now();
         const uv = discreteConformalParameterizationJs(vertices, faces);
         const timeMs = performance.now() - t0;
         if (onProgress) onProgress(1, 1);
         return {
           uv: uv,
-          anchors: chooseAnchorPair(vertices),
+          anchors: anchors,
           flippedFaceCount: countFlippedFaces(uv, faces),
           timeMs: timeMs,
           method: 'dcp',
-          boundary: '自由边界'
+          boundary: '自由边界（2 pin 点）',
+          pinInfo: anchors[0] + " & " + anchors[1]
         };
       }
 
