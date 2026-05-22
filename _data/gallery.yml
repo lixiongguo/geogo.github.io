@@ -10,6 +10,12 @@
   description: 个人藏书展示，以精美的书架布局呈现阅读收藏。
   detail_url: /gallery/bookshelf.html
 
+- slug: advanced-text
+  title: AdvancedText 图文混排
+  description: 用 Three.js 复刻 UGUI 富文本的占位符排版、双图层渲染与超链接热区。
+  thumbnail: /assets/gallery/advanced-text-thumb.svg
+  detail_url: /gallery/advanced-text.html
+
 - slug: water-caustics
   title: Water Caustics
   description: 水体焦散由波面折射与反射共同形成，效果受 Fresnel 权重影响。

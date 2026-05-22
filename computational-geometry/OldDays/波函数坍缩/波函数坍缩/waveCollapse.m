@@ -1,0 +1,123 @@
+function newImg=waveCollapse(img,N,rows,cols)
+% @author : slandarer
+% 公众号  : slandarer随笔
+% 知乎    : hikari
+img=double(img);err=40;
+% =========================================================================
+% 图片切分
+imgList{N*N}=[];
+pixNum=size(img,1)/N;
+for i=1:N
+    for j=1:N
+        imgList{sub2ind([N,N],i,j)}=...
+        img(((i-1)*pixNum+1):(i*pixNum),...
+            ((j-1)*pixNum+1):(j*pixNum),:);
+    end
+end
+% =========================================================================
+% 构建联通表
+imgAdjList(N*N).r=[];
+imgAdjList(N*N).l=[];
+imgAdjList(N*N).u=[];
+imgAdjList(N*N).d=[];
+for i=1:N*N
+    imgC=imgList{i};
+    imgAdjList(i).r=[];
+    imgAdjList(i).l=[];
+    imgAdjList(i).u=[];
+    imgAdjList(i).d=[];
+    for j=1:N*N
+        imgS=imgList{j};
+% 以下是均方根误差检测部分
+% 检测是否右联通 -----------------------------------------------------------
+        rImgC=imgC(:,end,:);rImgC=rImgC(:);
+        rImgS=imgS(:,1,:);rImgS=rImgS(:);
+        rErr=sqrt(mean((rImgC-rImgS).^2));
+        if rErr<err
+            imgAdjList(i).r=[imgAdjList(i).r,j];
+        end
+% 检测是否左联通 ----------------------------------------------------------- 
+        lImgC=imgC(:,1,:);lImgC=lImgC(:);
+        lImgS=imgS(:,end,:);lImgS=lImgS(:);
+        lErr=sqrt(mean((lImgC-lImgS).^2));
+        if lErr<err
+            imgAdjList(i).l=[imgAdjList(i).l,j];
+        end
+% 检测是否上联通 -----------------------------------------------------------
+        uImgC=imgC(1,:,:);uImgC=uImgC(:);
+        uImgS=imgS(end,:,:);uImgS=uImgS(:);
+        uErr=sqrt(mean((uImgC-uImgS).^2));
+        if uErr<err
+            imgAdjList(i).u=[imgAdjList(i).u,j];
+        end
+% 检测是否下联通 -----------------------------------------------------------
+        dImgC=imgC(end,:,:);dImgC=dImgC(:);
+        dImgS=imgS(1,:,:);dImgS=dImgS(:);
+        dErr=sqrt(mean((dImgC-dImgS).^2));
+        if dErr<err
+            imgAdjList(i).d=[imgAdjList(i).d,j];
+        end
+    end
+end
+% =========================================================================
+% 构建序号矩阵
+% 不想进行太多次回退，回退五次直接重新生成
+indMat=zeros(rows,cols);
+while any(any(indMat==0))
+try
+indMat=zeros(rows,cols);
+for j=1:cols
+    for i=1:rows 
+        k=sub2ind([rows,cols],i,j);
+        for kk=1:5% 回退五次
+        [ti,tj]=ind2sub([rows,cols],k);
+        fullList=fillij(indMat,imgAdjList,N,ti,tj);
+        if ~isempty(fullList)
+            indMat(ti,tj)=fullList(randi([1,length(fullList)],[1,1]));
+            k=k+1;
+            if k>sub2ind([rows,cols],i,j)
+                break
+            end
+        else
+            indMat(ti,tj)=0;
+            k=k-1;
+        end
+        end
+    end
+end
+catch
+end
+end
+    function fList=fillij(indMat,imgAdjList,N,i,j)
+        fList=1:N*N;
+        % 右侧图的左侧可行图 --------------------------------------------------------
+        if j+1>N,rInd=0;else,rInd=indMat(i,j+1);end
+        if rInd==0,rIndList=1:N*N;else,rIndList=imgAdjList(rInd).l;end
+        fList=intersect(fList,rIndList);
+        % 左侧图的右侧可行图 --------------------------------------------------------
+        if j-1<1,lInd=0;else,lInd=indMat(i,j-1);end
+        if lInd==0,lIndList=1:N*N;else,lIndList=imgAdjList(lInd).r;end
+        fList=intersect(fList,lIndList);
+        % 上侧图的下侧可行图 --------------------------------------------------------
+        if i-1<1,uInd=0;else,uInd=indMat(i-1,j);end
+        if uInd==0,uIndList=1:N*N;else,uIndList=imgAdjList(uInd).d;end
+        fList=intersect(fList,uIndList);
+        % 下侧图的上侧可行图 --------------------------------------------------------
+        if i+1>N,dInd=0;else,dInd=indMat(i+1,j);end
+        if dInd==0,dIndList=1:N*N;else,dIndList=imgAdjList(dInd).u;end
+        fList=intersect(fList,dIndList);
+    end
+% =========================================================================
+% 填充图像
+newImg=zeros([rows*pixNum,cols*pixNum,size(img,3)]);
+for i=1:rows
+    for j=1:cols
+        newImg(((i-1)*pixNum+1):(i*pixNum),((j-1)*pixNum+1):(j*pixNum),:)=...
+            imgList{indMat(i,j)};
+    end
+end
+newImg=uint8(newImg);
+% @author : slandarer
+% 公众号  : slandarer随笔
+% 知乎    : hikari
+end
