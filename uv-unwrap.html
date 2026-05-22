@@ -304,11 +304,17 @@
             <span id="param-lscm-pin" style="display:none;font-size:12px;color:#c6d1f4;">
               <button id="change-pin-btn" type="button">改pin点</button>
             </span>
-            <!-- Tutte 边界选择 -->
+            <!-- Tutte / DCP 边界选择 -->
             <span id="param-tutte-boundary" style="display:none;font-size:12px;color:#c6d1f4;">
               边界:
               <label style="cursor:pointer;margin:0 4px;" title="映射到圆形边界"><input type="radio" name="tutte-boundary" value="circle" checked> 圆</label>
               <label style="cursor:pointer;margin:0 4px;" title="映射到正方形边界"><input type="radio" name="tutte-boundary" value="square"> 方</label>
+            </span>
+            <!-- Tutte Laplace 权重（uniform 图 Laplace / cot-Laplace） -->
+            <span id="param-tutte-weight" style="display:none;font-size:12px;color:#c6d1f4;">
+              权重:
+              <label style="cursor:pointer;margin:0 4px;" title="均匀权重：Δf(v_i)=1/|N_i| Σ(f_j−f_i)，见 Tutte 参数化"><input type="radio" name="tutte-weight" value="uniform" checked> uniform</label>
+              <label style="cursor:pointer;margin:0 4px;" title="余切权重：离散 cot-Laplace 调和映射"><input type="radio" name="tutte-weight" value="cot"> cot-Laplace</label>
             </span>
             <!-- BD C 值 -->
             <span id="param-bd-c" style="display:none;font-size:12px;color:#ffb446;">
@@ -984,6 +990,16 @@
         return r ? r.value : 'circle';
       }
 
+      /** 获取 Tutte Laplace 权重类型：uniform | cot */
+      function getTutteWeight() {
+        const r = document.querySelector('input[name="tutte-weight"]:checked');
+        return r ? r.value : 'uniform';
+      }
+
+      function getTutteWeightLabel() {
+        return getTutteWeight() === 'cot' ? 'cot-Laplace' : 'uniform';
+      }
+
       /** 获取 BD C 参数值 */
       function getBDCParam() {
         const v = parseFloat(document.getElementById('bd-c-input').value);
@@ -1014,8 +1030,9 @@
         const hasParams = (m === 'tutte' || m === 'dcp' || showBD || m === 'arap' || m === 'cetm' || m === 'ricci' || m === 'cp');
         document.getElementById('param-none').style.display = hasParams ? 'none' : '';
 
-        // Tutte 边界
+        // Tutte / DCP 边界
         document.getElementById('param-tutte-boundary').style.display = (m === 'tutte' || m === 'dcp') ? '' : 'none';
+        document.getElementById('param-tutte-weight').style.display = (m === 'tutte') ? '' : 'none';
         // BD C 值
         document.getElementById('param-bd-c').style.display = showBD ? '' : 'none';
         // ARAP 迭代（ARAP 时始终显示）
@@ -1071,6 +1088,9 @@
 
       // 方法切换 + BD/Tutte 参数变化时更新 UI
       document.querySelectorAll('input[name="method"]').forEach(function(radio) {
+        radio.addEventListener('change', onParamChange);
+      });
+      document.querySelectorAll('input[name="tutte-boundary"], input[name="tutte-weight"]').forEach(function(radio) {
         radio.addEventListener('change', onParamChange);
       });
       document.getElementById('change-pin-btn').addEventListener('click', onChangePinClick);
@@ -1627,7 +1647,29 @@
 
       // ==================== WASM 驱动的 Tutte + ARAP 求解 ====================
 
+      async function solveTutteHarmonicAsync(meshData, onProgress) {
+        const vertices = meshData.positions, faces = meshData.faces;
+        const boundaryType = getTutteBoundary();
+        const weightType = getTutteWeight();
+        if (onProgress) onProgress(0, 1);
+        const t0 = performance.now();
+        const uv = tutteParameterizationJs(vertices, faces, boundaryType, weightType);
+        const timeMs = performance.now() - t0;
+        if (onProgress) onProgress(1, 1);
+        const bndLabel = boundaryType === 'square' ? 'square' : 'circle';
+        return {
+          uv: uv,
+          anchors: chooseAnchorPair(vertices),
+          flippedFaceCount: countFlippedFaces(uv, faces),
+          timeMs: timeMs,
+          method: 'tutte_' + weightType + '_' + bndLabel,
+          boundary: boundaryType === 'square' ? '方形边界' : '圆形边界',
+          weight: getTutteWeightLabel()
+        };
+      }
+
       async function solveTutteCircleAsync(meshData, onProgress) {
+        if (getTutteWeight() === 'cot') return solveTutteHarmonicAsync(meshData, onProgress);
         if (!tutteArapReady) { const ok = await initTutteARAPSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
 
         const flatPositions = new Float64Array(meshData.positions.length * 3);
@@ -1662,6 +1704,7 @@
       }
 
       async function solveTutteSquareAsync(meshData, onProgress) {
+        if (getTutteWeight() === 'cot') return solveTutteHarmonicAsync(meshData, onProgress);
         if (!tutteArapReady) { const ok = await initTutteARAPSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
 
         const flatPositions = new Float64Array(meshData.positions.length * 3);
@@ -1925,6 +1968,41 @@
         for (let i = 0; i < n; i++) rows[i].push({ j: i, v: diag[i] });
         return rows;
       }
+
+      /** Uniform 图 Laplace（Tutte 均匀权重，每边权 1） */
+      function _uniformLaplacianTriplets(vertices, faces) {
+        const n = vertices.length;
+        const tri = [];
+        function add(i, j, v) {
+          if (i === j) return;
+          tri.push({ i: i, j: j, v: v });
+        }
+        for (let fi = 0; fi < faces.length; fi++) {
+          const f = faces[fi];
+          const i0 = f[0], i1 = f[1], i2 = f[2];
+          add(i0, i1, 1); add(i1, i0, 1);
+          add(i1, i2, 1); add(i2, i1, 1);
+          add(i2, i0, 1); add(i0, i2, 1);
+        }
+        const acc = new Map();
+        function accAdd(i, j, v) {
+          const k = i + '_' + j;
+          acc.set(k, (acc.get(k) || 0) + v);
+        }
+        for (let t = 0; t < tri.length; t++) accAdd(tri[t].i, tri[t].j, tri[t].v);
+        const rows = new Array(n).fill(0).map(function () { return []; });
+        let diag = new Float64Array(n);
+        acc.forEach(function (v, k) {
+          const p = k.split('_');
+          const i = +p[0], j = +p[1];
+          if (i === j) return;
+          rows[i].push({ j: j, v: v });
+          diag[i] -= v;
+        });
+        for (let i = 0; i < n; i++) rows[i].push({ j: i, v: diag[i] });
+        return rows;
+      }
+
       function _dot3(ax, ay, az, bx, by, bz) {
         return ax * bx + ay * by + az * bz;
       }
@@ -2044,18 +2122,19 @@
         return uv;
       }
 
-      function discreteConformalParameterizationJs(vertices, faces, boundaryType) {
+      /** 固定凸边界的调和映射：L f = 0（内部），f|∂ = g（Dirichlet） */
+      function _harmonicParameterizationJs(vertices, faces, boundaryType, laplacianFn) {
         const n = vertices.length;
         const bd = _buildBoundaryData(faces, n);
         if (bd.boundaryEdges.length === 0) {
-          throw new Error("DCP 需要带边界的网格；封闭曲面请先切开。");
+          throw new Error("需要带边界的网格；封闭曲面请先切开。");
         }
         const loops = _buildBoundaryLoops(bd.boundaryEdges);
         if (loops.length !== 1) {
-          throw new Error("DCP 当前实现需要单一边界环，检测到 " + loops.length + " 个边界环。");
+          throw new Error("当前实现需要单一边界环，检测到 " + loops.length + " 个边界环。");
         }
         const boundaryUv = _mapBoundaryLoop(vertices, loops[0], boundaryType);
-        const rowsL = _cotanLaplacianTriplets(vertices, faces);
+        const rowsL = laplacianFn(vertices, faces);
         const A = new Array(n);
         const bu = new Float64Array(n), bv = new Float64Array(n);
         for (let i = 0; i < n; i++) {
@@ -2082,6 +2161,15 @@
         const uv = new Array(n);
         for (let i = 0; i < n; i++) uv[i] = [u[i], v[i]];
         return _normalizeUvBox(uv);
+      }
+
+      function tutteParameterizationJs(vertices, faces, boundaryType, weightType) {
+        const lapFn = weightType === 'cot' ? _cotanLaplacianTriplets : _uniformLaplacianTriplets;
+        return _harmonicParameterizationJs(vertices, faces, boundaryType, lapFn);
+      }
+
+      function discreteConformalParameterizationJs(vertices, faces, boundaryType) {
+        return _harmonicParameterizationJs(vertices, faces, boundaryType, _cotanLaplacianTriplets);
       }
 
       /** libigl::vector_area_matrix：仅边界边贡献 */
@@ -3359,7 +3447,9 @@
         let methodLabel;
         if (bd) methodLabel = 'BD-LSCM (C=' + C.toFixed(1) + ')';
         else if (method === 'lscm') methodLabel = 'LSCM';
-        else if (method === 'tutte') methodLabel = 'Tutte (' + (getTutteBoundary() === 'circle' ? '圆' : '方') + ')';
+        else if (method === 'tutte') {
+          methodLabel = 'Tutte (' + getTutteWeightLabel() + ', ' + (getTutteBoundary() === 'circle' ? '圆' : '方') + ')';
+        }
         else if (method === 'dcp') methodLabel = 'DCP (' + (getTutteBoundary() === 'circle' ? '圆' : '方') + ')';
         else if (method === 'arap') methodLabel = 'ARAP (iter=' + getARAPIter() + ')';
         else if (method === 'cetm') methodLabel = 'CETM (共形因子)';
@@ -3505,6 +3595,7 @@
           if (unwrapResult.optScheme) details += " / " + unwrapResult.optScheme;
           if (unwrapResult.pinInfo) details += " / pin=" + unwrapResult.pinInfo;
           if (unwrapResult.boundary) details += " / " + unwrapResult.boundary;
+          if (unwrapResult.weight) details += " / " + unwrapResult.weight;
           if (unwrapResult.fallbackCause) details += " / ARAP兜底";
           showTiming(elapsedMs, details, unwrapResult.flippedFaceCount);
 
