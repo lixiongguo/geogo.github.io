@@ -220,6 +220,63 @@ code {
 	color: #c0c0e0;
 }
 
+.dream-gallery-link {
+	position: relative;
+	isolation: isolate;
+	border-radius: 999px;
+	transition: color 0.25s ease, transform 0.25s ease;
+}
+
+.dream-gallery-link::before {
+	content: "";
+	position: absolute;
+	inset: 2px -10px;
+	z-index: -1;
+	border-radius: inherit;
+	background:
+		radial-gradient(circle at 24% 50%, rgba(255, 214, 232, 0.3), transparent 30%),
+		linear-gradient(120deg, rgba(114, 102, 255, 0.18), rgba(100, 220, 255, 0.1));
+	box-shadow: 0 0 24px rgba(136, 123, 255, 0.25);
+	opacity: 0;
+	transform: scale(0.92);
+	transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.dream-gallery-link:hover,
+.dream-gallery-link:focus-visible {
+	color: #f4e8ff;
+	transform: translateY(-2px);
+	text-decoration: none;
+}
+
+.dream-gallery-link:hover::before,
+.dream-gallery-link:focus-visible::before {
+	opacity: 1;
+	transform: scale(1);
+}
+
+.dream-gallery-link .quick-link-icon {
+	box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.12), 0 0 18px rgba(151, 127, 255, 0.22);
+	transition: transform 0.35s ease, box-shadow 0.35s ease, filter 0.35s ease;
+}
+
+.dream-gallery-link:hover .quick-link-icon,
+.dream-gallery-link:focus-visible .quick-link-icon {
+	filter: saturate(1.15) brightness(1.08);
+	transform: rotate(-5deg) scale(1.08);
+	box-shadow: 0 0 0 3px rgba(255, 235, 251, 0.22), 0 0 30px rgba(167, 140, 255, 0.45);
+}
+
+.dream-gallery-link .quick-link-title {
+	transition: color 0.25s ease, text-shadow 0.25s ease;
+}
+
+.dream-gallery-link:hover .quick-link-title,
+.dream-gallery-link:focus-visible .quick-link-title {
+	color: #fff5ff;
+	text-shadow: 0 0 10px rgba(255, 213, 245, 0.65), 0 0 24px rgba(150, 128, 255, 0.45);
+}
+
 .quick-link-icon {
 	width: 66px;
 	height: 66px;
@@ -259,6 +316,135 @@ code {
 	font-size: 0.75em;
 	color: #707090;
 	font-style: italic;
+}
+
+.dream-transition {
+	position: fixed;
+	inset: 0;
+	z-index: 9999;
+	display: grid;
+	place-items: center;
+	overflow: hidden;
+	pointer-events: none;
+	background:
+		radial-gradient(circle at var(--dream-x, 50%) var(--dream-y, 50%), rgba(255, 238, 255, 0.78), transparent 0),
+		linear-gradient(135deg, rgba(9, 11, 30, 0), rgba(20, 13, 48, 0));
+	animation: dreamVeil 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.dream-transition::before,
+.dream-transition::after {
+	content: "";
+	position: absolute;
+	width: 38vmax;
+	height: 38vmax;
+	border-radius: 50%;
+	filter: blur(8px);
+	opacity: 0;
+	transform: translate(-50%, -50%) scale(0.2);
+}
+
+.dream-transition::before {
+	left: var(--dream-x, 50%);
+	top: var(--dream-y, 50%);
+	background: radial-gradient(circle, rgba(255, 213, 247, 0.64), rgba(125, 142, 255, 0.18) 42%, transparent 68%);
+	animation: dreamBloom 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.dream-transition::after {
+	left: calc(var(--dream-x, 50%) + 12vw);
+	top: calc(var(--dream-y, 50%) - 8vh);
+	background: radial-gradient(circle, rgba(117, 226, 255, 0.38), transparent 64%);
+	animation: dreamBloom 0.72s 0.08s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.dream-transition img {
+	position: absolute;
+	left: var(--dream-x, 50%);
+	top: var(--dream-y, 50%);
+	width: 72px;
+	height: 72px;
+	border-radius: 50%;
+	object-fit: cover;
+	box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.22), 0 0 42px rgba(255, 207, 245, 0.85);
+	transform: translate(-50%, -50%);
+	animation: dreamPortal 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+body.is-dream-transitioning .container {
+	animation: dreamPageLift 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes dreamVeil {
+	0% {
+		background:
+			radial-gradient(circle at var(--dream-x, 50%) var(--dream-y, 50%), rgba(255, 238, 255, 0.55), transparent 0),
+			linear-gradient(135deg, rgba(9, 11, 30, 0), rgba(20, 13, 48, 0));
+		backdrop-filter: blur(0);
+	}
+	100% {
+		background:
+			radial-gradient(circle at var(--dream-x, 50%) var(--dream-y, 50%), rgba(255, 238, 255, 0.88), transparent 72vmax),
+			linear-gradient(135deg, rgba(9, 11, 30, 0.72), rgba(20, 13, 48, 0.92));
+		backdrop-filter: blur(7px);
+	}
+}
+
+@keyframes dreamBloom {
+	0% {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(0.18);
+	}
+	60% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0.25;
+		transform: translate(-50%, -50%) scale(2.7);
+	}
+}
+
+@keyframes dreamPortal {
+	0% {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1) rotate(0deg);
+	}
+	72% {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(2.65) rotate(10deg);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(3.4) rotate(16deg);
+	}
+}
+
+@keyframes dreamPageLift {
+	0% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	100% {
+		opacity: 0.18;
+		transform: scale(1.025);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.dream-gallery-link,
+	.dream-gallery-link::before,
+	.dream-gallery-link .quick-link-icon,
+	.dream-gallery-link .quick-link-title {
+		transition: none;
+	}
+
+	.dream-transition,
+	.dream-transition::before,
+	.dream-transition::after,
+	.dream-transition img,
+	body.is-dream-transitioning .container {
+		animation: none;
+	}
 }
 
 .gallery-index {

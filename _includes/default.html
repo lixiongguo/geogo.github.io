@@ -63,6 +63,45 @@
   window.addEventListener('load', function() {
     typeWriterLoop("学中有乐玩中有学", "typewriter", 180, 1300);
   });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const dreamLink = document.querySelector('.dream-gallery-link');
+    if (!dreamLink) return;
+
+    dreamLink.addEventListener('click', function(event) {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+      }
+
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (prefersReducedMotion) return;
+
+      event.preventDefault();
+
+      const rect = dreamLink.getBoundingClientRect();
+      const icon = dreamLink.querySelector('.quick-link-icon');
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      const transition = document.createElement('div');
+
+      transition.className = 'dream-transition';
+      transition.style.setProperty('--dream-x', x + 'px');
+      transition.style.setProperty('--dream-y', y + 'px');
+
+      if (icon) {
+        const portalIcon = icon.cloneNode();
+        portalIcon.alt = '';
+        transition.appendChild(portalIcon);
+      }
+
+      document.body.classList.add('is-dream-transitioning');
+      document.body.appendChild(transition);
+
+      window.setTimeout(function() {
+        window.location.href = dreamLink.href;
+      }, 620);
+    });
+  });
 	  </script>
     {% unless page.date %}
     <script src="/assets/js/particles.js"></script>
