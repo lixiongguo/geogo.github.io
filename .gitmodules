@@ -8,3 +8,6 @@
 [submodule "cpp/Libigl-Discrete-Geometry"]
 	path = cpp/Libigl-Discrete-Geometry
 	url = https://github.com/lixiongguo/Libigl-Discrete-Geometry.git
+[submodule "ddg-exercises-js"]
+	path = ddg-exercises-js
+	url = https://github.com/cmu-geometry/ddg-exercises-js.git

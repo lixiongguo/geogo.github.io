@@ -23,6 +23,13 @@
   </header>
 
   <div class="post-content">
+    <section class="home-demo-hub" style="margin-bottom: 2rem; padding: 1.25rem 1.5rem; background: #faf8f5; border: 1px solid rgba(44, 62, 80, 0.12); border-radius: 12px;">
+      <h2 style="margin: 0 0 0.5rem; font-size: 1.25rem; font-weight: 600;">DDG 交互练习</h2>
+      <p style="margin: 0 0 1rem; color: #6c757d; font-size: 0.95rem;">
+        离散微分几何（DDG）课程的 WebGL 交互演示：参数化、测地距离、Hodge 分解、几何流等 9 个主题。
+      </p>
+      <a href="/ddg-exercises-js/projects/" style="font-weight: 600;">查看全部项目 →</a>
+    </section>
       {%- assign posts_list = site.posts | where_exp: "post", "post.path contains '1.Parameterization'" -%}
       {%- if paginator and paginator.posts -%}
         {%- assign posts_list = paginator.posts -%}

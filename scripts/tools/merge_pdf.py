@@ -120,11 +120,13 @@ def _fix_latex(tex):
     return tex
 
 # ============== 主逻辑 ==============
-def merge_to_pdf(folder, output_pdf, title='合集'):
+def merge_to_pdf(folder, output_pdf, title='合集', single_chapter=False):
     if not check_deps(): sys.exit(1)
 
     folder = os.path.abspath(folder)
     files = sorted([f for f in os.listdir(folder) if f.endswith('.md') and f != '目录.md'])
+    if single_chapter:
+        files = [f for f in files if not re.match(r'^0\.', f)]
     if not files: print('未找到 .md 文件'); sys.exit(1)
 
     # 工作目录（normpath 解决 .. 问题）
@@ -135,7 +137,7 @@ def merge_to_pdf(folder, output_pdf, title='合集'):
     os.makedirs(dl_dir, exist_ok=True)
 
     # ====== 合并 MD ======
-    merged = ''
+    merged = f'# {title}\n\n' if single_chapter else ''
     ch = 0
     for f in files:
         ch += 1
@@ -145,7 +147,10 @@ def merge_to_pdf(folder, output_pdf, title='合集'):
         tt = m.group(1) if m else os.path.splitext(f)[0]
         text = re.sub(r'^---\s*\n.*?\n---\s*\n', '', text, count=1, flags=re.DOTALL)
         text = _preprocess_md(text, folder, dl_dir)
-        merged += f'\n\n# 第{ch}章  {tt}\n\n{text}\n'
+        if single_chapter:
+            merged += f'\n\n{text}\n'
+        else:
+            merged += f'\n\n# 第{ch}章  {tt}\n\n{text}\n'
 
     md_path = os.path.join(work_dir, 'merged.md')
     with open(md_path, 'w', encoding='utf-8') as fh: fh.write(merged)
@@ -211,6 +216,10 @@ def merge_to_pdf(folder, output_pdf, title='合集'):
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print('用法: python merge_pdf.py <md文件夹> <输出pdf路径> [标题]')
+        print('用法: python merge_pdf.py <md文件夹> <输出pdf路径> [标题] [--single-chapter]')
         sys.exit(1)
-    merge_to_pdf(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else '合集')
+    flags = [a for a in sys.argv[3:] if a.startswith('--')]
+    args = [a for a in sys.argv[1:3]] + [a for a in sys.argv[3:] if not a.startswith('--')]
+    title = args[2] if len(args) > 2 else '合集'
+    single = '--single-chapter' in flags
+    merge_to_pdf(args[0], args[1], title, single_chapter=single)
