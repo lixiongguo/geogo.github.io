@@ -129,6 +129,7 @@
   let srcSites = null, tgtSites = null;
   let srcWeights = null, tgtWeights = null;
   let showSites = true;
+  let wasmCells = null;
 
   function setStatus(msg){statusBar.textContent=msg}
   let t0=0;
@@ -370,27 +371,28 @@
   async function compute(){
     computeBtn.disabled=true;iterBtn.disabled=true;
     const nSites=parseInt(siteCountSlider.value)||100;
-    setStatus('正在计算站点位置 (k-means++)...');
-    tick();
 
-    // 用 k-means++ 在两幅图上各选 nSites 个站点
+    // ====== k-means++ ======
+    setStatus('正在计算站点位置 (k-means++)...');
     await sleep(50);
+    tick();
     srcSites=kMeansPlusPlus(srcGray,nSites);
     tgtSites=kMeansPlusPlus(tgtGray,nSites);
+    const kmTime=((performance.now()-t0)/1000).toFixed(2);
 
-    // Lloyd CVT 迭代精化站点位置
+    // ====== Lloyd CVT ======
     setStatus('正在精化站点位置 (Lloyd CVT)...');
     await sleep(50);
+    tick();
     srcSites=lloydCVT(srcGray,srcSites,50);
     tgtSites=lloydCVT(tgtGray,tgtSites,50);
+    const lloydTime=((performance.now()-t0)/1000).toFixed(2);
 
-    // 计算目标质量
+    // ====== 计算目标质量 ======
     setStatus('正在计算目标质量分布...');
     await sleep(50);
     const srcTargetMasses=new Float32Array(nSites);
     const tgtTargetMasses=new Float32Array(nSites);
-
-    // 目标质量：用 k-means 聚类目标图像，取每类质量
     const srcClusters=assignClusters(tgtGray,srcSites);
     const tgtClusters=assignClusters(srcGray,tgtSites);
     let srcTotal=0,tgtTotal=0;
@@ -405,29 +407,28 @@
       tgtTargetMasses[i]/=Math.max(tgtTotal,1e-10);
     }
 
-    // 初始化权重
+    // ====== 权重优化 ======
     setStatus('正在优化权重 (梯度下降)...');
     await sleep(50);
-
-    // 初始权重用 Power 中心的距离平方偏置
     srcWeights=new Float32Array(nSites).fill(0);
     tgtWeights=new Float32Array(nSites).fill(0);
-
-    // 优化：源→目标
+    tick();
     srcWeights=optimizeWeights(srcSites,srcWeights,srcGray,srcTargetMasses,120,1.5);
-
-    // 优化：目标→源
     tgtWeights=optimizeWeights(tgtSites,tgtWeights,tgtGray,tgtTargetMasses,120,1.5);
+    const optTime=((performance.now()-t0)/1000).toFixed(2);
 
-    // 绘制 Power 图 — JS 版本渲染到独立 canvas
+    // ====== 渲染 ======
     setStatus('正在渲染 Power 图...');
     await sleep(50);
+    tick();
     drawPowerDiagram(jsPowerCanvas,srcSites,srcWeights,srcGray,showSites);
     drawPowerDiagram(tgtPowerCanvas,tgtSites,tgtWeights,tgtGray,showSites);
     drawPowerDiagram(srcPowerCanvas,srcSites,srcWeights,srcGray,showSites);
-    tock('JS 总计（含 k-means+Lloyd+优化+暴力遍历）', jsTimingEl);
-    jsLegend.textContent = `JS 暴力逐像素遍历 · ${nSites} 站点`;
-    jsTimingEl.style.color = '#f0c040';
+    const renderTime=((performance.now()-t0)/1000).toFixed(2);
+    const totalJSTime=(parseFloat(kmTime)+parseFloat(lloydTime)+parseFloat(optTime)+parseFloat(renderTime)).toFixed(2);
+    jsTimingEl.textContent=`⚡ k-means: ${kmTime}s | Lloyd: ${lloydTime}s | 优化: ${optTime}s | 渲染: ${renderTime}s | 总计: ${totalJSTime}s`;
+    jsLegend.textContent=`JS 暴力逐像素遍历 · ${nSites} 站点`;
+    jsTimingEl.style.color='#f0c040';
 
     iterBtn.style.display='';
     iterBtn.disabled=false;
@@ -526,38 +527,81 @@
     return labels;
   }
 
-  // Draw polygon-based power diagram (fills cells, draws edges)
-  function drawPolygonPowerDiagram(canvas, cells, showSitesFlag, sites) {
+  // Draw polygon-based power diagram — two modes
+  // mode='density': fill with gray = cell mass density (like JS version)
+  // mode='hue':     fill with golden-angle hue (for visual debugging)
+  function drawPolygonPowerDiagram(canvas, cells, showSitesFlag, sites, mode, gray) {
     const S = SIZE;
+    mode = mode || 'density';
     const labels = rasterizePolygonCells(cells, S);
 
-    const ctx = canvas.getContext('2d');
-    const imgData = ctx.createImageData(S, S);
-    // Assign a unique hue per cell (for visual distinction)
+    // Compute cell masses from source density image
     const nCells = cells.length;
+    const cellMass = new Float64Array(nCells);
+    let totalMass = 0;
     for (let y = 0; y < S; y++) {
       for (let x = 0; x < S; x++) {
         const idx = y * S + x, label = labels[idx];
-        if (label >= 0) {
-          const hue = (label * 137.508) % 360; // golden angle spacing
-          const [r, g, b] = hslToRgb(hue / 360, 0.65, 0.55);
-          imgData.data[idx * 4] = Math.round(r * 255);
-          imgData.data[idx * 4 + 1] = Math.round(g * 255);
-          imgData.data[idx * 4 + 2] = Math.round(b * 255);
-          imgData.data[idx * 4 + 3] = 255;
-        } else {
-          imgData.data[idx * 4] = 15;
-          imgData.data[idx * 4 + 1] = 15;
-          imgData.data[idx * 4 + 2] = 20;
-          imgData.data[idx * 4 + 3] = 255;
+        if (label >= 0 && gray) {
+          cellMass[label] += gray[idx];
+          totalMass += gray[idx];
         }
+      }
+    }
+    if (totalMass > 0) {
+      for (let i = 0; i < nCells; i++) cellMass[i] /= totalMass;
+    }
+
+    // Compute cell-average gray (same logic as JS drawPowerDiagram)
+    const cellAvgGray = new Float64Array(nCells);
+    const cellPixels = new Int32Array(nCells);
+    for (let i = 0; i < S * S; i++) {
+      const label = labels[i];
+      if (label >= 0 && gray) {
+        cellAvgGray[label] += gray[i];
+        cellPixels[label]++;
+      }
+    }
+    let maxAvg = 0;
+    for (let i = 0; i < nCells; i++) {
+      cellAvgGray[i] = cellPixels[i] > 0 ? cellAvgGray[i] / cellPixels[i] : 0;
+      if (cellAvgGray[i] > maxAvg) maxAvg = cellAvgGray[i];
+    }
+    if (maxAvg > 0) {
+      for (let i = 0; i < nCells; i++) cellAvgGray[i] /= maxAvg;
+    }
+
+    const ctx = canvas.getContext('2d');
+    const imgData = ctx.createImageData(S, S);
+    for (let y = 0; y < S; y++) {
+      for (let x = 0; x < S; x++) {
+        const idx = y * S + x, label = labels[idx];
+        let r, g, b;
+        if (label >= 0) {
+          if (mode === 'density' && gray) {
+            // Same grayscale rendering as JS version
+            const v = Math.round(cellAvgGray[label] * 255);
+            r = v; g = v; b = v;
+          } else {
+            // Hue-based coloring (debug mode)
+            const hue = (label * 137.508) % 360;
+            [r, g, b] = hslToRgb(hue / 360, 0.65, 0.55);
+            r = Math.round(r * 255); g = Math.round(g * 255); b = Math.round(b * 255);
+          }
+        } else {
+          r = 15; g = 15; b = 20;
+        }
+        imgData.data[idx * 4] = r;
+        imgData.data[idx * 4 + 1] = g;
+        imgData.data[idx * 4 + 2] = b;
+        imgData.data[idx * 4 + 3] = 255;
       }
     }
     ctx.putImageData(imgData, 0, 0);
 
     // Draw cell edges
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 0.8;
     for (const poly of cells) {
       if (poly.length < 6) continue;
       ctx.beginPath();
@@ -572,14 +616,16 @@
     if (showSitesFlag && sites) {
       for (const site of sites) {
         ctx.beginPath();
-        ctx.arc(site[0] * S, site[1] * S, 3, 0, Math.PI * 2);
+        ctx.arc(site[0] * S, site[1] * S, 2.5, 0, Math.PI * 2);
         ctx.fillStyle = '#fff';
         ctx.fill();
         ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 0.8;
         ctx.stroke();
       }
     }
+
+    return { labels, cellMass, cellAvgGray, cellPixels };
   }
 
   function hslToRgb(h, s, l) {
@@ -610,6 +656,11 @@
     await sleep(10);
 
     const nSites = srcSites.length;
+
+    // Get JS reference labels for pixel consistency comparison
+    const jsResult = computePowerDiagram(srcSites, srcWeights, srcGray, SIZE);
+    const jsLabels = jsResult.labels;
+
     const xs = new Float64Array(nSites);
     const ys = new Float64Array(nSites);
     const ws = new Float64Array(nSites);
@@ -636,21 +687,42 @@
 
     const jsonStr = Module.UTF8ToString(resultPtr);
     const cells = JSON.parse(jsonStr);
+    wasmCells = cells;
+
+    // Draw polygon-based power diagram with density grayscale mode
+    const wasmResult = drawPolygonPowerDiagram(wasmPowerCanvas, cells, showSites, srcSites, 'density', srcGray);
+    const wasmLabels = wasmResult.labels;
+
+    // === Pixel consistency comparison ===
+    let matchPixels = 0, totalPixels = SIZE * SIZE;
+    for (let i = 0; i < totalPixels; i++) {
+      if (jsLabels[i] === wasmLabels[i]) matchPixels++;
+    }
+    const matchRate = (matchPixels / totalPixels * 100).toFixed(1);
+    // Per-site match stats
+    const siteMatches = new Int32Array(nSites);
+    const siteTotals = new Int32Array(nSites);
+    for (let i = 0; i < totalPixels; i++) {
+      const jsL = jsLabels[i], wL = wasmLabels[i];
+      if (jsL >= 0) { siteTotals[jsL]++; if (jsL === wL) siteMatches[jsL]++; }
+    }
+    let matchedSites = 0;
+    for (let i = 0; i < nSites; i++) {
+      if (siteTotals[i] > 0 && siteMatches[i] === siteTotals[i]) matchedSites++;
+    }
 
     // Clean up
     Module._free(ptr_x); Module._free(ptr_y); Module._free(ptr_w);
     Module.ccall('free_buffer', null, ['number'], [resultPtr]);
 
-    // Draw polygon-based power diagram on WASM canvas
-    drawPolygonPowerDiagram(wasmPowerCanvas, cells, showSites, srcSites);
-
     tock('WASM 总计（含传输+渲染）', wasmTimingEl);
-    // Show breakdown
     const totalDt = ((performance.now()-t0)/1000).toFixed(2);
     wasmTimingEl.textContent = `🧬 Geogram 计算: ${wasmGeoTime}s | 总计: ${totalDt}s`;
     wasmTimingEl.style.color = '#00e6a0';
-    wasmLegend.textContent = `Geogram 多边形提取 · ${cells.length} cells · 无像素遍历`;
-    setStatus(`WASM (Geogram) 完成！${cells.length} 个 cell，Geogram 纯计算 ${wasmGeoTime}s`);
+    const avgPxPerCell = cells.length > 0 ? (totalPixels / cells.length).toFixed(0) : '-';
+    wasmLegend.textContent =
+      `WASM ${cells.length} cells · ~${avgPxPerCell} px/cell · 像素匹配: ${matchRate}% (${matchedSites}/${nSites} cells 完全一致)`;
+    setStatus(`WASM (Geogram) 完成！${cells.length} cells，像素匹配率 ${matchRate}%（${matchedSites}/${nSites} cells 完全一致），Geogram 纯计算 ${wasmGeoTime}s`);
 
     wasmBtn.disabled = false;
   }
@@ -689,6 +761,10 @@
     drawPowerDiagram(srcPowerCanvas,srcSites,srcWeights,srcGray,showSites);
     drawPowerDiagram(tgtPowerCanvas,tgtSites,tgtWeights,tgtGray,showSites);
     drawPowerDiagram(jsPowerCanvas,srcSites,srcWeights,srcGray,showSites);
+    // 如果 WASM 已有数据则重绘
+    if(wasmCells){
+      drawPolygonPowerDiagram(wasmPowerCanvas, wasmCells, showSites, srcSites, 'density', srcGray);
+    }
   }
 
   // ============ 事件绑定 ============
