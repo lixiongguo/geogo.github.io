@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2D网格变形 - 拖动变形</title>
+  <title>2D网格变形 — 固定点约束 + 拖动变形</title>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
   <style>
@@ -15,11 +15,7 @@
       overflow: hidden;
       height: 100vh;
     }
-    .app {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
+    .app { display: flex; flex-direction: column; height: 100vh; }
     .toolbar {
       display: flex;
       align-items: center;
@@ -55,53 +51,42 @@
       background: #1a2848;
       border-color: rgba(106,132,255,0.6);
     }
-    .toolbar button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .toolbar button.active {
+      background: #1a2848;
+      border-color: #ff6b35;
+    }
     .toolbar button.primary {
       background: linear-gradient(135deg, #ff6b35 0%, #ff8f5e 100%);
       color: #fff;
       border: none;
-      
-    box-shadow: 0 3px 10px rgba(255,107,53,0.3); }
+      box-shadow: 0 3px 10px rgba(255,107,53,0.3);
+    }
     .toolbar button.primary:hover:not(:disabled) {
       transform: translateY(-1px);
       box-shadow: 0 5px 15px rgba(255,107,53,0.5);
     }
     .toolbar .spacer { flex: 1; }
-    .status {
+    .toolbar .hint {
       font-size: 12px;
       color: #5a6791;
-      max-width: 360px;
+      max-width: 400px;
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      white-space: nowrap;
     }
-    .main {
-      flex: 1;
-      min-height: 0;
-    }
+    .main { flex: 1; min-height: 0; }
     .panel {
       position: relative;
       border: 1px solid rgba(106,132,255,0.1);
+      height: 100%;
       overflow: hidden;
     }
-    .panel canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
+    .panel canvas { display: block; width: 100%; height: 100%; }
     .panel-label {
       position: absolute;
       top: 10px; left: 12px;
-      font-size: 12px;
-      color: rgba(138,157,212,0.7);
-      pointer-events: none;
-      z-index: 2;
-    }
-    .panel-info {
-      position: absolute;
-      bottom: 10px; left: 12px;
       font-size: 11px;
-      color: rgba(255,180,70,0.8);
+      color: rgba(138,157,212,0.6);
       pointer-events: none;
       z-index: 2;
     }
@@ -110,23 +95,22 @@
 <body>
 <div class="app">
   <div class="toolbar">
-    <label>2D 模型:</label>
+    <label>模型:</label>
     <select id="model-select"></select>
-    <button id="fixed-point-btn">+ 固定点</button>
-    <button id="clear-fixed-btn">清除固定点</button>
-    <span style="font-size:13px;color:#8a9dd4;" id="fixed-count">0 个固定点</span>
-    <button id="add-handle-btn">+ 拖动手柄</button>
-    <button id="clear-handles-btn">清除手柄</button>
-    <span style="font-size:13px;color:#8a9dd4;" id="handle-count">0 个手柄</span>
+
+    <button id="pin-btn">选固定点</button>
+    <button id="clear-pin-btn">清除固定点</button>
+    <span style="font-size:13px;color:#8a9dd4;" id="pin-count">0 个固定点</span>
+
     <span class="spacer"></span>
-    <button id="drag-btn" class="primary">开始拖动</button>
-    <span class="status" id="status-text">选择模型开始</span>
+
+    <button id="reset-btn">重置变形</button>
+    <span class="hint" id="hint-text">点击"选固定点"后在网格上点击放置固定顶点，再拖动网格</span>
   </div>
   <div class="main">
     <div class="panel" id="main-panel">
-      <div class="panel-label">2D 模型 — 固定点自动保存，换模型后自动恢复</div>
+      <div class="panel-label">固定点自动保存，换模型后自动恢复</div>
       <canvas id="main-canvas"></canvas>
-      <div class="panel-info" id="panel-info"></div>
     </div>
   </div>
 </div>
@@ -135,16 +119,12 @@
 (function() {
   // ==================== DOM ====================
   const modelSelect = document.getElementById('model-select');
-  const fixedPointBtn = document.getElementById('fixed-point-btn');
-  const clearFixedBtn = document.getElementById('clear-fixed-btn');
-  const fixedCountEl = document.getElementById('fixed-count');
-  const addHandleBtn = document.getElementById('add-handle-btn');
-  const clearHandlesBtn = document.getElementById('clear-handles-btn');
-  const handleCountEl = document.getElementById('handle-count');
-  const dragBtn = document.getElementById('drag-btn');
-  const statusText = document.getElementById('status-text');
-  const mainCanvas = document.getElementById('main-canvas');
-  const panelInfo = document.getElementById('panel-info');
+  const pinBtn      = document.getElementById('pin-btn');
+  const clearPinBtn = document.getElementById('clear-pin-btn');
+  const pinCountEl  = document.getElementById('pin-count');
+  const resetBtn    = document.getElementById('reset-btn');
+  const hintText    = document.getElementById('hint-text');
+  const mainCanvas  = document.getElementById('main-canvas');
 
   // ==================== Three.js 场景 ====================
   const renderer = new THREE.WebGLRenderer({ canvas: mainCanvas, antialias: true, alpha: true });
@@ -157,25 +137,27 @@
   camera.position.set(0, 0, 5);
   camera.lookAt(0, 0, 0);
 
-  // 光照
   scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-  const d = new THREE.DirectionalLight(0xffffff, 0.8);
-  d.position.set(2, 3, 4); scene.add(d);
-  const d2 = new THREE.DirectionalLight(0xffffff, 0.3);
-  d2.position.set(-2, -1, -2); scene.add(d2);
+  const dl = new THREE.DirectionalLight(0xffffff, 0.8);
+  dl.position.set(2, 3, 4); scene.add(dl);
+  const dl2 = new THREE.DirectionalLight(0xffffff, 0.3);
+  dl2.position.set(-2, -1, -2); scene.add(dl2);
 
   // ==================== 状态 ====================
-  let currentMeshData = null;       // { positions: [[x,y,z],...], faces: [[a,b,c],...] }
-  let currentModelGroup = null;     // 场景模型组
-  let fixedVertices = new Set();    // 用户手动选择的固定点顶点索引
-  let handles = [];                 // [{ faceIndex, indices, restCentroid, currentCentroid }]
-  let fixedPointMode = false;
-  let handleMode = false;
-  let dragMode = false;
-  let isDragging = false;
-  let draggedHandle = null;
-  let restPositions = null;
-  let deformedPositions = null;
+  let currentMeshData  = null;       // { positions, faces }
+  let modelGroup       = null;       // 场景中的模型组
+  let restPositions    = null;       // 原始位置（固定点坐标来源）
+  let deformedPositions = null;     // 变形后的位置（null 表示未变形）
+  let fixedVertices    = new Set();  // 固定顶点索引
+
+  let pinMode          = false;      // 固定点选择模式
+  let isMeshDragging   = false;      // 正在拖动网格
+  let meshDragLast     = null;       // 上次鼠标世界坐标（用于计算 delta）
+  let draggedPinIdx    = null;       // 正在拖动的固定点索引
+  let pinDragStart     = null;       // { x, y } 屏幕坐标
+  let pinDragMoved     = false;      // 固定点是否实际移动过
+  let pinClickBlock    = false;      // 阻止 click 处理已由 mouseup 处理的固定点
+
   let currentModelFile = '';
 
   const PIN_STORAGE_KEY = 'mesh-deformation-pins-v1';
@@ -184,17 +166,16 @@
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
 
-  function setStatus(msg, color) {
-    statusText.textContent = msg;
-    statusText.style.color = color || '#5a6791';
+  // ==================== 工具函数 ====================
+  function setHint(msg, color) {
+    hintText.textContent = msg;
+    hintText.style.color = color || '#5a6791';
   }
 
-  function persistFixedPins() {
+  function persistPins() {
     if (!currentModelFile || !restPositions) return;
     let store = {};
-    try {
-      store = JSON.parse(localStorage.getItem(PIN_STORAGE_KEY) || '{}');
-    } catch (e) { store = {}; }
+    try { store = JSON.parse(localStorage.getItem(PIN_STORAGE_KEY) || '{}'); } catch(e) {}
     if (fixedVertices.size === 0) {
       delete store[currentModelFile];
     } else {
@@ -208,293 +189,39 @@
     localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(store));
   }
 
-  function loadPersistedFixedPins(modelFile, positions) {
+  function loadPins(modelFile, positions) {
     let store = {};
-    try {
-      store = JSON.parse(localStorage.getItem(PIN_STORAGE_KEY) || '{}');
-    } catch (e) { return new Set(); }
+    try { store = JSON.parse(localStorage.getItem(PIN_STORAGE_KEY) || '{}'); } catch(e) { return new Set(); }
     const entry = store[modelFile];
     if (!entry || !entry.points || entry.points.length === 0) return new Set();
-
     const eps2 = PIN_MATCH_EPS * PIN_MATCH_EPS;
     const out = new Set();
-
     if (entry.vertexCount === positions.length && Array.isArray(entry.indices)) {
-      let indicesOk = true;
+      let ok = true;
       for (let k = 0; k < entry.indices.length; k++) {
-        const i = entry.indices[k];
-        const pt = entry.points[k];
-        if (i < 0 || i >= positions.length || !pt) { indicesOk = false; break; }
+        const i = entry.indices[k], pt = entry.points[k];
+        if (i < 0 || i >= positions.length || !pt) { ok = false; break; }
         const p = positions[i];
-        const dx = p[0] - pt[0], dy = p[1] - pt[1], dz = p[2] - pt[2];
-        if (dx * dx + dy * dy + dz * dz > eps2) { indicesOk = false; break; }
+        if ((p[0]-pt[0])**2 + (p[1]-pt[1])**2 + (p[2]-pt[2])**2 > eps2) { ok = false; break; }
       }
-      if (indicesOk) {
-        for (const i of entry.indices) out.add(i);
-        return out;
-      }
+      if (ok) { for (const i of entry.indices) out.add(i); return out; }
     }
-
     for (const pt of entry.points) {
-      const vi = findNearestVertexIndex({ x: pt[0], y: pt[1], z: pt[2] }, positions);
+      const vi = findNearestVertex({ x: pt[0], y: pt[1], z: pt[2] }, positions);
       if (vi >= 0) out.add(vi);
     }
     return out;
   }
 
-  // ==================== OBJ 模型加载 ====================
-  function extractMeshData(geometry) {
-    // 兼容旧版 Geometry (有 vertices/faces) 和新版 BufferGeometry (有 attributes)
-    let positions, faces;
-
-    if (geometry.attributes && geometry.attributes.position) {
-      // BufferGeometry
-      const posAttr = geometry.attributes.position;
-      const idx = geometry.index;
-      positions = [];
-      for (let i = 0; i < posAttr.count; i++) {
-        positions.push([posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)]);
-      }
-      if (idx) {
-        faces = [];
-        const arr = idx.array;
-        for (let i = 0; i < arr.length; i += 3) {
-          faces.push([arr[i], arr[i+1], arr[i+2]]);
-        }
-      } else {
-        faces = [];
-        for (let i = 0; i < posAttr.count; i += 3) {
-          faces.push([i, i+1, i+2]);
-        }
-      }
-    } else if (geometry.vertices && geometry.faces) {
-      // 旧版 Geometry
-      positions = geometry.vertices.map(v => [v.x, v.y, v.z]);
-      faces = geometry.faces.map(f => [f.a, f.b, f.c]);
-    } else {
-      throw new Error('无法解析几何体数据');
-    }
-
-    return { positions, faces };
-  }
-
-  function buildModelVisual(positions, faces) {
-    const group = new THREE.Group();
-
-    // 实心面
-    const geom = new THREE.BufferGeometry();
-    const flatPos = new Float32Array(positions.length * 3);
-    for (let i = 0; i < positions.length; i++) {
-      flatPos[i*3] = positions[i][0];
-      flatPos[i*3+1] = positions[i][1];
-      flatPos[i*3+2] = positions[i][2];
-    }
-    geom.setAttribute('position', new THREE.Float32BufferAttribute(flatPos, 3));
-    const flatIdx = new Uint32Array(faces.length * 3);
-    for (let i = 0; i < faces.length; i++) {
-      flatIdx[i*3] = faces[i][0];
-      flatIdx[i*3+1] = faces[i][1];
-      flatIdx[i*3+2] = faces[i][2];
-    }
-    geom.setIndex(new THREE.BufferAttribute(flatIdx, 1));
-    geom.computeVertexNormals();
-
-    const mesh = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({
-      color: 0x7fa7ff, roughness: 0.5, metalness: 0.05, side: THREE.DoubleSide
-    }));
-    group.add(mesh);
-
-    // 线框
-    const wireGeom = new THREE.BufferGeometry();
-    const edgeSet = new Set();
-    const segments = [];
-    function addEdge(a, b) {
-      const key = a < b ? a + '_' + b : b + '_' + a;
-      if (edgeSet.has(key)) return;
-      edgeSet.add(key);
-      segments.push(positions[a][0], positions[a][1], positions[a][2]);
-      segments.push(positions[b][0], positions[b][1], positions[b][2]);
-    }
-    for (let i = 0; i < faces.length; i++) {
-      addEdge(faces[i][0], faces[i][1]);
-      addEdge(faces[i][1], faces[i][2]);
-      addEdge(faces[i][2], faces[i][0]);
-    }
-    wireGeom.setAttribute('position', new THREE.Float32BufferAttribute(segments, 3));
-    const wire = new THREE.LineSegments(wireGeom,
-      new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent: true, opacity: 0.6 }));
-    group.add(wire);
-
-    return group;
-  }
-
-  function clearGroup(scene, obj) {
-    if (obj && obj.parent) obj.parent.remove(obj);
-  }
-
-  function findNearestVertexIndex(point, positions) {
+  function findNearestVertex(point, positions) {
     let best = -1, bestD = Infinity;
     for (let i = 0; i < positions.length; i++) {
-      const dx = positions[i][0] - point.x;
-      const dy = positions[i][1] - point.y;
-      const dz = positions[i][2] - point.z;
-      const d2 = dx * dx + dy * dy + dz * dz;
-      if (d2 < bestD) { bestD = d2; best = i; }
+      const d = (positions[i][0]-point.x)**2 + (positions[i][1]-point.y)**2 + (positions[i][2]-point.z)**2;
+      if (d < bestD) { bestD = d; best = i; }
     }
     return best;
   }
 
-  function enforceFixedConstraints() {
-    if (!deformedPositions || !restPositions) return;
-    for (const vi of fixedVertices) {
-      const r = restPositions[vi];
-      deformedPositions[vi][0] = r[0];
-      deformedPositions[vi][1] = r[1];
-      deformedPositions[vi][2] = r[2];
-    }
-  }
-
-  function getBaseMeshes() {
-    const meshes = [];
-    if (!currentModelGroup) return meshes;
-    currentModelGroup.children.forEach(c => {
-      if (c.isMesh && !c.userData.isHandle && !c.userData.isFixedMarker) meshes.push(c);
-    });
-    return meshes;
-  }
-
-  // ==================== 可视化（网格 + 固定点 + 手柄） ====================
-  function updateHandleVisuals() {
-    if (!currentMeshData) return;
-    const positions = deformedPositions || currentMeshData.positions;
-    const faces = currentMeshData.faces;
-
-    // 完全重建模型组（基础网格 + 线框 + 手柄）
-    clearGroup(scene, currentModelGroup);
-    const group = new THREE.Group();
-
-    // 基础面
-    const geom = new THREE.BufferGeometry();
-    const flatPos = new Float32Array(positions.length * 3);
-    for (let i = 0; i < positions.length; i++) {
-      flatPos[i*3]=positions[i][0]; flatPos[i*3+1]=positions[i][1]; flatPos[i*3+2]=positions[i][2];
-    }
-    geom.setAttribute('position', new THREE.Float32BufferAttribute(flatPos, 3));
-    const flatIdx = new Uint32Array(faces.length * 3);
-    for (let i = 0; i < faces.length; i++) {
-      flatIdx[i*3]=faces[i][0]; flatIdx[i*3+1]=faces[i][1]; flatIdx[i*3+2]=faces[i][2];
-    }
-    geom.setIndex(new THREE.BufferAttribute(flatIdx, 1));
-    geom.computeVertexNormals();
-    group.add(new THREE.Mesh(geom, new THREE.MeshStandardMaterial({
-      color: 0x7fa7ff, roughness: 0.5, metalness: 0.05, side: THREE.DoubleSide
-    })));
-
-    // 线框
-    const edgeSet = new Set(); const segs = [];
-    for (let i = 0; i < faces.length; i++) {
-      for (const [u,v] of [[faces[i][0],faces[i][1]],[faces[i][1],faces[i][2]],[faces[i][2],faces[i][0]]]) {
-        const k = u<v ? u+'_'+v : v+'_'+u;
-        if (edgeSet.has(k)) continue; edgeSet.add(k);
-        segs.push(positions[u][0],positions[u][1],positions[u][2],positions[v][0],positions[v][1],positions[v][2]);
-      }
-    }
-    const wg = new THREE.BufferGeometry();
-    wg.setAttribute('position', new THREE.Float32BufferAttribute(segs, 3));
-    group.add(new THREE.LineSegments(wg, new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent:true, opacity:0.6 })));
-
-    // 固定点标记
-    const box = new THREE.Box3();
-    for (const p of positions) box.expandByPoint(new THREE.Vector3(p[0], p[1], p[2]));
-    const meshSize = box.getSize(new THREE.Vector3());
-    const markerR = Math.max(meshSize.x, meshSize.y, 0.5) * 0.006;
-    const fixedGeom = new THREE.SphereGeometry(markerR, 8, 8);
-    const fixedMat = new THREE.MeshBasicMaterial({ color: 0x44e8a0 });
-    for (const vi of fixedVertices) {
-      const p = restPositions[vi];
-      const marker = new THREE.Mesh(fixedGeom, fixedMat);
-      marker.position.set(p[0], p[1], p[2]);
-      marker.userData = { isFixedMarker: true, vertexIndex: vi };
-      group.add(marker);
-    }
-
-    // 手柄面高亮
-    for (let i = 0; i < handles.length; i++) {
-      const h = handles[i];
-      const [v0,v1,v2] = h.indices;
-      const p0=positions[v0],p1=positions[v1],p2=positions[v2];
-      const fg = new THREE.BufferGeometry();
-      fg.setAttribute('position', new THREE.Float32BufferAttribute([p0[0],p0[1],p0[2],p1[0],p1[1],p1[2],p2[0],p2[1],p2[2]],3));
-      fg.setIndex([0,1,2]);
-      const fm = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ color:0xffd700, transparent:true, opacity:(h===draggedHandle)?0.5:0.35, side:THREE.DoubleSide, depthTest:true, depthWrite:false }));
-      fm.userData = { isHandle: true, handleIndex: i };
-      group.add(fm);
-    }
-
-    currentModelGroup = group;
-    scene.add(group);
-    fixedCountEl.textContent = fixedVertices.size + ' 个固定点';
-    handleCountEl.textContent = handles.length + ' 个手柄';
-  }
-
-
-
-  // ==================== BFS 洪水填充：保持网格连通 ====================
-  function edgeKey(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
-
-  /** 构建面 → 邻居面列表的映射（通过共享边连接） */
-  function buildFaceAdjacency(faces) {
-    const adj = new Map(); // faceIndex → [neighborFaceIndex, ...]
-    const edgeMap = new Map(); // edgeKey → [faceIndex, ...]
-
-    for (let fi = 0; fi < faces.length; fi++) {
-      adj.set(fi, []);
-    }
-
-    for (let fi = 0; fi < faces.length; fi++) {
-      const [a, b, c] = faces[fi];
-      for (const [u, v] of [[a, b], [b, c], [c, a]]) {
-        const k = edgeKey(u, v);
-        if (!edgeMap.has(k)) edgeMap.set(k, []);
-        edgeMap.get(k).push(fi);
-      }
-    }
-
-    for (const [k, fiList] of edgeMap) {
-      if (fiList.length === 2) {
-        adj.get(fiList[0]).push(fiList[1]);
-        adj.get(fiList[1]).push(fiList[0]);
-      }
-    }
-
-    return adj;
-  }
-
-  /** BFS：从 handleFaces 出发，收集所有通过边相连的面的顶点 */
-  function collectConnectedVertices(handleFaceIndices, faces, faceAdjacency) {
-    const visited = new Set();
-    const queue = [...handleFaceIndices];
-    const allVertexIndices = new Set();
-
-    while (queue.length > 0) {
-      const fi = queue.shift();
-      if (visited.has(fi)) continue;
-      visited.add(fi);
-
-      const [v0, v1, v2] = faces[fi];
-      allVertexIndices.add(v0);
-      allVertexIndices.add(v1);
-      allVertexIndices.add(v2);
-
-      for (const nei of faceAdjacency.get(fi) || []) {
-        if (!visited.has(nei)) queue.push(nei);
-      }
-    }
-
-    return allVertexIndices;
-  }
-
-  // ==================== 鼠标交互 ====================
   function getCanvasCoords(canvas, e) {
     const rect = canvas.getBoundingClientRect();
     return {
@@ -503,277 +230,350 @@
     };
   }
 
-  mainCanvas.addEventListener('click', (e) => {
-    if (!currentMeshData || isDragging) return;
-    if (!fixedPointMode && !handleMode) return;
-
-    const coords = getCanvasCoords(mainCanvas, e);
-    mouse.set(coords.x, coords.y);
+  function worldFromScreen(e) {
+    const c = getCanvasCoords(mainCanvas, e);
+    mouse.set(c.x, c.y);
     raycaster.setFromCamera(mouse, camera);
-
-    const intersects = raycaster.intersectObjects(getBaseMeshes(), false);
-    if (intersects.length === 0) return;
-
-    const hit = intersects[0];
-    const positions = deformedPositions || currentMeshData.positions;
-
-    if (fixedPointMode) {
-      const vi = findNearestVertexIndex(hit.point, positions);
-      if (vi < 0) return;
-      // 距离阈值：只有点在顶点附近才吸附
-      const snapBox = new THREE.Box3();
-      for (const p of positions) snapBox.expandByPoint(new THREE.Vector3(p[0], p[1], p[2]));
-      const snapSize = snapBox.getSize(new THREE.Vector3());
-      const snapThreshold = Math.max(snapSize.x, snapSize.y, 0.5) * 0.025;
-      const v = positions[vi];
-      const dx = hit.point.x - v[0], dy = hit.point.y - v[1], dz = hit.point.z - v[2];
-      if (dx * dx + dy * dy + dz * dz > snapThreshold * snapThreshold) return;
-      if (fixedVertices.has(vi)) {
-        fixedVertices.delete(vi);
-      } else {
-        fixedVertices.add(vi);
-      }
-      updateHandleVisuals();
-      persistFixedPins();
-      setStatus('已选 ' + fixedVertices.size + ' 个固定点（已自动保存）', '#89f0b6');
-      return;
+    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1).negate(), 0);
+    const pt = new THREE.Vector3();
+    if (raycaster.ray.intersectPlane(plane, pt)) {
+      return { x: pt.x, y: pt.y };
     }
-
-    if (!handleMode) return;
-
-    const faceIdx = hit.faceIndex;
-    if (faceIdx === undefined || faceIdx >= currentMeshData.faces.length) return;
-    const face = currentMeshData.faces[faceIdx];
-    const [v0, v1, v2] = face;
-
-    const cx = (positions[v0][0] + positions[v1][0] + positions[v2][0]) / 3;
-    const cy = (positions[v0][1] + positions[v1][1] + positions[v2][1]) / 3;
-    const cz = (positions[v0][2] + positions[v1][2] + positions[v2][2]) / 3;
-
-    const existing = handles.findIndex(h => h.faceIndex === faceIdx);
-    if (existing >= 0) {
-      handles.splice(existing, 1);
-    } else {
-      handles.push({
-        faceIndex: faceIdx,
-        indices: [v0, v1, v2],
-        restCentroid: [cx, cy, cz],
-        currentCentroid: [cx, cy, cz]
-      });
-    }
-    updateHandleVisuals();
-  });
-
-  mainCanvas.addEventListener('mousedown', (e) => {
-    if (!dragMode || !currentModelGroup || handles.length === 0) return;
-
-    const coords = getCanvasCoords(mainCanvas, e);
-    mouse.set(coords.x, coords.y);
-    raycaster.setFromCamera(mouse, camera);
-
-    // 检测手柄面
-    const handleMeshes = [];
-    currentModelGroup.children.forEach(c => {
-      if (c.userData && c.userData.isHandle) handleMeshes.push(c);
-    });
-    const intersects = raycaster.intersectObjects(handleMeshes, false);
-    if (intersects.length > 0) {
-      isDragging = true;
-      draggedHandle = handles[intersects[0].object.userData.handleIndex];
-      updateHandleVisuals();
-    }
-  });
-
-  mainCanvas.addEventListener('mousemove', (e) => {
-    if (!isDragging || !draggedHandle || !currentModelGroup) return;
-
-    const coords = getCanvasCoords(mainCanvas, e);
-    mouse.set(coords.x, coords.y);
-    raycaster.setFromCamera(mouse, camera);
-
-    const camDir = new THREE.Vector3();
-    camera.getWorldDirection(camDir);
-    const plane = new THREE.Plane(new THREE.Vector3(camDir.x, camDir.y, camDir.z).negate(), 0);
-    const intersect = new THREE.Vector3();
-    raycaster.ray.intersectPlane(plane, intersect);
-
-    if (intersect) {
-      const oldC = draggedHandle.currentCentroid;
-      const newC = [intersect.x, intersect.y, intersect.z];
-      const delta = [newC[0] - oldC[0], newC[1] - oldC[1], newC[2] - oldC[2]];
-
-      if (!deformedPositions) {
-        deformedPositions = restPositions.map(p => [p[0], p[1], p[2]]);
-      }
-
-      // BFS 洪水填充：收集所有选中手柄面的连通区域顶点，整体移动
-      const faceAdj = buildFaceAdjacency(currentMeshData.faces);
-      const handleFaceIndices = handles.map(h => h.faceIndex);
-      const connectedVerts = collectConnectedVertices(handleFaceIndices, currentMeshData.faces, faceAdj);
-
-      // 更新连通顶点（跳过固定点）
-      for (const vi of connectedVerts) {
-        if (fixedVertices.has(vi)) continue;
-        deformedPositions[vi][0] += delta[0];
-        deformedPositions[vi][1] += delta[1];
-        deformedPositions[vi][2] += delta[2];
-      }
-      enforceFixedConstraints();
-
-      for (const h of handles) {
-        h.currentCentroid[0] += delta[0];
-        h.currentCentroid[1] += delta[1];
-        h.currentCentroid[2] += delta[2];
-      }
-
-      updateHandleVisuals();
-    }
-  });
-
-  window.addEventListener('mouseup', () => {
-    if (isDragging) {
-      isDragging = false;
-      draggedHandle = null;
-      updateHandleVisuals();
-      
-    }
-  });
-
-  function setModeButton(btn, active, activeLabel, idleLabel) {
-    btn.textContent = active ? activeLabel : idleLabel;
-    btn.style.background = active ? '#1a2848' : '';
-    btn.style.borderColor = active ? '#ff6b35' : '';
+    return null;
   }
 
-  fixedPointBtn.addEventListener('click', () => {
-    fixedPointMode = !fixedPointMode;
-    if (fixedPointMode) {
-      handleMode = false;
-      setModeButton(addHandleBtn, false, '✓ 拖动手柄', '+ 拖动手柄');
-    }
-    setModeButton(fixedPointBtn, fixedPointMode, '✓ 固定点', '+ 固定点');
-    setStatus(
-      fixedPointMode ? '点击网格选择/取消固定点（绿色球）' : '固定点模式已关闭',
-      fixedPointMode ? '#89f0b6' : '#5a6791'
-    );
-  });
-
-  clearFixedBtn.addEventListener('click', () => {
-    fixedVertices.clear();
-    persistFixedPins();
-    updateHandleVisuals();
-    setStatus('固定点已清除（已删除保存）', '#5a6791');
-  });
-
-  addHandleBtn.addEventListener('click', () => {
-    handleMode = !handleMode;
-    if (handleMode) {
-      fixedPointMode = false;
-      setModeButton(fixedPointBtn, false, '✓ 固定点', '+ 固定点');
-    }
-    setModeButton(addHandleBtn, handleMode, '✓ 拖动手柄', '+ 拖动手柄');
-    setStatus(
-      handleMode ? '点击模型面放置/移除拖动手柄' : '手柄模式已关闭',
-      handleMode ? '#ffb446' : '#5a6791'
-    );
-  });
-
-  clearHandlesBtn.addEventListener('click', () => {
-    handles = [];
-    updateHandleVisuals();
-    setStatus('手柄已清除', '#5a6791');
-  });
-
-  dragBtn.addEventListener('click', () => {
-    if (fixedVertices.size === 0) {
-      setStatus('请先选择至少一个固定点', '#ffd38a');
-      return;
-    }
-    if (handles.length === 0) {
-      setStatus('请先放置拖动手柄', '#ffd38a');
-      return;
-    }
-    dragMode = !dragMode;
-    if (dragMode) {
-      dragBtn.textContent = '结束拖动';
-      dragBtn.style.background = 'linear-gradient(135deg, #cc5500 0%, #ff6b35 100%)';
-      fixedPointMode = false;
-      handleMode = false;
-      setModeButton(fixedPointBtn, false, '✓ 固定点', '+ 固定点');
-      setModeButton(addHandleBtn, false, '✓ 拖动手柄', '+ 拖动手柄');
-      setStatus('拖动模式：拖拽手柄变形，固定点保持不动', '#89f0b6');
+  // ==================== OBJ 模型加载 ====================
+  function extractMeshData(geometry) {
+    let positions, faces;
+    if (geometry.attributes && geometry.attributes.position) {
+      const pos = geometry.attributes.position;
+      const idx = geometry.index;
+      positions = [];
+      for (let i = 0; i < pos.count; i++) positions.push([pos.getX(i), pos.getY(i), pos.getZ(i)]);
+      if (idx) {
+        faces = [];
+        for (let i = 0; i < idx.array.length; i += 3) faces.push([idx.array[i], idx.array[i+1], idx.array[i+2]]);
+      } else {
+        faces = [];
+        for (let i = 0; i < pos.count; i += 3) faces.push([i, i+1, i+2]);
+      }
+    } else if (geometry.vertices && geometry.faces) {
+      positions = geometry.vertices.map(v => [v.x, v.y, v.z]);
+      faces = geometry.faces.map(f => [f.a, f.b, f.c]);
     } else {
-      dragBtn.textContent = '开始拖动';
-      dragBtn.style.background = '';
-      setStatus('拖动已结束', '#8cc4ff');
+      throw new Error('无法解析几何体数据');
     }
-  });
+    return { positions, faces };
+  }
+
+  // ==================== 可视化重建 ====================
+  function getMeshObjects() {
+    const arr = [];
+    if (modelGroup) {
+      modelGroup.children.forEach(c => {
+        if (c.isMesh && !c.userData.isFixedMarker) arr.push(c);
+      });
+    }
+    return arr;
+  }
+
+  function rebuildModel() {
+    if (!currentMeshData) return;
+    const pos = deformedPositions || currentMeshData.positions;
+    const faces = currentMeshData.faces;
+
+    if (modelGroup && modelGroup.parent) modelGroup.parent.remove(modelGroup);
+    const group = new THREE.Group();
+
+    // 实心面 + 线框
+    const geom = new THREE.BufferGeometry();
+    const flat = new Float32Array(pos.length * 3);
+    for (let i = 0; i < pos.length; i++) { flat[i*3]=pos[i][0]; flat[i*3+1]=pos[i][1]; flat[i*3+2]=pos[i][2]; }
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(flat, 3));
+    const idx = new Uint32Array(faces.length * 3);
+    for (let i = 0; i < faces.length; i++) { idx[i*3]=faces[i][0]; idx[i*3+1]=faces[i][1]; idx[i*3+2]=faces[i][2]; }
+    geom.setIndex(new THREE.BufferAttribute(idx, 1));
+    geom.computeVertexNormals();
+    group.add(new THREE.Mesh(geom, new THREE.MeshStandardMaterial({
+      color: 0x7fa7ff, roughness: 0.5, metalness: 0.05, side: THREE.DoubleSide
+    })));
+
+    // 线框
+    const edgeSet = new Set(), segs = [];
+    for (let i = 0; i < faces.length; i++) {
+      for (const [u,v] of [[faces[i][0],faces[i][1]],[faces[i][1],faces[i][2]],[faces[i][2],faces[i][0]]]) {
+        const k = u<v ? u+'_'+v : v+'_'+u;
+        if (edgeSet.has(k)) continue; edgeSet.add(k);
+        segs.push(pos[u][0],pos[u][1],pos[u][2], pos[v][0],pos[v][1],pos[v][2]);
+      }
+    }
+    const wg = new THREE.BufferGeometry();
+    wg.setAttribute('position', new THREE.Float32BufferAttribute(segs, 3));
+    group.add(new THREE.LineSegments(wg, new THREE.LineBasicMaterial({ color:0x1f2f55, transparent:true, opacity:0.6 })));
+
+    // 固定点标记（绿色球 / 拖动中为红色）
+    const box = new THREE.Box3();
+    for (const p of pos) box.expandByPoint(new THREE.Vector3(p[0],p[1],p[2]));
+    const s = box.getSize(new THREE.Vector3());
+    const r = Math.max(s.x, s.y, 0.5) * 0.006;
+    const pinGeom = new THREE.SphereGeometry(r, 8, 8);
+    const pinMatGreen = new THREE.MeshBasicMaterial({ color: 0x44e8a0 });
+    const pinMatRed   = new THREE.MeshBasicMaterial({ color: 0xff4444 });
+    for (const vi of fixedVertices) {
+      const p = restPositions[vi];
+      const m = new THREE.Mesh(pinGeom, (draggedPinIdx === vi) ? pinMatRed : pinMatGreen);
+      m.position.set(p[0], p[1], p[2]);
+      m.userData = { isFixedMarker: true, vertexIndex: vi };
+      group.add(m);
+    }
+
+    modelGroup = group;
+    scene.add(group);
+    pinCountEl.textContent = fixedVertices.size + ' 个固定点';
+  }
 
   // ==================== 模型加载 ====================
   async function loadMesh(path, label, modelFile) {
     currentModelFile = modelFile || path.split('/').pop();
-    setStatus('加载中...', '#ffd38a');
+    setHint('加载中...', '#ffd38a');
     try {
       const obj = await new Promise((resolve, reject) => {
-        const loader = new THREE.OBJLoader();
-        loader.load(path, resolve, undefined, () => reject(new Error('加载失败')));
+        new THREE.OBJLoader().load(path, resolve, undefined, () => reject(new Error('加载失败')));
       });
 
-      const allPos = [];
-      const allFaces = [];
-      let vertOffset = 0;
-      obj.traverse(function(child) {
+      const allPos = [], allFaces = [];
+      let off = 0;
+      obj.traverse(child => {
         if (!child.isMesh || !child.geometry) return;
-        const data = extractMeshData(child.geometry);
-        for (const p of data.positions) allPos.push([p[0], p[1], p[2]]);
-        for (const f of data.faces) allFaces.push([f[0]+vertOffset, f[1]+vertOffset, f[2]+vertOffset]);
-        vertOffset += data.positions.length;
+        const d = extractMeshData(child.geometry);
+        d.positions.forEach(p => allPos.push([p[0],p[1],p[2]]));
+        d.faces.forEach(f => allFaces.push([f[0]+off, f[1]+off, f[2]+off]));
+        off += d.positions.length;
       });
-
       if (allPos.length === 0) throw new Error('模型无数据');
-      const meshData = { positions: allPos, faces: allFaces };
 
-      currentMeshData = meshData;
-      restPositions = meshData.positions.map(p => [p[0], p[1], p[2]]);
+      currentMeshData = { positions: allPos, faces: allFaces };
+      restPositions = allPos.map(p => [p[0],p[1],p[2]]);
       deformedPositions = null;
-      handles = [];
-      fixedVertices = loadPersistedFixedPins(currentModelFile, restPositions);
-      fixedPointMode = false;
-      handleMode = false;
-      setModeButton(fixedPointBtn, false, '✓ 固定点', '+ 固定点');
-      setModeButton(addHandleBtn, false, '✓ 拖动手柄', '+ 拖动手柄');
+      fixedVertices = loadPins(currentModelFile, restPositions);
 
-      clearGroup(scene, currentModelGroup);
-      updateHandleVisuals();
+      // 重置交互状态
+      pinMode = false;
+      isMeshDragging = false;
+      meshDragLast = null;
+      draggedPinIdx = null;
+      pinDragStart = null;
+      pinDragMoved = false;
+      pinClickBlock = false;
+      pinBtn.textContent = '选固定点';
+      pinBtn.classList.remove('active');
 
-      dragMode = false;
-      dragBtn.textContent = '开始拖动';
-      dragBtn.style.background = '';
+      rebuildModel();
 
+      // 调整相机
       const box = new THREE.Box3();
-      for (const p of meshData.positions) box.expandByPoint(new THREE.Vector3(p[0], p[1], p[2]));
-      const maxDim = Math.max(box.getSize(new THREE.Vector3()).x, box.getSize(new THREE.Vector3()).y, 0.5) * 0.65;
-      camera.left = -maxDim;
-      camera.right = maxDim;
-      camera.top = maxDim;
-      camera.bottom = -maxDim;
+      allPos.forEach(p => box.expandByPoint(new THREE.Vector3(p[0],p[1],p[2])));
+      const max = Math.max(box.getSize(new THREE.Vector3()).x, box.getSize(new THREE.Vector3()).y, 0.5) * 0.65;
+      camera.left = -max; camera.right = max; camera.top = max; camera.bottom = -max;
       camera.updateProjectionMatrix();
-      camera.position.set(0, 0, 5);
-      camera.lookAt(0, 0, 0);
+      camera.position.set(0, 0, 5); camera.lookAt(0, 0, 0);
 
-      handleCountEl.textContent = '0 个手柄';
-      panelInfo.textContent = label + ' | ' + meshData.positions.length + ' 顶点 | ' + meshData.faces.length + ' 面';
-      if (fixedVertices.size > 0) {
-        setStatus('已加载 ' + label + '，已恢复 ' + fixedVertices.size + ' 个固定点', '#89f0b6');
-      } else {
-        setStatus('已加载 ' + label + '，请选择固定点（将自动保存）', '#89f0b6');
-      }
-    } catch (err) {
-      console.error(err);
-      setStatus('加载失败: ' + err.message, '#ff9d9d');
+      const n = fixedVertices.size;
+      setHint('已加载 ' + label + (n > 0 ? '，已恢复 ' + n + ' 个固定点' : ' — 点"选固定点"开始'), '#89f0b6');
+    } catch (e) {
+      console.error(e);
+      setHint('加载失败: ' + e.message, '#ff9d9d');
     }
   }
 
+  // ==================== 鼠标交互 ====================
+  mainCanvas.addEventListener('click', (e) => {
+    if (pinClickBlock) return;
+    if (!currentMeshData || isMeshDragging) return;
+    if (!pinMode) return;
+
+    const coords = getCanvasCoords(mainCanvas, e);
+    mouse.set(coords.x, coords.y);
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(getMeshObjects(), false);
+    if (hits.length === 0) return;
+
+    const hit = hits[0];
+    const pos = deformedPositions || currentMeshData.positions;
+    const vi = findNearestVertex(hit.point, pos);
+    if (vi < 0) return;
+
+    // 距离阈值：只有靠近顶点才吸附
+    const box = new THREE.Box3();
+    pos.forEach(p => box.expandByPoint(new THREE.Vector3(p[0],p[1],p[2])));
+    const s = box.getSize(new THREE.Vector3());
+    const th = Math.max(s.x, s.y, 0.5) * 0.025;
+    const v = pos[vi];
+    if ((hit.point.x-v[0])**2 + (hit.point.y-v[1])**2 + (hit.point.z-v[2])**2 > th*th) return;
+
+    if (fixedVertices.has(vi)) {
+      fixedVertices.delete(vi);
+    } else {
+      fixedVertices.add(vi);
+    }
+    rebuildModel();
+    persistPins();
+    setHint('已选 ' + fixedVertices.size + ' 个固定点（已自动保存）', '#89f0b6');
+  });
+
+  mainCanvas.addEventListener('mousedown', (e) => {
+    if (!currentMeshData) return;
+
+    // ── 点击固定点标记 → 可能拖动 ──
+    {
+      const coords = getCanvasCoords(mainCanvas, e);
+      mouse.set(coords.x, coords.y);
+      raycaster.setFromCamera(mouse, camera);
+      const markers = [];
+      if (modelGroup) modelGroup.children.forEach(c => { if (c.userData && c.userData.isFixedMarker) markers.push(c); });
+      const hits = raycaster.intersectObjects(markers, false);
+      if (hits.length > 0) {
+        const vi = hits[0].object.userData.vertexIndex;
+        if (vi !== undefined && fixedVertices.has(vi)) {
+          draggedPinIdx = vi;
+          pinDragMoved = false;
+          pinDragStart = { x: e.clientX, y: e.clientY };
+          rebuildModel();  // 变红
+          return;
+        }
+      }
+    }
+
+    // ── 拖动网格（固定点作为约束） ──
+    if (pinMode) return;  // pinMode 下不触发网格拖动
+
+    const coords = getCanvasCoords(mainCanvas, e);
+    mouse.set(coords.x, coords.y);
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(getMeshObjects(), false);
+    if (hits.length > 0) {
+      isMeshDragging = true;
+      meshDragLast = worldFromScreen(e);
+      if (!deformedPositions) {
+        deformedPositions = restPositions.map(p => [p[0],p[1],p[2]]);
+      }
+      setHint('拖动中… 固定点保持原位', '#ff8888');
+    }
+  });
+
+  mainCanvas.addEventListener('mousemove', (e) => {
+    if (!currentMeshData) return;
+
+    // ── 拖动固定点 ──
+    if (draggedPinIdx !== null) {
+      const dx = e.clientX - pinDragStart.x, dy = e.clientY - pinDragStart.y;
+      if (Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+      pinDragMoved = true;
+
+      const w = worldFromScreen(e);
+      if (w) {
+        restPositions[draggedPinIdx][0] = w.x;
+        restPositions[draggedPinIdx][1] = w.y;
+        if (deformedPositions) {
+          deformedPositions[draggedPinIdx][0] = w.x;
+          deformedPositions[draggedPinIdx][1] = w.y;
+        }
+        rebuildModel();
+      }
+      return;
+    }
+
+    // ── 拖动网格 ──
+    if (!isMeshDragging) return;
+    const w = worldFromScreen(e);
+    if (!w || !meshDragLast) return;
+
+    const dx = w.x - meshDragLast.x;
+    const dy = w.y - meshDragLast.y;
+    meshDragLast = w;
+
+    // 所有非固定顶点跟着移动
+    for (let i = 0; i < deformedPositions.length; i++) {
+      if (fixedVertices.has(i)) continue;
+      deformedPositions[i][0] += dx;
+      deformedPositions[i][1] += dy;
+    }
+    // 固定点回位
+    for (const vi of fixedVertices) {
+      deformedPositions[vi][0] = restPositions[vi][0];
+      deformedPositions[vi][1] = restPositions[vi][1];
+    }
+    rebuildModel();
+  });
+
+  window.addEventListener('mouseup', () => {
+    // ── 释放固定点 ──
+    if (draggedPinIdx !== null) {
+      if (pinDragMoved) {
+        // 拖动了：保存
+        draggedPinIdx = null;
+        pinDragStart = null;
+        pinDragMoved = false;
+        persistPins();
+        rebuildModel();
+        setHint('固定点已移动到新位置（已保存）', '#89f0b6');
+      } else {
+        // 单击：删除
+        fixedVertices.delete(draggedPinIdx);
+        draggedPinIdx = null;
+        pinDragStart = null;
+        pinDragMoved = false;
+        pinClickBlock = true;
+        setTimeout(() => { pinClickBlock = false; }, 0);
+        persistPins();
+        rebuildModel();
+        setHint('已删除固定点，剩余 ' + fixedVertices.size + ' 个', '#89f0b6');
+      }
+      return;
+    }
+
+    // ── 释放网格拖动 ──
+    if (isMeshDragging) {
+      isMeshDragging = false;
+      meshDragLast = null;
+      rebuildModel();
+      setHint('拖动结束 — 点"重置变形"恢复原始形状', '#8cc4ff');
+    }
+  });
+
+  // ==================== 按钮事件 ====================
+  pinBtn.addEventListener('click', () => {
+    pinMode = !pinMode;
+    if (pinMode) {
+      pinBtn.textContent = '✓ 选择中';
+      pinBtn.classList.add('active');
+      setHint('点击网格顶点添加/移除固定点，也可拖动已有固定点', '#89f0b6');
+    } else {
+      pinBtn.textContent = '选固定点';
+      pinBtn.classList.remove('active');
+      setHint('已退出固定点模式，可直接拖动网格', '#5a6791');
+    }
+  });
+
+  clearPinBtn.addEventListener('click', () => {
+    fixedVertices.clear();
+    draggedPinIdx = null;
+    pinDragStart = null;
+    pinDragMoved = false;
+    pinClickBlock = false;
+    persistPins();
+    rebuildModel();
+    setHint('固定点已清除', '#5a6791');
+  });
+
+  resetBtn.addEventListener('click', () => {
+    if (!restPositions) return;
+    deformedPositions = null;
+    rebuildModel();
+    setHint('已恢复到原始形状', '#8cc4ff');
+  });
+
+  // ==================== 模型列表 ====================
   const d2Models = [
     { file: 'alligator.obj', label: 'alligator' },
     { file: 'woody.obj', label: 'woody' }
@@ -786,11 +586,9 @@
   }
   modelSelect.addEventListener('change', () => {
     if (!modelSelect.value) return;
-    loadMesh(
-      'assets/2dmodels/' + modelSelect.value,
-      modelSelect.options[modelSelect.selectedIndex].textContent,
-      modelSelect.value
-    );
+    loadMesh('assets/2dmodels/' + modelSelect.value,
+             modelSelect.options[modelSelect.selectedIndex].textContent,
+             modelSelect.value);
   });
 
   // ==================== 响应式 ====================
@@ -799,9 +597,9 @@
     renderer.setSize(rect.width, rect.height, false);
     const a = rect.width / Math.max(rect.height, 1);
     const curHalf = (camera.right - camera.left) / 2;
-    camera.left = -curHalf * a;
-    camera.right = curHalf * a;
-    camera.top = curHalf;
+    camera.left  = -curHalf * a;
+    camera.right =  curHalf * a;
+    camera.top   =  curHalf;
     camera.bottom = -curHalf;
     camera.updateProjectionMatrix();
   }
@@ -813,7 +611,7 @@
     renderer.render(scene, camera);
   }
 
-  // ==================== 初始化 ====================
+  // ==================== 启动 ====================
   resize();
   modelSelect.value = d2Models[0].file;
   loadMesh('assets/2dmodels/' + d2Models[0].file, d2Models[0].label, d2Models[0].file);
