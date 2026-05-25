@@ -153,10 +153,12 @@
   let pinMode          = false;      // 固定点选择模式
   let isMeshDragging   = false;      // 正在拖动网格
   let meshDragLast     = null;       // 上次鼠标世界坐标（用于计算 delta）
+  let hoveredPinIdx    = null;       // 鼠标悬停的固定点索引
+  let selectedPinIdx   = null;       // 被选中（红色）的固定点索引
   let draggedPinIdx    = null;       // 正在拖动的固定点索引
   let pinDragStart     = null;       // { x, y } 屏幕坐标
   let pinDragMoved     = false;      // 固定点是否实际移动过
-  let pinClickBlock    = false;      // 阻止 click 处理已由 mouseup 处理的固定点
+  let pinClickBlock    = false;      // 阻止 click 事件重复处理
 
   let currentModelFile = '';
 
@@ -311,17 +313,24 @@
     wg.setAttribute('position', new THREE.Float32BufferAttribute(segs, 3));
     group.add(new THREE.LineSegments(wg, new THREE.LineBasicMaterial({ color:0x1f2f55, transparent:true, opacity:0.6 })));
 
-    // 固定点标记（绿色球 / 拖动中为红色）
+    // 固定点标记 — 三态：正常=绿、hover=黄、选中/拖拽=红
     const box = new THREE.Box3();
     for (const p of pos) box.expandByPoint(new THREE.Vector3(p[0],p[1],p[2]));
     const s = box.getSize(new THREE.Vector3());
     const r = Math.max(s.x, s.y, 0.5) * 0.006;
     const pinGeom = new THREE.SphereGeometry(r, 8, 8);
-    const pinMatGreen = new THREE.MeshBasicMaterial({ color: 0x44e8a0 });
-    const pinMatRed   = new THREE.MeshBasicMaterial({ color: 0xff4444 });
+    const matGreen  = new THREE.MeshBasicMaterial({ color: 0x44e8a0 });
+    const matYellow = new THREE.MeshBasicMaterial({ color: 0xffd740 });
+    const matRed    = new THREE.MeshBasicMaterial({ color: 0xff4444 });
     for (const vi of fixedVertices) {
       const p = restPositions[vi];
-      const m = new THREE.Mesh(pinGeom, (draggedPinIdx === vi) ? pinMatRed : pinMatGreen);
+      let mat = matGreen;
+      if (draggedPinIdx === vi || selectedPinIdx === vi) {
+        mat = matRed;
+      } else if (hoveredPinIdx === vi) {
+        mat = matYellow;
+      }
+      const m = new THREE.Mesh(pinGeom, mat);
       m.position.set(p[0], p[1], p[2]);
       m.userData = { isFixedMarker: true, vertexIndex: vi };
       group.add(m);
@@ -361,10 +370,13 @@
       pinMode = false;
       isMeshDragging = false;
       meshDragLast = null;
+      hoveredPinIdx = null;
+      selectedPinIdx = null;
       draggedPinIdx = null;
       pinDragStart = null;
       pinDragMoved = false;
       pinClickBlock = false;
+      mainCanvas.style.cursor = '';
       pinBtn.textContent = '选固定点';
       pinBtn.classList.remove('active');
 
@@ -387,9 +399,47 @@
   }
 
   // ==================== 鼠标交互 ====================
+  // ── 双击固定点标记 → 删除 ──
+  mainCanvas.addEventListener('dblclick', (e) => {
+    if (!currentMeshData) return;
+    const coords = getCanvasCoords(mainCanvas, e);
+    mouse.set(coords.x, coords.y);
+    raycaster.setFromCamera(mouse, camera);
+    const markers = [];
+    if (modelGroup) modelGroup.children.forEach(c => { if (c.userData && c.userData.isFixedMarker) markers.push(c); });
+    const hits = raycaster.intersectObjects(markers, false);
+    if (hits.length > 0) {
+      const vi = hits[0].object.userData.vertexIndex;
+      fixedVertices.delete(vi);
+      if (selectedPinIdx === vi) selectedPinIdx = null;
+      if (hoveredPinIdx === vi) hoveredPinIdx = null;
+      persistPins();
+      rebuildModel();
+      setHint('已删除固定点，剩余 ' + fixedVertices.size + ' 个', '#89f0b6');
+    }
+  });
+
   mainCanvas.addEventListener('click', (e) => {
     if (pinClickBlock) return;
     if (!currentMeshData || isMeshDragging) return;
+
+    // ── 点击空白处 → 取消选中 ──
+    if (selectedPinIdx !== null && !pinMode) {
+      // 检查是否点击在固定点标记上
+      const coords = getCanvasCoords(mainCanvas, e);
+      mouse.set(coords.x, coords.y);
+      raycaster.setFromCamera(mouse, camera);
+      const markers = [];
+      if (modelGroup) modelGroup.children.forEach(c => { if (c.userData && c.userData.isFixedMarker) markers.push(c); });
+      const mhits = raycaster.intersectObjects(markers, false);
+      if (mhits.length === 0) {
+        selectedPinIdx = null;
+        rebuildModel();
+        setHint('已取消选中', '#5a6791');
+        return;
+      }
+    }
+
     if (!pinMode) return;
 
     const coords = getCanvasCoords(mainCanvas, e);
@@ -413,6 +463,7 @@
 
     if (fixedVertices.has(vi)) {
       fixedVertices.delete(vi);
+      if (selectedPinIdx === vi) selectedPinIdx = null;
     } else {
       fixedVertices.add(vi);
     }
@@ -424,7 +475,7 @@
   mainCanvas.addEventListener('mousedown', (e) => {
     if (!currentMeshData) return;
 
-    // ── 点击固定点标记 → 可能拖动 ──
+    // ── 点击固定点标记 → 选中（变红），可拖拽 ──
     {
       const coords = getCanvasCoords(mainCanvas, e);
       mouse.set(coords.x, coords.y);
@@ -435,10 +486,13 @@
       if (hits.length > 0) {
         const vi = hits[0].object.userData.vertexIndex;
         if (vi !== undefined && fixedVertices.has(vi)) {
-          draggedPinIdx = vi;
+          // 选中该固定点 → 变红，准备拖拽
+          selectedPinIdx = vi;
           pinDragMoved = false;
           pinDragStart = { x: e.clientX, y: e.clientY };
-          rebuildModel();  // 变红
+          hoveredPinIdx = null;  // 清除 hover 状态
+          rebuildModel();
+          setHint('固定点已选中（红色），拖拽可移动 · 点空白处取消 · 双击删除', '#ff8888');
           return;
         }
       }
@@ -464,10 +518,39 @@
   mainCanvas.addEventListener('mousemove', (e) => {
     if (!currentMeshData) return;
 
-    // ── 拖动固定点 ──
-    if (draggedPinIdx !== null) {
-      const dx = e.clientX - pinDragStart.x, dy = e.clientY - pinDragStart.y;
+    // ── 检测固定点 hover（非拖动状态下） ──
+    if (!draggedPinIdx && !isMeshDragging && !selectedPinIdx) {
+      const coords = getCanvasCoords(mainCanvas, e);
+      mouse.set(coords.x, coords.y);
+      raycaster.setFromCamera(mouse, camera);
+      const markers = [];
+      if (modelGroup) modelGroup.children.forEach(c => { if (c.userData && c.userData.isFixedMarker) markers.push(c); });
+      const hits = raycaster.intersectObjects(markers, false);
+      const prevHover = hoveredPinIdx;
+      if (hits.length > 0) {
+        hoveredPinIdx = hits[0].object.userData.vertexIndex;
+      } else {
+        hoveredPinIdx = null;
+      }
+      if (hoveredPinIdx !== prevHover) {
+        mainCanvas.style.cursor = hoveredPinIdx !== null ? 'pointer' : '';
+        rebuildModel();
+      }
+      if (hoveredPinIdx !== null && !pinMode) return; // hover 但非 pinMode：只显示指针，不阻塞
+    }
+
+    // ── 拖动选中的固定点 ──
+    if (selectedPinIdx !== null) {
+      const dx = e.clientX - (pinDragStart ? pinDragStart.x : e.clientX);
+      const dy = e.clientY - (pinDragStart ? pinDragStart.y : e.clientY);
       if (Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+
+      // 首次移动：将 selectedPinIdx 转为 draggedPinIdx
+      if (!draggedPinIdx) {
+        draggedPinIdx = selectedPinIdx;
+        pinDragStart = { x: e.clientX, y: e.clientY };
+        setHint('拖动固定点 → 释放即固定', '#ff8888');
+      }
       pinDragMoved = true;
 
       const w = worldFromScreen(e);
@@ -509,26 +592,15 @@
   window.addEventListener('mouseup', () => {
     // ── 释放固定点 ──
     if (draggedPinIdx !== null) {
-      if (pinDragMoved) {
-        // 拖动了：保存
-        draggedPinIdx = null;
-        pinDragStart = null;
-        pinDragMoved = false;
-        persistPins();
-        rebuildModel();
-        setHint('固定点已移动到新位置（已保存）', '#89f0b6');
-      } else {
-        // 单击：删除
-        fixedVertices.delete(draggedPinIdx);
-        draggedPinIdx = null;
-        pinDragStart = null;
-        pinDragMoved = false;
-        pinClickBlock = true;
-        setTimeout(() => { pinClickBlock = false; }, 0);
-        persistPins();
-        rebuildModel();
-        setHint('已删除固定点，剩余 ' + fixedVertices.size + ' 个', '#89f0b6');
-      }
+      // 拖动了：保存新位置，恢复绿色
+      const vi = draggedPinIdx;
+      draggedPinIdx = null;
+      selectedPinIdx = null;
+      pinDragStart = null;
+      pinDragMoved = false;
+      persistPins();
+      rebuildModel();
+      setHint('固定点已移动到新位置（已保存）', '#89f0b6');
       return;
     }
 
@@ -557,10 +629,13 @@
 
   clearPinBtn.addEventListener('click', () => {
     fixedVertices.clear();
+    hoveredPinIdx = null;
+    selectedPinIdx = null;
     draggedPinIdx = null;
     pinDragStart = null;
     pinDragMoved = false;
     pinClickBlock = false;
+    mainCanvas.style.cursor = '';
     persistPins();
     rebuildModel();
     setHint('固定点已清除', '#5a6791');
@@ -604,6 +679,15 @@
     camera.updateProjectionMatrix();
   }
   window.addEventListener('resize', resize);
+
+  // ── Esc 取消选中固定点 ──
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && selectedPinIdx !== null) {
+      selectedPinIdx = null;
+      rebuildModel();
+      setHint('已取消选中', '#5a6791');
+    }
+  });
 
   // ==================== 渲染循环 ====================
   function animate() {
