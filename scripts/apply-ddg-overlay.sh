@@ -6,7 +6,7 @@ OVERLAY="$ROOT/_ddg-overlay"
 TARGET="$ROOT/ddg-exercises-js"
 
 if [[ ! -d "$TARGET/projects" ]]; then
-  echo "ddg-exercises-js submodule not initialized; run: git submodule update --init ddg-exercises-js"
+  echo "ddg-exercises-js not found or missing projects/; ensure the directory is present in the repo"
   exit 1
 fi
 
