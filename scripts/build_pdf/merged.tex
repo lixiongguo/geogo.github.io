@@ -84,7 +84,7 @@
   hidelinks,
   pdfcreator={LaTeX via pandoc}}
 
-\title{第1章 曲面展开介绍}
+\title{第一章 基础曲面展开方法}
 \author{}
 \date{}
 
@@ -97,11 +97,11 @@
 \tableofcontents
 }
 \section{第1章
-曲面展开介绍}\label{ux7b2c1ux7ae0-ux66f2ux9762ux5c55ux5f00ux4ecbux7ecd}
+前言与目录}\label{ux7b2c1ux7ae0-ux524dux8a00ux4e0eux76eeux5f55}
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={Lucy}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/7b9141057840.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={Lucy}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/7b9141057840.png}}
 \caption{Lucy}
 \end{figure}
 
@@ -193,7 +193,7 @@ Geometry》也是离散微分几何的重要教材。与上述资源相比，本
 
 \subsection{目录}\label{ux76eeux5f55}
 
-\subsubsection{第1章　曲面展开介绍}\label{ux7b2c1ux7ae0-ux66f2ux9762ux5c55ux5f00ux4ecbux7ecd-1}
+\subsubsection{第1章　曲面展开介绍}\label{ux7b2c1ux7ae0-ux66f2ux9762ux5c55ux5f00ux4ecbux7ecd}
 
 \begin{itemize}
 \tightlist
@@ -304,6 +304,9 @@ Geometry》也是离散微分几何的重要教材。与上述资源相比，本
 
 \subsubsection{参考文献}\label{ux53c2ux8003ux6587ux732e}
 
+\section{第2章
+曲面展开-介绍}\label{ux7b2c2ux7ae0-ux66f2ux9762ux5c55ux5f00-ux4ecbux7ecd}
+
 \subsection{1.1 介绍}\label{ux4ecbux7ecd}
 
 \subsubsection{1.1.1
@@ -317,14 +320,77 @@ Parameterization）}是指建立三维曲面与二维平面区域之间的一一
 \[
 f: S \to \Omega
 \]
-\pandocbounded{\includegraphics[keepaspectratio,alt={Screenshot 2026-05-21 at 13.48.26}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/Screenshot 2026-05-21 at 13.51.06.png}}
 
-所以\textbf{尽可能减小扭曲}是我们寻找更优展开(参数化)方法的重要目标。我们将这个问题用数学语言进行形式化：定义一个能量
+\subsubsection{1.1.2
+一个生活中的例子}\label{ux4e00ux4e2aux751fux6d3bux4e2dux7684ux4f8bux5b50}
+
+下面我们看一个生活中常见的曲面展开例子---我们的世界地图。我们知道地球是球形的，为方便观察，我们要将地球表面的球面铺展到平面上也即将\textbf{球面上的点转换为平面上的点}，这就要用到曲面展开的方法了。
+
+一般常见的地图展开方法使用的是\textbf{墨卡托投影法(Mercator
+Projection)}：假设球面内部有一个光源，球面外包围着一个圆柱面，光线将球面上的点投射到圆柱面上，再将圆柱面展开，就得到了我们熟悉的世界地图。
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={墨卡托投影示意图}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/9c1601930278.png}}
+\caption{墨卡托投影示意图}
+\end{figure}
+
+然而，墨卡托投影\textbf{必然引入扭曲}。比如我们在地图上看到的俄罗斯面积远大于非洲，但事实上俄罗斯的陆地面积只有非洲的一半左右。产生这种错觉的原因在于：墨卡托投影牺牲了面积精度以换取角度保持（即''共形映射''）。赤道附近的区域扭曲极小，越靠近两极面积膨胀越严重。
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={地图面积对比}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/b44f941e298c.png}}
+\caption{地图面积对比}
+\end{figure}
+
+除了墨卡托投影还有许多其他投影方法，由于投影方式的不同，所形成的世界地图''长相''也大相径庭。
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={2}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/23333.png}}
+\caption{2}
+\end{figure}
+
+球面是很简单的曲面，对于复杂的肠道模型需要建立地图就要复杂得多了：通过CT扫描获取到腹部断层图像，然后用多视角几何的方法重建三维直肠曲面后，为了方便医生的观察，最后将这个直肠曲面平展到平面上，像看地球仪一样观察曲折的肠道。使用这种方法，设备和病患没有接触，不需要麻醉，不会诱导并发症。
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={image-20250227101914414}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/1f3c35574d83.png}}
+\caption{image-20250227101914414}
+\end{figure}
+
+\subsubsection{1.1.3 其他应用}\label{ux5176ux4ed6ux5e94ux7528}
+
+游戏或动漫影视工业中3D模型的\textbf{纹理贴图(Texture
+Mapping)}：纹理贴图经常被用来对3D场景和对象进行上色及纹理填充等。设计师可以在二维空间进行模拟物体的表面纹理与细节信息的设计，再通过计算机手段将其投影到3D模型表面。
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={Screenshot 2026-05-21 at 13.47.41}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/Screenshot 2026-05-21 at 13.47.41.png}}
+\caption{Screenshot 2026-05-21 at 13.47.41}
+\end{figure}
+
+法线贴图(Normal Mapping)将细节信息存储到贴图上，从而简化面数
+
+衣物制版将衣物拆分成不同部分并逐个摊平，然后确定每个部位的具体规格尺寸
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={img}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/GarmentPattern.jpg}}
+\caption{img}
+\end{figure}
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={img}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/MD.jpg}}
+\caption{img}
+\end{figure}
+
+\textbf{尽可能减小扭曲}是我们寻找更优展开(参数化)方法的重要目标。我们将这个问题用数学语言进行形式化：定义一个能量
 \(E(f)\) 来度量映射 \(f\)
 的扭曲程度，从而将参数化建模为几何最优化问题------之后的工作就是找到''好''的能量以及更快更稳定的数值求解方法。
-
 \[
-\min_{f \in PL}\, E(f)\text{，}\quad f\text{ \text{满足约束条件}}
+\min_{f \in PL}\, E(f),\quad f\text{ \text{满足约束条件}}
 \]
 接下来我们会看到具体该如何定义这个能量，以及如何对这些能量进行数值优化。
 
@@ -337,98 +403,21 @@ f: S \to \Omega
   映射 \(f\) 是\textbf{局部单射的（Locally
   Injective）}，即映射后内部三角形的边不能自交；
 \item
-  映射\(f\) 是无翻转的(flip
+  映射 \(f\) 是无翻转的(flip
   free)，映射后三角形的定向是不能翻转的，否则也会有错乱的情况
 \end{enumerate}
 
-3.映射\(f\) 是双射的(Bijecive), 映射后的边界是不能相交的
+3.映射 \(f\) 是双射的(Bijecive), 映射后的边界是不能相交的
 
-参数化的核心矛盾在于：\textbf{曲面的高斯曲率决定了它能否被无扭曲地展平}。
-
-根据 \textbf{Theorema
-Egregium（绝妙定理）}，高斯曲率是内蕴量，不能通过等距变换改变。因此：
-
-\begin{itemize}
-\tightlist
-\item
-  \textbf{高斯曲率为零}的曲面（如柱面、锥面）可以无扭曲地展平
-\item
-  \textbf{高斯曲率非零}的曲面（如球面）\textbf{不可能}无扭曲地展平
-\end{itemize}
-
-这意味着，对于一般曲面，参数化必然引入\textbf{扭曲}。算法设计的目标就是：\textbf{在满足约束的前提下，最小化扭曲}。
-
-\subsubsection{1.1.2
-一个生活中的例子}\label{ux4e00ux4e2aux751fux6d3bux4e2dux7684ux4f8bux5b50}
-
-下面我们看一个生活中常见的曲面展开例子---我们的世界地图。我们知道地球是球形的，为方便观察，我们要将地球表面的球面铺展到平面上也即将\textbf{球面上的点转换为平面上的点}，这就要用到曲面展开的方法了。
-
-一般常见的地图展开方法使用的是\textbf{墨卡托投影法(Mercator
-Projection)}：假设球面内部有一个光源，球面外包围着一个圆柱面，光线将球面上的点投射到圆柱面上，再将圆柱面展开，就得到了我们熟悉的世界地图。
-
-\begin{figure}
-\centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={墨卡托投影示意图}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/9c1601930278.png}}
-\caption{墨卡托投影示意图}
-\end{figure}
-
-然而，墨卡托投影\textbf{必然引入扭曲}。比如我们在地图上看到的俄罗斯面积远大于非洲，但事实上俄罗斯的陆地面积只有非洲的一半左右。产生这种错觉的原因在于：墨卡托投影牺牲了面积精度以换取角度保持（即''共形映射''）。赤道附近的区域扭曲极小，越靠近两极面积膨胀越严重。
-
-\begin{figure}
-\centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={地图面积对比}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/b44f941e298c.png}}
-\caption{地图面积对比}
-\end{figure}
-
-除了墨卡托投影还有许多其他投影方法，由于投影方式的不同，所形成的世界地图''长相''也大相径庭。
-
-\begin{figure}
-\centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={2}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/23333.png}}
-\caption{2}
-\end{figure}
-
-球面是很简单的曲面，对于复杂的肠道模型需要建立地图就要复杂得多了：通过CT扫描获取到腹部断层图像，然后用多视角几何的方法重建三维直肠曲面后，为了方便医生的观察，最后将这个直肠曲面平展到平面上，像看地球仪一样观察曲折的肠道。使用这种方法，设备和病患没有接触，不需要麻醉，不会诱导并发症。
-
-\begin{figure}
-\centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={image-20250227101914414}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/1f3c35574d83.png}}
-\caption{image-20250227101914414}
-\end{figure}
-
-\subsubsection{1.1.3 其他应用}\label{ux5176ux4ed6ux5e94ux7528}
-
-游戏或动漫影视工业中3D模型的\textbf{纹理贴图(Texture
-Mapping)}：纹理贴图经常被用来对3D场景和对象进行上色及纹理填充等。设计师可以在二维空间进行模拟物体的表面纹理与细节信息的设计，再通过计算机手段将其投影到3D模型表面。
-
-\begin{figure}
-\centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={Screenshot 2026-05-21 at 13.47.41}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/Screenshot 2026-05-21 at 13.47.41.png}}
-\caption{Screenshot 2026-05-21 at 13.47.41}
-\end{figure}
-
-法线贴图(Normal Mapping)将细节信息存储到贴图上，从而简化面数
-
-衣物制版将衣物拆分成不同部分并逐个摊平，然后确定每个部位的具体规格尺寸
-
-\begin{figure}
-\centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={img}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/GarmentPattern.jpg}}
-\caption{img}
-\end{figure}
-
-\begin{figure}
-\centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={img}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/MD.jpg}}
-\caption{img}
-\end{figure}
+\section{第3章
+曲面展开-一个简单的展平算法}\label{ux7b2c3ux7ae0-ux66f2ux9762ux5c55ux5f00-ux4e00ux4e2aux7b80ux5355ux7684ux5c55ux5e73ux7b97ux6cd5}
 
 \subsection{1.2
 一个简单的展平算法}\label{ux4e00ux4e2aux7b80ux5355ux7684ux5c55ux5e73ux7b97ux6cd5}
 
 计算机中所有3D物体的表面都是由许多小三角形拼在一起表示的，这样的三角形组成的网格称为\textbf{三角形网格(Mesh)}
 记作 \[
-M=\{V,E,F |V,E,F\text{为网格的顶点},\text{边},\text{面}\}
+M=\{V,E,F \mid V,E,F \text{\text{为网格的顶点、边、面}}\}
 \]
 
 \subsubsection{1.2.1
@@ -438,13 +427,14 @@ M=\{V,E,F |V,E,F\text{为网格的顶点},\text{边},\text{面}\}
 
 我们后面的3D模型主要是最简单拓扑的模型即\textbf{拓扑圆盘(Topological
 Disk)}---是指具有单条边界环的''开口网格曲面''，比如这个简化的（``抽象''的）大卫头像：
-\pandocbounded{\includegraphics[keepaspectratio,alt={image-20250306112054639}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/a2220f7bbe4d.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={image-20250306112054639}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/a2220f7bbe4d.png}}
 
-现在我们将三角网格的边界固定到一个圆周上，上面这个过程用三角网格\(M\)来进行建模就是，三角网格上面每条边我们认为是一个弹簧
+现在我们将三角网格的边界固定到一个圆周上，上面这个过程用三角网格 \(M\)
+来进行建模就是，三角网格上面每条边我们认为是一个弹簧
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={image-20250311194454982}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/4464fd1db0b6.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={image-20250311194454982}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/4464fd1db0b6.png}}
 \caption{image-20250311194454982}
 \end{figure}
 
@@ -453,7 +443,7 @@ Disk)}---是指具有单条边界环的''开口网格曲面''，比如这个简�
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={vertex to centroid}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/34421a57ec42.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={vertex to centroid}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/34421a57ec42.png}}
 \caption{vertex to centroid}
 \end{figure}
 
@@ -478,12 +468,14 @@ Disk)}---是指具有单条边界环的''开口网格曲面''，比如这个简�
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  对任意的\(v \in V_{int}\) ,
-  \[A(v,u) = \begin{cases}  1 &\text{，}  u=v \\ -\frac 1 {|N_v|}&\text{，} u \in N_v \\ 0 &\text{，其它}\end{cases} \]
+  对任意的 \(v \in V_{int}\) ，有 \[
+  A(v,u) = \begin{cases}  1 &,  u=v \\ -\frac 1 {|N_v|}&, u \in N_v \\ 0 &,\text{\text{其它}}\end{cases}
+  \]
 \item
-  对任意的\(v \in V_{bnd}\),
-  \[A(v,u) = \begin{cases}  1 &\text{，}  u=v \\  0 &\text{，其它}\end{cases} \]，其边界序号为\(i_v\)
-  ,则\(b_{i_v} = (rcos({\theta_{i_v}})\text{，}rsin({\theta_{i_v}}) )\)
+  对任意的 \(v \in V_{bnd}\) ，有 \[
+  A(v,u) = \begin{cases}  1 &,  u=v \\  0 &,\text{\text{其它}}\end{cases}
+  \] 其边界序号为 \(i_v\) ，则
+  \(b_{i_v} = (r\cos({\theta_{i_v}}), r\sin({\theta_{i_v}}))\)
 \end{enumerate}
 
 对上述线性系统，当 \(A\) 规模不大时可直接用 \textbf{Gauss-Seidel}
@@ -528,7 +520,7 @@ w_{ij} = \frac{1}{\vert N(v_i)\vert}
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={image-20260522151857590}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260522151857590.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={image-20260522151857590}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260522151857590.png}}
 \caption{image-20260522151857590}
 \end{figure}
 
@@ -543,9 +535,12 @@ w_{ij} = \frac{1}{\vert N(v_i)\vert}
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={自由边界 vs 固定边界}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/8f29f01ec492.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={自由边界 vs 固定边界}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/8f29f01ec492.png}}
 \caption{自由边界 vs 固定边界}
 \end{figure}
+
+\section{第4章
+曲面展开-离散微分几何-Laplace算子}\label{ux7b2c4ux7ae0-ux66f2ux9762ux5c55ux5f00-ux79bbux6563ux5faeux5206ux51e0ux4f55-laplaceux7b97ux5b50}
 
 \subsection{1.3 分段线性映射的 Laplace
 算子}\label{ux5206ux6bb5ux7ebfux6027ux6620ux5c04ux7684-laplace-ux7b97ux5b50}
@@ -562,7 +557,7 @@ w_{ij} = \frac{1}{\vert N(v_i)\vert}
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={image-20250317142741458}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/d9c70116a558.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={image-20250317142741458}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/d9c70116a558.png}}
 \caption{image-20250317142741458}
 \end{figure}
 
@@ -582,13 +577,10 @@ f(x) = \alpha f_i + \beta f_j + \gamma f_k
 \subsubsection{1.3.2 映射的 Laplace
 算子}\label{ux6620ux5c04ux7684-laplace-ux7b97ux5b50}
 
-将\textbf{梯度算子\(\nabla\)}作用于式(2)可得 \$\$ \nabla f(\mathbf{x}) =
-f\_i \nabla \alpha + f\_j \nabla \beta + f\_k \nabla \gamma
-
-\textbackslash{}\nabla \alpha =
-\frac{(\mathbf{x}_k - \mathbf{x}_j)^\perp}{2A_T},\quad \nabla \beta =
-\frac{(\mathbf{x}_i - \mathbf{x}_k)^\perp}{2A_T},\quad \nabla \gamma =
-\frac{(\mathbf{x}_j - \mathbf{x}_i)^\perp}{2A_T} \$\$
+将\textbf{梯度算子 \(\nabla\)}作用于式(2)可得 \[
+\nabla f(\mathbf{x}) = f_i \nabla \alpha + f_j \nabla \beta + f_k \nabla \gamma
+\\\nabla \alpha = \frac{(\mathbf{x}_k - \mathbf{x}_j)^\perp}{2A_T},\quad \nabla \beta = \frac{(\mathbf{x}_i - \mathbf{x}_k)^\perp}{2A_T},\quad \nabla \gamma = \frac{(\mathbf{x}_j - \mathbf{x}_i)^\perp}{2A_T}
+\]
 
 因此 \[
 \nabla f(\mathbf{x}) = f_i \frac{(\mathbf{x}_k - \mathbf{x}_j)^\perp}{2A_T} + f_j \frac{(\mathbf{x}_i - \mathbf{x}_k)^\perp}{2A_T} + f_k \frac{(\mathbf{x}_j - \mathbf{x}_i)^\perp}{2A_T}
@@ -596,9 +588,9 @@ f\_i \nabla \alpha + f\_j \nabla \beta + f\_k \nabla \gamma
 
 \textbf{Laplace算子}定义为其\textbf{梯度的散度} \[
 \Delta f = \operatorname{div}\,\nabla f
-\] Laplace
-算子度量了函数的''不规则程度''，\(\Delta f = 0\)称为调和映射(Harmonic
-Mapping)。在我们熟悉的 \(\mathbb{R}^2\) 中，上式简化为
+\] Laplace 算子度量了函数的''不规则程度''，\(\Delta f = 0\)
+称为调和映射(Harmonic Mapping)。在我们熟悉的 \(\mathbb{R}^2\)
+中，上式简化为
 \(\Delta f = f_{xx} + f_{yy}\)。在流形上定义的Laplace算子称为\textbf{Laplace-Beltrami算子}。那么在三角形网格上如何定义和计算呢？其关键就在于如何定义离散(三角网格上)\textbf{散度(Divergence)}。
 
 如果将网格看成是图(Graph)，从而图的Laplace算子也能用来定义网格的Laplace算子(Uniform
@@ -610,11 +602,11 @@ Laplacian) \[
 
 根据\textbf{散度定理(Divergence Theorem,又称高斯定理)} \[
 \int_{A_i} \operatorname{div} \mathbf{F}(\mathbf{u})\,\mathrm{d}A = \int_{\partial A_i} \mathbf{F}(\mathbf{u}) \cdot \mathbf{n}(\mathbf{u})\,\mathrm{d}s
-\] 对于下面的顶点的小领域\(A_i\)采用Mixed Voronoi Cell
+\] 对于下面的顶点的小领域 \(A_i\) 采用Mixed Voronoi Cell
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={image-20250318142418809}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/026a37e73051.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={image-20250318142418809}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/026a37e73051.png}}
 \caption{image-20250318142418809}
 \end{figure}
 
@@ -628,7 +620,7 @@ Laplacian) \[
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={image-20250318142917334}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/94e6ab891cbe.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={image-20250318142917334}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/94e6ab891cbe.png}}
 \caption{image-20250318142917334}
 \end{figure}
 
@@ -714,11 +706,122 @@ DCP内部点同样权重。但是\textbf{自由边界}
 \tightlist
 \item
   \textbf{Tutte
-  (Cot-Laplace)}：你会强制所有边界点映射到一个完美的圆或正方形上。结果内部网格会被拉伸，以匹配这个强加的边界形状。角度会被扭曲。
+  (Cot-Laplace)}：强制所有边界点映射到一个完美的圆或正方形上。结果内部网格会被拉伸，以匹配这个强加的边界形状。角度会被扭曲。
 \item
-  \textbf{DCP}：边界点会``自由''地找到一个位置，使得整体 Dirichlet
-  能量最小。结果可能是边界变成一个不规则的形状，但内部三角形的角度扭曲被最小化了。它更接近一个``真正的''共形映射。
+  \textbf{DCP}：边界点会''自由''地找到一个位置，使得整体 Dirichlet
+  能量最小。结果可能是边界变成一个不规则的形状，但内部三角形的角度扭曲被最小化了。
 \end{itemize}
+
+\subsubsection{Tutte 与 DCP 辨析}\label{tutte-ux4e0e-dcp-ux8fa8ux6790}
+
+\paragraph{本质统一：都是调和映射}\label{ux672cux8d28ux7edfux4e00ux90fdux662fux8c03ux548cux6620ux5c04}
+
+Tutte 参数化（含 cot-Laplace 权重变体）与 DCP（Desbrun
+离散共形参数化）在数学本质上\textbf{是同一类问题}------都是求解调和映射（Harmonic
+Mapping），即极小化 Dirichlet 能量：
+
+\[
+\min \quad E_D = \frac{1}{2} \sum_{e_{ij}} w_{ij} \|\mathbf{u}_i - \mathbf{u}_j\|^2
+\]
+
+内部顶点均满足 \(\Delta u = 0, \Delta v = 0\)，用 cotan 权重构建 Laplace
+矩阵。两者的\textbf{唯一区别在于边界条件的强加方式}。
+
+\paragraph{边界条件差异：满秩约束 vs
+最小约束}\label{ux8fb9ux754cux6761ux4ef6ux5deeux5f02ux6ee1ux79e9ux7ea6ux675f-vs-ux6700ux5c0fux7ea6ux675f}
+
+\begin{itemize}
+\item
+  \textbf{Tutte}：将所有边界顶点按弧长比例映射到凸多边形（圆/矩形）上并固定，作为
+  Dirichlet
+  边界条件。这保证了线性系统满秩（正定），但也引入了\textbf{人为的边界形变}------内部点被迫适应这个''外挂''的边界形状，局部角度保真性遭到破坏。
+\item
+  \textbf{DCP}：不固定任何边界顶点，而是利用系统本身的零空间结构。cot-Laplace
+  矩阵
+  \(\mathbf{L}\)（未经边界约束时）是半正定的，其零空间仅包含常数向量------对应
+  u、v 各自的平移自由度。在 \(\mathbb{R}^2\) 映射中，零空间为 \textbf{3
+  维}（2 平移 + 1 旋转）。只需\textbf{固定任意 2 个顶点的 UV
+  坐标}即可消除这三个自由度，使系统满秩。其余所有顶点（包括边界）都是自由的，由能量极小化自然决定位置。
+\end{itemize}
+
+\paragraph{为什么 2 个 pin
+点就够？}\label{ux4e3aux4ec0ux4e48-2-ux4e2a-pin-ux70b9ux5c31ux591f}
+
+这是 DCP 最优雅的性质：在 \(n\) 个顶点的系统中，\(\mathbf{L}\) 的秩为
+\(n - 1\)（单连通网格）。对于二维映射 \(f = (u, v)\)，联立系统的秩为
+\(2n - 2\)，零空间维数为 3：
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}lll@{}}
+\toprule\noalign{}
+自由度 & 物理含义 & 消去方式 \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+平移 u & 常数偏移 & \texttt{pin{[}0{]}} → u=0 \\
+平移 v & 常数偏移 & \texttt{pin{[}0{]}} → v=0 \\
+旋转 & 整体刚体转动 & \texttt{pin{[}1{]}} → v=0（固定两点连线方向） \\
+\end{longtable}
+}
+
+因此 2 个 pin 点恰好提供所需的 3 个标量约束，无需固定整条边界。这与
+LSCM（最小二乘共形映射）的秩分析完全一致。
+
+\paragraph{各自的优劣}\label{ux5404ux81eaux7684ux4f18ux52a3}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Tutte（固定边界）
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+DCP（自由边界）
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{角度保真} & 较差------边界约束强制拉伸 &
+较好------边界由能量极小化自然决定 \\
+\textbf{边界形状} & 规则（圆/矩形等） & 不规则（可能弯曲、自交） \\
+\textbf{理论保证} & 凸边界 → 保证无翻转 &
+无全局一一映射保证，可能出现局部翻转 \\
+\textbf{求解复杂度} & 解一次线性系统（正定，收敛快） & 解一次线性系统（2
+pin 约束，收敛快） \\
+\textbf{翻转风险} & 仅在退化网格出现 & 高曲率区域可能翻转（类似
+LSCM） \\
+\textbf{适用场景} & 可视化、纹理映射（边界可控） &
+几何处理、曲面拟合（需要角度保真） \\
+\end{longtable}
+}
+
+\paragraph{从能量角度看统一性}\label{ux4eceux80fdux91cfux89d2ux5ea6ux770bux7edfux4e00ux6027}
+
+Tutte 和 DCP 本质上都是求解同一族能量极小化问题的不同边界条件下的特例：
+
+\[
+\mathbf{L}\mathbf{u} = \mathbf{0}, \quad \mathbf{u}|_{\partial_0} = \mathbf{g}
+\]
+
+\begin{itemize}
+\tightlist
+\item
+  当 \(\partial_0\) 取为整个边界环 → Tutte
+\item
+  当 \(\partial_0\) 取为仅 2 个任意顶点 → DCP
+\end{itemize}
+
+理解这一点后，便可将 Tutte、DCP（以及 ABF、LSCM
+等更多共形方法）统一纳入''离散调和能量 + Dirichlet
+边界约束''的框架之中。
+
+\section{第5章
+曲面展开-离散微分几何-Jacobian矩阵}\label{ux7b2c5ux7ae0-ux66f2ux9762ux5c55ux5f00-ux79bbux6563ux5faeux5206ux51e0ux4f55-jacobianux77e9ux9635}
 
 \subsection{1.4 分段线性映射的 Jacobian
 矩阵}\label{ux5206ux6bb5ux7ebfux6027ux6620ux5c04ux7684-jacobian-ux77e9ux9635}
@@ -732,7 +835,7 @@ DCP内部点同样权重。但是\textbf{自由边界}
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={局部坐标系}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/ea1f5f955905.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={局部坐标系}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/ea1f5f955905.png}}
 \caption{局部坐标系}
 \end{figure}
 
@@ -785,7 +888,7 @@ A^{-1} = \frac{1}{ad - bc} \begin{pmatrix} d & -b \\ -c & a \end{pmatrix}
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={img}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/b396a6f48867.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={img}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/b396a6f48867.png}}
 \caption{img}
 \end{figure}
 
@@ -804,12 +907,6 @@ free)，映射后三角形的定向是不能翻转的，否则也会有错乱的
 
 \subsubsection{1.4.3
 通过奇异值来定义变形能量}\label{ux901aux8fc7ux5947ux5f02ux503cux6765ux5b9aux4e49ux53d8ux5f62ux80fdux91cf}
-
-\begin{figure}
-\centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={image-20260522170322854}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260522170322854.png}}
-\caption{image-20260522170322854}
-\end{figure}
 
 Jacobian 矩阵的奇异值 \[\sigma_1, \sigma_2\]
 完整地刻画了局部映射的拉伸行为。基于这两个奇异值，我们可以系统性地定义各类变形能量，每种能量对应不同的几何约束目标。下表汇总了常见的基于奇异值的变形能量。
@@ -876,30 +973,6 @@ SVD 保证 \[U,V\] 为旋转矩阵）。经此旋转后：
 \] 此二次型的 Hessian 矩阵正是 \textbf{cot-Laplacian}，因为每个 \[J_t\]
 可写为三角形三顶点的线性函数（式(2)）。
 
-\paragraph{1.4.3.3
-几何意义小结}\label{ux51e0ux4f55ux610fux4e49ux5c0fux7ed3}
-
-\begin{itemize}
-\tightlist
-\item
-  \[\sigma_1 = \sigma_2\]：\textbf{保角}（conformal），各方向拉伸一致
-\item
-  \[\sigma_1\sigma_2 = 1\]：\textbf{保面积}（authalic / equiareal）
-\item
-  \[\sigma_1 = \sigma_2 = 1\]：\textbf{等距}（isometric，最理想）
-\item
-  \[\sigma_1 / \sigma_2 \leq c\]：\textbf{有界共形扭曲}（Bounded
-  Distortion），当 \[c=1\] 时退化为共形映射
-\end{itemize}
-
-\[
-\boxed{\text{\text{等距}} \;\subset\; \text{\text{有界扭曲}} \;\subset\; \text{\text{保角}}} \qquad
-\boxed{\text{\text{等距}} \;\subset\; \text{\text{保面积}}}
-\]
-
-\textbf{等距映射}是唯一同时保角和保面积的映射类，也是参数化追求的终极目标------但在曲面展开中通常无法严格实现（Gauss
-绝妙定理）。
-
 \subsubsection{1.4.4 基于奇异值优化的展开方法 ---
 ARAP}\label{ux57faux4e8eux5947ux5f02ux503cux4f18ux5316ux7684ux5c55ux5f00ux65b9ux6cd5-arap}
 
@@ -911,7 +984,7 @@ Tutte）初始化，然后交替进行如下两步------首先为每个三角形
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={Local优化示意}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/d0a502aed39b.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={Local优化示意}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/d0a502aed39b.png}}
 \caption{Local优化示意}
 \end{figure}
 
@@ -941,7 +1014,8 @@ L_t^* = min_{L_t}\{d(J_t,M_t)\} ,M_t\in\Omega_s \\
 根据\textbf{Procrustes分析}，通过对\[J_t\]的\textbf{带符号的SVD分解(Signed
 SVD)}可以解得\[L_t^*\]
 
-对\[J_t\]进行SSVD分解保证\(U,V\)是\textbf{旋转矩阵}，可以令\[\sigma_2\]是负的(一般的SVD分解中U,V是正交矩阵不一定是旋转矩阵)
+对\[J_t\]进行SSVD分解保证 \(U,V\)
+是\textbf{旋转矩阵}，可以令\[\sigma_2\]是负的(一般的SVD分解中U,V是正交矩阵不一定是旋转矩阵)
 \[
 J_t=U\Sigma V^T,\Sigma={\begin{pmatrix}{\sigma_1}&{0}\\{0}&{\sigma_2}\end{pmatrix} }
 \] 然后重新组合上面分解的矩阵得到\[L_t\]
@@ -954,7 +1028,7 @@ L_t= U {\begin{pmatrix}{s}&{0}\\{0}&{s}\end{pmatrix}} V^T,s = \frac{\sigma_1+\si
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={image-20251023215506894}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/36c564cb3e2a.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={image-20251023215506894}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/36c564cb3e2a.png}}
 \caption{image-20251023215506894}
 \end{figure}
 
@@ -965,7 +1039,7 @@ L_t= U {\begin{pmatrix}{s}&{0}\\{0}&{s}\end{pmatrix}} V^T,s = \frac{\sigma_1+\si
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={Global优化示意}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/a9ebf86e0e44.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={Global优化示意}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/a9ebf86e0e44.png}}
 \caption{Global优化示意}
 \end{figure}
 
@@ -1012,6 +1086,9 @@ norm）}，度量拉伸的总量。
 E_{\text{ARAP}} \approx E_D - 2 \approx E_C
 \] 这意味着在接近理想映射的区域，ARAP 和 LSCM 优化趋向一致。
 
+\section{第6章
+曲面展开-共形映射初步认识}\label{ux7b2c6ux7ae0-ux66f2ux9762ux5c55ux5f00-ux5171ux5f62ux6620ux5c04ux521dux6b65ux8ba4ux8bc6}
+
 \subsection{1.5
 共形映射初步认识}\label{ux5171ux5f62ux6620ux5c04ux521dux6b65ux8ba4ux8bc6}
 
@@ -1022,7 +1099,7 @@ E_{\text{ARAP}} \approx E_D - 2 \approx E_C
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={image-20250312183649382}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/a1610e4050bd.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={image-20250312183649382}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/a1610e4050bd.png}}
 \caption{image-20250312183649382}
 \end{figure}
 
@@ -1032,7 +1109,7 @@ Mapping)}，它能最大程度地维持几何细节的形状不失真------因�
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={image-20251203151355902}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/3eaca1488efa.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={image-20251203151355902}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/3eaca1488efa.png}}
 \caption{image-20251203151355902}
 \end{figure}
 
@@ -1065,7 +1142,7 @@ Mapping)算法基于复变函数理论中的\textbf{Cauchy-Riemann方程}，令�
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={CR}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/Screenshot 2026-05-21 at 13.41.14.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={CR}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/Screenshot 2026-05-21 at 13.41.14.png}}
 \caption{CR}
 \end{figure}
 
@@ -1073,10 +1150,11 @@ Mapping)算法基于复变函数理论中的\textbf{Cauchy-Riemann方程}，令�
 \[L^2\] 范数，即有 \[
 E_{\text{LSCM}}(\mathbf{u}) = \int_X |{\nabla u}^ \perp  - \nabla v|^2 dA
 \tag{2}
-\] 结合上一节推导的\textbf{Jacobian矩阵}，对于三角形\(T\)映射的偏导数有
-\[
-{\partial U}/{\partial x} + i{\partial U}/{\partial y} = \frac{i}{2A_T}(W_{i,T},W_{j,T},W_{k,T}){\begin{pmatrix}u_i\\u_j\\u_k\end{pmatrix}}, \quad
-\text{其中}\begin{cases}W_{i,T} = (x_k - x_j)+i(y_k-y_j)\\
+\] 结合上一节推导的\textbf{Jacobian矩阵}，对于三角形 \(T\)
+映射的偏导数有 \[
+{\partial U}/{\partial x} + i{\partial U}/{\partial y} = \frac{i}{2A_T}(W_{i,T},W_{j,T},W_{k,T}){\begin{pmatrix}u_i\\u_j\\u_k\end{pmatrix}}
+\] 其中 \[
+\begin{cases}W_{i,T} = (x_k - x_j)+i(y_k-y_j)\\
 W_{j,T} = (x_i - x_k)+i(y_i-y_k)\\
 W_{k,T} = (x_j - x_i)+i(y_j-y_i)\\
 \end{cases}
@@ -1092,10 +1170,10 @@ C(T_i) = {||{{\partial U}/{\partial x}}+i{{\partial U}/{\partial y}}||}^2 A_{T_j
 将所有三角形能量进行累加\[E_{\text{LSCM}}(\mathbf{u}) = \Sigma_{i=1}^{n} C(T_i)\]，可以认为是关于复数\[U=(U_1,U_2,...,U_n)^T\]的\textbf{复二次型}
 \[
 E_{\text{LSCM}}(\mathbf{u}) = C(U=(U_1,U_2,...,U_n)^T)=U^*CU
-\] 其中\(C\)是\textbf{Hermitee Gram矩阵}，所以可以对其进行分解 \[
+\] 其中 \(C\) 是\textbf{Hermitee Gram矩阵}，所以可以对其进行分解 \[
 C=M^*M
-\\M=(m_{ij})\text{是}|F|\times|V|\text{稀疏矩阵，}
-m_{ij} = \begin{cases}W_{j,T_i},\text{如果}v_j\text{属于三角形}T_i \\ 0\end{cases}
+\\M=(m_{ij})\text{ \text{是} }|F|\times|V|\text{ \text{稀疏矩阵}}
+m_{ij} = \begin{cases}W_{j,T_i}, & \text{\text{如果} } v_j \text{ \text{属于三角形} } T_i \\ 0\end{cases}
 \tag{4}
 \]
 如果不加限制那么会得到平凡解(trivial)即\[U=0\]的常映射，所以要想得到非平凡解需要固定一部分点\textbf{(pin点)}，即固定某些\[U\]的值。
@@ -1242,6 +1320,9 @@ E_{\text{ARAP}}(T) = \|J\|_F^2 - 2(\sigma_1 + \sigma_2) + 2
 的一步求解是同一个线性系统；ARAP 通过迭代逼近最优旋转 \(R_T^*\)，LSCM
 直接消去旋转自由度。固定边界且收敛到驻点时，两者给出相同解。
 
+\section{第7章
+曲面展开-网格的谱处理SCP}\label{ux7b2c7ux7ae0-ux66f2ux9762ux5c55ux5f00-ux7f51ux683cux7684ux8c31ux5904ux7406scp}
+
 \subsection{1.6 网格的谱处理
 SCP}\label{ux7f51ux683cux7684ux8c31ux5904ux7406-scp}
 
@@ -1253,7 +1334,7 @@ SCP（Spectral Conformal Parameterization，Mullen et al.）是 LSCM
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={image-20260525110441072}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260525110441072.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={image-20260525110441072}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260525110441072.png}}
 \caption{image-20260525110441072}
 \end{figure}
 
@@ -1356,7 +1437,7 @@ L_C \mathbf{x}_{k+1} = P \mathbf{x}_k
 
 \begin{figure}
 \centering
-\pandocbounded{\includegraphics[keepaspectratio,alt={幂迭代的几何直观：单位球经反复左乘矩阵后沿主特征向量方向收缩}]{C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/d9e063ceb12d.png}}
+\pandocbounded{\includegraphics[keepaspectratio,alt={幂迭代的几何直观：单位球经反复左乘矩阵后沿主特征向量方向收缩}]{c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/images/d9e063ceb12d.png}}
 \caption{幂迭代的几何直观：单位球经反复左乘矩阵后沿主特征向量方向收缩}
 \end{figure}
 

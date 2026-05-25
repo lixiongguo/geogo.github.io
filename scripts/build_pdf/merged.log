@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999997 (MiKTeX 25.12) (preloaded format=xelatex 2025.12.31)  25 MAY 2026 11:20
+This is XeTeX, Version 3.141592653-2.6-0.999997 (MiKTeX 25.12) (preloaded format=xelatex 2025.12.31)  25 MAY 2026 14:28
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1688,9 +1688,9 @@ LaTeX Font Info:    Font shape `TU/SimSun(0)/b/n' will be
 (Font)              scaled to size 14.4pt on input line 100.
 LaTeX Font Info:    Font shape `TU/SimSun(2)/b/n' will be
 (Font)              scaled to size 14.4pt on input line 100.
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
 pdf/images/7b9141057840.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
 mages/7b9141057840.png>
 LaTeX Font Info:    Font shape `TU/SimSun(0)/b/n' will be
 (Font)              scaled to size 12.0pt on input line 108.
@@ -1700,28 +1700,51 @@ LaTeX Font Info:    Font shape `TU/SimSun(2)/b/n' will be
 
 ] [2] [3]
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(1)/m/n' will be
-(Font)              scaled to size 7.35931pt on input line 314.
+(Font)              scaled to size 7.35931pt on input line 317.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(1)/m/n' will be
-(Font)              scaled to size 5.25665pt on input line 314.
+(Font)              scaled to size 5.25665pt on input line 317.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(2)/m/n' will be
-(Font)              scaled to size 10.51437pt on input line 314.
+(Font)              scaled to size 10.51437pt on input line 317.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(2)/m/n' will be
-(Font)              scaled to size 7.36006pt on input line 314.
+(Font)              scaled to size 7.36006pt on input line 317.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(2)/m/n' will be
-(Font)              scaled to size 5.25719pt on input line 314.
+(Font)              scaled to size 5.25719pt on input line 317.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(3)/m/n' will be
-(Font)              scaled to size 10.51224pt on input line 314.
+(Font)              scaled to size 10.51224pt on input line 317.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(3)/m/n' will be
-(Font)              scaled to size 7.35857pt on input line 314.
+(Font)              scaled to size 7.35857pt on input line 317.
 LaTeX Font Info:    Font shape `TU/latinmodern-math.otf(3)/m/n' will be
-(Font)              scaled to size 5.25612pt on input line 314.
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/Screensho
-t 2026-05-21 at 13.51.06.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/Screenshot 202
-6-05-21 at 13.51.06.png>
+(Font)              scaled to size 5.25612pt on input line 317.
  [4]
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+pdf/images/9c1601930278.png Graphic file (type bmp)
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+mages/9c1601930278.png>
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+pdf/images/b44f941e298c.png Graphic file (type bmp)
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+mages/b44f941e298c.png>
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/23333.png
+ Graphic file (type bmp)
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/23333.png>
+ [5] [6]
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+pdf/images/1f3c35574d83.png Graphic file (type bmp)
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+mages/1f3c35574d83.png>
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/Screensho
+t 2026-05-21 at 13.47.41.png Graphic file (type bmp)
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/Screenshot 202
+6-05-21 at 13.47.41.png>
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/GarmentPa
+ttern.jpg Graphic file (type bmp)
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/GarmentPattern
+.jpg>
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/MD.jpg Gr
+aphic file (type bmp)
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/MD.jpg>
 LaTeX Font Info:    Font shape `TU/SimSun(1)/m/n' will be
-(Font)              scaled to size 10.0pt on input line 327.
+(Font)              scaled to size 10.0pt on input line 393.
 Package microtype Info: Character `textendash ' is missing
 (microtype)             in font `TU/SimSun(1)/m/n/10'.
 (microtype)             Ignoring protrusion settings for this character.
@@ -1741,258 +1764,137 @@ Package microtype Info: Character `textquotedblright ' is missing
 (microtype)             in font `TU/SimSun(1)/m/n/10'.
 (microtype)             Ignoring protrusion settings for this character.
 LaTeX Font Info:    Font shape `TU/SimSun(1)/m/n' will be
-(Font)              scaled to size 7.0pt on input line 327.
+(Font)              scaled to size 7.0pt on input line 393.
 LaTeX Font Info:    Font shape `TU/SimSun(1)/m/n' will be
-(Font)              scaled to size 5.0pt on input line 327.
+(Font)              scaled to size 5.0pt on input line 393.
 LaTeX Font Info:    Font shape `TU/SimSun(0)/m/n' will be
-(Font)              scaled to size 7.0pt on input line 327.
+(Font)              scaled to size 7.0pt on input line 393.
 LaTeX Font Info:    Font shape `TU/SimSun(0)/m/n' will be
-(Font)              scaled to size 5.0pt on input line 327.
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
-pdf/images/9c1601930278.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
-mages/9c1601930278.png>
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
-pdf/images/b44f941e298c.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
-mages/b44f941e298c.png>
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/23333.png
- Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/23333.png>
- [5] [6]
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
-pdf/images/1f3c35574d83.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
-mages/1f3c35574d83.png>
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/Screensho
-t 2026-05-21 at 13.47.41.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/Screenshot 202
-6-05-21 at 13.47.41.png>
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/GarmentPa
-ttern.jpg Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/GarmentPattern
-.jpg>
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/MD.jpg Gr
-aphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/MD.jpg>
+(Font)              scaled to size 5.0pt on input line 393.
  [7] [8]
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
 pdf/images/a2220f7bbe4d.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
 mages/a2220f7bbe4d.png>
 
-Underfull \hbox (badness 4454) in paragraph at lines 439--442
+Underfull \hbox (badness 4454) in paragraph at lines 428--431
 []\TU/SimSun(2)/m/n/10 我 们 后 面 的 \TU/SimSun(0)/b/n/10 3D \TU/SimSun(2)/m/n/10 模
  型 主 要 是 最 简 单 拓 扑 的 模 型 即 拓 扑 圆 盘 \TU/SimSun(0)/b/n/10 (Topological Disk)—\TU/
 SimSun(2)/m/n/10 是
  []
 
 
-Underfull \hbox (badness 3746) in paragraph at lines 439--442
+Underfull \hbox (badness 3746) in paragraph at lines 428--431
 \TU/SimSun(2)/m/n/10 指 具 有 单 条 边 界 环 的\TU/SimSun(0)/b/n/10 ” \TU/SimSun(2)/m/n/
 10 开 口 网 格 曲 面\TU/SimSun(0)/b/n/10 ”\TU/SimSun(2)/m/n/10 ，|  比 如 这 个 简 化 的  |（\
 TU/SimSun(0)/b/n/10 “\TU/SimSun(2)/m/n/10 抽 象\TU/SimSun(0)/b/n/10 ” \TU/SimSun(
 2)/m/n/10 的）|  大 卫 头 像：|
  []
 
-[9]
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
 pdf/images/4464fd1db0b6.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
 mages/4464fd1db0b6.png>
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
 pdf/images/34421a57ec42.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
 mages/34421a57ec42.png>
- [10]
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/image-202
+[9] [10]
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/image-202
 60522151857590.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260522
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260522
 151857590.png>
  [11]
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
 pdf/images/8f29f01ec492.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
 mages/8f29f01ec492.png>
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
 pdf/images/d9c70116a558.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
 mages/d9c70116a558.png>
 
 
 LaTeX Font Warning: Font shape `TU/SimSun(1)/b/n' undefined
-(Font)              using `TU/SimSun(1)/m/n' instead on input line 570.
+(Font)              using `TU/SimSun(1)/m/n' instead on input line 565.
 
 LaTeX Font Info:    Font shape `TU/SimSun(1)/b/n' will be
-(Font)              scaled to size 7.0pt on input line 570.
+(Font)              scaled to size 7.0pt on input line 565.
 LaTeX Font Info:    Font shape `TU/SimSun(1)/b/n' will be
-(Font)              scaled to size 5.0pt on input line 570.
+(Font)              scaled to size 5.0pt on input line 565.
 [12]
-Missing character: There is no ∇ in font SimSun/OT:script=latn;language=dflt;ma
-pping=tex-text;!
-
-! LaTeX Error: \mathbf allowed only in math mode.
-
-See the LaTeX manual or LaTeX Companion for explanation.
-Type  H <return>  for immediate help.
- ...                                              
-                                                  
-l.585 ...(\nabla\)}作用于式(2)可得 \$\$ \nabla f(\mathbf
-                                                  {x}) =
-You're in trouble here.  Try typing  <return>  to proceed.
-If that doesn't work, type  X <return>  to quit.
-
-Missing character: There is no ∇ in font SimSun/OT:script=latn;language=dflt;ma
-pping=tex-text;!
-Missing character: There is no 𝛼 in font SimSun/OT:script=latn;language=dflt;ma
-pping=tex-text;!
-Missing character: There is no ∇ in font SimSun/OT:script=latn;language=dflt;ma
-pping=tex-text;!
-Missing character: There is no 𝛽 in font SimSun/OT:script=latn;language=dflt;ma
-pping=tex-text;!
-Missing character: There is no ∇ in font SimSun/OT:script=latn;language=dflt;ma
-pping=tex-text;!
-Missing character: There is no 𝛾 in font SimSun/OT:script=latn;language=dflt;ma
-pping=tex-text;!
-Missing character: There is no ∇ in font SimSun/OT:script=latn;language=dflt;ma
-pping=tex-text;!
-Missing character: There is no 𝛼 in font SimSun/OT:script=latn;language=dflt;ma
-pping=tex-text;!
-
-! LaTeX Error: \mathbf allowed only in math mode.
-
-See the LaTeX manual or LaTeX Companion for explanation.
-Type  H <return>  for immediate help.
- ...                                              
-                                                  
-l.589 ...\mathbf{x}_k - \mathbf{x}_j)^\perp}{2A_T}
-                                                  ,\quad \nabla \beta =
-You're in trouble here.  Try typing  <return>  to proceed.
-If that doesn't work, type  X <return>  to quit.
-
-! Missing $ inserted.
-<inserted text> 
-                $
-l.589 ...\mathbf{x}_k - \mathbf{x}_j)^\perp}{2A_T}
-                                                  ,\quad \nabla \beta =
-I've inserted a begin-math/end-math symbol since I think
-you left one out. Proceed, with fingers crossed.
-
-! Missing $ inserted.
-<inserted text> 
-                $
-l.589 ...\mathbf{x}_k - \mathbf{x}_j)^\perp}{2A_T}
-                                                  ,\quad \nabla \beta =
-I've inserted something that you may have forgotten.
-(See the <inserted text> above.)
-With luck, this will get me unwedged. But if you
-really didn't forget anything, try typing `2' now; then
-my insertion and my current dilemma will both disappear.
-
-! Missing $ inserted.
-<inserted text> 
-                $
-l.589 ...\mathbf{x}_k - \mathbf{x}_j)^\perp}{2A_T}
-                                                  ,\quad \nabla \beta =
-I've inserted a begin-math/end-math symbol since I think
-you left one out. Proceed, with fingers crossed.
-
-! Extra }, or forgotten $.
-\frac  #1#2->{\begingroup #1\endgroup \@@over #2}
-                                                 
-l.589 ...\mathbf{x}_k - \mathbf{x}_j)^\perp}{2A_T}
-                                                  ,\quad \nabla \beta =
-I've deleted a group-closing symbol because it seems to be
-spurious, as in `$x}$'. But perhaps the } is legitimate and
-you forgot something else, as in `\hbox{$x}'. In such cases
-the way to recover is to insert both the forgotten and the
-deleted material, e.g., by typing `I$}'.
-
-! Missing $ inserted.
-<inserted text> 
-                $
-l.592 
-      
-I've inserted a begin-math/end-math symbol since I think
-you left one out. Proceed, with fingers crossed.
-
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
 pdf/images/026a37e73051.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
 mages/026a37e73051.png>
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
 pdf/images/94e6ab891cbe.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
 mages/94e6ab891cbe.png>
-[13] [14] [15]
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
-pdf/images/ea1f5f955905.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
-mages/ea1f5f955905.png>
- [16]
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
-pdf/images/b396a6f48867.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
-mages/b396a6f48867.png>
- [17]
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/image-202
-60522170322854.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260522
-170322854.png>
-
-ignored error: Infinite glue shrinkage found in box being split [18] [19]
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
-pdf/images/d0a502aed39b.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
-mages/d0a502aed39b.png>
-
-[20]
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
-pdf/images/36c564cb3e2a.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
-mages/36c564cb3e2a.png>
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
-pdf/images/a9ebf86e0e44.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
-mages/a9ebf86e0e44.png>
- [21] [22] [23]
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
-pdf/images/a1610e4050bd.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
-mages/a1610e4050bd.png>
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
-pdf/images/3eaca1488efa.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
-mages/3eaca1488efa.png>
- [24] [25]
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/Screensho
-t 2026-05-21 at 13.41.14.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/Screenshot 202
-6-05-21 at 13.41.14.png>
- [26] [27]
-Missing character: There is no − in font SimSun/OT:script=latn;language=dflt;ma
-pping=tex-text;!
+ [13] [14] [15]
 
 Package xeCJK Warning: Unknown CJK family `\CJKttdefault' is being ignored.
 (xeCJK)                
 (xeCJK)                Try to use `\setCJKmonofont[<...>]{<...>}' to define
 (xeCJK)                it.
 
+[16]
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+pdf/images/ea1f5f955905.png Graphic file (type bmp)
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+mages/ea1f5f955905.png>
+ [17] [18]
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+pdf/images/b396a6f48867.png Graphic file (type bmp)
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+mages/b396a6f48867.png>
+ [19]
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+pdf/images/d0a502aed39b.png Graphic file (type bmp)
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+mages/d0a502aed39b.png>
+ [20] [21]
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+pdf/images/36c564cb3e2a.png Graphic file (type bmp)
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+mages/36c564cb3e2a.png>
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+pdf/images/a9ebf86e0e44.png Graphic file (type bmp)
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+mages/a9ebf86e0e44.png>
+ [22] [23]
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+pdf/images/a1610e4050bd.png Graphic file (type bmp)
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+mages/a1610e4050bd.png>
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+pdf/images/3eaca1488efa.png Graphic file (type bmp)
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+mages/3eaca1488efa.png>
+ [24] [25]
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/Screensho
+t 2026-05-21 at 13.41.14.png Graphic file (type bmp)
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/Screenshot 202
+6-05-21 at 13.41.14.png>
+ [26] [27]
+Missing character: There is no − in font SimSun/OT:script=latn;language=dflt;ma
+pping=tex-text;!
 [28]
 Package microtype Info: Loading generic protrusion settings for font family
 (microtype)             `lmss' (encoding: TU).
 (microtype)             For optimal results, create family-specific settings.
 (microtype)             See the microtype manual for details.
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/image-202
+ [29]
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/image-202
 60525110441072.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260525
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/imgs/image-20260525
 110441072.png>
- [29] [30]
-File: C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
+ [30] [31]
+File: c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_
 pdf/images/d9e063ceb12d.png Graphic file (type bmp)
-<C:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
+<c:/Users/lixio/OneDrive/Desktop/MyDoc/lixiongguo.github.io/scripts/build_pdf/i
 mages/d9e063ceb12d.png>
- [31] (merged.aux)
+ [32] (merged.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2022/08/05>
@@ -2001,19 +1903,18 @@ L3 programming layer <2022/08/05>
 
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
- )
-(\end occurred inside a group at level 1)
 
-### simple group (level 1) entered at line 589 ({)
-### bottom level 
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+ ) 
 Here is how much of TeX's memory you used:
- 20940 strings out of 402987
- 425389 string characters out of 5452870
- 1007889 words of memory out of 5000000
- 49370 multiletter control sequences out of 15000+600000
+ 20953 strings out of 402987
+ 425251 string characters out of 5452870
+ 1003442 words of memory out of 5000000
+ 49385 multiletter control sequences out of 15000+600000
  634842 words of font info for 109 fonts, out of 8000000 for 9000
  1348 hyphenation exceptions out of 8191
- 90i,16n,116p,1005b,578s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 90i,16n,116p,1005b,463s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
-Output written on C:\Users\lixio\OneDrive\Desktop\MyDoc\lixiongguo.github.io\sc
-ripts\build_pdf\merged.pdf (31 pages).
+Output written on c:\Users\lixio\OneDrive\Desktop\MyDoc\lixiongguo.github.io\sc
+ripts\build_pdf\merged.pdf (32 pages).
