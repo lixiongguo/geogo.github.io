@@ -1,13 +1,110 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>DDG 交互练习</title>
-	<link rel="canonical" href="vector-field-decomposition/">
-	<script>location.replace("vector-field-decomposition/");</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DDG Projects — CMU Discrete Differential Geometry</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a1020;
+      color: #c6d1f4;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 48px 24px;
+    }
+    .container { max-width: 720px; margin: 0 auto; }
+    h1 {
+      font-size: 26px;
+      color: #eef2ff;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #5a6791;
+      margin-bottom: 32px;
+    }
+    .projects {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
+    }
+    a.card {
+      display: block;
+      padding: 18px 20px;
+      background: #0d1528;
+      border: 1px solid rgba(106,132,255,0.13);
+      border-radius: 10px;
+      text-decoration: none;
+      color: #c6d1f4;
+      transition: all 0.2s;
+    }
+    a.card:hover {
+      background: #121f3a;
+      border-color: rgba(106,132,255,0.35);
+      transform: translateY(-1px);
+    }
+    a.card h2 {
+      font-size: 15px;
+      color: #8aa4f0;
+      margin-bottom: 4px;
+    }
+    a.card p {
+      font-size: 12px;
+      color: #5a6791;
+    }
+    .back {
+      margin-top: 36px;
+      font-size: 12px;
+    }
+    .back a { color: #5a6791; }
+  </style>
 </head>
 <body>
-	<p>正在跳转到 <a href="vector-field-decomposition/">向量场分解 · Vector Field Decomposition</a>…</p>
+  <div class="container">
+    <h1>DDG Exercises — Projects</h1>
+    <p class="subtitle">CMU 15-458/858 Discrete Differential Geometry (JS port)</p>
+
+    <div class="projects">
+      <a class="card" href="simplicial-complex-operators/">
+        <h2>Simplicial Complex Operators</h2>
+        <p>Halfedge mesh data structure &amp; simplicial complex building blocks</p>
+      </a>
+      <a class="card" href="discrete-exterior-calculus/">
+        <h2>Discrete Exterior Calculus</h2>
+        <p>Hodge star, exterior derivative, and DEC operators on triangle meshes</p>
+      </a>
+      <a class="card" href="poisson-problem/">
+        <h2>Poisson Problem</h2>
+        <p>Solving scalar Poisson equations with DEC on surfaces</p>
+      </a>
+      <a class="card" href="geodesic-distance/">
+        <h2>Geodesic Distance</h2>
+        <p>The heat method for computing geodesic distance on triangle meshes</p>
+      </a>
+      <a class="card" href="vector-field-decomposition/">
+        <h2>Vector Field Decomposition</h2>
+        <p>Hodge decomposition of tangent vector fields on surfaces</p>
+      </a>
+      <a class="card" href="direction-field-design/">
+        <h2>Direction Field Design</h2>
+        <p>Trivial connections &amp; globally smooth direction fields</p>
+      </a>
+      <a class="card" href="parameterization/">
+        <h2>Parameterization</h2>
+        <p>Spectral conformal parameterization &amp; boundary-first flattening</p>
+      </a>
+      <a class="card" href="geometric-flow/">
+        <h2>Geometric Flow</h2>
+        <p>Mean curvature flow &amp; modified mean curvature flow on surfaces</p>
+      </a>
+      <a class="card" href="discrete-curvatures-and-normals/">
+        <h2>Discrete Curvatures and Normals</h2>
+        <p>Vertex normals, principal curvatures, and shape operators</p>
+      </a>
+    </div>
+
+    <div class="back"><a href="..">← back to ddg-exercises-js</a></div>
+  </div>
 </body>
 </html>
