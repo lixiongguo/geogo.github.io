@@ -407,9 +407,9 @@
     const box = new THREE.Box3();
     for (const p of positions) box.expandByPoint(new THREE.Vector3(p[0], p[1], p[2]));
     const meshSize = box.getSize(new THREE.Vector3());
-    const markerR = Math.max(meshSize.x, meshSize.y, 0.5) * 0.015;
-    const fixedGeom = new THREE.SphereGeometry(markerR, 10, 10);
-    const fixedMat = new THREE.MeshBasicMaterial({ color: 0x44e8a0, depthTest: true, depthWrite: false });
+    const markerR = Math.max(meshSize.x, meshSize.y, 0.5) * 0.006;
+    const fixedGeom = new THREE.SphereGeometry(markerR, 8, 8);
+    const fixedMat = new THREE.MeshBasicMaterial({ color: 0x44e8a0 });
     for (const vi of fixedVertices) {
       const p = restPositions[vi];
       const marker = new THREE.Mesh(fixedGeom, fixedMat);
@@ -520,6 +520,14 @@
     if (fixedPointMode) {
       const vi = findNearestVertexIndex(hit.point, positions);
       if (vi < 0) return;
+      // 距离阈值：只有点在顶点附近才吸附
+      const snapBox = new THREE.Box3();
+      for (const p of positions) snapBox.expandByPoint(new THREE.Vector3(p[0], p[1], p[2]));
+      const snapSize = snapBox.getSize(new THREE.Vector3());
+      const snapThreshold = Math.max(snapSize.x, snapSize.y, 0.5) * 0.025;
+      const v = positions[vi];
+      const dx = hit.point.x - v[0], dy = hit.point.y - v[1], dz = hit.point.z - v[2];
+      if (dx * dx + dy * dy + dz * dz > snapThreshold * snapThreshold) return;
       if (fixedVertices.has(vi)) {
         fixedVertices.delete(vi);
       } else {
