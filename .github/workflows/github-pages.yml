@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -32,6 +34,9 @@ jobs:
         run: |
           bundle lock --add-platform x86_64-linux
           bundle install --jobs 4
+
+      - name: Apply DDG exercises overlay
+        run: bash scripts/apply-ddg-overlay.sh
 
       - name: Build site
         run: bundle exec jekyll build
