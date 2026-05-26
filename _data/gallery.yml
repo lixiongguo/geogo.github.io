@@ -22,3 +22,9 @@
   thumbnail: /assets/gallery/water-caustics/thumb.svg
   cover: /assets/gallery/water-caustics/cover.svg
   detail_url: /gallery/caustic.html
+
+- slug: webgl-water
+  title: WebGL Water
+  description: Evan Wallace 经典 WebGL 水面：射线追踪反射折射、高度场模拟与实时焦散。
+  thumbnail: /assets/gallery/webgl-water/thumb.svg
+  detail_url: "/gallery/WebGL Water.html"

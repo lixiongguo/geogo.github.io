@@ -1,14 +1,15 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UV展开 - Tutte / LSCM / SCP</title>
+  <title>UV展开 - ABF++ / linABF / ARAP / …</title>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
   
-  <script src="assets/wasm/uv_unwrap_simple.js"></script>
+  <script src="assets/wasm/unified_solver.js"></script>
+  <script src="assets/wasm/tutte_arap_solver.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
@@ -241,23 +242,7 @@
         opacity: 0.4;
         cursor: not-allowed;
       }
-      #change-pin-btn {
-        padding: 4px 10px;
-        font-size: 12px;
-        border-radius: 6px;
-        cursor: pointer;
-        border: 1px solid rgba(106, 132, 255, 0.3);
-        background: #111b31;
-        color: #c6d1f4;
-        transition: background 0.2s ease;
-      }
-      #change-pin-btn:hover {
-        background: #1a2a4a;
-        border-color: rgba(106, 132, 255, 0.55);
-      }
-      #change-pin-btn:active {
-        background: #0f1a30;
-      }
+      
   </style>
 </head>
 <body>
@@ -282,9 +267,9 @@
         <fieldset id="method-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:8px 12px;margin:0;">
           <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开算法</legend>
           <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte" checked> Tutte</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="lscm"> LSCM</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Spectral Conformal Parameterization (Mullen et al.)"><input type="radio" name="method" value="scp"> SCP</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="arap" checked> ARAP</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="ABF++ 角度变量 + Gauss–Newton（参考 Geogram mesh_ABF）"><input type="radio" name="method" value="abfpp"> ABF++</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="线性化正弦积约束的迭代 ABF（Zayer et al.）"><input type="radio" name="method" value="linabf"> linABF</label>
           </div>
         </fieldset>
 
@@ -293,21 +278,11 @@
           <legend style="color:#ffb446;font-size:11px;padding:0 6px;">算法参数</legend>
           <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;">
             <span id="param-none" style="font-size:12px;color:#5a6791;">无参数</span>
-            <!-- LSCM 改pin点 -->
-            <span id="param-lscm-pin" style="display:none;font-size:12px;color:#c6d1f4;">
-              <button id="change-pin-btn" type="button">改pin点</button>
-            </span>
-            <!-- Tutte 边界选择 -->
-            <span id="param-tutte-boundary" style="display:none;font-size:12px;color:#c6d1f4;">
-              边界:
-              <label style="cursor:pointer;margin:0 4px;" title="映射到圆形边界"><input type="radio" name="tutte-boundary" value="circle" checked> 圆</label>
-              <label style="cursor:pointer;margin:0 4px;" title="映射到正方形边界"><input type="radio" name="tutte-boundary" value="square"> 方</label>
-            </span>
-            <!-- Tutte Laplace 权重（uniform 图 Laplace / cot-Laplace） -->
-            <span id="param-tutte-weight" style="display:none;font-size:12px;color:#c6d1f4;">
-              权重:
-              <label style="cursor:pointer;margin:0 4px;" title="均匀权重：Δf(v_i)=1/|N_i| Σ(f_j−f_i)，见 Tutte 参数化"><input type="radio" name="tutte-weight" value="uniform" checked> uniform</label>
-              <label style="cursor:pointer;margin:0 4px;" title="余切权重：cot-Laplace 调和映射；边界仍按上面的圆/方固定"><input type="radio" name="tutte-weight" value="cot"> cot-Laplace</label>
+            <!-- ARAP 迭代 -->
+            <span id="param-arap-iter" style="display:none;font-size:12px;color:#c6d1f4;">
+              迭代:<input id="arap-iter-input" type="number" value="30" min="5" max="200" step="5"
+                style="width:44px;padding:3px 5px;border-radius:6px;text-align:center;font-size:12px;border:1px solid rgba(106,132,255,0.3);background:#0d1528;color:#eef2ff;margin-left:4px;"
+                title="ARAP Local/Global 迭代次数">
             </span>
             <!-- 优化方法选择 -->
             <span id="param-opt-scheme" style="display:none;font-size:12px;color:#c6d1f4;">
@@ -896,25 +871,50 @@
       }
 
       // ==================== WASM 求解器初始化 ====================
-      let simpleInstance = null;
-      let wasmReady = false;
+      let wasmInstance = null;         // Unified WASM 模块实例（包含所有算法）
+      let wasmReady = false;           // WASM 是否已就绪
       let wasmLoadFailed = false;
+      let tutteArapInstance = null;
+      let tutteArapReady = false;
+      let tutteArapLoadFailed = false;
 
-      async function initSimpleSolver() {
+      /**
+       * 异步加载 Unified WASM 求解器（包含全部 11 个算法）
+       */
+      async function initUnifiedSolver() {
         if (wasmReady) return true;
         if (wasmLoadFailed) return false;
-
+        
         try {
-          if (typeof UvUnwrapSimpleSolver === 'undefined') {
-            throw new Error('WASM 胶水代码未加载，请确保 assets/wasm/uv_unwrap_simple.js 已部署');
+          if (typeof UnifiedSolver === 'undefined') {
+            throw new Error('WASM 胶水代码未加载，请确保 assets/wasm/unified_solver.js 已部署');
           }
-          simpleInstance = await UvUnwrapSimpleSolver();
+          wasmInstance = await UnifiedSolver();
           wasmReady = true;
-          console.log('WASM uv_unwrap_simple (LSCM/Tutte/SCP) 加载成功');
+          console.log('WASM Unified Solver (11 algorithms) 加载成功');
           return true;
         } catch (err) {
-          console.error('uv_unwrap_simple WASM 加载失败:', err);
+          console.error('Unified WASM 加载失败:', err);
           wasmLoadFailed = true;
+          return false;
+        }
+      }
+
+      async function initTutteARAPSolver() {
+        if (tutteArapReady) return true;
+        if (tutteArapLoadFailed) return false;
+
+        try {
+          if (typeof TutteARAPSolver === 'undefined') {
+            throw new Error('Tutte/ARAP WASM 胶水代码未加载，请确保 assets/wasm/tutte_arap_solver.js 已部署');
+          }
+          tutteArapInstance = await TutteARAPSolver();
+          tutteArapReady = true;
+          console.log('Tutte/ARAP WASM 加载成功');
+          return true;
+        } catch (err) {
+          console.error('Tutte/ARAP WASM 加载失败:', err);
+          tutteArapLoadFailed = true;
           return false;
         }
       }
@@ -925,28 +925,17 @@
       /** 当前选中的算法 */
       function getCurrentMethod() {
         const checked = document.querySelector('input[name="method"]:checked');
-        return checked ? checked.value : 'lscm';
+        return checked ? checked.value : 'arap';
       }
 
       function shouldShowPinPoints() {
-        const m = getCurrentMethod();
-        return m === 'lscm';
+        return false;
       }
 
-      /** 获取 Tutte 边界类型 */
-      function getTutteBoundary() {
-        const r = document.querySelector('input[name="tutte-boundary"]:checked');
-        return r ? r.value : 'circle';
-      }
-
-      /** 获取 Tutte Laplace 权重类型：uniform | cot */
-      function getTutteWeight() {
-        const r = document.querySelector('input[name="tutte-weight"]:checked');
-        return r ? r.value : 'uniform';
-      }
-
-      function getTutteWeightLabel() {
-        return getTutteWeight() === 'cot' ? 'cot-Laplace' : 'uniform';
+      /** 获取 ARAP 迭代次数 */
+      function getARAPIter() {
+        const v = parseInt(document.getElementById('arap-iter-input').value);
+        return (isNaN(v) || v < 5) ? 30 : v;
       }
 
       /** 获取优化方法 */
@@ -958,20 +947,18 @@
       /** 算法切换 + Tutte边界切换 → 统一更新参数面板 */
       function onParamChange() {
         const m = getCurrentMethod();
-        const panel = document.getElementById('param-panel');
         // 显隐参数面板
-        const hasParams = (m === 'tutte');
+        const hasParams = (m === 'arap' || m === 'cetm' || m === 'ricci' || m === 'cp');
         document.getElementById('param-none').style.display = hasParams ? 'none' : '';
 
-        document.getElementById('param-tutte-boundary').style.display = (m === 'tutte') ? '' : 'none';
-        document.getElementById('param-tutte-weight').style.display = (m === 'tutte') ? '' : 'none';
-        document.getElementById('param-opt-scheme').style.display = 'none';
-        document.getElementById('param-lscm-pin').style.display = (m === 'lscm') ? '' : 'none';
-        if (m !== 'lscm') {
-          currentCustomAnchors = null;
-        }
-        if (currentMeshData) {
-          updateModelPinPoints(currentCustomAnchors || chooseAnchorPair(currentMeshData.positions));
+        // ARAP 迭代（ARAP 时始终显示）
+        document.getElementById('param-arap-iter').style.display = (m === 'arap') ? '' : 'none';
+        // 优化方法
+        const showOpt = (m === 'cetm' || m === 'ricci' || m === 'cp');
+        document.getElementById('param-opt-scheme').style.display = showOpt ? '' : 'none';
+        if (showOpt) {
+          const sel = document.getElementById('opt-scheme-select');
+          sel.value = '1';  // 默认牛顿法
         }
         if (!shouldShowPinPoints() && currentUvPins) {
           clearGroup(uvScene, currentUvPins);
@@ -1006,13 +993,22 @@
       document.querySelectorAll('input[name="method"]').forEach(function(radio) {
         radio.addEventListener('change', onParamChange);
       });
-      document.querySelectorAll('input[name="tutte-boundary"], input[name="tutte-weight"]').forEach(function(radio) {
-        radio.addEventListener('change', onParamChange);
-      });
-      document.getElementById('change-pin-btn').addEventListener('click', onChangePinClick);
       onParamChange();  // 初始显示"无参数"
 
       // ==================== WASM 驱动的 LSCM 求解 ====================
+
+      async function solveLSCMFallbackAsync(meshData, onProgress, cause, anchors, usingCustomAnchors) {
+        if (usingCustomAnchors) {
+          const msg = cause && cause.message ? cause.message : String(cause || "");
+          throw new Error("LSCM 使用自定义 pin 点 " + anchors[0] + " & " + anchors[1] + " 求解失败: " + msg + "。为避免忽略新 pin 点，已取消 ARAP 兜底。");
+        }
+        console.warn("LSCM WASM 失败，改用 ARAP/Tutte 引擎兜底:", cause);
+        setStatus("LSCM WASM 失败，正在改用 ARAP 兜底求解...", "#ffd38a");
+        const result = await solveARAPAsync(meshData, onProgress);
+        result.method = 'lscm_fallback';
+        result.fallbackCause = cause && cause.message ? cause.message : String(cause || "");
+        return result;
+      }
 
       async function solveLSCMAsync(meshData, onProgress) {
         const repair = repairMeshForSolver(meshData);
@@ -1035,8 +1031,8 @@
           currentCustomAnchors[1] === anchors[1]);
 
         if (!wasmReady) {
-          const loaded = await initSimpleSolver();
-          if (!loaded) throw new Error("WASM 求解器初始化失败");
+          const loaded = await initUnifiedSolver();
+          if (!loaded) throw new Error("WASM 统一求解器初始化失败");
         }
 
         if (onProgress) onProgress(0, faces.length);
@@ -1059,46 +1055,46 @@
 
         let result;
         try {
-          const posPtr = simpleInstance._malloc(flatPositions.length * 8);
+          const posPtr = wasmInstance._malloc(flatPositions.length * 8);
           for (let i = 0; i < flatPositions.length; i++) {
-            simpleInstance.setValue(posPtr + i * 8, flatPositions[i], 'double');
+            wasmInstance.setValue(posPtr + i * 8, flatPositions[i], 'double');
           }
 
-          const facePtr = simpleInstance._malloc(flatFaces.length * 4);
+          const facePtr = wasmInstance._malloc(flatFaces.length * 4);
           for (let i = 0; i < flatFaces.length; i++) {
-            simpleInstance.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+            wasmInstance.setValue(facePtr + i * 4, flatFaces[i], 'i32');
           }
 
           try {
-            const ret = simpleInstance.ccall('solve_lscm', 'number', 
+            const ret = wasmInstance.ccall('solve_lscm', 'number', 
               ['number', 'number', 'number', 'number', 'number', 'number'],
               [posPtr, flatPositions.length, facePtr, flatFaces.length, anchors[0], anchors[1]]
             );
 
             if (ret !== 0) throw new Error("WASM solve_lscm 返回错误码: " + ret);
 
-            const uvSize = simpleInstance.ccall('get_uv_result_size', 'number', [], []);
+            const uvSize = wasmInstance.ccall('get_uv_result_size', 'number', [], []);
             if (uvSize !== vertices.length * 2) {
               throw new Error("UV 结果长度异常: " + uvSize + "，期望 " + (vertices.length * 2));
             }
-            const uvPtr = simpleInstance.ccall('get_uv_result', 'number', [], []);
+            const uvPtr = wasmInstance.ccall('get_uv_result', 'number', [], []);
 
             const uvs = [];
             for (let i = 0; i < uvSize; i++) {
-              uvs.push(simpleInstance.getValue(uvPtr + i * 8, 'double'));
+              uvs.push(wasmInstance.getValue(uvPtr + i * 8, 'double'));
             }
 
-            simpleInstance.ccall('dispose', 'void', [], []);
+            wasmInstance.ccall('dispose', 'void', [], []);
 
-            result = { uv: uvs, time_ms: simpleInstance.ccall('get_last_time_ms', 'number', [], []) };
+            result = { uv: uvs, time_ms: wasmInstance.ccall('get_last_time_ms', 'number', [], []) };
           } finally {
-            simpleInstance._free(posPtr);
-            simpleInstance._free(facePtr);
+            wasmInstance._free(posPtr);
+            wasmInstance._free(facePtr);
           }
         } catch (err) {
           const msg = err && err.message ? err.message : String(err);
           if (msg.indexOf("memory access out of bounds") >= 0 || msg.indexOf("non manifold") >= 0 || msg.indexOf("nonmanifold") >= 0) {
-            throw err;
+            return await solveLSCMFallbackAsync(meshData, onProgress, err, anchors, usingCustomAnchors);
           }
           throw new Error("WASM LSCM 求解失败: " + msg);
         }
@@ -1117,7 +1113,438 @@
         return { uv: uv, anchors: anchors, flippedFaceCount: countFlippedFaces(uv, faces), timeMs: result.time_ms || 0, method: 'lscm', pinInfo: anchors[0] + " & " + anchors[1] };
       }
 
-      // ==================== WASM 驱动的 Tutte 求解（uniform 权重使用 WASM，cot 权重使用 JS 调和） ====================
+      // ==================== WASM 驱动的 BD-LSCM 求解 ====================
+
+      async function solveBDLSCMAsync(meshData, onProgress) {
+        const repair = repairMeshForSolver(meshData);
+        if (repair.edgeSplits > 0 || repair.vertexSplits > 0) {
+          meshData = repair.meshData;
+          currentMeshData = meshData;
+          currentCustomAnchors = null;
+          setStatus("已修复非流形结构，继续执行 BD-LSCM...", "#ffd38a");
+        }
+        const vertices = meshData.positions;
+        const faces = meshData.faces;
+        if (vertices.length < 3 || faces.length < 1) {
+          throw new Error("模型顶点或三角形数量不足");
+        }
+
+        if (!wasmReady) {
+          const loaded = await initUnifiedSolver();
+          if (!loaded) throw new Error("BD-LSCM WASM 求解器初始化失败");
+        }
+
+        if (onProgress) onProgress(0, faces.length);
+
+        const anchors = getValidatedAnchors(vertices);
+
+        const flatPositions = new Float64Array(vertices.length * 3);
+        for (let i = 0; i < vertices.length; i++) {
+          flatPositions[i * 3] = vertices[i][0];
+          flatPositions[i * 3 + 1] = vertices[i][1];
+          flatPositions[i * 3 + 2] = vertices[i][2];
+        }
+
+        const flatFaces = new Int32Array(faces.length * 3);
+        for (let i = 0; i < faces.length; i++) {
+          flatFaces[i * 3] = faces[i][0];
+          flatFaces[i * 3 + 1] = faces[i][1];
+          flatFaces[i * 3 + 2] = faces[i][2];
+        }
+
+        if (onProgress) onProgress(faces.length * 0.1, faces.length);
+
+        const C = 10.0; // BD 暂时关闭；恢复 UI 后可再接 getBDCParam()
+        const maxIter = 40;
+
+        let result;
+        try {
+          const posPtr = wasmInstance._malloc(flatPositions.length * 8);
+          for (let i = 0; i < flatPositions.length; i++) {
+            wasmInstance.setValue(posPtr + i * 8, flatPositions[i], 'double');
+          }
+
+          const facePtr = wasmInstance._malloc(flatFaces.length * 4);
+          for (let i = 0; i < flatFaces.length; i++) {
+            wasmInstance.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+          }
+
+          try {
+            // solve_bd_lscm(posPtr, posLen, facePtr, faceLen, C, maxIter) -> int
+            const ret = wasmInstance.ccall('solve_bd_lscm', 'number',
+              ['number', 'number', 'number', 'number', 'number', 'number'],
+              [posPtr, flatPositions.length, facePtr, flatFaces.length, C, maxIter]
+            );
+
+            if (ret !== 0) throw new Error("WASM solve_bd_lscm 返回错误码: " + ret);
+
+            const uvSize = wasmInstance.ccall('get_bd_uv_result_size', 'number', [], []);
+            if (uvSize !== vertices.length * 2) {
+              throw new Error("UV 结果长度异常: " + uvSize + "，期望 " + (vertices.length * 2));
+            }
+            const uvPtr = wasmInstance.ccall('get_bd_uv_result', 'number', [], []);
+
+            const uvs = [];
+            for (let i = 0; i < uvSize; i++) {
+              uvs.push(wasmInstance.getValue(uvPtr + i * 8, 'double'));
+            }
+
+            wasmInstance.ccall('bd_dispose', 'void', [], []);
+
+            result = { uv: uvs, time_ms: wasmInstance.ccall('get_bd_last_time_ms', 'number', [], []) };
+          } finally {
+            wasmInstance._free(posPtr);
+            wasmInstance._free(facePtr);
+          }
+        } catch (err) {
+          console.error('BD-LSCM WASM 调用失败:', err.message, err.stack);
+          throw new Error("WASM BD-LSCM 求解失败 (" + err.message + ")，可尝试减小 C 值或切换到 LSCM");
+        }
+
+        if (onProgress) onProgress(faces.length * 0.9, faces.length);
+
+        const uvArray = result.uv;
+        const n = vertices.length;
+        const uv = new Array(n);
+        for (let i = 0; i < n; i++) {
+          uv[i] = [uvArray[i * 2], uvArray[i * 2 + 1]];
+        }
+
+        if (onProgress) onProgress(faces.length, faces.length);
+
+        return { uv: uv, anchors: anchors, flippedFaceCount: countFlippedFaces(uv, faces), timeMs: result.time_ms || 0, method: 'bd_lscm', C: C };
+      }
+
+      // ==================== WASM 驱动的 CETM 求解 ====================
+
+      async function solveCETMAsync(meshData, onProgress) {
+        const vertices = meshData.positions;
+        const faces = meshData.faces;
+        if (vertices.length < 3 || faces.length < 1) {
+          throw new Error("模型顶点或三角形数量不足");
+        }
+
+        if (!wasmReady) {
+          const loaded = await initUnifiedSolver();
+          if (!loaded) throw new Error("CETM WASM 求解器初始化失败");
+        }
+
+        if (onProgress) onProgress(0, faces.length);
+
+        const flatPositions = new Float64Array(vertices.length * 3);
+        for (let i = 0; i < vertices.length; i++) {
+          flatPositions[i * 3] = vertices[i][0];
+          flatPositions[i * 3 + 1] = vertices[i][1];
+          flatPositions[i * 3 + 2] = vertices[i][2];
+        }
+
+        const flatFaces = new Int32Array(faces.length * 3);
+        for (let i = 0; i < faces.length; i++) {
+          flatFaces[i * 3] = faces[i][0];
+          flatFaces[i * 3 + 1] = faces[i][1];
+          flatFaces[i * 3 + 2] = faces[i][2];
+        }
+
+        if (onProgress) onProgress(faces.length * 0.1, faces.length);
+
+        const optScheme = getCETMOptScheme();
+
+        let result;
+        try {
+          const posPtr = wasmInstance._malloc(flatPositions.length * 8);
+          for (let i = 0; i < flatPositions.length; i++) {
+            wasmInstance.setValue(posPtr + i * 8, flatPositions[i], 'double');
+          }
+
+          const facePtr = wasmInstance._malloc(flatFaces.length * 4);
+          for (let i = 0; i < flatFaces.length; i++) {
+            wasmInstance.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+          }
+
+          try {
+            const ret = wasmInstance.ccall('solve_cetm', 'number',
+              ['number', 'number', 'number', 'number', 'number'],
+              [posPtr, flatPositions.length, facePtr, flatFaces.length, optScheme]
+            );
+
+            if (ret !== 0) throw new Error("WASM solve_cetm 返回错误码: " + ret);
+
+            const uvSize = wasmInstance.ccall('get_cetm_uv_result_size', 'number', [], []);
+            const uvPtr = wasmInstance.ccall('get_cetm_uv_result', 'number', [], []);
+
+            const uvs = [];
+            for (let i = 0; i < uvSize; i++) {
+              uvs.push(wasmInstance.getValue(uvPtr + i * 8, 'double'));
+            }
+
+            wasmInstance.ccall('cetm_dispose', 'void', [], []);
+
+            result = { uv: uvs, time_ms: wasmInstance.ccall('get_cetm_last_time_ms', 'number', [], []) };
+          } finally {
+            wasmInstance._free(posPtr);
+            wasmInstance._free(facePtr);
+          }
+        } catch (err) {
+          console.error('CETM WASM 调用失败:', err.message, err.stack);
+          throw new Error("WASM CETM 求解失败: " + err.message);
+        }
+
+        if (onProgress) onProgress(faces.length * 0.9, faces.length);
+
+        const uvArray = result.uv;
+        const n = vertices.length;
+        const uv = new Array(n);
+        for (let i = 0; i < n; i++) {
+          uv[i] = [uvArray[i * 2], uvArray[i * 2 + 1]];
+        }
+
+        if (onProgress) onProgress(faces.length, faces.length);
+
+        const anchors = chooseAnchorPair(vertices);
+        const optNames = { 0: '梯度下降', 1: '牛顿法', 3: 'LBFGS' };
+        return { uv: uv, anchors: anchors, flippedFaceCount: countFlippedFaces(uv, faces), timeMs: result.time_ms || 0, method: 'cetm', optScheme: optNames[optScheme] || '牛顿法' };
+      }
+
+      // ==================== WASM 驱动的 Ricci Flow 求解 ====================
+
+      async function solveRicciAsync(meshData, onProgress) {
+        const vertices = meshData.positions;
+        const faces = meshData.faces;
+        if (vertices.length < 3 || faces.length < 1) {
+          throw new Error("模型顶点或三角形数量不足");
+        }
+
+        if (!wasmReady) {
+          const loaded = await initUnifiedSolver();
+          if (!loaded) throw new Error("RicciFlow WASM 求解器初始化失败");
+        }
+
+        if (onProgress) onProgress(0, faces.length);
+
+        const flatPositions = new Float64Array(vertices.length * 3);
+        for (let i = 0; i < vertices.length; i++) {
+          flatPositions[i * 3] = vertices[i][0];
+          flatPositions[i * 3 + 1] = vertices[i][1];
+          flatPositions[i * 3 + 2] = vertices[i][2];
+        }
+
+        const flatFaces = new Int32Array(faces.length * 3);
+        for (let i = 0; i < faces.length; i++) {
+          flatFaces[i * 3] = faces[i][0];
+          flatFaces[i * 3 + 1] = faces[i][1];
+          flatFaces[i * 3 + 2] = faces[i][2];
+        }
+
+        if (onProgress) onProgress(faces.length * 0.1, faces.length);
+
+        const optScheme = getRicciOptScheme();
+
+        let result;
+        try {
+          const posPtr = wasmInstance._malloc(flatPositions.length * 8);
+          for (let i = 0; i < flatPositions.length; i++) {
+            wasmInstance.setValue(posPtr + i * 8, flatPositions[i], 'double');
+          }
+
+          const facePtr = wasmInstance._malloc(flatFaces.length * 4);
+          for (let i = 0; i < flatFaces.length; i++) {
+            wasmInstance.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+          }
+
+          try {
+            const ret = wasmInstance.ccall('solve_ricci', 'number',
+              ['number', 'number', 'number', 'number', 'number'],
+              [posPtr, flatPositions.length, facePtr, flatFaces.length, optScheme]
+            );
+
+            if (ret !== 0) throw new Error("WASM solve_ricci 返回错误码: " + ret);
+
+            const uvSize = wasmInstance.ccall('get_ricci_uv_result_size', 'number', [], []);
+            const uvPtr = wasmInstance.ccall('get_ricci_uv_result', 'number', [], []);
+
+            const uvs = [];
+            for (let i = 0; i < uvSize; i++) {
+              uvs.push(wasmInstance.getValue(uvPtr + i * 8, 'double'));
+            }
+
+            wasmInstance.ccall('ricci_dispose', 'void', [], []);
+
+            result = { uv: uvs, time_ms: wasmInstance.ccall('get_ricci_last_time_ms', 'number', [], []) };
+          } finally {
+            wasmInstance._free(posPtr);
+            wasmInstance._free(facePtr);
+          }
+        } catch (err) {
+          console.error('RicciFlow WASM 调用失败:', err.message, err.stack);
+          throw new Error("WASM RicciFlow 求解失败: " + err.message);
+        }
+
+        if (onProgress) onProgress(faces.length * 0.9, faces.length);
+
+        const uvArray = result.uv;
+        const n = vertices.length;
+        const uv = new Array(n);
+        for (let i = 0; i < n; i++) {
+          uv[i] = [uvArray[i * 2], uvArray[i * 2 + 1]];
+        }
+
+        if (onProgress) onProgress(faces.length, faces.length);
+
+        const anchors = chooseAnchorPair(vertices);
+        const optNames = { 0: '梯度下降', 1: '牛顿法', 3: 'LBFGS' };
+        return { uv: uv, anchors: anchors, flippedFaceCount: countFlippedFaces(uv, faces), timeMs: result.time_ms || 0, method: 'ricci', optScheme: optNames[optScheme] || '牛顿法' };
+      }
+
+      // ==================== WASM 驱动的 Circle Patterns 求解 ====================
+
+      async function solveCPAsync(meshData, onProgress) {
+        const vertices = meshData.positions, faces = meshData.faces;
+        if (vertices.length < 3 || faces.length < 1) throw new Error("顶点或三角形不足");
+        if (!wasmReady) { const ok = await initUnifiedSolver(); if (!ok) throw new Error("CP WASM 初始化失败"); }
+        if (onProgress) onProgress(0, faces.length);
+
+        const flatPos = new Float64Array(vertices.length*3);
+        for (let i=0;i<vertices.length;i++){flatPos[i*3]=vertices[i][0];flatPos[i*3+1]=vertices[i][1];flatPos[i*3+2]=vertices[i][2];}
+        const flatF = new Int32Array(faces.length*3);
+        for (let i=0;i<faces.length;i++){flatF[i*3]=faces[i][0];flatF[i*3+1]=faces[i][1];flatF[i*3+2]=faces[i][2];}
+        if (onProgress) onProgress(faces.length*0.1, faces.length);
+
+        const opt = getCPOptScheme();
+
+        let result;
+        try {
+          const pp = wasmInstance._malloc(flatPos.length*8);
+          for (let i=0;i<flatPos.length;i++) wasmInstance.setValue(pp+i*8,flatPos[i],'double');
+          const fp = wasmInstance._malloc(flatF.length*4);
+          for (let i=0;i<flatF.length;i++) wasmInstance.setValue(fp+i*4,flatF[i],'i32');
+          try {
+            const ret = wasmInstance.ccall('solve_cp','number',
+              ['number','number','number','number','number','number','number','number','number'],
+              [pp,flatPos.length,fp,flatF.length,opt,0,0,0,0]);
+            if (ret!==0) throw new Error("solve_cp 错误: "+ret);
+            const sz=wasmInstance.ccall('get_cp_uv_result_size','number',[],[]);
+            const uvp=wasmInstance.ccall('get_cp_uv_result','number',[],[]);
+            const uvs=[];for(let i=0;i<sz;i++)uvs.push(wasmInstance.getValue(uvp+i*8,'double'));
+            wasmInstance.ccall('cp_dispose','void',[],[]);
+            result={uv:uvs,time_ms:wasmInstance.ccall('get_cp_last_time_ms','number',[],[])};
+          }finally{wasmInstance._free(pp);wasmInstance._free(fp);}
+        }catch(err){throw new Error("CP WASM 失败: "+err.message);}
+
+        if(onProgress)onProgress(faces.length*0.9,faces.length);
+        const uvA=result.uv,n=vertices.length,uv=new Array(n);
+        for(let i=0;i<n;i++)uv[i]=[uvA[i*2],uvA[i*2+1]];
+        if(onProgress)onProgress(faces.length,faces.length);
+        const anchors=chooseAnchorPair(vertices);
+        const optNames={0:'梯度下降',1:'牛顿法',3:'LBFGS'};
+        return{uv,anchors,flippedFaceCount:countFlippedFaces(uv,faces),timeMs:result.time_ms||0,method:'cp',optScheme:optNames[opt]||'牛顿法'};
+      }
+
+      // ==================== WASM 驱动的 QuadCover 求解 ====================
+
+      async function solveQCAsync(meshData, onProgress) {
+        const vertices=meshData.positions,faces=meshData.faces;
+        if(vertices.length<3||faces.length<1)throw new Error("顶点或三角形不足");
+        if(!wasmReady){const ok=await initUnifiedSolver();if(!ok)throw new Error("QC WASM 初始化失败");}
+        if(onProgress)onProgress(0,faces.length);
+        const flatPos=new Float64Array(vertices.length*3);
+        for(let i=0;i<vertices.length;i++){flatPos[i*3]=vertices[i][0];flatPos[i*3+1]=vertices[i][1];flatPos[i*3+2]=vertices[i][2];}
+        const flatF=new Int32Array(faces.length*3);
+        for(let i=0;i<faces.length;i++){flatF[i*3]=faces[i][0];flatF[i*3+1]=faces[i][1];flatF[i*3+2]=faces[i][2];}
+        if(onProgress)onProgress(faces.length*0.2,faces.length);
+        let result;
+        try{
+          const pp=wasmInstance._malloc(flatPos.length*8);
+          for(let i=0;i<flatPos.length;i++)wasmInstance.setValue(pp+i*8,flatPos[i],'double');
+          const fp=wasmInstance._malloc(flatF.length*4);
+          for(let i=0;i<flatF.length;i++)wasmInstance.setValue(fp+i*4,flatF[i],'i32');
+          try{
+            const ret=wasmInstance.ccall('solve_qc','number',['number','number','number','number'],[pp,flatPos.length,fp,flatF.length]);
+            if(ret!==0)throw new Error("solve_qc 错误: "+ret);
+            const sz=wasmInstance.ccall('get_qc_uv_result_size','number',[],[]);
+            const uvp=wasmInstance.ccall('get_qc_uv_result','number',[],[]);
+            const uvs=[];for(let i=0;i<sz;i++)uvs.push(wasmInstance.getValue(uvp+i*8,'double'));
+            wasmInstance.ccall('qc_dispose','void',[],[]);
+            result={uv:uvs,time_ms:wasmInstance.ccall('get_qc_last_time_ms','number',[],[])};
+          }finally{wasmInstance._free(pp);wasmInstance._free(fp);}
+        }catch(err){throw new Error("QuadCover WASM 失败: "+err.message);}
+        if(onProgress)onProgress(faces.length*0.9,faces.length);
+        const uvA=result.uv,n=vertices.length,uv=new Array(n);
+        for(let i=0;i<n;i++)uv[i]=[uvA[i*2],uvA[i*2+1]];
+        if(onProgress)onProgress(faces.length,faces.length);
+        const anchors=chooseAnchorPair(vertices);
+        return{uv,anchors,flippedFaceCount:countFlippedFaces(uv,faces),timeMs:result.time_ms||0,method:'quadcover'};
+      }
+
+      // ==================== WASM 驱动的 BFF 求解 ====================
+
+      async function solveBFFAsync(meshData, onProgress) {
+        const vertices=meshData.positions,faces=meshData.faces;
+        if(vertices.length<3||faces.length<1)throw new Error("顶点或三角形不足");
+        if(!wasmReady){const ok=await initUnifiedSolver();if(!ok)throw new Error("BFF WASM 初始化失败");}
+        if(onProgress)onProgress(0,faces.length);
+        const flatPos=new Float64Array(vertices.length*3);
+        const flatFaces=new Int32Array(faces.length*3);
+        for(let i=0;i<vertices.length;i++){flatPos[i*3]=vertices[i][0];flatPos[i*3+1]=vertices[i][1];flatPos[i*3+2]=vertices[i][2];}
+        for(let i=0;i<faces.length;i++){flatFaces[i*3]=faces[i][0];flatFaces[i*3+1]=faces[i][1];flatFaces[i*3+2]=faces[i][2];}
+        let result;
+        try{
+          const pp=wasmInstance._malloc(flatPos.length*8);
+          const fp=wasmInstance._malloc(flatFaces.length*4);
+          wasmInstance.HEAPF64.set(flatPos,pp>>3);
+          wasmInstance.HEAP32.set(flatFaces,(fp>>2)+flatFaces.length);
+          try{
+            const rc=wasmInstance.ccall('solve_bff','number',['number','number','number','number','number'],[pp,flatPos.length,fp,flatFaces.length,0]);
+            if(rc!==0)throw new Error("BFF solve returned "+rc);
+            const uvSize=wasmInstance.ccall('get_bff_uv_result_size','number',[],[]);
+            const uvPtr=wasmInstance.ccall('get_bff_uv_result','number',[],[]);
+            const uvs=new Float64Array(wasmInstance.HEAPF64.buffer,uvPtr,uvSize);
+            wasmInstance.ccall('bff_dispose','void',[],[]);
+            result={uv:Array.from(uvs),time_ms:wasmInstance.ccall('get_bff_last_time_ms','number',[],[])};
+          }finally{wasmInstance._free(pp);wasmInstance._free(fp);}
+        }catch(err){throw new Error("BFF WASM 失败: "+err.message);}
+        if(onProgress)onProgress(faces.length*0.9,faces.length);
+        const uvA=result.uv,n=vertices.length,uv=new Array(n);
+        for(let i=0;i<n;i++)uv[i]=[uvA[i*2],uvA[i*2+1]];
+        if(onProgress)onProgress(faces.length,faces.length);
+        const anchors=chooseAnchorPair(vertices);
+        return{uv,anchors,flippedFaceCount:countFlippedFaces(uv,faces),timeMs:result.time_ms||0,method:'bff'};
+      }
+
+      // ==================== WASM 驱动的 MIQ 求解 ====================
+      async function solveMIQAsync(meshData,onProgress){
+        const v=meshData.positions,f=meshData.faces;
+        if(v.length<3||f.length<1)throw new Error("顶点或三角形不足");
+        if(!wasmReady){if(!await initUnifiedSolver())throw new Error("MIQ WASM失败");}
+        if(onProgress)onProgress(0,f.length);
+        const fp=new Float64Array(v.length*3);
+        for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2];}
+        const ff=new Int32Array(f.length*3);
+        for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2];}
+        if(onProgress)onProgress(f.length*0.2,f.length);
+        let r;
+        try{
+          const pp=wasmInstance._malloc(fp.length*8);
+          for(let i=0;i<fp.length;i++)wasmInstance.setValue(pp+i*8,fp[i],'double');
+          const fpt=wasmInstance._malloc(ff.length*4);
+          for(let i=0;i<ff.length;i++)wasmInstance.setValue(fpt+i*4,ff[i],'i32');
+          try{
+            if(wasmInstance.ccall('solve_miq','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length])!==0)
+              throw new Error("MIQ solve失败");
+            const sz=wasmInstance.ccall('get_miq_uv_result_size','number',[],[]);
+            const up=wasmInstance.ccall('get_miq_uv_result','number',[],[]);
+            const us=[];for(let i=0;i<sz;i++)us.push(wasmInstance.getValue(up+i*8,'double'));
+            wasmInstance.ccall('miq_dispose','void',[],[]);
+            r={uv:us,time_ms:wasmInstance.ccall('get_miq_last_time_ms','number',[],[])};
+          }finally{wasmInstance._free(pp);wasmInstance._free(fpt);}
+        }catch(e){throw new Error("MIQ WASM失败: "+e.message);}
+        if(onProgress)onProgress(f.length*0.9,f.length);
+        const ua=r.uv,n=v.length,uv=new Array(n);
+        for(let i=0;i<n;i++)uv[i]=[ua[i*2],ua[i*2+1]];
+        if(onProgress)onProgress(f.length,f.length);
+        return{uv,anchors:chooseAnchorPair(v),flippedFaceCount:countFlippedFaces(uv,f),timeMs:r.time_ms||0,method:'miq'};
+      }
+
+      // ==================== WASM 驱动的 Tutte + ARAP 求解 ====================
 
       async function solveTutteHarmonicAsync(meshData, onProgress) {
         const vertices = meshData.positions, faces = meshData.faces;
@@ -1142,7 +1569,7 @@
 
       async function solveTutteCircleAsync(meshData, onProgress) {
         if (getTutteWeight() === 'cot') return solveTutteHarmonicAsync(meshData, onProgress);
-        if (!wasmReady) { const ok = await initSimpleSolver(); if (!ok) throw new Error("Tutte WASM 初始化失败"); }
+        if (!tutteArapReady) { const ok = await initTutteARAPSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
 
         const flatPositions = new Float64Array(meshData.positions.length * 3);
         for (let i = 0; i < meshData.positions.length; i++) {
@@ -1154,30 +1581,30 @@
         }
         if (onProgress) onProgress(0, 1);
 
-        const posPtr = simpleInstance._malloc(flatPositions.length * 8);
-        for (let i = 0; i < flatPositions.length; i++) simpleInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
-        const facePtr = simpleInstance._malloc(flatFaces.length * 4);
-        for (let i = 0; i < flatFaces.length; i++) simpleInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
+        const posPtr = tutteArapInstance._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) tutteArapInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
+        const facePtr = tutteArapInstance._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) tutteArapInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
 
         try {
-          const ret = simpleInstance.ccall('solve_tutte_circle', 'number',
+          const ret = tutteArapInstance.ccall('solve_tutte_circle', 'number',
             ['number','number','number','number'],[posPtr,flatPositions.length,facePtr,flatFaces.length]);
           if (ret !== 0) throw new Error("solve_tutte_circle 返回错误码: " + ret);
-          const uvSize = simpleInstance.ccall('get_uv_result_size','number',[],[]);
-          const uvPtr = simpleInstance.ccall('get_uv_result','number',[],[]);
-          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(simpleInstance.getValue(uvPtr+i*8,'double'));
-          simpleInstance.ccall('dispose','void',[],[]);
-          const timeMs = simpleInstance.ccall('get_last_time_ms','number',[],[]);
+          const uvSize = tutteArapInstance.ccall('get_ta_uv_result_size','number',[],[]);
+          const uvPtr = tutteArapInstance.ccall('get_ta_uv_result','number',[],[]);
+          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(tutteArapInstance.getValue(uvPtr+i*8,'double'));
+          tutteArapInstance.ccall('ta_dispose','void',[],[]);
+          const timeMs = tutteArapInstance.ccall('get_ta_last_time_ms','number',[],[]);
           if (onProgress) onProgress(1,1);
           const n = meshData.positions.length;
           const uv = []; for (let i=0;i<n;i++) uv.push([uvs[i*2],uvs[i*2+1]]);
           return { uv, anchors: chooseAnchorPair(meshData.positions), flippedFaceCount: countFlippedFaces(uv,meshData.faces), timeMs, method:'tutte_circle' };
-        } finally { simpleInstance._free(posPtr); simpleInstance._free(facePtr); }
+        } finally { tutteArapInstance._free(posPtr); tutteArapInstance._free(facePtr); }
       }
 
       async function solveTutteSquareAsync(meshData, onProgress) {
         if (getTutteWeight() === 'cot') return solveTutteHarmonicAsync(meshData, onProgress);
-        if (!wasmReady) { const ok = await initSimpleSolver(); if (!ok) throw new Error("Tutte WASM 初始化失败"); }
+        if (!tutteArapReady) { const ok = await initTutteARAPSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
 
         const flatPositions = new Float64Array(meshData.positions.length * 3);
         for (let i = 0; i < meshData.positions.length; i++) {
@@ -1189,25 +1616,61 @@
         }
         if (onProgress) onProgress(0, 1);
 
-        const posPtr = simpleInstance._malloc(flatPositions.length * 8);
-        for (let i = 0; i < flatPositions.length; i++) simpleInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
-        const facePtr = simpleInstance._malloc(flatFaces.length * 4);
-        for (let i = 0; i < flatFaces.length; i++) simpleInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
+        const posPtr = tutteArapInstance._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) tutteArapInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
+        const facePtr = tutteArapInstance._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) tutteArapInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
 
         try {
-          const ret = simpleInstance.ccall('solve_tutte_square', 'number',
+          const ret = tutteArapInstance.ccall('solve_tutte_square', 'number',
             ['number','number','number','number'],[posPtr,flatPositions.length,facePtr,flatFaces.length]);
           if (ret !== 0) throw new Error("solve_tutte_square 返回错误码: " + ret);
-          const uvSize = simpleInstance.ccall('get_uv_result_size','number',[],[]);
-          const uvPtr = simpleInstance.ccall('get_uv_result','number',[],[]);
-          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(simpleInstance.getValue(uvPtr+i*8,'double'));
-          simpleInstance.ccall('dispose','void',[],[]);
-          const timeMs = simpleInstance.ccall('get_last_time_ms','number',[],[]);
+          const uvSize = tutteArapInstance.ccall('get_ta_uv_result_size','number',[],[]);
+          const uvPtr = tutteArapInstance.ccall('get_ta_uv_result','number',[],[]);
+          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(tutteArapInstance.getValue(uvPtr+i*8,'double'));
+          tutteArapInstance.ccall('ta_dispose','void',[],[]);
+          const timeMs = tutteArapInstance.ccall('get_ta_last_time_ms','number',[],[]);
           if (onProgress) onProgress(1,1);
           const n = meshData.positions.length;
           const uv = []; for (let i=0;i<n;i++) uv.push([uvs[i*2],uvs[i*2+1]]);
           return { uv, anchors: chooseAnchorPair(meshData.positions), flippedFaceCount: countFlippedFaces(uv,meshData.faces), timeMs, method:'tutte_square' };
-        } finally { simpleInstance._free(posPtr); simpleInstance._free(facePtr); }
+        } finally { tutteArapInstance._free(posPtr); tutteArapInstance._free(facePtr); }
+      }
+
+      async function solveARAPAsync(meshData, onProgress) {
+        if (!tutteArapReady) { const ok = await initTutteARAPSolver(); if (!ok) throw new Error("Tutte+ARAP WASM 初始化失败"); }
+
+        const flatPositions = new Float64Array(meshData.positions.length * 3);
+        for (let i = 0; i < meshData.positions.length; i++) {
+          flatPositions[i*3]=meshData.positions[i][0]; flatPositions[i*3+1]=meshData.positions[i][1]; flatPositions[i*3+2]=meshData.positions[i][2];
+        }
+        const flatFaces = new Int32Array(meshData.faces.length * 3);
+        for (let i = 0; i < meshData.faces.length; i++) {
+          flatFaces[i*3]=meshData.faces[i][0]; flatFaces[i*3+1]=meshData.faces[i][1]; flatFaces[i*3+2]=meshData.faces[i][2];
+        }
+        if (onProgress) onProgress(0, 1);
+
+        const maxIter = parseInt(document.getElementById('arap-iter-input').value) || 30;
+
+        const posPtr = tutteArapInstance._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) tutteArapInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
+        const facePtr = tutteArapInstance._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) tutteArapInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
+
+        try {
+          const ret = tutteArapInstance.ccall('solve_arap', 'number',
+            ['number','number','number','number','number'],[posPtr,flatPositions.length,facePtr,flatFaces.length,maxIter]);
+          if (ret !== 0) throw new Error("solve_arap 返回错误码: " + ret);
+          const uvSize = tutteArapInstance.ccall('get_ta_uv_result_size','number',[],[]);
+          const uvPtr = tutteArapInstance.ccall('get_ta_uv_result','number',[],[]);
+          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(tutteArapInstance.getValue(uvPtr+i*8,'double'));
+          tutteArapInstance.ccall('ta_dispose','void',[],[]);
+          const timeMs = tutteArapInstance.ccall('get_ta_last_time_ms','number',[],[]);
+          if (onProgress) onProgress(1,1);
+          const n = meshData.positions.length;
+          const uv = []; for (let i=0;i<n;i++) uv.push([uvs[i*2],uvs[i*2+1]]);
+          return { uv, anchors: chooseAnchorPair(meshData.positions), flippedFaceCount: countFlippedFaces(uv,meshData.faces), timeMs, method:'arap', maxIter };
+        } finally { tutteArapInstance._free(posPtr); tutteArapInstance._free(facePtr); }
       }
 
       function countFlippedFaces(uv, faces) {
@@ -1221,7 +1684,7 @@
         return count;
       }
 
-      // ---------- Tutte cot-Laplace JS 辅助函数 ----------
+      // ---------- SCP / ABF / linABF（纯 JS；SCP 矩阵与 libigl vector_area_matrix + Mullen et al. 逆幂迭代一致；角度法参考 Geogram ABF++ 流程）----------
 
       function _dot(a, b) {
         let s = 0;
@@ -1604,55 +2067,694 @@
         return _harmonicParameterizationJs(vertices, faces, boundaryType, lapFn);
       }
 
+      /**
+       * DCP (Desbrun Discrete Conformal Parameterization):
+       * 自由边界共形参数化，只需固定 2 个 pin 点即可满秩。
+       * 求解 L u = 0, L v = 0（cotan Laplace），pin 两点消除平移+旋转零空间。
+       * 与 LSCM 类似：pin[0] → (0,0), pin[1] → (d, 0)。
+       */
+      function discreteConformalParameterizationJs(vertices, faces) {
+        const n = vertices.length;
+        // 获取 2 个 pin 点（与 LSCM 一致：支持自定义或自动选点）
+        const anchors = getValidatedAnchors(vertices);
+        const a = anchors[0], b = anchors[1];
+
+        // DCP = 自由边界的 cotan 调和映射：求解 L u = 0, L v = 0
+        const rowsL = _cotanLaplacianTriplets(vertices, faces);
+
+        // 计算 pin 两点间 3D 距离，作为 pin[1] 的 u 坐标
+        const dx = vertices[a][0] - vertices[b][0];
+        const dy = vertices[a][1] - vertices[b][1];
+        const dz = vertices[a][2] - vertices[b][2];
+        const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        // 构造带 Dirichlet 约束的矩阵：pin 顶点行 = 单位行，其余 = Laplace 行
+        const A = new Array(n);
+        const bu = new Float64Array(n), bv = new Float64Array(n);
+        for (let i = 0; i < n; i++) {
+          if (i === a) {
+            // pin[0] → (0, 0)，消除 u、v 平移
+            A[i] = [{ j: i, v: 1 }];
+            bu[i] = 0; bv[i] = 0;
+          } else if (i === b) {
+            // pin[1] → (d, 0)，v=0 消除旋转
+            A[i] = [{ j: i, v: 1 }];
+            bu[i] = d; bv[i] = 0;
+          } else {
+            // 自由顶点：Laplace 方程
+            A[i] = rowsL[i].slice();
+          }
+        }
+
+        // 稀疏矩阵-向量乘
+        function applyA(x, out) {
+          for (let i = 0; i < n; i++) {
+            let s = 0;
+            const ri = A[i];
+            for (let k = 0; k < ri.length; k++) s += ri[k].v * x[ri[k].j];
+            out[i] = s;
+          }
+        }
+
+        // GMRES 分别求解 u、v
+        const maxIter = Math.min(1800, Math.max(250, n));
+        const restart = Math.min(80, n);
+        const u = _gmresSolve(applyA, bu, 1e-9, maxIter, restart);
+        const v = _gmresSolve(applyA, bv, 1e-9, maxIter, restart);
+
+        // 组装 UV 并归一化到 [0,1]²
+        const uv = new Array(n);
+        for (let i = 0; i < n; i++) uv[i] = [u[i], v[i]];
+        return _normalizeUvBox(uv);
+      }
+
+      /** libigl::vector_area_matrix：仅边界边贡献 */
+      function _vectorAreaTriplets(boundaryEdges, n) {
+        const tri = [];
+        for (let e = 0; e < boundaryEdges.length; e++) {
+          const i = boundaryEdges[e][0], j = boundaryEdges[e][1];
+          tri.push({ i: i + n, j: j, v: -0.25 });
+          tri.push({ i: j, j: i + n, v: -0.25 });
+          tri.push({ i: i, j: j + n, v: 0.25 });
+          tri.push({ i: j + n, j: i, v: 0.25 });
+        }
+        const rows = new Array(2 * n).fill(0).map(function () { return []; });
+        for (let t = 0; t < tri.length; t++) {
+          const tr = tri[t];
+          rows[tr.i].push({ j: tr.j, v: tr.v });
+        }
+        return rows;
+      }
+
+      /** LC = -blockDiag(L,L) + 2*A，返回 2n×2n 稀疏行 */
+      function _buildLC(rowsL, rowsA, n) {
+        const N = 2 * n;
+        const rows = new Array(N).fill(0).map(function () { return []; });
+        function addBlock(src, roff, coff, scale) {
+          for (let i = 0; i < src.length; i++) {
+            const ri = src[i];
+            for (let k = 0; k < ri.length; k++) {
+              const t = ri[k];
+              rows[i + roff].push({ j: t.j + coff, v: scale * t.v });
+            }
+          }
+        }
+        addBlock(rowsL, 0, 0, -1);
+        addBlock(rowsL, n, n, -1);
+        addBlock(rowsA, 0, 0, 2);
+        const acc = new Array(N).fill(0).map(function () { return new Map(); });
+        for (let i = 0; i < N; i++) {
+          const ri = rows[i];
+          for (let k = 0; k < ri.length; k++) {
+            const t = ri[k];
+            const m = acc[i];
+            m.set(t.j, (m.get(t.j) || 0) + t.v);
+          }
+        }
+        const out = new Array(N);
+        for (let i = 0; i < N; i++) {
+          const m = acc[i];
+          const arr = [];
+          m.forEach(function (v, j) { arr.push({ j: j, v: v }); });
+          arr.sort(function (a, b) { return a.j - b.j; });
+          out[i] = arr;
+        }
+        return out;
+      }
+
+      /** 边界投影 P = B - E E^T（单连通边界环，与 Euclid/libigl 用法一致） */
+      function _makeBoundaryProjector(isBnd, n) {
+        const bverts = [];
+        for (let i = 0; i < n; i++) if (isBnd[i]) bverts.push(i);
+        const nb = bverts.length;
+        return function applyP(x) {
+          const y = new Float64Array(x.length);
+          if (nb === 0) {
+            for (let i = 0; i < x.length; i++) y[i] = x[i];
+            return y;
+          }
+          let su = 0, sv = 0;
+          for (let k = 0; k < nb; k++) {
+            const i = bverts[k];
+            su += x[i];
+            sv += x[i + n];
+          }
+          const mu = su / nb, mv = sv / nb;
+          for (let i = 0; i < n; i++) {
+            if (isBnd[i]) {
+              y[i] = x[i] - mu;
+              y[i + n] = x[i + n] - mv;
+            } else {
+              y[i] = x[i];
+              y[i + n] = x[i + n];
+            }
+          }
+          return y;
+        };
+      }
+
+      function spectralConformalParameterizationJs(vertices, faces) {
+        const n = vertices.length;
+        const bd = _buildBoundaryData(faces, n);
+        if (bd.boundaryEdges.length === 0) {
+          throw new Error("SCP 需要带边界的网格（与 LSCM 不同，无 pin 但需开放边界）；封闭曲面请先切开。");
+        }
+        const rowsL = _cotanLaplacianTriplets(vertices, faces);
+        const rowsA = _vectorAreaTriplets(bd.boundaryEdges, n);
+        const rowsLC = _buildLC(rowsL, rowsA, n);
+        const applyP = _makeBoundaryProjector(bd.isBnd, n);
+        const dim = 2 * n;
+        function applyLC(x, out) {
+          for (let i = 0; i < dim; i++) {
+            let s = 0;
+            const ri = rowsLC[i];
+            for (let k = 0; k < ri.length; k++) s += ri[k].v * x[ri[k].j];
+            out[i] = s;
+          }
+        }
+        let x = new Float64Array(dim);
+        for (let i = 0; i < dim; i++) x[i] = Math.random() - 0.5;
+        const powIters = 28;
+        for (let it = 0; it < powIters; it++) {
+          x = applyP(x);
+          const rhs = _copy(x);
+          if (dim <= 900) {
+            const dense = _sparseRowsToDense(rowsLC);
+            x = _denseSolvePivot(dense, rhs);
+          } else {
+            x = _gmresSolve(applyLC, rhs, 1e-9, Math.min(800, dim * 2), Math.min(80, dim));
+          }
+          const nx = _norm2(x);
+          for (let i = 0; i < dim; i++) x[i] /= nx + 1e-30;
+        }
+        const uv = new Array(n);
+        for (let i = 0; i < n; i++) uv[i] = [x[i], x[i + n]];
+        return _normalizeUvBox(uv);
+      }
+
+      function _faceAnglesFromPositions(vertices, faces) {
+        const nf = faces.length;
+        const alpha = new Float64Array(nf * 3);
+        for (let fi = 0; fi < nf; fi++) {
+          const f = faces[fi];
+          const p0 = vertices[f[0]], p1 = vertices[f[1]], p2 = vertices[f[2]];
+          const la = edgeLen(p1, p2), lb = edgeLen(p0, p2), lc = edgeLen(p0, p1);
+          alpha[fi * 3 + 0] = angleFromSides(lb, lc, la);
+          alpha[fi * 3 + 1] = angleFromSides(lc, la, lb);
+          alpha[fi * 3 + 2] = angleFromSides(la, lb, lc);
+        }
+        return alpha;
+      }
+      function edgeLen(a, b) {
+        const dx = a[0] - b[0], dy = a[1] - b[1], dz = a[2] - b[2];
+        return Math.sqrt(dx * dx + dy * dy + dz * dz) + 1e-30;
+      }
+      function angleFromSides(a, b, c) {
+        const t = (a * a + b * b - c * c) / (2 * a * b);
+        return Math.acos(Math.min(1, Math.max(-1, t)));
+      }
+
+      /** 内部顶点的 CCW 一环：每条记录为 { betaIdx, gammaIdx }（全局角下标），对应正弦积中一对对角 */
+      function _buildAngleFan(vertices, faces, isBnd) {
+        const nv = vertices.length;
+        const inc = new Array(nv).fill(0).map(function () { return []; });
+        for (let fi = 0; fi < faces.length; fi++) {
+          const f = faces[fi];
+          for (let s = 0; s < 3; s++) inc[f[s]].push({ fi: fi, s: s });
+        }
+        const fans = [];
+        const interiorVerts = [];
+        for (let v = 0; v < nv; v++) {
+          if (isBnd[v]) continue;
+          interiorVerts.push(v);
+          fans[v] = _sortNeighborsCCW(v, inc[v], vertices, faces);
+        }
+        return { interiorVerts: interiorVerts, fans: fans, inc: inc };
+      }
+
+      function _oppositeCornerGlobal(f, va, vb, fi) {
+        for (let s = 0; s < 3; s++) {
+          if (f[s] !== va && f[s] !== vb) return fi * 3 + s;
+        }
+        return -1;
+      }
+
+      function _otherSharedVertexNonV(v, fi, fj, faces) {
+        const a = faces[fi], b = faces[fj];
+        for (let ia = 0; ia < 3; ia++) {
+          if (a[ia] === v) continue;
+          for (let ib = 0; ib < 3; ib++) {
+            if (a[ia] === b[ib]) return a[ia];
+          }
+        }
+        return -1;
+      }
+
+      function _sortNeighborsCCW(v, list, vertices, faces) {
+        const pV = vertices[v];
+        let nx = 0, ny = 0, nz = 0;
+        for (let k = 0; k < list.length; k++) {
+          const t = list[k];
+          const f = faces[t.fi];
+          const p0 = vertices[f[0]], p1 = vertices[f[1]], p2 = vertices[f[2]];
+          const ax = p1[0] - p0[0], ay = p1[1] - p0[1], az = p1[2] - p0[2];
+          const bx = p2[0] - p0[0], by = p2[1] - p0[1], bz = p2[2] - p0[2];
+          nx += ay * bz - az * by; ny += az * bx - ax * bz; nz += ax * by - ay * bx;
+        }
+        const nn = Math.hypot(nx, ny, nz) + 1e-30;
+        nx /= nn; ny /= nn; nz /= nn;
+        const dirs = [];
+        for (let k = 0; k < list.length; k++) {
+          const t = list[k];
+          const f = faces[t.fi];
+          const s = t.s;
+          const u = f[(s + 1) % 3];
+          const pu = vertices[u];
+          dirs.push({ fi: t.fi, u: u, dx: pu[0] - pV[0], dy: pu[1] - pV[1], dz: pu[2] - pV[2] });
+        }
+        const r0 = dirs[0];
+        let e1x = r0.dx, e1y = r0.dy, e1z = r0.dz;
+        let le1 = Math.hypot(e1x, e1y, e1z) + 1e-30;
+        e1x /= le1; e1y /= le1; e1z /= le1;
+        let e2x = ny * e1z - nz * e1y, e2y = nz * e1x - nx * e1z, e2z = nx * e1y - ny * e1x;
+        let le2 = Math.hypot(e2x, e2y, e2z) + 1e-30;
+        e2x /= le2; e2y /= le2; e2z /= le2;
+        e1x = e2y * nz - e2z * ny;
+        e1y = e2z * nx - e2x * nz;
+        e1z = e2x * ny - e2y * nx;
+        le1 = Math.hypot(e1x, e1y, e1z) + 1e-30;
+        e1x /= le1; e1y /= le1; e1z /= le1;
+        for (let k = 0; k < dirs.length; k++) {
+          const d = dirs[k];
+          d.ang = Math.atan2(d.dx * e2x + d.dy * e2y + d.dz * e2z, d.dx * e1x + d.dy * e1y + d.dz * e1z);
+        }
+        dirs.sort(function (a, b) { return a.ang - b.ang; });
+        const d = dirs.length;
+        const pairs = [];
+        for (let i = 0; i < d; i++) {
+          const fPrev = dirs[(i + d - 1) % d].fi;
+          const fCur = dirs[i].fi;
+          const wi = _otherSharedVertexNonV(v, fPrev, fCur, faces);
+          if (wi < 0) continue;
+          const betaIdx = _oppositeCornerGlobal(faces[fPrev], v, wi, fPrev);
+          const gammaIdx = _oppositeCornerGlobal(faces[fCur], v, wi, fCur);
+          pairs.push({ betaIdx: betaIdx, gammaIdx: gammaIdx });
+        }
+        return pairs;
+      }
+
+      function _multJtSparse(Jrows, x, outNAlpha) {
+        outNAlpha.fill(0);
+        for (let r = 0; r < Jrows.length; r++) {
+          const row = Jrows[r];
+          const xr = x[r];
+          for (let k = 0; k < row.length; k++) {
+            const t = row[k];
+            outNAlpha[t.j] += t.v * xr;
+          }
+        }
+      }
+
+      function _multJSparse(Jrows, a, outM) {
+        for (let r = 0; r < Jrows.length; r++) {
+          let s = 0;
+          const row = Jrows[r];
+          for (let k = 0; k < row.length; k++) {
+            const t = row[k];
+            s += t.v * a[t.j];
+          }
+          outM[r] = s;
+        }
+      }
+
+      function _cgJJt(Jrows, rhs, nAlpha, maxIt, tol) {
+        const m = rhs.length;
+        const x = new Float64Array(m);
+        const r = new Float64Array(m);
+        const p = new Float64Array(m);
+        const Ap = new Float64Array(m);
+        const Jtp = new Float64Array(nAlpha);
+        for (let i = 0; i < m; i++) r[i] = rhs[i];
+        let rr = _dot(r, r);
+        const rhsN = Math.sqrt(rr) + 1e-30;
+        for (let i = 0; i < m; i++) p[i] = r[i];
+        let iter = 0;
+        while (iter < maxIt) {
+          _multJtSparse(Jrows, p, Jtp);
+          _multJSparse(Jrows, Jtp, Ap);
+          const denom = _dot(p, Ap) + 1e-30;
+          const alpha = rr / denom;
+          for (let i = 0; i < m; i++) x[i] += alpha * p[i];
+          for (let i = 0; i < m; i++) r[i] -= alpha * Ap[i];
+          const rrNew = _dot(r, r);
+          if (Math.sqrt(rrNew) < tol * rhsN) break;
+          const beta = rrNew / (rr + 1e-30);
+          for (let i = 0; i < m; i++) p[i] = r[i] + beta * p[i];
+          rr = rrNew;
+          iter++;
+        }
+        return x;
+      }
+
+      function _clampAngle(t) {
+        return Math.min(Math.PI - 1e-3, Math.max(1e-3, t));
+      }
+
+      function _buildJrowsAndRhsLin(alpha, faces, fanData, nAlpha) {
+        const nf = faces.length;
+        const interiorVerts = fanData.interiorVerts;
+        const fans = fanData.fans;
+        const rows = [];
+        const rhs = [];
+        for (let fi = 0; fi < nf; fi++) {
+          rows.push([
+            { j: fi * 3 + 0, v: 1 },
+            { j: fi * 3 + 1, v: 1 },
+            { j: fi * 3 + 2, v: 1 }
+          ]);
+          rhs.push(Math.PI);
+        }
+        for (let iv = 0; iv < interiorVerts.length; iv++) {
+          const v = interiorVerts[iv];
+          const list = fanData.inc[v];
+          const row = [];
+          for (let k = 0; k < list.length; k++) {
+            row.push({ j: list[k].fi * 3 + list[k].s, v: 1 });
+          }
+          rows.push(row);
+          rhs.push(2 * Math.PI);
+        }
+        for (let iv = 0; iv < interiorVerts.length; iv++) {
+          const v = interiorVerts[iv];
+          const pairs = fans[v];
+          const row = [];
+          let linRhs = 0;
+          let fLog = 0;
+          for (let k = 0; k < pairs.length; k++) {
+            const bi = pairs[k].betaIdx, gi = pairs[k].gammaIdx;
+            const bet = _clampAngle(alpha[bi]);
+            const gam = _clampAngle(alpha[gi]);
+            const cb = 1 / Math.tan(bet);
+            const cg = 1 / Math.tan(gam);
+            row.push({ j: bi, v: cb });
+            row.push({ j: gi, v: -cg });
+            fLog += Math.log(Math.sin(bet)) - Math.log(Math.sin(gam));
+            linRhs += cb * bet - cg * gam;
+          }
+          rhs.push(linRhs - fLog);
+          rows.push(row);
+        }
+        return { Jrows: rows, rhs: rhs };
+      }
+
+      function _solveConstrainedLeastSquares(alpha0, Jrows, c, nAlpha) {
+        const m = Jrows.length;
+        const Ja0 = new Float64Array(m);
+        _multJSparse(Jrows, alpha0, Ja0);
+        const rhsLam = new Float64Array(m);
+        for (let i = 0; i < m; i++) rhsLam[i] = Ja0[i] - c[i];
+        const lam = _cgJJt(Jrows, rhsLam, nAlpha, Math.min(800, m * 3 + 50), 1e-10);
+        const JtLam = new Float64Array(nAlpha);
+        _multJtSparse(Jrows, lam, JtLam);
+        const alpha = new Float64Array(nAlpha);
+        for (let i = 0; i < nAlpha; i++) alpha[i] = alpha0[i] - JtLam[i];
+        return alpha;
+      }
+
+      function _nonlinearResidual(alpha, faces, fanData, nAlpha) {
+        const nf = faces.length;
+        const interiorVerts = fanData.interiorVerts;
+        const fans = fanData.fans;
+        const R = [];
+        for (let fi = 0; fi < nf; fi++) {
+          R.push(alpha[fi * 3] + alpha[fi * 3 + 1] + alpha[fi * 3 + 2] - Math.PI);
+        }
+        for (let iv = 0; iv < interiorVerts.length; iv++) {
+          const v = interiorVerts[iv];
+          const list = fanData.inc[v];
+          let s = 0;
+          for (let k = 0; k < list.length; k++) s += alpha[list[k].fi * 3 + list[k].s];
+          R.push(s - 2 * Math.PI);
+        }
+        for (let iv = 0; iv < interiorVerts.length; iv++) {
+          const v = interiorVerts[iv];
+          const pairs = fans[v];
+          let fLog = 0;
+          for (let k = 0; k < pairs.length; k++) {
+            const bi = pairs[k].betaIdx, gi = pairs[k].gammaIdx;
+            fLog += Math.log(Math.sin(_clampAngle(alpha[bi]))) - Math.log(Math.sin(_clampAngle(alpha[gi])));
+          }
+          R.push(fLog);
+        }
+        return R;
+      }
+
+      function _buildJNewton(alpha, faces, fanData, nAlpha) {
+        const base = _buildJrowsAndRhsLin(alpha, faces, fanData, nAlpha);
+        return base.Jrows;
+      }
+
+      function _solveNewtonStep(alpha, alpha0, lam, Jrows, Rvec, nAlpha) {
+        const m = Jrows.length;
+        const ra = new Float64Array(nAlpha);
+        for (let i = 0; i < nAlpha; i++) ra[i] = -2 * (alpha[i] - alpha0[i]);
+        const JtL = new Float64Array(nAlpha);
+        _multJtSparse(Jrows, lam, JtL);
+        for (let i = 0; i < nAlpha; i++) ra[i] -= JtL[i];
+        const Jra = new Float64Array(m);
+        _multJSparse(Jrows, ra, Jra);
+        const rhsLam = new Float64Array(m);
+        for (let i = 0; i < m; i++) rhsLam[i] = Jra[i] + 2 * Rvec[i];
+        const dlam = _cgJJt(Jrows, rhsLam, nAlpha, Math.min(900, m * 3 + 80), 1e-9);
+        const Jtd = new Float64Array(nAlpha);
+        _multJtSparse(Jrows, dlam, Jtd);
+        const dalpha = new Float64Array(nAlpha);
+        for (let i = 0; i < nAlpha; i++) dalpha[i] = (ra[i] - Jtd[i]) * 0.5;
+        return { dalpha: dalpha, dlam: dlam };
+      }
+
+      function _angleFlattenLinABF(vertices, faces, maxIter) {
+        const nAlpha = faces.length * 3;
+        const bd = _buildBoundaryData(faces, vertices.length);
+        if (bd.boundaryEdges.length === 0) {
+          throw new Error("ABF 类算法需要带边界网格。");
+        }
+        const fanData = _buildAngleFan(vertices, faces, bd.isBnd);
+        let alpha = _faceAnglesFromPositions(vertices, faces);
+        const alpha0 = alpha.slice();
+        for (let it = 0; it < maxIter; it++) {
+          const built = _buildJrowsAndRhsLin(alpha, faces, fanData, nAlpha);
+          const c = new Float64Array(built.rhs.length);
+          for (let i = 0; i < built.rhs.length; i++) c[i] = built.rhs[i];
+          const alphaNew = _solveConstrainedLeastSquares(alpha0, built.Jrows, c, nAlpha);
+          let diff = 0;
+          for (let i = 0; i < nAlpha; i++) {
+            diff += (alphaNew[i] - alpha[i]) * (alphaNew[i] - alpha[i]);
+          }
+          alpha = alphaNew;
+          if (Math.sqrt(diff) < 1e-5) break;
+        }
+        for (let i = 0; i < nAlpha; i++) alpha[i] = _clampAngle(alpha[i]);
+        return alpha;
+      }
+
+      function _angleFlattenABFpp(vertices, faces, maxNewton) {
+        const nAlpha = faces.length * 3;
+        const bd = _buildBoundaryData(faces, vertices.length);
+        if (bd.boundaryEdges.length === 0) throw new Error("ABF 类算法需要带边界网格。");
+        const fanData = _buildAngleFan(vertices, faces, bd.isBnd);
+        let alpha = _faceAnglesFromPositions(vertices, faces);
+        const alpha0 = alpha.slice();
+        const m = faces.length + 2 * fanData.interiorVerts.length;
+        let lam = new Float64Array(m);
+        const Rbuf = [];
+        for (let k = 0; k < maxNewton; k++) {
+          const Jrows = _buildJNewton(alpha, faces, fanData, nAlpha);
+          const Rvec = _nonlinearResidual(alpha, faces, fanData, nAlpha);
+          let nr = 0;
+          for (let i = 0; i < Rvec.length; i++) nr += Rvec[i] * Rvec[i];
+          nr = Math.sqrt(nr);
+          if (nr < 1e-4) break;
+          const step = _solveNewtonStep(alpha, alpha0, lam, Jrows, Rvec, nAlpha);
+          let s = 1;
+          for (let trial = 0; trial < 8; trial++) {
+            const trialA = new Float64Array(nAlpha);
+            for (let i = 0; i < nAlpha; i++) {
+              trialA[i] = _clampAngle(alpha[i] + s * step.dalpha[i]);
+            }
+            const Rt = _nonlinearResidual(trialA, faces, fanData, nAlpha);
+            let nrt = 0;
+            for (let i = 0; i < Rt.length; i++) nrt += Rt[i] * Rt[i];
+            nrt = Math.sqrt(nrt);
+            if (nrt < nr * 1.05) {
+              alpha = trialA;
+              for (let i = 0; i < m; i++) lam[i] += s * step.dlam[i];
+              break;
+            }
+            s *= 0.5;
+          }
+        }
+        return alpha;
+      }
+
+      function _twoCircleIntersection(a, ra, b, rb, signSide) {
+        const dx = b[0] - a[0], dy = b[1] - a[1];
+        const d = Math.hypot(dx, dy) + 1e-30;
+        const nx = dx / d, ny = dy / d;
+        const t = (ra * ra - rb * rb + d * d) / (2 * d);
+        const h2 = ra * ra - t * t;
+        const h = Math.sqrt(Math.max(0, h2));
+        const px = a[0] + t * nx, py = a[1] + t * ny;
+        const ox = -ny * h * signSide, oy = nx * h * signSide;
+        return [px + ox, py + oy];
+      }
+
+      function _triSignedArea2d(a, b, c) {
+        return (b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]);
+      }
+
+      function _triSign3d(p0, p1, p2) {
+        const ax = p1[0] - p0[0], ay = p1[1] - p0[1], az = p1[2] - p0[2];
+        const bx = p2[0] - p0[0], by = p2[1] - p0[1], bz = p2[2] - p0[2];
+        const cx = ay * bz - az * by, cy = az * bx - ax * bz, cz = ax * by - ay * bx;
+        if (Math.abs(cx) >= Math.abs(cy) && Math.abs(cx) >= Math.abs(cz)) return cx >= 0 ? 1 : -1;
+        if (Math.abs(cy) >= Math.abs(cz)) return cy >= 0 ? 1 : -1;
+        return cz >= 0 ? 1 : -1;
+      }
+
+      function _anglesToUv(vertices, faces, alpha) {
+        const nv = vertices.length;
+        const uv = new Array(nv);
+        for (let i = 0; i < nv; i++) uv[i] = null;
+        const f0 = faces[0];
+        const p0 = vertices[f0[0]], p1 = vertices[f0[1]], p2 = vertices[f0[2]];
+        const l01 = edgeLen(p0, p1), l12 = edgeLen(p1, p2), l20 = edgeLen(p2, p0);
+        uv[f0[0]] = [0, 0];
+        uv[f0[1]] = [l01, 0];
+        const want0 = _triSign3d(p0, p1, p2);
+        let sgn = 1;
+        uv[f0[2]] = _twoCircleIntersection(uv[f0[0]], l20, uv[f0[1]], l12, sgn);
+        if (_triSignedArea2d(uv[f0[0]], uv[f0[1]], uv[f0[2]]) * want0 < 0) {
+          sgn = -1;
+          uv[f0[2]] = _twoCircleIntersection(uv[f0[0]], l20, uv[f0[1]], l12, sgn);
+        }
+        const faceDone = new Array(faces.length).fill(false);
+        faceDone[0] = true;
+        const queue = [0];
+        while (queue.length) {
+          const fi = queue.shift();
+          const f = faces[fi];
+          for (let e = 0; e < 3; e++) {
+            const v0 = f[e], v1 = f[(e + 1) % 3], v2 = f[(e + 2) % 3];
+            if (uv[v0] === null || uv[v1] === null) continue;
+            const adj = _findOtherFaceOnEdge(faces, fi, v0, v1);
+            if (adj < 0 || faceDone[adj]) continue;
+            const g = faces[adj];
+            let a = -1, b = -1, c = -1;
+            for (let s = 0; s < 3; s++) {
+              const i0 = g[s], i1 = g[(s + 1) % 3], i2 = g[(s + 2) % 3];
+              if (uv[i0] !== null && uv[i1] !== null && uv[i2] === null) {
+                a = i0; b = i1; c = i2;
+                break;
+              }
+            }
+            if (c < 0) continue;
+            const lac = edgeLen(vertices[a], vertices[c]);
+            const lbc = edgeLen(vertices[b], vertices[c]);
+            const want = _triSign3d(vertices[g[0]], vertices[g[1]], vertices[g[2]]);
+            let cand = _twoCircleIntersection(uv[a], lac, uv[b], lbc, 1);
+            if (_triSignedArea2d(uv[a], uv[b], cand) * want < 0) {
+              cand = _twoCircleIntersection(uv[a], lac, uv[b], lbc, -1);
+            }
+            uv[c] = cand;
+            faceDone[adj] = true;
+            queue.push(adj);
+          }
+        }
+        for (let i = 0; i < nv; i++) {
+          if (uv[i] === null) uv[i] = [0, 0];
+        }
+        return _normalizeUvBox(uv);
+      }
+
+      function _findOtherFaceOnEdge(faces, skipFi, v0, v1) {
+        for (let fi = 0; fi < faces.length; fi++) {
+          if (fi === skipFi) continue;
+          const f = faces[fi];
+          const h0 = f[0] === v0 || f[1] === v0 || f[2] === v0;
+          const h1 = f[0] === v1 || f[1] === v1 || f[2] === v1;
+          if (h0 && h1) return fi;
+        }
+        return -1;
+      }
+
       async function solveSCPAsync(meshData, onProgress) {
         const vertices = meshData.positions, faces = meshData.faces;
-        if (!wasmReady) {
-          const loaded = await initSimpleSolver();
-          if (!loaded) throw new Error("SCP WASM 求解器初始化失败");
-        }
         if (onProgress) onProgress(0, 1);
-        const flatPositions = new Float64Array(vertices.length * 3);
-        for (let i = 0; i < vertices.length; i++) {
-          flatPositions[i * 3] = vertices[i][0];
-          flatPositions[i * 3 + 1] = vertices[i][1];
-          flatPositions[i * 3 + 2] = vertices[i][2];
-        }
-        const flatFaces = new Int32Array(faces.length * 3);
-        for (let i = 0; i < faces.length; i++) {
-          flatFaces[i * 3] = faces[i][0];
-          flatFaces[i * 3 + 1] = faces[i][1];
-          flatFaces[i * 3 + 2] = faces[i][2];
-        }
-        const posPtr = simpleInstance._malloc(flatPositions.length * 8);
-        for (let i = 0; i < flatPositions.length; i++) simpleInstance.setValue(posPtr + i * 8, flatPositions[i], "double");
-        const facePtr = simpleInstance._malloc(flatFaces.length * 4);
-        for (let i = 0; i < flatFaces.length; i++) simpleInstance.setValue(facePtr + i * 4, flatFaces[i], "i32");
-        try {
-          const ret = simpleInstance.ccall("solve_scp", "number",
-            ["number", "number", "number", "number"],
-            [posPtr, flatPositions.length, facePtr, flatFaces.length]);
-          if (ret !== 0) throw new Error("solve_scp 返回错误码: " + ret);
-          const uvSize = simpleInstance.ccall("get_uv_result_size", "number", [], []);
-          const uvPtr = simpleInstance.ccall("get_uv_result", "number", [], []);
-          const uvs = [];
-          for (let i = 0; i < uvSize; i++) uvs.push(simpleInstance.getValue(uvPtr + i * 8, "double"));
-          simpleInstance.ccall("dispose", "void", [], []);
-          const timeMs = simpleInstance.ccall("get_last_time_ms", "number", [], []);
-          if (onProgress) onProgress(1, 1);
-          const n = vertices.length;
-          const uv = [];
-          for (let i = 0; i < n; i++) uv.push([uvs[i * 2], uvs[i * 2 + 1]]);
-          return {
-            uv: uv,
-            anchors: chooseAnchorPair(vertices),
-            flippedFaceCount: countFlippedFaces(uv, faces),
-            timeMs: timeMs,
-            method: "scp"
-          };
-        } finally {
-          simpleInstance._free(posPtr);
-          simpleInstance._free(facePtr);
-        }
+        const t0 = performance.now();
+        const uv = spectralConformalParameterizationJs(vertices, faces);
+        const timeMs = performance.now() - t0;
+        if (onProgress) onProgress(1, 1);
+        return {
+          uv: uv,
+          anchors: chooseAnchorPair(vertices),
+          flippedFaceCount: countFlippedFaces(uv, faces),
+          timeMs: timeMs,
+          method: 'scp'
+        };
+      }
+
+      async function solveDCPAsync(meshData, onProgress) {
+        const vertices = meshData.positions, faces = meshData.faces;
+        if (onProgress) onProgress(0, 1);
+        const anchors = getValidatedAnchors(vertices);
+        const t0 = performance.now();
+        const uv = discreteConformalParameterizationJs(vertices, faces);
+        const timeMs = performance.now() - t0;
+        if (onProgress) onProgress(1, 1);
+        return {
+          uv: uv,
+          anchors: anchors,
+          flippedFaceCount: countFlippedFaces(uv, faces),
+          timeMs: timeMs,
+          method: 'dcp',
+          boundary: '自由边界（2 pin 点）',
+          pinInfo: anchors[0] + " & " + anchors[1]
+        };
+      }
+
+      async function solveLinABFAsync(meshData, onProgress) {
+        const vertices = meshData.positions, faces = meshData.faces;
+        if (onProgress) onProgress(0, 2);
+        const t0 = performance.now();
+        const alpha = _angleFlattenLinABF(vertices, faces, 40);
+        if (onProgress) onProgress(1, 2);
+        const uv = _anglesToUv(vertices, faces, alpha);
+        if (onProgress) onProgress(2, 2);
+        return {
+          uv: uv,
+          anchors: chooseAnchorPair(vertices),
+          flippedFaceCount: countFlippedFaces(uv, faces),
+          timeMs: performance.now() - t0,
+          method: 'linabf'
+        };
+      }
+
+      async function solveABFppAsync(meshData, onProgress) {
+        const vertices = meshData.positions, faces = meshData.faces;
+        if (onProgress) onProgress(0, 2);
+        const t0 = performance.now();
+        const alpha = _angleFlattenABFpp(vertices, faces, 12);
+        if (onProgress) onProgress(1, 2);
+        const uv = _anglesToUv(vertices, faces, alpha);
+        if (onProgress) onProgress(2, 2);
+        return {
+          uv: uv,
+          anchors: chooseAnchorPair(vertices),
+          flippedFaceCount: countFlippedFaces(uv, faces),
+          timeMs: performance.now() - t0,
+          method: 'abfpp'
+        };
       }
 
       function buildModelGroup(root, anchors, positions, showPins) {
@@ -2033,7 +3135,7 @@
 
         if (!wasmReady && !wasmLoadFailed) {
           setStatus('正在加载 QC 引擎...', '#ffd38a');
-          await initSimpleSolver();
+          await initUnifiedSolver();
         }
         if (!wasmReady) {
           setStatus('QC 引擎加载失败', '#ff9d9d');
@@ -2060,35 +3162,35 @@
             flatUV[i*2]=currentUnwrapUv[i][0]; flatUV[i*2+1]=currentUnwrapUv[i][1];
           }
 
-          const posPtr = simpleInstance._malloc(flatPos.length * 8);
-          for (let i = 0; i < flatPos.length; i++) simpleInstance.setValue(posPtr+i*8, flatPos[i], 'double');
-          const facePtr = simpleInstance._malloc(flatFaces.length * 4);
-          for (let i = 0; i < flatFaces.length; i++) simpleInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
-          const uvPtr = simpleInstance._malloc(flatUV.length * 8);
-          for (let i = 0; i < flatUV.length; i++) simpleInstance.setValue(uvPtr+i*8, flatUV[i], 'double');
+          const posPtr = wasmInstance._malloc(flatPos.length * 8);
+          for (let i = 0; i < flatPos.length; i++) wasmInstance.setValue(posPtr+i*8, flatPos[i], 'double');
+          const facePtr = wasmInstance._malloc(flatFaces.length * 4);
+          for (let i = 0; i < flatFaces.length; i++) wasmInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
+          const uvPtr = wasmInstance._malloc(flatUV.length * 8);
+          for (let i = 0; i < flatUV.length; i++) wasmInstance.setValue(uvPtr+i*8, flatUV[i], 'double');
 
           // 2. load + compute QC
-          const loadRet = simpleInstance.ccall('load_mesh_with_uv', 'number',
+          const loadRet = wasmInstance.ccall('load_mesh_with_uv', 'number',
             ['number','number','number','number','number','number'],
             [posPtr, flatPos.length, facePtr, flatFaces.length, uvPtr, flatUV.length]);
           if (loadRet !== 0) throw new Error("load_mesh_with_uv failed");
 
-          const nFaces = simpleInstance.ccall('compute_qc_error', 'number', [], []);
+          const nFaces = wasmInstance.ccall('compute_qc_error', 'number', [], []);
           if (nFaces <= 0) throw new Error("compute_qc_error returned " + nFaces);
 
           // 3. read errors & colors
-          const errSize = simpleInstance.ccall('get_qc_errors_size', 'number', [], []);
-          const errPtr  = simpleInstance.ccall('get_qc_errors', 'number', [], []);
-          const colSize = simpleInstance.ccall('get_qc_colors_size', 'number', [], []);
-          const colPtr  = simpleInstance.ccall('get_qc_colors', 'number', [], []);
+          const errSize = wasmInstance.ccall('get_qc_errors_size', 'number', [], []);
+          const errPtr  = wasmInstance.ccall('get_qc_errors', 'number', [], []);
+          const colSize = wasmInstance.ccall('get_qc_colors_size', 'number', [], []);
+          const colPtr  = wasmInstance.ccall('get_qc_colors', 'number', [], []);
 
-          const errors = []; for (let i=0;i<errSize;i++) errors.push(simpleInstance.getValue(errPtr+i*8,'double'));
-          const colors = []; for (let i=0;i<colSize;i++) colors.push(simpleInstance.getValue(colPtr+i*8,'double'));
+          const errors = []; for (let i=0;i<errSize;i++) errors.push(wasmInstance.getValue(errPtr+i*8,'double'));
+          const colors = []; for (let i=0;i<colSize;i++) colors.push(wasmInstance.getValue(colPtr+i*8,'double'));
 
-          simpleInstance.ccall('dispose', 'void', [], []);
+          wasmInstance.ccall('ta_dispose', 'void', [], []);
 
           // 4. free memory
-          simpleInstance._free(posPtr); simpleInstance._free(facePtr); simpleInstance._free(uvPtr);
+          wasmInstance._free(posPtr); wasmInstance._free(facePtr); wasmInstance._free(uvPtr);
 
           // 5. compute stats
           let avgErr = 0, maxErr = 0;
@@ -2291,13 +3393,19 @@
 
         const method = getCurrentMethod();
 
+        // 构建方法标签
         let methodLabel;
-        if (method === 'lscm') methodLabel = 'LSCM';
-        else if (method === 'tutte') {
-          methodLabel = 'Tutte (' + getTutteWeightLabel() + ', ' + (getTutteBoundary() === 'circle' ? '圆' : '方') + ')';
-        }
-        else if (method === 'scp') methodLabel = 'SCP (谱共形)';
-        else methodLabel = 'LSCM';
+        if (method === 'arap') methodLabel = 'ARAP (iter=' + getARAPIter() + ')';
+        else if (method === 'cetm') methodLabel = 'CETM (共形因子)';
+        else if (method === 'ricci') methodLabel = 'Ricci 流';
+        else if (method === 'cp') methodLabel = 'Circle Pattern';
+        else if (method === 'quadcover') methodLabel = 'QuadCover';
+        else if (method === 'bff') methodLabel = 'BFF';
+        else if (method === 'miq') methodLabel = 'MIQ';
+        else if (method === 'holo') methodLabel = '全纯1-形式';
+        else if (method === 'abfpp') methodLabel = 'ABF++';
+        else if (method === 'linabf') methodLabel = 'linABF';
+        else methodLabel = 'ARAP';
 
         setBusy(true);
         setStatus("正在执行 " + methodLabel + " 求解...");
@@ -2307,22 +3415,64 @@
           const startTime = performance.now();
 
           let unwrapResult;
-          if (method === 'lscm') {
-            unwrapResult = await solveLSCMAsync(currentMeshData, function(progress, total) {
-              updateTimingProgress(progress, total);
+          if (method === 'arap') {
+            unwrapResult = await solveARAPAsync(currentMeshData, function() {});
+          } else if (method === 'cetm') {
+            unwrapResult = await solveCETMAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
             });
-          } else if (method === 'tutte') {
-            unwrapResult = (getTutteBoundary() === 'circle')
-              ? await solveTutteCircleAsync(currentMeshData, function() {})
-              : await solveTutteSquareAsync(currentMeshData, function() {});
-          } else if (method === 'scp') {
-            unwrapResult = await solveSCPAsync(currentMeshData, function(p, t) {
+          } else if (method === 'ricci') {
+            unwrapResult = await solveRicciAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
+          } else if (method === 'cp') {
+            unwrapResult = await solveCPAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
+          } else if (method === 'quadcover') {
+            unwrapResult = await solveQCAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
+          } else if (method === 'bff') {
+            unwrapResult = await solveBFFAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
+          } else if (method === 'miq') {
+            unwrapResult = await solveMIQAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
+          } else if (method === 'holo') {
+            await initUnifiedSolver();
+            const fv = currentMeshData.positions, ff = currentMeshData.faces;
+            const fp = new Float64Array(fv.length*3);
+            for(let i=0;i<fv.length;i++){fp[i*3]=fv[i][0];fp[i*3+1]=fv[i][1];fp[i*3+2]=fv[i][2];}
+            const ffi = new Int32Array(ff.length*3);
+            for(let i=0;i<ff.length;i++){ffi[i*3]=ff[i][0];ffi[i*3+1]=ff[i][1];ffi[i*3+2]=ff[i][2];}
+            const pp = wasmInstance._malloc(fp.length*8);
+            for(let i=0;i<fp.length;i++)wasmInstance.setValue(pp+i*8,fp[i],'double');
+            const fpt = wasmInstance._malloc(ffi.length*4);
+            for(let i=0;i<ffi.length;i++)wasmInstance.setValue(fpt+i*4,ffi[i],'i32');
+            const rc = wasmInstance.ccall('solve_holo','number',['number','number','number','number'],[pp,fp.length,fpt,ffi.length]);
+            if(rc!==0)throw new Error("Holo solve failed");
+            const sz = wasmInstance.ccall('get_holo_uv_result_size','number',[],[]);
+            const up = wasmInstance.ccall('get_holo_uv_result','number',[],[]);
+            const us=[];for(let i=0;i<sz;i++)us.push(wasmInstance.getValue(up+i*8,'double'));
+            wasmInstance.ccall('holo_dispose','void',[],[]);
+            wasmInstance._free(pp);wasmInstance._free(fpt);
+            const nv = fv.length, uvs = new Array(nv);
+            for(let i=0;i<nv;i++)uvs[i]=[us[i*2],us[i*2+1]];
+            unwrapResult = {uv:uvs, anchors:chooseAnchorPair(fv), flippedFaceCount:countFlippedFaces(uvs,ff),
+              timeMs:wasmInstance.ccall('get_holo_last_time_ms','number',[],[]), method:'holo'};
+          } else if (method === 'linabf') {
+            unwrapResult = await solveLinABFAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
+          } else if (method === 'abfpp') {
+            unwrapResult = await solveABFppAsync(currentMeshData, function(p, t) {
               updateTimingProgress(p, t);
             });
           } else {
-            unwrapResult = await solveLSCMAsync(currentMeshData, function(progress, total) {
-              updateTimingProgress(progress, total);
-            });
+            unwrapResult = await solveARAPAsync(currentMeshData, function() {});
           }
 
           const elapsedMs = unwrapResult.timeMs > 0 ? unwrapResult.timeMs : (performance.now() - startTime);
@@ -2343,7 +3493,7 @@
           }
 
           // 更新 UV 面板标签
-          const methodNames = { lscm:'LSCM', tutte:'Tutte', scp:'SCP' };
+          const methodNames = { arap:'ARAP', cetm:'CETM', ricci:'Ricci', cp:'CirclePat', quadcover:'QuadCover', bff:'BFF', miq:'MIQ', holo:'Holo', abfpp:'ABF++', linabf:'linABF' };
           document.getElementById('uv-panel-label').textContent =
             (methodNames[unwrapResult.method] || unwrapResult.method) + ' UV 网格';
 
@@ -2366,11 +3516,12 @@
           if (unwrapResult.pinInfo) details += " / pin=" + unwrapResult.pinInfo;
           if (unwrapResult.boundary) details += " / " + unwrapResult.boundary;
           if (unwrapResult.weight) details += " / " + unwrapResult.weight;
+          if (unwrapResult.fallbackCause) details += " / ARAP兜底";
           showTiming(elapsedMs, details, unwrapResult.flippedFaceCount);
 
           const color = unwrapResult.flippedFaceCount === 0 ? "#89f0b6" : "#ffd38a";
           setStatus(
-            methodLabel + " 展开完成，翻转面 " + unwrapResult.flippedFaceCount + " 个",
+            methodLabel + (unwrapResult.fallbackCause ? " 使用 ARAP 兜底完成，翻转面 " : " 展开完成，翻转面 ") + unwrapResult.flippedFaceCount + " 个",
             color
           );
         } catch (error) {
@@ -2426,9 +3577,9 @@
         });
       }
       
-      // 页面启动时预加载 uv_unwrap_simple WASM
+      // 页面启动时预加载 WASM 统一求解器
       updateStartButtonState();
-      initSimpleSolver().then((ok) => {
+      initUnifiedSolver().then((ok) => {
         updateStartButtonState();
         if (!ok) {
           setStatus("WASM 引擎加载失败", "#ff9d9d");
