@@ -56,7 +56,7 @@ $(UV_SIMPLE_OUT): $(UV_SIMPLE_SRCS)
 	@printf '["_malloc","_free","_solve_lscm","_solve_tutte_circle","_solve_tutte_square","_solve_scp","_get_uv_result","_get_uv_result_size","_get_last_time_ms","_dispose","_load_mesh_with_uv","_compute_qc_error","_get_qc_errors","_get_qc_errors_size","_get_qc_colors","_get_qc_colors_size"]\n' > $(BUILD_DIR)/uv_unwrap_simple.efile
 	$(EMXX) $(CXXFLAGS_COMMON) $(INC_FLAGS) \
 	  -s MODULARIZE=1 -s EXPORT_NAME="$(UV_SIMPLE_EXPORT)" \
-	  -s ALLOW_MEMORY_GROWTH=1 -s WASM=1 \
+	  -s ALLOW_MEMORY_GROWTH=1 -s INITIAL_MEMORY=268435456 -s WASM=1 \
 	  -s "EXPORTED_RUNTIME_METHODS=['ccall','cwrap','UTF8ToString','getValue','setValue']" \
 	  -s EXPORTED_FUNCTIONS=@$(BUILD_DIR)/uv_unwrap_simple.efile \
 	  -s FORCE_FILESYSTEM=0 -s ENVIRONMENT='web' \

@@ -74,6 +74,7 @@ function Build-Target($name, $sources, $exportName, $funcs, $output) {
     ) + $includeFlags + @(
         "-s", "MODULARIZE=1",
         "-s", "ALLOW_MEMORY_GROWTH=1",
+        "-s", "INITIAL_MEMORY=268435456",
         "-s", "WASM=1",
         "-s", "EXPORTED_RUNTIME_METHODS=['ccall','cwrap','UTF8ToString','getValue','setValue']",
         "-s", "FORCE_FILESYSTEM=0",
