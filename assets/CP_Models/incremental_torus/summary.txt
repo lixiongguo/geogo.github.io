@@ -1,0 +1,18 @@
+Incremental Flattening Reproduction (core stages)
+vertices=3840
+edges=11520
+faces=7680
+flatten_iterations=1
+cone_candidates=0
+rounded_cones=0
+eps0=0.02
+eps_step=0.01
+eps_max=1.2
+max_iters=80
+max_cones=12
+
+Notes:
+- Implements paper core stages: flattening + cone rounding.
+- Outputs intrinsic metric and rounded cone curvatures.
+- Holonomy rounding on homology loops and full ARAP seamless solve
+  are intentionally left as next-step extensions.

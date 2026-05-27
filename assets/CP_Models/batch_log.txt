@@ -1,0 +1,183 @@
+﻿CirclePatterns batch 2026-05-26 15:22:33
+beetle_F2052.obj                         exit=1 time=0.1s
+Error: edge 135, 136 is non manifold
+Failed to read mesh: C:\Users\lixio\OneDrive\Desktop\MyDoc\lixiongguo.github.io\assets\Models\beetle_F2052.obj
+
+---
+bunnyhead_F3000.obj                      exit=2 time=0.2s
+MosekSolver: primal infeasible (prosta=4).
+Vertices: 1550  Faces: 3001
+Unable to compute angles
+CirclePatterns (Mosek + Newton) done in 23.8421 ms
+QC error: 1e+06
+Parameterization likely failed (QC error sentinel).
+
+---
+camelhead_F22704.obj                     exit=2 time=0.4s
+MosekSolver: primal infeasible (prosta=4).
+Vertices: 11381  Faces: 22705
+Unable to compute angles
+CirclePatterns (Mosek + Newton) done in 65.3631 ms
+QC error: 1e+06
+Parameterization likely failed (QC error sentinel).
+
+---
+cathead_F248.obj                         exit=2 time=0.1s
+MosekSolver: primal infeasible (prosta=4).
+Vertices: 131  Faces: 249
+Unable to compute angles
+CirclePatterns (Mosek + Newton) done in 18.0197 ms
+QC error: 1e+06
+Parameterization likely failed (QC error sentinel).
+
+---
+hand_1_i_F4999.obj                       exit=2 time=0.2s
+MosekSolver: primal infeasible (prosta=4).
+Vertices: 2517  Faces: 5000
+Unable to compute angles
+CirclePatterns (Mosek + Newton) done in 49.0887 ms
+QC error: 1e+06
+Parameterization likely failed (QC error sentinel).
+
+---
+hand_F3769.obj                           exit=2 time=0.2s
+MosekSolver: primal infeasible (prosta=4).
+Vertices: 1905  Faces: 3770
+Unable to compute angles
+CirclePatterns (Mosek + Newton) done in 40.6832 ms
+QC error: 1e+06
+Parameterization likely failed (QC error sentinel).
+
+---
+hemisphere.obj                           exit=-1073741819 time=8.2s
+Warning: vertex 1 is nonmanifold.
+Warning: vertex 2 is nonmanifold.
+Warning: vertex 3 is nonmanifold.
+Warning: vertex 4 is nonmanifold.
+Warning: vertex 5 is nonmanifold.
+Warning: vertex 6 is nonmanifold.
+Warning: vertex 7 is nonmanifold.
+Warning: vertex 8 is nonmanifold.
+Warning: vertex 9 is nonmanifold.
+Warning: vertex 10 is nonmanifold.
+Warning: vertex 11 is nonmanifold.
+Warning: vertex 12 is nonmanifold.
+Warning: vertex 13 is nonmanifold.
+Warning: vertex 14 is nonmanifold.
+Warning: vertex 15 is nonmanifold.
+Warning: vertex 16 is nonmanifold.
+Warning: vertex 17 is nonmanifold.
+Warning: vertex 18 is nonmanifold.
+Warning: vertex 19 is nonmanifold.
+Warning: vertex 20 is nonmanifold.
+Warning: vertex 21 is nonmanifold.
+Warning: vertex 22 is nonmanifold.
+Warning: vertex 23 is nonmanifold.
+Warning: vertex 24 is nonmanifold.
+Warning: vertex 25 is nonmanifold.
+Warning: vertex 26 is nonmanifold.
+Warning: vertex 27 is nonmanifold.
+Warning: vertex 28 is nonmanifold.
+Warning: vertex 29 is nonmanifold.
+Warning: vertex 30 is nonmanifold.
+Warning: vertex 31 is nonmanifold.
+Warning: vertex 32 is nonmanifold.
+Warning: vertex 33 is nonmanifold.
+Warning: vertex 34 is nonmanifold.
+Warning: vertex 35 is nonmanifold.
+Warning: vertex 36 is nonmanifold.
+Warning: vertex 37 is nonmanifold.
+Warning: vertex 38 is nonmanifold.
+Warning: vertex 39 is nonmanifold.
+Warning: vertex 40 is nonmanifold.
+Warning: vertex 41 is nonmanifold.
+Warning: vertex 42 is nonmanifold.
+Warning: vertex 43 is nonmanifold.
+Warning: vertex 44 is nonmanifold.
+Warning: vertex 45 is nonmanifold.
+Warning: vertex 46 is nonmanifold.
+Warning: vertex 542 is nonmanifold.
+Warning: vertex 543 is nonmanifold.
+Warning: vertex 544 is nonmanifold.
+Warning: vertex 545 is nonmanifold.
+Warning: vertex 546 is nonmanifold.
+Warning: vertex 547 is nonmanifold.
+Warning: vertex 548 is nonmanifold.
+Warning: vertex 549 is nonmanifold.
+Warning: vertex 550 is nonmanifold.
+Warning: vertex 551 is nonmanifold.
+Warning: vertex 552 is nonmanifold.
+Warning: vertex 553 is nonmanifold.
+Warning: vertex 554 is nonmanifold.
+Warning: vertex 555 is nonmanifold.
+Warning: vertex 556 is nonmanifold.
+Warning: vertex 557 is nonmanifold.
+Warning: vertex 558 is nonmanifold.
+Warning: vertex 559 is nonmanifold.
+Warning: vertex 560 is nonmanifold.
+Warning: vertex 561 is nonmanifold.
+Warning: vertex 562 is nonmanifold.
+Warning: vertex 563 is nonmanifold.
+Warning: vertex 564 is nonmanifold.
+Warning: vertex 565 is nonmanifold.
+Warning: vertex 566 is nonmanifold.
+Warning: vertex 567 is nonmanifold.
+Warning: vertex 568 is nonmanifold.
+Warning: vertex 569 is nonmanifold.
+Warning: vertex 570 is nonmanifold.
+Warning: vertex 571 is nonmanifold.
+Warning: vertex 572 is nonmanifold.
+Warning: vertex 573 is nonmanifold.
+Warning: vertex 574 is nonmanifold.
+Warning: vertex 575 is nonmanifold.
+Warning: vertex 576 is nonmanifold.
+Warning: vertex 577 is nonmanifold.
+Warning: vertex 578 is nonmanifold.
+Warning: vertex 579 is nonmanifold.
+Warning: vertex 580 is nonmanifold.
+Warning: vertex 581 is nonmanifold.
+Warning: vertex 582 is nonmanifold.
+Warning: vertex 583 is nonmanifold.
+Warning: vertex 584 is nonmanifold.
+Warning: vertex 585 is nonmanifold.
+Warning: vertex 586 is nonmanifold.
+Warning: vertex 587 is nonmanifold.
+
+---
+hencky_F20000.obj                        exit=2 time=0.4s
+MosekSolver: primal infeasible (prosta=4).
+Vertices: 10068  Faces: 20001
+Unable to compute angles
+CirclePatterns (Mosek + Newton) done in 63.6955 ms
+QC error: 1e+06
+Parameterization likely failed (QC error sentinel).
+
+---
+max_F3599.obj                            exit=2 time=0.1s
+MosekSolver: primal infeasible (prosta=4).
+Vertices: 1867  Faces: 3600
+Unable to compute angles
+CirclePatterns (Mosek + Newton) done in 24.4821 ms
+QC error: 1e+06
+Parameterization likely failed (QC error sentinel).
+
+---
+max-planck_F99990.obj                    exit=2 time=1.7s
+MosekSolver: primal infeasible (prosta=4).
+Vertices: 50077  Faces: 99992
+Unable to compute angles
+CirclePatterns (Mosek + Newton) done in 271.172 ms
+QC error: 1e+06
+Parameterization likely failed (QC error sentinel).
+
+---
+spot_cowhead_F9024.obj                   exit=2 time=0.3s
+MosekSolver: primal infeasible (prosta=4).
+Vertices: 4537  Faces: 9025
+Unable to compute angles
+CirclePatterns (Mosek + Newton) done in 74.7307 ms
+QC error: 1e+06
+Parameterization likely failed (QC error sentinel).
+
+---
+Done: 0 succeeded, 11 failed (of 11)
