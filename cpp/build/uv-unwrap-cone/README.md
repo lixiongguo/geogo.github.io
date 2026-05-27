@@ -3,14 +3,14 @@
 ## Web 演示（推荐）
 
 页面：`uv_unwrap_cone_global.html`  
-算法：Circle Pattern（WASM，无需 Mosek）、CETM、Ricci 流
+算法：Circle Pattern（WASM，无需 Mosek）、CETM、Ricci 流、Incremental Flattening
 
 ```powershell
 cd cpp\build\uv-unwrap-cone
 .\build_wasm_uv_unwrap_cone.ps1
 ```
 
-输出：`assets/wasm/unified_solver.js` + `unified_solver.wasm`
+输出：`assets/wasm/unwrap_cone_solver.js` + `unwrap_cone_solver.wasm`
 
 本地预览（项目根目录）：
 

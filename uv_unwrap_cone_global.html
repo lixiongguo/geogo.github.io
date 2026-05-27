@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
 
-  <script src="assets/wasm/unified_solver.js"></script>
+  <script src="assets/wasm/unwrap_cone_solver.js"></script>
 <style>
   *{box-sizing:border-box}html,body{margin:0;height:100%}
   body{overflow:hidden;background:#070b14;color:#d8def7;font-family:"Segoe UI",Arial,sans-serif}
@@ -69,6 +69,7 @@
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cp" checked> Circle Pattern</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="cetm"> CETM</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="ricci"> Ricci 流</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="incremental"> Incremental</label>
         </div>
       </fieldset>
 
@@ -407,7 +408,7 @@
   // ============ 棋盘格 / 共形扭曲显示 ============
   async function initTextureAtlasSolver(){
     if(taReady)return true;if(taFailed)return false;
-    try{if(typeof UnifiedSolver!=='function')throw new Error('UnifiedSolver 未加载');taInst=await UnifiedSolver();taReady=true;return true}
+    try{if(typeof UnwrapConeSolver!=='function')throw new Error('UnwrapConeSolver 未加载');taInst=await UnwrapConeSolver();taReady=true;return true}
     catch(e){taFailed=true;console.error(e);return false}
   }
 
@@ -917,8 +918,8 @@
     if(unifiedReady)return true;
     if(unifiedFailed)return false;
     try{
-      if(typeof UnifiedSolver==='undefined')throw new Error('UnifiedSolver 未定义');
-      if(!unifiedPromise)unifiedPromise=UnifiedSolver();
+      if(typeof UnwrapConeSolver==='undefined')throw new Error('UnwrapConeSolver 未定义');
+      if(!unifiedPromise)unifiedPromise=UnwrapConeSolver();
       unifiedInst=await unifiedPromise;
       unifiedReady=true;
       return true;
@@ -1030,6 +1031,22 @@
     }finally{unifiedInst._free(pp);unifiedInst._free(fpt)}
   }
 
+  async function solveIncremental(meshData){
+    await initUnifiedConeSolver();const v=meshData.positions,f=meshData.faces;
+    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
+    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
+    const pp=wasmWritePosInst(unifiedInst,fp),fpt=wasmWriteFacesInst(unifiedInst,ff);
+    try{
+      const rc=unifiedInst.ccall('solve_incremental_flattening','number',['number','number','number','number','number','number'],[pp,fp.length,fpt,ff.length,80,12]);
+      if(rc!==0)throw new Error("solve_incremental_flattening 错误:"+rc);
+      const us=wasmReadUV(unifiedInst,'get_incremental_uv_result_size','get_incremental_uv_result');
+      unifiedInst.ccall('incremental_dispose','void',[],[]);
+      const t=unifiedInst.ccall('get_incremental_last_time_ms','number',[],[]);
+      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
+      return{uv,timeMs:t,method:'incremental'};
+    }finally{unifiedInst._free(pp);unifiedInst._free(fpt)}
+  }
+
   // ============ 加载 & 展开 ============
   async function loadModel(){
     if(busy)return;setBusy(true);
@@ -1073,7 +1090,7 @@
       clearPickMesh();
       currentPickMesh=buildPickMesh(currentMeshData);
     }
-    const method=getMethod(),mNames={cp:'Circle Pattern',cetm:'CETM',ricci:'Ricci 流'};
+    const method=getMethod(),mNames={cp:'Circle Pattern',cetm:'CETM',ricci:'Ricci 流',incremental:'Incremental'};
     const label=mNames[method]||method,optNames={0:'梯度下降',1:'牛顿法',3:'LBFGS'};
     setBusy(true);setStatus(label+" 求解中...");
     const t0=performance.now();
@@ -1083,6 +1100,7 @@
       if(method==='cp')r=await solveCP(currentMeshData);
       else if(method==='cetm')r=await solveCETM(currentMeshData);
       else if(method==='ricci')r=await solveRicci(currentMeshData);
+      else if(method==='incremental')r=await solveIncremental(currentMeshData);
       const ms=r.timeMs>0?r.timeMs:(performance.now()-t0);
       currentUnwrapUv=r.uv;
       clearDistortionMesh();distortionEnabled=false;

@@ -1,5 +1,5 @@
 /**
- * wasm_unified_solver.cpp — Circle Pattern / CETM / Ricci Flow for uv_unwrap_cone_global.html
+ * wasm_unified_solver.cpp — CP / CETM / Ricci / Incremental for uv_unwrap_cone_global.html
  */
 
 #include <emscripten.h>
@@ -14,6 +14,7 @@
 #include "Mesh.h"
 #include "CirclePatternsWasm.h"
 #include "Cetm.h"
+#include "IncrementalFlatteningWasm.h"
 #include "RicciFlow.h"
 
 struct SolverState {
@@ -25,6 +26,7 @@ struct SolverState {
 static SolverState g_cp;
 static SolverState g_cetm;
 static SolverState g_ricci;
+static SolverState g_incremental;
 
 static bool loadMesh(SolverState& state, const double* positions, int posLen,
                      const int* faces, int faceLen)
@@ -203,6 +205,44 @@ EMSCRIPTEN_KEEPALIVE double get_ricci_last_time_ms() {
 }
 EMSCRIPTEN_KEEPALIVE void ricci_dispose() {
     disposeState(g_ricci);
+}
+
+// ---- Incremental Flattening ----
+
+EMSCRIPTEN_KEEPALIVE
+int solve_incremental_flattening(double* pos, int posLen, int* faces, int faceLen, int maxIters, int maxCones)
+{
+    if (!loadMesh(g_incremental, pos, posLen, faces, faceLen)) return -1;
+
+    auto t0 = std::chrono::high_resolution_clock::now();
+    g_incremental.mesh->delaunayize();
+
+    IncrementalOptions options;
+    if (maxIters > 0) options.maxIters = maxIters;
+    if (maxCones > 0) options.maxCones = maxCones;
+
+    IncrementalState result;
+    if (!runIncrementalFlattening(*g_incremental.mesh, options, result)) {
+        return -2;
+    }
+    g_incremental.uv = std::move(result.uvFlat);
+
+    auto t1 = std::chrono::high_resolution_clock::now();
+    g_incremental.lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
+    return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE double* get_incremental_uv_result() {
+    return g_incremental.uv.empty() ? nullptr : g_incremental.uv.data();
+}
+EMSCRIPTEN_KEEPALIVE int get_incremental_uv_result_size() {
+    return static_cast<int>(g_incremental.uv.size());
+}
+EMSCRIPTEN_KEEPALIVE double get_incremental_last_time_ms() {
+    return g_incremental.lastTimeMs;
+}
+EMSCRIPTEN_KEEPALIVE void incremental_dispose() {
+    disposeState(g_incremental);
 }
 
 } // extern "C"

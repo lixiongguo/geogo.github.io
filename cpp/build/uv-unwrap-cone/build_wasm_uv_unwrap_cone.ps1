@@ -1,4 +1,4 @@
-# Build unified_solver.js/wasm for uv_unwrap_cone_global.html (CP / CETM / Ricci)
+# Build unwrap_cone_solver.js/wasm for uv_unwrap_cone_global.html (CP / CETM / Ricci / Incremental)
 # Usage: .\build_wasm_uv_unwrap_cone.ps1
 
 $ErrorActionPreference = "Stop"
@@ -44,9 +44,10 @@ $exported = @(
     "_malloc","_free",
     "_solve_cp","_get_cp_uv_result","_get_cp_uv_result_size","_get_cp_last_time_ms","_cp_dispose",
     "_solve_cetm","_get_cetm_uv_result","_get_cetm_uv_result_size","_get_cetm_last_time_ms","_cetm_dispose",
-    "_solve_ricci","_get_ricci_uv_result","_get_ricci_uv_result_size","_get_ricci_last_time_ms","_ricci_dispose"
+    "_solve_ricci","_get_ricci_uv_result","_get_ricci_uv_result_size","_get_ricci_last_time_ms","_ricci_dispose",
+    "_solve_incremental_flattening","_get_incremental_uv_result","_get_incremental_uv_result_size","_get_incremental_last_time_ms","_incremental_dispose"
 )
-$efile = Join-Path $tmpDir "unified_solver.efile"
+$efile = Join-Path $tmpDir "unwrap_cone_solver.efile"
 ("[" + (($exported | ForEach-Object { "`"$_`"" }) -join ",") + "]") | Out-File -FilePath $efile -Encoding ascii -NoNewline
 
 $meshSrcs = @(
@@ -58,13 +59,14 @@ $sources = @(
     (Join-Path $PSScriptRoot "wasm_unified_solver.cpp"),
     (Join-Path $coneDir "CirclePatternsWasm.cpp"),
     (Join-Path $coneDir "Cetm.cpp"),
+    (Join-Path $coneDir "IncrementalFlatteningWasm.cpp"),
     (Join-Path $coneDir "RicciFlow.cpp"),
     (Join-Path $srcRoot "Solver.cpp")
 ) + $meshSrcs
 
-$output = Join-Path $outDir "unified_solver.js"
+$output = Join-Path $outDir "unwrap_cone_solver.js"
 
-Write-Host "Building unified_solver (uv_unwrap_cone)..." -ForegroundColor Cyan
+Write-Host "Building unwrap_cone_solver (uv_unwrap_cone)..." -ForegroundColor Cyan
 Write-Host "  Output: $output"
 
 & $emxx.Source `
@@ -73,7 +75,7 @@ Write-Host "  Output: $output"
     "-I$(Join-Path $srcRoot 'Mosek')" `
     "-I$(Join-Path $srcRoot 'uv_unwrap_simple')" `
     -s MODULARIZE=1 `
-    -s EXPORT_NAME="UnifiedSolver" `
+    -s EXPORT_NAME="UnwrapConeSolver" `
     -s ALLOW_MEMORY_GROWTH=1 `
     -s INITIAL_MEMORY=268435456 `
     -s WASM=1 `
@@ -85,12 +87,12 @@ Write-Host "  Output: $output"
     -o $output
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[FAILED] unified_solver build" -ForegroundColor Red
+    Write-Host "[FAILED] unwrap_cone_solver build" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "[DONE] unified_solver" -ForegroundColor Green
-Get-ChildItem -Path $outDir -Filter "unified_solver.*" | ForEach-Object {
+Write-Host "[DONE] unwrap_cone_solver" -ForegroundColor Green
+Get-ChildItem -Path $outDir -Filter "unwrap_cone_solver.*" | ForEach-Object {
     $kb = [math]::Round($_.Length / 1024, 1)
     Write-Host "  $kb KB  $($_.Name)"
 }
