@@ -264,7 +264,18 @@
     <h1>向量场</h1>
     <div class="controls">
       <div class="control-group">
-        <span style="color:#8a9dd4;font-size:12px;letter-spacing:1px">Trivial Connection</span>
+        <label>场来源:</label>
+        <select id="field-source-select">
+          <option value="nrosy">N-RoSy 向量场</option>
+          <option value="principal">主曲率方向</option>
+        </select>
+      </div>
+      <div class="control-group" id="n-rosy-group">
+        <label>N=</label>
+        <select id="n-rosy-select">
+          <option value="1" selected>1 (单向量)</option>
+          <option value="4">4 (4-RoSy)</option>
+        </select>
       </div>
       <div class="control-group">
         <label>模型:</label>
@@ -283,7 +294,7 @@
           <option value="soccerball">Soccer Ball (57.6K)</option>
         </select>
       </div>
-      <div class="control-group">
+      <div class="control-group" id="nrosy-csv-group">
         <button id="btn-load-nrosy">导入N-RoSy CSV</button>
         <button id="btn-auto-load-nrosy">自动加载最近输出</button>
         <button id="btn-clear-imported-nrosy" title="清除导入/自动加载的 CSV，恢复页面实时计算的 N-RoSy 场">恢复实时场</button>
@@ -613,6 +624,8 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
   // State
   let currentModel = 'sphere';
+  let currentFieldSource = 'nrosy';
+  let currentN = 1;
   let arrowMode = 'arrows';
   let density = 1;
   let showWireframe = true;
@@ -631,7 +644,8 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     const el = document.getElementById('field-source-status');
     if (!el) return;
     let text = '场来源: 实时计算';
-    if (kind === 'manual') text = '场来源: 手动导入 CSV';
+    if (kind === 'computed') text = currentFieldSource === 'nrosy' ? '场来源: N-RoSy 向量场' : '场来源: 主曲率方向';
+    else if (kind === 'manual') text = '场来源: 手动导入 CSV';
     else if (kind === 'auto') text = '场来源: 自动加载 CSV';
     else if (kind === 'principal') text = '场来源: 主曲率 (WASM)';
     if (detail) text += ` (${detail})`;
@@ -639,9 +653,9 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   }
 
   function formatNRosyAlgorithm(algo) {
-    if (algo === '4rosy-complex-poly-wasm') return '4-RoSy Complex Poly WASM';
-    if (algo === 'trivial-wasm') return 'Trivial WASM';
-    if (algo === 'trivial-js') return 'Trivial JS';
+    if (algo === '4rosy-complex-poly-wasm') return `${currentN}-RoSy Complex Poly WASM`;
+    if (algo === 'trivial-wasm') return `Trivial ${currentN}-RoSy WASM`;
+    if (algo === 'trivial-js') return `Trivial JS (N=${currentN})`;
     if (algo === 'imported-csv') return 'CSV 导入场';
     return '未知算法';
   }
@@ -655,7 +669,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
       setFieldSourceStatus('computed');
       return;
     }
-    trivialResult = computeNRosyField(currentV, currentF);
+    trivialResult = computeNRosyField(currentV, currentF, currentN);
     setFieldSourceStatus('computed', formatNRosyAlgorithm(trivialResult?.algorithm));
     updateVisualization();
   }
@@ -975,7 +989,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     return { normals: normals, T1: T1, T2: T2, cent: cent, adj: adj, boundaryEdges: boundaryEdges };
   }
 
-  function isNRosySource() { return true; }
+  function isNRosySource() { return currentFieldSource === 'nrosy'; }
 
   function complexMul(a, b) {
     return { re: a.re * b.re - a.im * b.im, im: a.re * b.im + a.im * b.re };
@@ -1097,10 +1111,9 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     return theta;
   }
 
-  function computeNRosyField(V, F) {
+  function computeNRosyField(V, F, N = 4) {
     const numF = F.length / 3;
     if (numF < 1) return null;
-    const N = 4;
 
     const frames = buildFaceFramesAndAdjacency(V, F, numF);
     const { normals, T1, T2, cent, adj } = frames;
@@ -1108,7 +1121,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     // Prefer unified wasm solver (4-RoSy Complex Poly + trivial transport fallback).
     let theta = null;
     let algoKind = 'trivial-js';
-    if (fieldModule && typeof fieldModule._compute_4rosy_field === 'function') {
+    if (N === 4 && fieldModule && typeof fieldModule._compute_4rosy_field === 'function') {
       try {
         const mod = fieldModule;
         const V_rows = V.length / 3;
@@ -1153,37 +1166,9 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     }
 
     if (!theta) {
-      theta = new Float32Array(numF);
-      // Keenan Crane-style trivial connection demo: propagate one seed direction by
-      // discrete parallel transport across face adjacency.
-      const visited = new Uint8Array(numF);
-      for (let seed = 0; seed < numF; seed++) {
-        if (visited[seed]) continue;
-        const queue = [seed];
-        visited[seed] = 1;
-        theta[seed] = 0;
-        let qh = 0;
-        while (qh < queue.length) {
-          const f = queue[qh++];
-          const nfx = normals[f * 3], nfy = normals[f * 3 + 1], nfz = normals[f * 3 + 2];
-          const list = adj[f];
-          for (let k = 0; k < list.length; k++) {
-            const nb = list[k];
-            const g = nb.other;
-            if (visited[g]) continue;
-            const v0 = nb.va, v1 = nb.vb;
-            const ngx = normals[g * 3], ngy = normals[g * 3 + 1], ngz = normals[g * 3 + 2];
-            const tau = parallelTransportAlongSharedEdge(
-              nfx, nfy, nfz, ngx, ngy, ngz,
-              V[v0 * 3], V[v0 * 3 + 1], V[v0 * 3 + 2],
-              V[v1 * 3], V[v1 * 3 + 1], V[v1 * 3 + 2]
-            );
-            theta[g] = theta[f] + tau;
-            visited[g] = 1;
-            queue.push(g);
-          }
-        }
-      }
+      // Use iterative complex polynomial smoothing (works for any N ≥ 1)
+      theta = solvePolyVectorFieldFromRepo(V, F, frames, N);
+      algoKind = 'trivial-js';
     }
 
     return {
@@ -1192,6 +1177,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
       T2: T2,
       normals: normals,
       cent: cent,
+      adj: adj,
       N: N,
       numF: numF,
       algorithm: algoKind
@@ -1205,6 +1191,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
       T2: frames.T2,
       normals: frames.normals,
       cent: frames.cent,
+      adj: frames.adj,
       N: N,
       numF: theta.length,
       algorithm: 'imported-csv'
@@ -1539,81 +1526,84 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
     if (isNRosySource() && trivialResult && trivialResult.numF === numFaces && currentF) {
       const tr = trivialResult;
-      const nv = positions.count;
-      const vx = new Float64Array(nv);
-      const vy = new Float64Array(nv);
-      const vz = new Float64Array(nv);
-      const wc = new Float64Array(nv);
-      for (let fi = 0; fi < numFaces; fi++) {
-        let i0, i1, i2;
-        if (idxAttr) {
-          i0 = idxAttr.getX(fi * 3);
-          i1 = idxAttr.getX(fi * 3 + 1);
-          i2 = idxAttr.getX(fi * 3 + 2);
-        } else {
-          i0 = fi * 3;
-          i1 = fi * 3 + 1;
-          i2 = fi * 3 + 2;
-        }
+      const maxSteps = 100;
+      const maxStreamlines = 300;
+
+      // Helper: get face center as THREE.Vector3
+      function faceCenter(fi) {
+        return new THREE.Vector3(tr.cent[fi * 3], tr.cent[fi * 3 + 1], tr.cent[fi * 3 + 2]);
+      }
+
+      // Helper: get the 3D direction from face fi that best matches a reference direction.
+      function bestDirection(fi, refDir) {
         const ang = tr.theta[fi];
+        const N = tr.N;
+        const stepN = (2 * Math.PI) / N;
         const t1x = tr.T1[fi * 3], t1y = tr.T1[fi * 3 + 1], t1z = tr.T1[fi * 3 + 2];
         const t2x = tr.T2[fi * 3], t2y = tr.T2[fi * 3 + 1], t2z = tr.T2[fi * 3 + 2];
-        const c = Math.cos(ang), s = Math.sin(ang);
-        const dx = c * t1x + s * t2x, dy = c * t1y + s * t2y, dz = c * t1z + s * t2z;
-        for (const iv of [i0, i1, i2]) {
-          vx[iv] += dx;
-          vy[iv] += dy;
-          vz[iv] += dz;
-          wc[iv] += 1;
+        let bestD = null, bestDot = -Infinity;
+        for (let m = 0; m < N; m++) {
+          const a = ang + m * stepN;
+          const c = Math.cos(a), s = Math.sin(a);
+          const d = new THREE.Vector3(c * t1x + s * t2x, c * t1y + s * t2y, c * t1z + s * t2z).normalize();
+          const dot = d.dot(refDir);
+          if (dot > bestDot) { bestDot = dot; bestD = d; }
         }
+        return bestD;
       }
-      for (let i = 0; i < nv; i++) {
-        if (wc[i] > 0) {
-          vx[i] /= wc[i];
-          vy[i] /= wc[i];
-          vz[i] /= wc[i];
-        }
-      }
-      const norms = geometry.attributes.normal;
-      const step = Math.max(1, density);
-      const dt = 0.045;
-      const maxSteps = 40;
-      const stridePick = Math.max(1, Math.floor(nv / 400));
-      for (let i = 0; i < nv; i += step * 4) {
-        if (streamlineGroup.children.length > 52) break;
-        const startPos = new THREE.Vector3(posAttr[i * 3], posAttr[i * 3 + 1], posAttr[i * 3 + 2]);
-        const n0 = new THREE.Vector3(norms.getX(i), norms.getY(i), norms.getZ(i)).normalize();
-        const tang0 = new THREE.Vector3(vx[i], vy[i], vz[i]);
-        tang0.sub(n0.clone().multiplyScalar(n0.dot(tang0)));
-        if (tang0.lengthSq() < 1e-10) continue;
-        tang0.normalize();
-        const pts = [startPos.clone()];
-        let cur = startPos.clone();
-        let tang = tang0.clone();
+
+      // Global: which faces have been covered by any streamline (for uniform seeding)
+      const covered = new Uint8Array(numFaces);
+
+      // Trace through mesh adjacency, following the field direction.
+      // forward=true: follow field;  forward=false: opposite direction.
+      function traceMesh(startFi, forward) {
+        const localVisited = new Uint8Array(numFaces);
+        localVisited[startFi] = 1;
+        const pts = [];
+        let curFi = startFi;
+        const initRef = new THREE.Vector3(forward ? 1 : -1, 0, 0);
+        let baseDir = bestDirection(curFi, initRef);
+        if (!forward) baseDir.negate();
+
         for (let s = 0; s < maxSteps; s++) {
-          cur.addScaledVector(tang, dt);
-          let jn = 0;
-          let bd = Infinity;
-          for (let j = 0; j < nv; j += stridePick) {
-            const dx = posAttr[j * 3] - cur.x, dy = posAttr[j * 3 + 1] - cur.y, dz = posAttr[j * 3 + 2] - cur.z;
-            const d2 = dx * dx + dy * dy + dz * dz;
-            if (d2 < bd) {
-              bd = d2;
-              jn = j;
-            }
+          pts.push(faceCenter(curFi));
+          covered[curFi] = 1;
+          const cx = tr.cent[curFi * 3], cy = tr.cent[curFi * 3 + 1], cz = tr.cent[curFi * 3 + 2];
+
+          // Find neighbor whose center direction aligns best with baseDir
+          let bestNbr = -1, bestDot = -0.2;
+          const neighbors = tr.adj[curFi];
+          for (let k = 0; k < neighbors.length; k++) {
+            const nfi = neighbors[k].other;
+            if (localVisited[nfi]) continue;
+            const nx = tr.cent[nfi * 3] - cx, ny = tr.cent[nfi * 3 + 1] - cy, nz = tr.cent[nfi * 3 + 2] - cz;
+            const nl = Math.sqrt(nx * nx + ny * ny + nz * nz);
+            if (nl < 1e-10) continue;
+            const dot = (nx * baseDir.x + ny * baseDir.y + nz * baseDir.z) / nl;
+            if (dot > bestDot) { bestDot = dot; bestNbr = nfi; }
           }
-          const nn = new THREE.Vector3(norms.getX(jn), norms.getY(jn), norms.getZ(jn)).normalize();
-          tang.set(vx[jn], vy[jn], vz[jn]);
-          tang.sub(nn.clone().multiplyScalar(nn.dot(tang)));
-          if (tang.lengthSq() < 1e-12) break;
-          tang.normalize();
-          pts.push(cur.clone());
-          if (cur.length() > 6) break;
+          if (bestNbr < 0) break;
+
+          curFi = bestNbr;
+          localVisited[curFi] = 1;
+          baseDir = bestDirection(curFi, baseDir);
         }
-        if (pts.length > 7) {
-          const curve = new THREE.CatmullRomCurve3(pts);
+        return pts;
+      }
+
+      // Seed sequentially from uncovered faces for uniform distribution
+      for (let fi = 0; fi < numFaces; fi++) {
+        if (covered[fi]) continue;
+        if (streamlineGroup.children.length > maxStreamlines) break;
+        const ptsFwd = traceMesh(fi, true);
+        const ptsBwd = traceMesh(fi, false);
+        // Combine: backward (reversed) + forward
+        const allPts = ptsBwd.reverse().concat(ptsFwd.slice(1));
+        if (allPts.length > 4) {
+          const curve = new THREE.CatmullRomCurve3(allPts);
           streamlineGroup.add(new THREE.Mesh(
-            new THREE.TubeGeometry(curve, 18, 0.004, 4, false),
+            new THREE.TubeGeometry(curve, Math.min(allPts.length * 2, 40), 0.004, 4, false),
             new THREE.MeshBasicMaterial({ color: 0xff6b9d, transparent: true, opacity: 0.52 })
           ));
         }
@@ -1777,6 +1767,14 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     mesh = new THREE.Mesh(geometry, material);
     meshGroup.add(mesh);
 
+    // Compute bounding sphere after centering & scaling; frame camera
+    geometry.computeBoundingSphere();
+    const sphereCenter = geometry.boundingSphere.center;
+    const sphereRadius = geometry.boundingSphere.radius || 1;
+    const camDist = sphereRadius * 3.0;
+    camera.position.set(sphereCenter.x + camDist * 0.6, sphereCenter.y + camDist * 0.5, sphereCenter.z + camDist);
+    controls.target.copy(sphereCenter);
+
     // Update stats
     vertCount = geometry.attributes.position.count;
     faceCount = geometry.index ? geometry.index.count / 3 : vertCount / 3;
@@ -1818,7 +1816,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
           : formatNRosyAlgorithm(trivialResult.algorithm);
         setFieldSourceStatus(srcKind, detail);
       } else {
-        trivialResult = computeNRosyField(currentV, currentF);
+        trivialResult = computeNRosyField(currentV, currentF, currentN);
         setFieldSourceStatus('computed', formatNRosyAlgorithm(trivialResult?.algorithm));
       }
       document.getElementById('curvature').textContent = '—';
@@ -1827,6 +1825,9 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
       computeCurvatureWASM(currentV, currentF, vertCount, faceCount);
       setFieldSourceStatus('principal');
     }
+
+    // Reset camera target to model center (already set during mesh setup)
+    controls.update();
 
     // Generate visualization based on mode
     updateVisualization();
@@ -1910,11 +1911,53 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     if (!window._hodgeActive) updateSingularities();
   };
 
+  // Sync UI visibility based on field source
+  function syncFieldSourceUI() {
+    const nrosyOn = (currentFieldSource === 'nrosy');
+    const nGroup = document.getElementById('n-rosy-group');
+    const csvGroup = document.getElementById('nrosy-csv-group');
+    if (nGroup) nGroup.style.display = nrosyOn ? 'flex' : 'none';
+    if (csvGroup) csvGroup.style.display = nrosyOn ? 'flex' : 'none';
+  }
+
   // Event listeners
+  document.getElementById('field-source-select').addEventListener('change', async (e) => {
+    currentFieldSource = e.target.value;
+    syncFieldSourceUI();
+    if (!currentV || !currentF) return;
+    importedNRosyTheta = null;
+    importedNRosySourceType = null;
+    if (currentFieldSource === 'nrosy') {
+      await initFieldModule();
+      trivialResult = computeNRosyField(currentV, currentF, currentN);
+      pcResult = null;
+      setFieldSourceStatus('computed', formatNRosyAlgorithm(trivialResult?.algorithm));
+    } else {
+      await initPCModule();
+      const vertCount = currentV.length / 3;
+      const faceCount = currentF.length / 3;
+      computeCurvatureWASM(currentV, currentF, vertCount, faceCount);
+      trivialResult = null;
+      setFieldSourceStatus('principal');
+    }
+    updateVisualization();
+  });
+
   document.getElementById('model-select').addEventListener('change', (e) => {
     currentModel = e.target.value;
     loader.classList.remove('hidden');
     createModel(currentModel);
+  });
+
+  document.getElementById('n-rosy-select').addEventListener('change', (e) => {
+    currentN = parseInt(e.target.value);
+    if (currentV && currentF && isNRosySource()) {
+      importedNRosyTheta = null;
+      importedNRosySourceType = null;
+      trivialResult = computeNRosyField(currentV, currentF, currentN);
+      setFieldSourceStatus('computed', formatNRosyAlgorithm(trivialResult?.algorithm));
+      updateVisualization();
+    }
   });
 
   document.getElementById('btn-arrows').addEventListener('click', (e) => {
@@ -2010,6 +2053,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   }
 
   // Initialize
+  syncFieldSourceUI();
   createModel('sphere');
   animate();
 })();
