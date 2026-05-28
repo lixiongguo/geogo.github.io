@@ -16,6 +16,11 @@
 #include "Lscm.h"
 #include "Tutte.h"
 #include "Scp.h"
+#include "LinAbf.h"
+#include "AbfPlusPlus.h"
+#include "CirclePatterns.h"
+#include "Cetm.h"
+#include "RicciFlow.h"
 #include "QcError.h"
 
 static Mesh* g_mesh = nullptr;
@@ -128,6 +133,87 @@ int solve_scp(double* pos, int posLen, int* faces, int faceLen) {
     auto t0 = std::chrono::high_resolution_clock::now();
     g_mesh->delaunayize();
     Scp p(*g_mesh);
+    p.parameterize();
+    auto t1 = std::chrono::high_resolution_clock::now();
+    g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
+    extractUV();
+    return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int solve_linabf(double* pos, int posLen, int* faces, int faceLen) {
+    if (!loadMesh(pos, posLen, faces, faceLen)) return -1;
+    auto t0 = std::chrono::high_resolution_clock::now();
+    g_mesh->delaunayize();
+    LinAbf p(*g_mesh);
+    p.parameterize();
+    auto t1 = std::chrono::high_resolution_clock::now();
+    g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
+    extractUV();
+    return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int solve_abfpp(double* pos, int posLen, int* faces, int faceLen) {
+    if (!loadMesh(pos, posLen, faces, faceLen)) return -1;
+    auto t0 = std::chrono::high_resolution_clock::now();
+    g_mesh->delaunayize();
+    AbfPlusPlus p(*g_mesh);
+    p.parameterize();
+    auto t1 = std::chrono::high_resolution_clock::now();
+    g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
+    extractUV();
+    return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int solve_cp(double* pos, int posLen, int* faces, int faceLen, int optScheme) {
+    if (!loadMesh(pos, posLen, faces, faceLen)) return -1;
+    auto t0 = std::chrono::high_resolution_clock::now();
+    g_mesh->delaunayize();
+    CirclePatterns p(*g_mesh, optScheme);
+    p.parameterize();
+    // On WASM builds CirclePatterns may run without MOSEK backend.
+    // Fall back to CETM if UV collapsed after parameterization.
+    double minU = std::numeric_limits<double>::infinity();
+    double maxU = -std::numeric_limits<double>::infinity();
+    double minV = std::numeric_limits<double>::infinity();
+    double maxV = -std::numeric_limits<double>::infinity();
+    for (const auto& v : g_mesh->vertices) {
+        minU = std::min(minU, v.uv.x());
+        maxU = std::max(maxU, v.uv.x());
+        minV = std::min(minV, v.uv.y());
+        maxV = std::max(maxV, v.uv.y());
+    }
+    if ((maxU - minU) < 1e-12 && (maxV - minV) < 1e-12) {
+        Cetm fallback(*g_mesh, optScheme);
+        fallback.parameterize();
+    }
+    auto t1 = std::chrono::high_resolution_clock::now();
+    g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
+    extractUV();
+    return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int solve_cetm(double* pos, int posLen, int* faces, int faceLen, int optScheme) {
+    if (!loadMesh(pos, posLen, faces, faceLen)) return -1;
+    auto t0 = std::chrono::high_resolution_clock::now();
+    g_mesh->delaunayize();
+    Cetm p(*g_mesh, optScheme);
+    p.parameterize();
+    auto t1 = std::chrono::high_resolution_clock::now();
+    g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
+    extractUV();
+    return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int solve_ricci(double* pos, int posLen, int* faces, int faceLen, int optScheme) {
+    if (!loadMesh(pos, posLen, faces, faceLen)) return -1;
+    auto t0 = std::chrono::high_resolution_clock::now();
+    g_mesh->delaunayize();
+    RicciFlow p(*g_mesh, optScheme);
     p.parameterize();
     auto t1 = std::chrono::high_resolution_clock::now();
     g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();

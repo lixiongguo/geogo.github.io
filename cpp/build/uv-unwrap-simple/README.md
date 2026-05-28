@@ -4,7 +4,7 @@
 
 - `assets/wasm/uv_unwrap_simple.js` / `assets/wasm/uv_unwrap_simple.wasm`
 
-包含算法：**LSCM**、**Tutte**（圆/方边界）、**SCP**，以及 **QC 扭曲** 可视化所需的 `compute_qc_error`。
+包含算法：**LSCM**、**Tutte**（圆/方边界）、**SCP**、**linABF**、**ABF++**、**CirclePattern**、**CETM**、**Ricci**，以及 **QC 扭曲** 可视化所需的 `compute_qc_error`。
 
 WASM 入口目录：`cpp/build/uv-unwrap-simple/`
 

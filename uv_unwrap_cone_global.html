@@ -125,15 +125,30 @@
 (function(){
   // ============ Models2 ============
   const MODELS = {
-    cow: { label: "Cow (5.8K)", file: "cow_F5804.obj" },
-    doubletorus: { label: "Double Torus (6.1K)", file: "double-torus_F6144.obj" },
-    holes3: { label: "3 Holes (7.2K)", file: "3holes_F7200.obj" },
-    torus: { label: "Torus (7.7K)", file: "torus_F7680.obj" },
-    fandisk: { label: "Fandisk (12.9K)", file: "fandisk_F12946.obj" },
-    kitten: { label: "Kitten (18.9K)", file: "kitten_F18894.obj" },
-    rocker: { label: "Rocker Arm (20.1K)", file: "rocker-arm_F20088.obj" },
-    bunny: { label: "Bunny (28.6K)", file: "bunny_F28576.obj" },
-    soccerball: { label: "Soccer Ball (57.6K)", file: "soccerball_F57600.obj" },
+    // assets/Models2
+    cow: { label: "Cow (5.8K)", file: "cow_F5804.obj", preferredDir: "Models2" },
+    doubletorus: { label: "Double Torus (6.1K)", file: "double-torus_F6144.obj", preferredDir: "Models2" },
+    holes3: { label: "3 Holes (7.2K)", file: "3holes_F7200.obj", preferredDir: "Models2" },
+    torus: { label: "Torus (7.7K)", file: "torus_F7680.obj", preferredDir: "Models2" },
+    fandisk: { label: "Fandisk (12.9K)", file: "fandisk_F12946.obj", preferredDir: "Models2" },
+    kitten: { label: "Kitten (18.9K)", file: "kitten_F18894.obj", preferredDir: "Models2" },
+    rocker: { label: "Rocker Arm (20.1K)", file: "rocker-arm_F20088.obj", preferredDir: "Models2" },
+    bunny: { label: "Bunny (28.6K)", file: "bunny_F28576.obj", preferredDir: "Models2" },
+    soccerball: { label: "Soccer Ball (57.6K)", file: "soccerball_F57600.obj", preferredDir: "Models2" },
+    elephant: { label: "Elephant", file: "elephant.obj", preferredDir: "Models2" },
+
+    // assets/Models
+    cathead: { label: "Cat Head (248)", file: "cathead_F248.obj", preferredDir: "Models" },
+    beetle: { label: "Beetle (2.1K)", file: "beetle_F2052.obj", preferredDir: "Models" },
+    bunnyhead: { label: "Bunny Head (3K)", file: "bunnyhead_F3000.obj", preferredDir: "Models" },
+    max: { label: "Max (3.6K)", file: "max_F3599.obj", preferredDir: "Models" },
+    hand: { label: "Hand (3.8K)", file: "hand_F3769.obj", preferredDir: "Models" },
+    hand1i: { label: "Hand 1i (5K)", file: "hand_1_i_F4999.obj", preferredDir: "Models" },
+    spotcowhead: { label: "Spot Cow Head (9K)", file: "spot_cowhead_F9024.obj", preferredDir: "Models" },
+    hencky: { label: "Hencky (20K)", file: "hencky_F20000.obj", preferredDir: "Models" },
+    camelhead: { label: "Camel Head (22.7K)", file: "camelhead_F22704.obj", preferredDir: "Models" },
+    maxplanck: { label: "Max Planck (100K)", file: "max-planck_F99990.obj", preferredDir: "Models" },
+    hemisphere: { label: "Hemisphere", file: "hemisphere.obj", preferredDir: "Models" }
   };
 
   // ============ Three.js 初始化 ============
@@ -1053,7 +1068,15 @@
     const key=modelSel.value,m=MODELS[key];
     setStatus("加载 "+m.label+" ...");
     try{
-      const urls=["assets/Models2/"+m.file,"./assets/Models2/"+m.file,"../assets/Models2/"+m.file];
+      const dirs = m.preferredDir === "Models"
+        ? ["Models", "Models2"]
+        : ["Models2", "Models"];
+      const urls = [];
+      for (const dir of dirs) {
+        urls.push("assets/" + dir + "/" + m.file);
+        urls.push("./assets/" + dir + "/" + m.file);
+        urls.push("../assets/" + dir + "/" + m.file);
+      }
       let root=null,rawText=null;
       for(const u of urls){try{root=await loadOBJ(u);rawText=await fetchObjText(u);break}catch(e){}}
       if(!root)throw new Error("模型加载失败");
