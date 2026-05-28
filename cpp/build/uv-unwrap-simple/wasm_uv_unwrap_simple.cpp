@@ -22,10 +22,12 @@
 #include "Cetm.h"
 #include "RicciFlow.h"
 #include "ARAP.h"
+#include "HolomorphicOneForm.h"
 #include "QcError.h"
 
 static Mesh* g_mesh = nullptr;
 static double g_lastTimeMs = 0.0;
+static int g_cpFallbackToCetm = 0;
 static std::vector<double> g_uv_result;
 static std::vector<double> g_qc_errors;
 static std::vector<double> g_qc_colors;
@@ -183,6 +185,7 @@ int solve_arap(double* pos, int posLen, int* faces, int faceLen, int maxIter) {
 EMSCRIPTEN_KEEPALIVE
 int solve_cp(double* pos, int posLen, int* faces, int faceLen, int optScheme) {
     if (!loadMesh(pos, posLen, faces, faceLen)) return -1;
+    g_cpFallbackToCetm = 0;
     auto t0 = std::chrono::high_resolution_clock::now();
     g_mesh->delaunayize();
     CirclePatterns p(*g_mesh, optScheme);
@@ -200,6 +203,7 @@ int solve_cp(double* pos, int posLen, int* faces, int faceLen, int optScheme) {
         maxV = std::max(maxV, v.uv.y());
     }
     if ((maxU - minU) < 1e-12 && (maxV - minV) < 1e-12) {
+        g_cpFallbackToCetm = 1;
         Cetm fallback(*g_mesh, optScheme);
         fallback.parameterize();
     }
@@ -235,6 +239,19 @@ int solve_ricci(double* pos, int posLen, int* faces, int faceLen, int optScheme)
     return 0;
 }
 
+EMSCRIPTEN_KEEPALIVE
+int solve_hof(double* pos, int posLen, int* faces, int faceLen) {
+    if (!loadMesh(pos, posLen, faces, faceLen)) return -1;
+    auto t0 = std::chrono::high_resolution_clock::now();
+    g_mesh->delaunayize();
+    HolomorphicOneForm p(*g_mesh);
+    p.parameterize();
+    auto t1 = std::chrono::high_resolution_clock::now();
+    g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
+    extractUV();
+    return 0;
+}
+
 EMSCRIPTEN_KEEPALIVE double* get_uv_result() {
     return g_uv_result.empty() ? nullptr : g_uv_result.data();
 }
@@ -245,6 +262,10 @@ EMSCRIPTEN_KEEPALIVE int get_uv_result_size() {
 
 EMSCRIPTEN_KEEPALIVE double get_last_time_ms() {
     return g_lastTimeMs;
+}
+
+EMSCRIPTEN_KEEPALIVE int get_cp_fallback_to_cetm() {
+    return g_cpFallbackToCetm;
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -308,6 +329,7 @@ EMSCRIPTEN_KEEPALIVE int get_qc_colors_size() {
 
 EMSCRIPTEN_KEEPALIVE void dispose() {
     if (g_mesh) { delete g_mesh; g_mesh = nullptr; }
+    g_cpFallbackToCetm = 0;
     g_uv_result.clear();
     g_uv_result.shrink_to_fit();
     g_qc_errors.clear();

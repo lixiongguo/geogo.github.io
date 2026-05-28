@@ -112,6 +112,8 @@ $uvSimpleSources = @(
     (Join-Path $srcRoot "uv_unwrap_simple\RicciFlow.cpp"),
     (Join-Path $srcRoot "uv_unwrap_simple\LinAbf.cpp"),
     (Join-Path $srcRoot "uv_unwrap_simple\AbfPlusPlus.cpp"),
+    (Join-Path $srcRoot "uv_unwrap_simple\ARAP.cpp"),
+    (Join-Path $srcRoot "uv_unwrap_simple\HolomorphicOneForm.cpp"),
     (Join-Path $srcRoot "QcError.cpp")
 ) + $meshSrcs
 
@@ -128,9 +130,9 @@ if ($buildAll -or $targetSet.ContainsKey("uv_unwrap_simple") -or $targetSet.Cont
         @(
             "_malloc","_free",
             "_solve_lscm","_solve_tutte_circle","_solve_tutte_square","_solve_scp",
-            "_solve_linabf","_solve_abfpp",
-            "_solve_cp","_solve_cetm","_solve_ricci",
-            "_get_uv_result","_get_uv_result_size","_get_last_time_ms","_dispose",
+            "_solve_linabf","_solve_abfpp","_solve_arap",
+            "_solve_cp","_solve_cetm","_solve_ricci","_solve_hof",
+            "_get_uv_result","_get_uv_result_size","_get_last_time_ms","_get_cp_fallback_to_cetm","_dispose",
             "_load_mesh_with_uv","_compute_qc_error",
             "_get_qc_errors","_get_qc_errors_size","_get_qc_colors","_get_qc_colors_size"
         ) `

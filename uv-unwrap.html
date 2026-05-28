@@ -290,6 +290,7 @@
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Circle Pattern (cone singularities)"><input type="radio" name="method" value="cp"> Circle Pattern</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="CETM (cone singularities)"><input type="radio" name="method" value="cetm"> CETM</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Ricci flow (cone singularities)"><input type="radio" name="method" value="ricci"> Ricci 流</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Holomorphic 1-form global conformal (Gu &amp; Yau)"><input type="radio" name="method" value="hof"> 全纯1-形式</label>
           </div>
         </fieldset>
 
@@ -937,7 +938,7 @@
           }
           simpleInstance = await UvUnwrapSimpleSolver();
           wasmReady = true;
-          console.log('WASM uv_unwrap_simple (LSCM/Tutte/SCP/ABF/ARAP/CP/CETM/Ricci) 加载成功');
+          console.log('WASM uv_unwrap_simple (LSCM/Tutte/SCP/ABF/ARAP/HOF/CP/CETM/Ricci) 加载成功');
           return true;
         } catch (err) {
           console.error('uv_unwrap_simple WASM 加载失败:', err);
@@ -1785,6 +1786,7 @@
       async function solveCirclePatternAsync(meshData, onProgress) {
         const result = await solveSimpleWasmMethod(meshData, "solve_cp", "cp", onProgress, getOptScheme());
         result.cones = coneVertices.length;
+        result.cpFallbackToCetm = simpleInstance.ccall("get_cp_fallback_to_cetm", "number", [], []) !== 0;
         return result;
       }
 
@@ -1798,6 +1800,10 @@
         const result = await solveSimpleWasmMethod(meshData, "solve_ricci", "ricci", onProgress, getOptScheme());
         result.cones = coneVertices.length;
         return result;
+      }
+
+      async function solveHOFAsync(meshData, onProgress) {
+        return solveSimpleWasmMethod(meshData, "solve_hof", "hof", onProgress);
       }
 
       function buildModelGroup(root, anchors, positions, showPins) {
@@ -2600,6 +2606,7 @@
         else if (method === 'cp') methodLabel = 'Circle Pattern';
         else if (method === 'cetm') methodLabel = 'CETM';
         else if (method === 'ricci') methodLabel = 'Ricci 流';
+        else if (method === 'hof') methodLabel = '全纯1-形式';
         else methodLabel = 'LSCM';
 
         setBusy(true);
@@ -2649,6 +2656,10 @@
             unwrapResult = await solveRicciAsync(currentMeshData, function(p, t) {
               updateTimingProgress(p, t);
             });
+          } else if (method === 'hof') {
+            unwrapResult = await solveHOFAsync(currentMeshData, function(p, t) {
+              updateTimingProgress(p, t);
+            });
           } else {
             unwrapResult = await solveLSCMAsync(currentMeshData, function(progress, total) {
               updateTimingProgress(progress, total);
@@ -2673,7 +2684,7 @@
           }
 
           // 更新 UV 面板标签
-          const methodNames = { lscm:'LSCM', tutte:'Tutte', scp:'SCP', linabf:'ABF', abfpp:'ABF', abf:'ABF', arap:'ARAP', cp:'Circle Pattern', cetm:'CETM', ricci:'Ricci 流' };
+          const methodNames = { lscm:'LSCM', tutte:'Tutte', scp:'SCP', linabf:'ABF', abfpp:'ABF', abf:'ABF', arap:'ARAP', hof:'全纯1-形式', cp:'Circle Pattern', cetm:'CETM', ricci:'Ricci 流' };
           document.getElementById('uv-panel-label').textContent =
             (methodNames[unwrapResult.method] || unwrapResult.method) + ' UV 网格';
 
@@ -2697,11 +2708,13 @@
           if (unwrapResult.boundary) details += " / " + unwrapResult.boundary;
           if (unwrapResult.weight) details += " / " + unwrapResult.weight;
           if (typeof unwrapResult.cones === 'number') details += " / 锥奇异点 " + unwrapResult.cones + " 个";
+          if (unwrapResult.cpFallbackToCetm) details += " / CP失败，已回退CETM";
           showTiming(elapsedMs, details, unwrapResult.flippedFaceCount);
 
           const color = unwrapResult.flippedFaceCount === 0 ? "#89f0b6" : "#ffd38a";
           setStatus(
-            methodLabel + " 展开完成，翻转面 " + unwrapResult.flippedFaceCount + " 个",
+            methodLabel + " 展开完成，翻转面 " + unwrapResult.flippedFaceCount + " 个" +
+              (unwrapResult.cpFallbackToCetm ? "（CP已回退CETM）" : ""),
             color
           );
         } catch (error) {
