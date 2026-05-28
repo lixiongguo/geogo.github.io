@@ -9,6 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
   
   <script src="assets/wasm/uv_unwrap_simple.js"></script>
+  <script src="assets/wasm/dgp_basic.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
@@ -161,6 +162,58 @@
       flex: 1;
       min-height: 0;
     }
+    .colorbar {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      width: 128px;
+      padding: 10px 10px 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(120,220,170,0.22);
+      background: rgba(9, 16, 29, 0.72);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    .colorbar.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .colorbar-title {
+      font-size: 11px;
+      color: #bff4de;
+      margin-bottom: 6px;
+      letter-spacing: .3px;
+    }
+    .colorbar-row {
+      display: grid;
+      grid-template-columns: 1fr 38px;
+      gap: 8px;
+      align-items: center;
+    }
+    .colorbar-bar {
+      height: 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(90deg, #2b65ff 0%, #ffffff 50%, #ff2b2b 100%);
+    }
+    .colorbar-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+      font-size: 10px;
+      color: rgba(198, 209, 244, 0.82);
+    }
+    .colorbar-axis {
+      font-size: 10px;
+      color: rgba(198, 209, 244, 0.82);
+      text-align: right;
+      line-height: 1.15;
+      white-space: nowrap;
+    }
     canvas {
       display: block;
       width: 100%;
@@ -280,7 +333,7 @@
       <div class="toolbar-right">
         <select id="model-select" title="Models" style="width:180px;font-size:15px;padding:10px 14px;"></select>
         <fieldset id="method-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:8px 12px;margin:0;">
-          <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开算法</legend>
+          <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开计算</legend>
           <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte" checked> Tutte</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="lscm"> LSCM</label>
@@ -342,6 +395,32 @@
             </span>
           </div>
         </fieldset>
+        <fieldset id="other-calc-panel" style="border:1px solid rgba(120,220,170,0.35);border-radius:10px;padding:8px 12px;margin:0;background:rgba(10,22,20,0.6);">
+          <legend style="color:#78dcaA;font-size:11px;padding:0 6px;">其他计算</legend>
+          <div style="display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;">
+            <button id="btn-gc" type="button" style="padding:6px 10px;background:#0f2a23;border:1px solid rgba(120,220,170,0.35);color:#bff4de;font-size:12px;border-radius:8px;cursor:pointer;">Gauss 曲率</button>
+            <button id="btn-pc" type="button" style="padding:6px 10px;background:#24103a;border:1px solid rgba(200,120,220,0.35);color:#f0c8ff;font-size:12px;border-radius:8px;cursor:pointer;">主曲率场</button>
+            <span style="font-size:11px;color:#c6d1f4;opacity:.9;">
+              显示:
+              <select id="pc-vis-mode" style="width:86px;padding:3px 5px;border-radius:6px;font-size:11px;border:1px solid rgba(200,120,220,0.35);background:#0d1528;color:#eef2ff;margin-left:4px;">
+                <option value="segments" selected>线段</option>
+                <option value="streamlines">流线</option>
+              </select>
+            </span>
+            <span style="font-size:11px;color:#c6d1f4;opacity:.9;">
+              流线数:
+              <input type="range" id="pc-seeds" min="50" max="2000" value="500" style="width:90px;vertical-align:middle;margin:0 4px;">
+              <span id="pc-seeds-val" style="min-width:34px;display:inline-block;">500</span>
+            </span>
+            <span style="font-size:11px;color:#c6d1f4;opacity:.9;">
+              脐点阈值:
+              <input type="range" id="umbilic-thr" min="1" max="100" value="8" style="width:90px;vertical-align:middle;margin:0 4px;">
+              <span id="umbilic-thr-val" style="min-width:26px;display:inline-block;">0.08</span>
+            </span>
+            <button id="btn-clear-other" type="button" style="padding:6px 10px;background:#121a2b;border:1px solid rgba(106,132,255,0.22);color:#c6d1f4;font-size:12px;border-radius:8px;cursor:pointer;">清除显示</button>
+            <span id="other-calc-info" style="font-size:11px;color:#86a6a0;white-space:nowrap;"></span>
+          </div>
+        </fieldset>
         <button id="reload-btn"><span class="btn-text">展开</span><span class="btn-excl">!</span></button>
         <button id="clear-btn">清除</button>
         <fieldset id="texture-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:6px 10px;margin:0;display:flex;gap:12px;align-items:center;">
@@ -368,6 +447,20 @@
         </div>
         <div class="canvas-wrap">
           <canvas id="model-canvas"></canvas>
+          <div class="colorbar" id="gc-colorbar" aria-hidden="true">
+            <div class="colorbar-title">Gauss 曲率（per area）</div>
+            <div class="colorbar-row">
+              <div>
+                <div class="colorbar-bar"></div>
+                <div class="colorbar-labels">
+                  <span id="gc-cb-min">-</span>
+                  <span id="gc-cb-mid">0</span>
+                  <span id="gc-cb-max">-</span>
+                </div>
+              </div>
+              <div class="colorbar-axis" id="gc-cb-axis">±</div>
+            </div>
+          </div>
         </div>
         <div class="footer-note">左侧显示原始三角网格与自动选择的约束点。</div>
       </section>
@@ -389,16 +482,20 @@
     (function () {
       // Indexed from assets/Models/*.obj
       const MODELS1 = {
+        holes3: { label: "3 Holes (7.2K)", file: "3holes_F7200.obj" },
         beetle: { label: "Beetle (2.1K)", file: "beetle_F2052.obj" },
         bunnyhead: { label: "Bunny Head (3K)", file: "bunnyhead_F3000.obj" },
         camelhead: { label: "Camel Head (22.7K)", file: "camelhead_F22704.obj" },
         cathead: { label: "Cat Head (248)", file: "cathead_F248.obj" },
+        doubletorus: { label: "Double Torus (6.1K)", file: "double-torus_F6144.obj" },
+        elephant: { label: "Elephant", file: "elephant.obj" },
         hand: { label: "Hand (3.8K)", file: "hand_F3769.obj" },
         hand1i: { label: "Hand 1i (5K)", file: "hand_1_i_F4999.obj" },
         hencky: { label: "Hencky (20K)", file: "hencky_F20000.obj" },
+        kitten: { label: "Kitten (18.9K)", file: "kitten_F18894.obj" },
         max: { label: "Max (3.6K)", file: "max_F3599.obj" },
-        maxplanck: { label: "Max Planck (100K)", file: "max-planck_F99990.obj" },
-        spot_cowhead: { label: "Spot Cow Head (9K)", file: "spot_cowhead_F9024.obj" }
+        spot_cowhead: { label: "Spot Cow Head (9K)", file: "spot_cowhead_F9024.obj" },
+        torus: { label: "Torus (7.7K)", file: "torus_F7680.obj" }
       };
 
 
@@ -407,6 +504,20 @@
       const modelSelect = document.getElementById("model-select");
       const reloadBtn = document.getElementById("reload-btn");
       const clearBtn = document.getElementById("clear-btn");
+      const btnGc = document.getElementById("btn-gc");
+      const btnPc = document.getElementById("btn-pc");
+      const btnClearOther = document.getElementById("btn-clear-other");
+      const otherCalcInfo = document.getElementById("other-calc-info");
+      const pcVisMode = document.getElementById("pc-vis-mode");
+      const pcSeeds = document.getElementById("pc-seeds");
+      const pcSeedsVal = document.getElementById("pc-seeds-val");
+      const umbilicThr = document.getElementById("umbilic-thr");
+      const umbilicThrVal = document.getElementById("umbilic-thr-val");
+      const gcColorbar = document.getElementById("gc-colorbar");
+      const gcCbMin = document.getElementById("gc-cb-min");
+      const gcCbMid = document.getElementById("gc-cb-mid");
+      const gcCbMax = document.getElementById("gc-cb-max");
+      const gcCbAxis = document.getElementById("gc-cb-axis");
       const textureBtn = null;
       const radioCheckerboard = document.getElementById("radio-checkerboard");
       const radioDots = document.getElementById("radio-dots");
@@ -443,6 +554,9 @@
       let currentPins = null;
       let currentUvLines = null;
       let currentUvPins = null;
+      let currentHomologyLines = null;
+      let currentOtherOverlay = null;
+      let currentOtherOverlay2 = null;
       let busy = false;
       let currentMeshData = null;
       let currentSourcePath = "";
@@ -464,6 +578,46 @@
       function setStatus(message, color) {
         statusText.textContent = message;
         statusText.style.color = color || "#8cc4ff";
+      }
+
+      function clearHomologyOverlay() {
+        if (currentHomologyLines && currentHomologyLines.parent) {
+          currentHomologyLines.parent.remove(currentHomologyLines);
+        }
+        currentHomologyLines = null;
+      }
+
+      function clearOtherOverlays() {
+        if (currentOtherOverlay && currentOtherOverlay.parent) currentOtherOverlay.parent.remove(currentOtherOverlay);
+        if (currentOtherOverlay2 && currentOtherOverlay2.parent) currentOtherOverlay2.parent.remove(currentOtherOverlay2);
+        currentOtherOverlay = null;
+        currentOtherOverlay2 = null;
+        if (otherCalcInfo) otherCalcInfo.textContent = "";
+        if (gcColorbar) gcColorbar.classList.remove("visible");
+      }
+
+      function fmtCurv(x) {
+        if (!isFinite(x)) return "-";
+        const ax = Math.abs(x);
+        if (ax >= 1000 || (ax > 0 && ax < 1e-3)) return x.toExponential(2);
+        if (ax >= 10) return x.toFixed(2);
+        if (ax >= 1) return x.toFixed(3);
+        return x.toFixed(4);
+      }
+
+      function showGaussColorbar(kMin, kMax) {
+        if (!gcColorbar) return;
+        const absMax = Math.max(Math.abs(kMin), Math.abs(kMax)) || 1;
+        if (gcCbMin) gcCbMin.textContent = fmtCurv(-absMax);
+        if (gcCbMid) gcCbMid.textContent = "0";
+        if (gcCbMax) gcCbMax.textContent = fmtCurv(absMax);
+        if (gcCbAxis) gcCbAxis.textContent = "±" + fmtCurv(absMax);
+        gcColorbar.classList.add("visible");
+      }
+
+      function updatePcUiLabels() {
+        if (pcSeeds && pcSeedsVal) pcSeedsVal.textContent = String(pcSeeds.value);
+        if (umbilicThr && umbilicThrVal) umbilicThrVal.textContent = (Number(umbilicThr.value) / 100).toFixed(2);
       }
 
       function showTiming(ms, details, flippedCount) {
@@ -693,6 +847,445 @@
         });
 
         return { positions: positions, faces: faces };
+      }
+
+      // Closed triangle mesh check: every undirected edge must have exactly 2 incident faces.
+      function isClosedTriangleMesh(meshData) {
+        if (!meshData || !meshData.positions || !meshData.faces) return false;
+        const nV = meshData.positions.length;
+        const edgeCount = new Map();
+        for (let fi = 0; fi < meshData.faces.length; fi++) {
+          const f = meshData.faces[fi];
+          if (!f || f.length !== 3) return false;
+          const a = f[0], b = f[1], c = f[2];
+          if (a < 0 || a >= nV || b < 0 || b >= nV || c < 0 || c >= nV) return false;
+          const es = [[a, b], [b, c], [c, a]];
+          for (const e of es) {
+            const u0 = e[0], v0 = e[1];
+            const u = Math.min(u0, v0), v = Math.max(u0, v0);
+            const key = u + "_" + v;
+            edgeCount.set(key, (edgeCount.get(key) || 0) + 1);
+          }
+        }
+        for (const cnt of edgeCount.values()) {
+          if (cnt !== 2) return false;
+        }
+        return true;
+      }
+
+      function meshDiagLength(meshData) {
+        if (!meshData || !meshData.positions || meshData.positions.length < 2) return 1;
+        let minX = Infinity, minY = Infinity, minZ = Infinity;
+        let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+        for (let i = 0; i < meshData.positions.length; i++) {
+          const p = meshData.positions[i];
+          minX = Math.min(minX, p[0]); minY = Math.min(minY, p[1]); minZ = Math.min(minZ, p[2]);
+          maxX = Math.max(maxX, p[0]); maxY = Math.max(maxY, p[1]); maxZ = Math.max(maxZ, p[2]);
+        }
+        const dx = maxX - minX, dy = maxY - minY, dz = maxZ - minZ;
+        const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        return d > 1e-12 ? d : 1;
+      }
+
+      function percentile(sortedArr, q) {
+        // q in [0,1], sortedArr ascending
+        if (!sortedArr || sortedArr.length === 0) return 0;
+        const x = Math.max(0, Math.min(1, q)) * (sortedArr.length - 1);
+        const i0 = Math.floor(x);
+        const i1 = Math.min(sortedArr.length - 1, i0 + 1);
+        const t = x - i0;
+        return sortedArr[i0] * (1 - t) + sortedArr[i1] * t;
+      }
+
+      function buildGaussianCurvatureOverlay(meshData, K) {
+        // Visualize gaussian curvature as vertex-colored surface mesh overlay.
+        if (!meshData || !meshData.positions || !meshData.faces || !K || K.length !== meshData.positions.length) return null;
+        const nV = meshData.positions.length;
+        const nF = meshData.faces.length;
+        let kMin = Infinity, kMax = -Infinity;
+        for (let i = 0; i < nV; i++) { kMin = Math.min(kMin, K[i]); kMax = Math.max(kMax, K[i]); }
+        // Robust normalization: clip using percentile of |K| to avoid a few outliers
+        // dominating the colormap range.
+        const absVals = new Array(nV);
+        for (let i = 0; i < nV; i++) absVals[i] = Math.abs(K[i]);
+        absVals.sort(function (a, b) { return a - b; });
+        const clipP = 0.98; // 98% percentile
+        const absClip = Math.max(1e-12, percentile(absVals, clipP));
+        const absMax = absClip;
+
+        const pos = new Float32Array(nV * 3);
+        const col = new Float32Array(nV * 3);
+        for (let i = 0; i < nV; i++) {
+          const p = meshData.positions[i];
+          pos[i * 3] = p[0]; pos[i * 3 + 1] = p[1]; pos[i * 3 + 2] = p[2];
+          // Normalize K before visualization (stable across different magnitudes).
+          // t in [-1, 1] is used for diverging colormap: blue(-) -> white(0) -> red(+)
+          const t = Math.max(-1, Math.min(1, K[i] / absMax));
+          // blue (neg) -> white -> red (pos)
+          const r = t >= 0 ? 1 : 1 + t;
+          const g = 1 - Math.abs(t);
+          const b = t <= 0 ? 1 : 1 - t;
+          col[i * 3] = r; col[i * 3 + 1] = g; col[i * 3 + 2] = b;
+        }
+
+        const idx = new Uint32Array(nF * 3);
+        for (let fi = 0; fi < nF; fi++) {
+          const f = meshData.faces[fi];
+          idx[fi * 3] = f[0];
+          idx[fi * 3 + 1] = f[1];
+          idx[fi * 3 + 2] = f[2];
+        }
+
+        const geom = new THREE.BufferGeometry();
+        geom.setIndex(new THREE.BufferAttribute(idx, 1));
+        geom.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+        geom.setAttribute("color", new THREE.BufferAttribute(col, 3));
+        geom.computeVertexNormals();
+
+        const mat = new THREE.MeshLambertMaterial({
+          vertexColors: true,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.92,
+          depthTest: true,
+          polygonOffset: true,
+          polygonOffsetFactor: -1,
+          polygonOffsetUnits: -1
+        });
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.renderOrder = 9;
+        return { object: mesh, stats: { min: kMin, max: kMax, absMax: absMax, clipP: clipP, absClip: absClip } };
+      }
+
+      function buildPrincipalCurvatureOverlay(meshData, dirs) {
+        if (!meshData || !meshData.positions || !meshData.faces) return null;
+        if (!dirs || dirs.length !== meshData.faces.length * 3) return null;
+        const nF = meshData.faces.length;
+        const diag = meshDiagLength(meshData);
+        const scale = diag * 0.03;
+
+        const positions = [];
+        for (let fi = 0; fi < nF; fi++) {
+          const f = meshData.faces[fi];
+          const p0 = meshData.positions[f[0]];
+          const p1 = meshData.positions[f[1]];
+          const p2 = meshData.positions[f[2]];
+          const cx = (p0[0] + p1[0] + p2[0]) / 3;
+          const cy = (p0[1] + p1[1] + p2[1]) / 3;
+          const cz = (p0[2] + p1[2] + p2[2]) / 3;
+
+          const dx = dirs[fi * 3], dy = dirs[fi * 3 + 1], dz = dirs[fi * 3 + 2];
+          const x1 = cx - dx * scale, y1 = cy - dy * scale, z1 = cz - dz * scale;
+          const x2 = cx + dx * scale, y2 = cy + dy * scale, z2 = cz + dz * scale;
+          positions.push(x1, y1, z1, x2, y2, z2);
+        }
+
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+        const mat = new THREE.LineBasicMaterial({ color: 0xff66ff, transparent: true, opacity: 0.9, depthTest: true });
+        const lines = new THREE.LineSegments(geom, mat);
+        lines.renderOrder = 11;
+        return lines;
+      }
+
+      function faceAnisotropyFromK1K2(k1, k2) {
+        // 0 near umbilic, 1 highly anisotropic
+        const eps = 1e-12;
+        return Math.abs(k1 - k2) / (Math.abs(k1) + Math.abs(k2) + eps);
+      }
+
+      function remap01(x) { return Math.max(0, Math.min(1, x)); }
+
+      function buildPrincipalCurvatureOverlayWeighted(meshData, dirs, k1k2, cutoffRatio) {
+        // cutoffRatio in [0,1], below which the direction is considered unreliable (near umbilic).
+        if (!meshData || !meshData.positions || !meshData.faces) return null;
+        const nF = meshData.faces.length;
+        if (!dirs || dirs.length !== nF * 3) return null;
+        if (!k1k2 || k1k2.length !== nF * 2) return buildPrincipalCurvatureOverlay(meshData, dirs);
+
+        const diag = meshDiagLength(meshData);
+        const baseScale = diag * 0.03;
+        const cutoff = Math.max(0, Math.min(1, cutoffRatio));
+
+        const positions = [];
+        for (let fi = 0; fi < nF; fi++) {
+          const k1 = k1k2[fi * 2], k2 = k1k2[fi * 2 + 1];
+          const a = faceAnisotropyFromK1K2(k1, k2);
+          // confidence: 0 at/near umbilic, 1 far away
+          const conf = remap01((a - cutoff) / Math.max(1e-6, (1 - cutoff)));
+          if (conf <= 0) continue;
+
+          const f = meshData.faces[fi];
+          const p0 = meshData.positions[f[0]];
+          const p1 = meshData.positions[f[1]];
+          const p2 = meshData.positions[f[2]];
+          const cx = (p0[0] + p1[0] + p2[0]) / 3;
+          const cy = (p0[1] + p1[1] + p2[1]) / 3;
+          const cz = (p0[2] + p1[2] + p2[2]) / 3;
+
+          const dx = dirs[fi * 3], dy = dirs[fi * 3 + 1], dz = dirs[fi * 3 + 2];
+          const scale = baseScale * (0.08 + 0.92 * conf); // keep tiny hint, mostly fades
+          const x1 = cx - dx * scale, y1 = cy - dy * scale, z1 = cz - dz * scale;
+          const x2 = cx + dx * scale, y2 = cy + dy * scale, z2 = cz + dz * scale;
+          positions.push(x1, y1, z1, x2, y2, z2);
+        }
+
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+        const mat = new THREE.LineBasicMaterial({ color: 0xff66ff, transparent: true, opacity: 0.9, depthTest: true });
+        const lines = new THREE.LineSegments(geom, mat);
+        lines.renderOrder = 11;
+        return lines;
+      }
+
+      function buildFaceAdjacency(meshData) {
+        // returns { nbr: Int32Array(nF*3) } where nbr[fi*3+ei] is neighbor face index across edge ei, or -1
+        const nF = meshData.faces.length;
+        const nbr = new Int32Array(nF * 3);
+        for (let i = 0; i < nbr.length; i++) nbr[i] = -1;
+        const edgeMap = new Map(); // key "u_v" -> { f: fi, e: ei }
+        for (let fi = 0; fi < nF; fi++) {
+          const f = meshData.faces[fi];
+          const vs = [f[0], f[1], f[2]];
+          const edges = [[vs[0], vs[1]], [vs[1], vs[2]], [vs[2], vs[0]]];
+          for (let ei = 0; ei < 3; ei++) {
+            const a = edges[ei][0], b = edges[ei][1];
+            const u = Math.min(a, b), v = Math.max(a, b);
+            const key = u + "_" + v;
+            const prev = edgeMap.get(key);
+            if (!prev) edgeMap.set(key, { f: fi, e: ei });
+            else {
+              nbr[fi * 3 + ei] = prev.f;
+              nbr[prev.f * 3 + prev.e] = fi;
+            }
+          }
+        }
+        return { nbr: nbr };
+      }
+
+      function barycentric2D(px, py, ax, ay, bx, by, cx, cy) {
+        const v0x = bx - ax, v0y = by - ay;
+        const v1x = cx - ax, v1y = cy - ay;
+        const v2x = px - ax, v2y = py - ay;
+        const den = v0x * v1y - v1x * v0y;
+        if (Math.abs(den) < 1e-20) return null;
+        const inv = 1.0 / den;
+        const u = (v2x * v1y - v1x * v2y) * inv;
+        const v = (v0x * v2y - v2x * v0y) * inv;
+        const w = 1 - u - v;
+        return [w, u, v];
+      }
+
+      function faceLocalFrame(p0, p1, p2) {
+        const e1x = p1[0] - p0[0], e1y = p1[1] - p0[1], e1z = p1[2] - p0[2];
+        const e2x = p2[0] - p0[0], e2y = p2[1] - p0[1], e2z = p2[2] - p0[2];
+        // normal
+        let nx = e1y * e2z - e1z * e2y;
+        let ny = e1z * e2x - e1x * e2z;
+        let nz = e1x * e2y - e1y * e2x;
+        const nlen = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+        nx /= nlen; ny /= nlen; nz /= nlen;
+        // t1 along e1 projected
+        let t1x = e1x, t1y = e1y, t1z = e1z;
+        const t1len = Math.sqrt(t1x * t1x + t1y * t1y + t1z * t1z) || 1;
+        t1x /= t1len; t1y /= t1len; t1z /= t1len;
+        // t2 = n x t1
+        let t2x = ny * t1z - nz * t1y;
+        let t2y = nz * t1x - nx * t1z;
+        let t2z = nx * t1y - ny * t1x;
+        const t2len = Math.sqrt(t2x * t2x + t2y * t2y + t2z * t2z) || 1;
+        t2x /= t2len; t2y /= t2len; t2z /= t2len;
+        return { nx, ny, nz, t1x, t1y, t1z, t2x, t2y, t2z };
+      }
+
+      function buildStreamlinesOverlay(meshData, dirs, k1k2, seedCount, cutoffRatio) {
+        const nF = meshData.faces.length;
+        if (!dirs || dirs.length !== nF * 3) return null;
+        const hasK = !!(k1k2 && k1k2.length === nF * 2);
+        const cutoff = Math.max(0, Math.min(1, cutoffRatio || 0));
+        const adj = buildFaceAdjacency(meshData);
+        const nbr = adj.nbr;
+        const diag = meshDiagLength(meshData);
+        const step = diag * 0.006;
+        const maxSteps = 220;
+        const maxHops = 200;
+
+        function traceFrom(fi0, w0, u0, v0, sign) {
+          let fi = fi0;
+          let w = w0, u = u0, v = v0;
+          const pts = [];
+          let hops = 0;
+          for (let si = 0; si < maxSteps && hops < maxHops; si++) {
+            if (hasK) {
+              const k1 = k1k2[fi * 2], k2 = k1k2[fi * 2 + 1];
+              const a = faceAnisotropyFromK1K2(k1, k2);
+              if (a < cutoff) break; // near umbilic -> stop streamline
+            }
+            const f = meshData.faces[fi];
+            const p0 = meshData.positions[f[0]];
+            const p1 = meshData.positions[f[1]];
+            const p2 = meshData.positions[f[2]];
+            const px = w * p0[0] + u * p1[0] + v * p2[0];
+            const py = w * p0[1] + u * p1[1] + v * p2[1];
+            const pz = w * p0[2] + u * p1[2] + v * p2[2];
+            pts.push(px, py, pz);
+
+            // direction projected to face plane
+            let dx = dirs[fi * 3] * sign;
+            let dy = dirs[fi * 3 + 1] * sign;
+            let dz = dirs[fi * 3 + 2] * sign;
+            const fr = faceLocalFrame(p0, p1, p2);
+            // remove normal component
+            const nd = dx * fr.nx + dy * fr.ny + dz * fr.nz;
+            dx -= nd * fr.nx; dy -= nd * fr.ny; dz -= nd * fr.nz;
+            const dlen = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (dlen < 1e-12) break;
+            dx /= dlen; dy /= dlen; dz /= dlen;
+
+            const nxp = px + dx * step;
+            const nyp = py + dy * step;
+            const nzp = pz + dz * step;
+
+            // map step to barycentric in current triangle using 2D in local frame
+            const a2x = 0, a2y = 0;
+            const b2x = (p1[0] - p0[0]) * fr.t1x + (p1[1] - p0[1]) * fr.t1y + (p1[2] - p0[2]) * fr.t1z;
+            const b2y = (p1[0] - p0[0]) * fr.t2x + (p1[1] - p0[1]) * fr.t2y + (p1[2] - p0[2]) * fr.t2z;
+            const c2x = (p2[0] - p0[0]) * fr.t1x + (p2[1] - p0[1]) * fr.t1y + (p2[2] - p0[2]) * fr.t1z;
+            const c2y = (p2[0] - p0[0]) * fr.t2x + (p2[1] - p0[1]) * fr.t2y + (p2[2] - p0[2]) * fr.t2z;
+            const p2x = (nxp - p0[0]) * fr.t1x + (nyp - p0[1]) * fr.t1y + (nzp - p0[2]) * fr.t1z;
+            const p2y = (nxp - p0[0]) * fr.t2x + (nyp - p0[1]) * fr.t2y + (nzp - p0[2]) * fr.t2z;
+            const bc = barycentric2D(p2x, p2y, a2x, a2y, b2x, b2y, c2x, c2y);
+            if (!bc) break;
+            let nw = bc[0], nu = bc[1], nv = bc[2];
+
+            const eps = -1e-6;
+            if (nw >= eps && nu >= eps && nv >= eps) { w = nw; u = nu; v = nv; continue; }
+
+            // crossed an edge: pick the most negative barycentric to decide which edge
+            let ei = 0;
+            let minVal = nw;
+            if (nu < minVal) { minVal = nu; ei = 1; }
+            if (nv < minVal) { minVal = nv; ei = 2; }
+            const nfi = nbr[fi * 3 + ei];
+            if (nfi < 0) break;
+
+            // move to neighbor face, reuse world point by computing barycentric in neighbor
+            const nf = meshData.faces[nfi];
+            const q0 = meshData.positions[nf[0]];
+            const q1 = meshData.positions[nf[1]];
+            const q2 = meshData.positions[nf[2]];
+            const nfr = faceLocalFrame(q0, q1, q2);
+            // 2D coords in neighbor frame
+            const qb2x = (q1[0] - q0[0]) * nfr.t1x + (q1[1] - q0[1]) * nfr.t1y + (q1[2] - q0[2]) * nfr.t1z;
+            const qb2y = (q1[0] - q0[0]) * nfr.t2x + (q1[1] - q0[1]) * nfr.t2y + (q1[2] - q0[2]) * nfr.t2z;
+            const qc2x = (q2[0] - q0[0]) * nfr.t1x + (q2[1] - q0[1]) * nfr.t1y + (q2[2] - q0[2]) * nfr.t1z;
+            const qc2y = (q2[0] - q0[0]) * nfr.t2x + (q2[1] - q0[1]) * nfr.t2y + (q2[2] - q0[2]) * nfr.t2z;
+            const qp2x = (nxp - q0[0]) * nfr.t1x + (nyp - q0[1]) * nfr.t1y + (nzp - q0[2]) * nfr.t1z;
+            const qp2y = (nxp - q0[0]) * nfr.t2x + (nyp - q0[1]) * nfr.t2y + (nzp - q0[2]) * nfr.t2z;
+            const nbc = barycentric2D(qp2x, qp2y, 0, 0, qb2x, qb2y, qc2x, qc2y);
+            if (!nbc) break;
+            fi = nfi;
+            w = nbc[0]; u = nbc[1]; v = nbc[2];
+            hops++;
+          }
+          return pts;
+        }
+
+        const positions = [];
+        // seeds: random faces + random barycentric
+        for (let s = 0; s < seedCount; s++) {
+          const fi0 = (Math.random() * nF) | 0;
+          if (hasK) {
+            const k1 = k1k2[fi0 * 2], k2 = k1k2[fi0 * 2 + 1];
+            const a0 = faceAnisotropyFromK1K2(k1, k2);
+            if (a0 < cutoff) continue; // avoid seeding near umbilic
+          }
+          let a = Math.random(), b = Math.random();
+          if (a + b > 1) { a = 1 - a; b = 1 - b; }
+          const u0 = a, v0 = b, w0 = 1 - a - b;
+          const fwd = traceFrom(fi0, w0, u0, v0, +1);
+          const bwd = traceFrom(fi0, w0, u0, v0, -1);
+          // stitch: reverse bwd (excluding first point) + fwd
+          if (bwd.length + fwd.length < 12) continue;
+          const poly = [];
+          for (let i = bwd.length - 6; i >= 0; i -= 3) poly.push(bwd[i], bwd[i + 1], bwd[i + 2]);
+          for (let i = 3; i < fwd.length; i += 3) poly.push(fwd[i], fwd[i + 1], fwd[i + 2]);
+          // add segments
+          for (let i = 0; i + 5 < poly.length; i += 3) {
+            positions.push(poly[i], poly[i + 1], poly[i + 2], poly[i + 3], poly[i + 4], poly[i + 5]);
+          }
+        }
+
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+        const mat = new THREE.LineBasicMaterial({ color: 0xff66ff, transparent: true, opacity: 0.75, depthTest: true });
+        const lines = new THREE.LineSegments(geom, mat);
+        lines.renderOrder = 11;
+        return lines;
+      }
+
+      function buildUmbilicOverlay(meshData, k1k2, thrRatio) {
+        // thrRatio: relative threshold on |k1-k2| against absMax(|k|)
+        const nF = meshData.faces.length;
+        if (!k1k2 || k1k2.length !== nF * 2) return null;
+        let absMax = 0;
+        for (let i = 0; i < nF; i++) {
+          absMax = Math.max(absMax, Math.abs(k1k2[i * 2]), Math.abs(k1k2[i * 2 + 1]));
+        }
+        absMax = absMax || 1;
+        const thr = absMax * thrRatio;
+
+        const pts = [];
+        for (let fi = 0; fi < nF; fi++) {
+          const d = Math.abs(k1k2[fi * 2] - k1k2[fi * 2 + 1]);
+          if (d > thr) continue;
+          const f = meshData.faces[fi];
+          const p0 = meshData.positions[f[0]];
+          const p1 = meshData.positions[f[1]];
+          const p2 = meshData.positions[f[2]];
+          pts.push((p0[0] + p1[0] + p2[0]) / 3, (p0[1] + p1[1] + p2[1]) / 3, (p0[2] + p1[2] + p2[2]) / 3);
+        }
+        if (pts.length === 0) return null;
+
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+        const size = meshDiagLength(meshData) * 0.012;
+        const mat = new THREE.PointsMaterial({ size: size, color: 0xffd24a, transparent: true, opacity: 0.95, depthTest: true });
+        const p = new THREE.Points(geom, mat);
+        p.renderOrder = 12;
+        return { object: p, count: (pts.length / 3), thr: thr, absMax: absMax };
+      }
+
+      async function runDgpBasicOnCurrentMesh() {
+        if (!currentMeshData) throw new Error("请先加载模型");
+        const ok = await initDgpBasic();
+        if (!ok) throw new Error("dgp_basic WASM 初始化失败");
+
+        const flatPositions = new Float64Array(currentMeshData.positions.length * 3);
+        for (let i = 0; i < currentMeshData.positions.length; i++) {
+          flatPositions[i * 3] = currentMeshData.positions[i][0];
+          flatPositions[i * 3 + 1] = currentMeshData.positions[i][1];
+          flatPositions[i * 3 + 2] = currentMeshData.positions[i][2];
+        }
+        const flatFaces = new Int32Array(currentMeshData.faces.length * 3);
+        for (let i = 0; i < currentMeshData.faces.length; i++) {
+          flatFaces[i * 3] = currentMeshData.faces[i][0];
+          flatFaces[i * 3 + 1] = currentMeshData.faces[i][1];
+          flatFaces[i * 3 + 2] = currentMeshData.faces[i][2];
+        }
+
+        const posPtr = dgpInstance._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) dgpInstance.setValue(posPtr + i * 8, flatPositions[i], 'double');
+        const facePtr = dgpInstance._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) dgpInstance.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+
+        try {
+          const ret = dgpInstance.ccall("load_mesh", "number", ["number", "number", "number", "number"], [posPtr, flatPositions.length, facePtr, flatFaces.length]);
+          if (ret !== 0) throw new Error("load_mesh 失败");
+        } finally {
+          dgpInstance._free(posPtr);
+          dgpInstance._free(facePtr);
+        }
       }
 
       function repairMeshForSolver(meshData) {
@@ -927,6 +1520,33 @@
       let simpleInstance = null;
       let wasmReady = false;
       let wasmLoadFailed = false;
+
+      let dgpInstance = null;
+      let dgpReady = false;
+      let dgpLoadFailed = false;
+
+      async function initDgpBasic() {
+        if (dgpReady) return true;
+        if (dgpLoadFailed) return false;
+        try {
+          if (typeof DgpBasicSolver === 'undefined') {
+            throw new Error('WASM 胶水代码未加载，请确保 assets/wasm/dgp_basic.js 已部署');
+          }
+          // Ensure wasm file is located correctly (GitHub Pages / Jekyll base paths).
+          dgpInstance = await DgpBasicSolver({
+            locateFile: function (path) {
+              return "assets/wasm/" + path;
+            }
+          });
+          dgpReady = true;
+          console.log('WASM dgp_basic (gauss curvature / principal curvature field) 加载成功');
+          return true;
+        } catch (err) {
+          console.error('dgp_basic WASM 加载失败:', err && (err.stack || err));
+          dgpLoadFailed = true;
+          return false;
+        }
+      }
 
       async function initSimpleSolver() {
         if (wasmReady) return true;
@@ -1709,6 +2329,12 @@
           const loaded = await initSimpleSolver();
           if (!loaded) throw new Error(methodName + " WASM 求解器初始化失败");
         }
+        // Closed-mesh precheck (required for tree-cotree / holomorphic 1-form homology visualization)
+        // We do it in JS before calling into WASM, to give immediate feedback.
+        const needClosed = (wasmFuncName === "solve_hof");
+        if (needClosed && !isClosedTriangleMesh(meshData)) {
+          throw new Error("该算法/可视化需要闭合三角网格（无边界）。请换用闭合模型或选择其它展开算法。");
+        }
         if (onProgress) onProgress(0, 1);
 
         const flatPositions = new Float64Array(vertices.length * 3);
@@ -1746,6 +2372,21 @@
           const uvPtr = simpleInstance.ccall("get_uv_result", "number", [], []);
           const uvs = [];
           for (let i = 0; i < uvSize; i++) uvs.push(simpleInstance.getValue(uvPtr + i * 8, "double"));
+          
+          // Optional: tree-cotree homology basis edges (2g edges as vertex pairs)
+          let homology = null;
+          if (needClosed) {
+            const g = simpleInstance.ccall("get_homology_genus", "number", [], []);
+            const hpSize = simpleInstance.ccall("get_homology_edge_pairs_size", "number", [], []);
+            const hpPtr = simpleInstance.ccall("get_homology_edge_pairs", "number", [], []);
+            const pairs = [];
+            for (let i = 0; i + 1 < hpSize; i += 2) {
+              const a = simpleInstance.getValue(hpPtr + i * 4, "i32");
+              const b = simpleInstance.getValue(hpPtr + (i + 1) * 4, "i32");
+              pairs.push([a, b]);
+            }
+            homology = { genus: g, edgePairs: pairs };
+          }
           simpleInstance.ccall("dispose", "void", [], []);
           const timeMs = simpleInstance.ccall("get_last_time_ms", "number", [], []);
           if (onProgress) onProgress(1, 1);
@@ -1758,7 +2399,8 @@
             anchors: chooseAnchorPair(vertices),
             flippedFaceCount: countFlippedFaces(uv, faces),
             timeMs: timeMs,
-            method: methodName
+            method: methodName,
+            homology: homology
           };
         } finally {
           simpleInstance._free(posPtr);
@@ -2129,6 +2771,29 @@
         }
 
         return { lines: lines, pins: pins };
+      }
+
+      function buildHomologyOverlay(meshData, homology) {
+        if (!meshData || !homology || !homology.edgePairs || homology.edgePairs.length === 0) return null;
+        const segs = [];
+        const positions = meshData.positions;
+        for (let i = 0; i < homology.edgePairs.length; i++) {
+          const a = homology.edgePairs[i][0];
+          const b = homology.edgePairs[i][1];
+          if (a < 0 || b < 0 || a >= positions.length || b >= positions.length) continue;
+          const pa = positions[a];
+          const pb = positions[b];
+          segs.push(pa[0], pa[1], pa[2], pb[0], pb[1], pb[2]);
+        }
+        if (segs.length === 0) return null;
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.Float32BufferAttribute(segs, 3));
+        const lines = new THREE.LineSegments(
+          geom,
+          new THREE.LineBasicMaterial({ color: 0x60e060, transparent: true, opacity: 0.95 })
+        );
+        lines.renderOrder = 15;
+        return lines;
       }
 
 
@@ -2512,6 +3177,8 @@
           clearGroup(modelScene, currentModelGroup);
           clearGroup(uvScene, currentUvLines);
           clearGroup(uvScene, currentUvPins);
+          clearHomologyOverlay();
+          clearOtherOverlays();
           clearTexturedMesh();
           clearDistortionMesh();
           distortionEnabled = false;
@@ -2590,6 +3257,9 @@
           await loadModelPreview();
           if (!currentMeshData) return;
         }
+
+        // UV 重算/更新前，先清理“其他计算”的覆盖层，避免与新模型/新网格混淆
+        clearOtherOverlays();
 
         const method = getCurrentMethod();
 
@@ -2696,6 +3366,18 @@
           uvScene.add(currentUvLines);
           if (currentUvPins) uvScene.add(currentUvPins);
 
+          // Homology basis overlay (closed meshes / Holomorphic 1-form)
+          clearHomologyOverlay();
+          if (unwrapResult.homology && unwrapResult.homology.edgePairs && unwrapResult.homology.edgePairs.length > 0 && currentModelGroup) {
+            const homoLines = buildHomologyOverlay(currentMeshData, unwrapResult.homology);
+            if (homoLines) {
+              currentHomologyLines = homoLines;
+              // attach to model group so it follows transforms
+              currentModelGroup.add(currentHomologyLines);
+              details += " / genus=" + unwrapResult.homology.genus + " / 同调基底边 " + unwrapResult.homology.edgePairs.length + " 条";
+            }
+          }
+
           let details =
             methodLabel +
             " / " + getCurrentSourceLabel() +
@@ -2742,6 +3424,108 @@
       reloadBtn.addEventListener("click", updateModel);
       clearBtn.addEventListener("click", clearAndReload);
 
+      if (btnClearOther) btnClearOther.addEventListener("click", function () {
+        clearOtherOverlays();
+        setStatus("已清除其他计算显示", "#8cc4ff");
+      });
+
+      if (btnGc) btnGc.addEventListener("click", async function () {
+        if (busy) return;
+        setBusy(true);
+        try {
+          setStatus("正在计算 Gauss 曲率（angle deficit / area）...");
+          clearOtherOverlays();
+          await runDgpBasicOnCurrentMesh();
+
+          const ret = dgpInstance.ccall("compute_gauss_curvature_per_area", "number", [], []);
+          if (ret !== 0) throw new Error("compute_gauss_curvature_per_area 失败");
+          const n = dgpInstance.ccall("get_gc_result_size", "number", [], []);
+          const ptr = dgpInstance.ccall("get_gc_result", "number", [], []);
+          if (!ptr || n !== currentMeshData.positions.length) throw new Error("Gauss 曲率结果长度异常: " + n);
+          const K = new Array(n);
+          for (let i = 0; i < n; i++) K[i] = dgpInstance.getValue(ptr + i * 8, "double");
+
+          const overlay = buildGaussianCurvatureOverlay(currentMeshData, K);
+          if (!overlay) throw new Error("Gauss 曲率可视化构建失败");
+          currentOtherOverlay = overlay.object;
+          modelScene.add(currentOtherOverlay);
+
+          const info = "K(min/max)=(" + overlay.stats.min.toExponential(3) + ", " + overlay.stats.max.toExponential(3) + ")" +
+                       " / norm=K/absMax (absMax=" + (overlay.stats.absMax || 1).toExponential(3) + ")" +
+                       " / clip p=" + Math.round((overlay.stats.clipP || 0.98) * 100) + "%";
+          if (otherCalcInfo) otherCalcInfo.textContent = info;
+          showGaussColorbar(overlay.stats.min, overlay.stats.max);
+          setStatus("Gauss 曲率计算完成 " + info, "#89f0b6");
+        } catch (e) {
+          console.error(e);
+          setStatus("Gauss 曲率失败: " + e.message, "#ff9d9d");
+        } finally {
+          try { if (dgpInstance) dgpInstance.ccall("dispose", "void", [], []); } catch (_) {}
+          setBusy(false);
+        }
+      });
+
+      if (btnPc) btnPc.addEventListener("click", async function () {
+        if (busy) return;
+        setBusy(true);
+        try {
+          setStatus("正在计算主曲率场（Weingarten）...");
+          clearOtherOverlays();
+          await runDgpBasicOnCurrentMesh();
+
+          const ret = dgpInstance.ccall("compute_principal_curvature_field", "number", [], []);
+          if (ret !== 0) throw new Error("compute_principal_curvature_field 失败");
+          const n = dgpInstance.ccall("get_pc_field_size", "number", [], []);
+          const ptr = dgpInstance.ccall("get_pc_field", "number", [], []);
+          if (!ptr || n !== currentMeshData.faces.length * 3) throw new Error("主曲率场结果长度异常: " + n);
+          const dirs = new Array(n);
+          for (let i = 0; i < n; i++) dirs[i] = dgpInstance.getValue(ptr + i * 8, "double");
+
+          // k1/k2 for umbilics
+          const kn = dgpInstance.ccall("get_pc_k1k2_size", "number", [], []);
+          const kptr = dgpInstance.ccall("get_pc_k1k2", "number", [], []);
+          if (!kptr || kn !== currentMeshData.faces.length * 2) throw new Error("主曲率(k1,k2)结果长度异常: " + kn);
+          const k1k2 = new Array(kn);
+          for (let i = 0; i < kn; i++) k1k2[i] = dgpInstance.getValue(kptr + i * 8, "double");
+
+          const mode = pcVisMode ? pcVisMode.value : "segments";
+          if (mode === "streamlines") {
+            const sc = pcSeeds ? Number(pcSeeds.value) : 500;
+            const stopCutoff = umbilicThr ? (Number(umbilicThr.value) / 100) : 0.08;
+            const sl = buildStreamlinesOverlay(currentMeshData, dirs, k1k2, sc, stopCutoff);
+            if (!sl) throw new Error("流线可视化构建失败");
+            currentOtherOverlay = sl;
+          } else {
+            const stopCutoff = umbilicThr ? (Number(umbilicThr.value) / 100) : 0.08;
+            const lines = buildPrincipalCurvatureOverlayWeighted(currentMeshData, dirs, k1k2, stopCutoff);
+            if (!lines) throw new Error("主曲率场可视化构建失败");
+            currentOtherOverlay = lines;
+          }
+          modelScene.add(currentOtherOverlay);
+
+          const thrRatio = umbilicThr ? (Number(umbilicThr.value) / 100) : 0.08;
+          const umb = buildUmbilicOverlay(currentMeshData, k1k2, thrRatio);
+          if (umb && umb.object) {
+            currentOtherOverlay2 = umb.object;
+            modelScene.add(currentOtherOverlay2);
+          }
+
+          const umbCount = currentOtherOverlay2 ? (" / umbilics~" + Math.round(currentOtherOverlay2.geometry.attributes.position.count)) : "";
+          const info = "faces=" + currentMeshData.faces.length + (mode === "streamlines" ? (" / streamlines=" + (pcSeeds ? pcSeeds.value : "500")) : " / segments") + umbCount;
+          if (otherCalcInfo) otherCalcInfo.textContent = info;
+          setStatus("主曲率场计算完成（" + info + "）", "#89f0b6");
+        } catch (e) {
+          console.error(e);
+          setStatus("主曲率场失败: " + e.message, "#ff9d9d");
+        } finally {
+          try { if (dgpInstance) dgpInstance.ccall("dispose", "void", [], []); } catch (_) {}
+          setBusy(false);
+        }
+      });
+
+      if (pcSeeds) pcSeeds.addEventListener("input", updatePcUiLabels);
+      if (umbilicThr) umbilicThr.addEventListener("input", updatePcUiLabels);
+
       // 纹理显示单选框切换
       if (radioCheckerboard) {
         radioCheckerboard.addEventListener("change", function () {
@@ -2772,6 +3556,7 @@
       
       // 页面启动时预加载 uv_unwrap_simple WASM
       updateStartButtonState();
+      updatePcUiLabels();
       initSimpleSolver().then((ok) => {
         updateStartButtonState();
         if (!ok) {

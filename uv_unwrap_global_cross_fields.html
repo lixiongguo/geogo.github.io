@@ -8,8 +8,8 @@
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
 
-  <script src="assets/wasm/unified_solver.js"></script>
-  <script src="assets/wasm/principal_curvature.js"></script>
+  <script src="assets/wasm/uv_unwrap_field.js"></script>
+  <script src="assets/wasm/uv_unwrap_simple.js"></script>
 <style>
   *{box-sizing:border-box}html,body{margin:0;height:100%}
   body{overflow:hidden;background:#070b14;color:#d8def7;font-family:"Segoe UI",Arial,sans-serif}
@@ -67,9 +67,9 @@
       <fieldset style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:8px 12px;margin:0;">
         <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开算法</legend>
         <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="miq" checked> MIQ (向量场引导)</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="miq"> MIQ (向量场引导)</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="pgp"> PGP (周期全局参数化)</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover"> QuadCover简化</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover" checked> QuadCover简化</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover_full"> QuadCover完整</label>
         </div>
       </fieldset>
@@ -301,7 +301,11 @@
   // ============ 棋盘格 / 共形扭曲显示 ============
   async function initTextureAtlasSolver(){
     if(taReady)return true;if(taFailed)return false;
-    try{if(typeof UnifiedSolver!=='function')throw new Error('UnifiedSolver 未加载');taInst=await UnifiedSolver();taReady=true;return true}
+    try{
+      if(typeof UvUnwrapSimpleSolver!=='function')throw new Error('UvUnwrapSimpleSolver 未加载');
+      taInst=await UvUnwrapSimpleSolver({locateFile:(p)=>"assets/wasm/"+p});
+      taReady=true;return true
+    }
     catch(e){taFailed=true;console.error(e);return false}
   }
 
@@ -434,7 +438,7 @@
       const errors=[],colors=[];
       for(let i=0;i<errSize;i++)errors.push(taInst.getValue(errPtr+i*8,'double'));
       for(let i=0;i<colSize;i++)colors.push(taInst.getValue(colPtr+i*8,'double'));
-      taInst.ccall('ta_dispose','void',[],[]);
+      taInst.ccall('dispose','void',[],[]);
       let avgErr=0,maxErr=0;
       for(let i=0;i<errors.length;i++){avgErr+=errors[i];if(errors[i]>maxErr)maxErr=errors[i]}
       avgErr/=Math.max(errors.length,1);
@@ -464,121 +468,33 @@
     }
   }
 
-  // ============ 主曲率计算（libigl WASM，供 QuadCover 内部使用）============
-  let pcInst=null,pcReady=false,pcFailed=false;
-  let principalCurvCache=null;
-
-  async function initPC(){
-    if(pcReady)return true;if(pcFailed)return false;
-    try{if(typeof PrincipalCurvatureSolver!=='function')throw new Error('PrincipalCurvatureSolver 未加载');pcInst=await PrincipalCurvatureSolver();pcReady=true;return true}
-    catch(e){pcFailed=true;console.error(e);return false}
-  }
-  async function computePrincipalCurvatureWASM(positions,faces){
-    const ok=await initPC();if(!ok)throw new Error('主曲率 WASM 初始化失败');
-    const nV=positions.length,fp=new Float64Array(nV*3);
-    for(let i=0;i<nV;i++){fp[i*3]=positions[i][0];fp[i*3+1]=positions[i][1];fp[i*3+2]=positions[i][2]}
-    const ff=new Int32Array(faces.length*3);for(let i=0;i<faces.length;i++){ff[i*3]=faces[i][0];ff[i*3+1]=faces[i][1];ff[i*3+2]=faces[i][2]}
-    const pp=pcInst._malloc(fp.length*8),fpt=pcInst._malloc(ff.length*4);
-    for(let i=0;i<fp.length;i++)pcInst.setValue(pp+i*8,fp[i],'double');
-    for(let i=0;i<ff.length;i++)pcInst.setValue(fpt+i*4,ff[i],'i32');
-    const rc=pcInst.ccall('compute_principal_curvature','number',['number','number','number','number','number'],[pp,nV,fpt,faces.length,5]);
-    pcInst._free(pp);pcInst._free(fpt);
-    if(rc!==0)throw new Error('compute_principal_curvature 返回错误码: '+rc);
-    const count=pcInst.ccall('get_pc_num_verts','number',[],[]),pd1Ptr=pcInst.ccall('get_pc_pd1','number',[],[]),pd2Ptr=pcInst.ccall('get_pc_pd2','number',[],[]),pv1Ptr=pcInst.ccall('get_pc_pv1','number',[],[]),pv2Ptr=pcInst.ccall('get_pc_pv2','number',[],[]);
-    const pd1=new Float64Array(count*3),pd2=new Float64Array(count*3),pv1=new Float64Array(count),pv2=new Float64Array(count);
-    for(let i=0;i<count*3;i++){pd1[i]=pcInst.getValue(pd1Ptr+i*8,'double');pd2[i]=pcInst.getValue(pd2Ptr+i*8,'double')}
-    for(let i=0;i<count;i++){pv1[i]=pcInst.getValue(pv1Ptr+i*8,'double');pv2[i]=pcInst.getValue(pv2Ptr+i*8,'double')}
-    pcInst.ccall('pc_dispose','void',[],[]);
-    return{pd1,pd2,pv1,pv2};
-  }
-
-  function averagedPrincipalDirection(field,face,normal){
-    const base=[field[face[0]*3]||0,field[face[0]*3+1]||0,field[face[0]*3+2]||0];let x=base[0],y=base[1],z=base[2];
-    for(let k=1;k<3;k++){const vi=face[k]*3;let dx=field[vi]||0,dy=field[vi+1]||0,dz=field[vi+2]||0;if(dx*base[0]+dy*base[1]+dz*base[2]<0){dx=-dx;dy=-dy;dz=-dz}x+=dx;y+=dy;z+=dz}
-    const dotN=x*normal[0]+y*normal[1]+z*normal[2];x-=dotN*normal[0];y-=dotN*normal[1];z-=dotN*normal[2];
-    const len=Math.hypot(x,y,z);return len>1e-10?[x/len,y/len,z/len]:null;
-  }
-
-  async function ensurePrincipalCurvatureData(meshData){
-    if(!meshData)throw new Error('缺少网格数据');
-    if(principalCurvCache)return principalCurvCache;
-    principalCurvCache=await computePrincipalCurvatureWASM(meshData.positions,meshData.faces);
-    return principalCurvCache;
-  }
-
-  function buildQuadCoverFaceDirections(meshData,pcData){
-    const dirs=new Float64Array(meshData.faces.length*3);
-    for(let i=0;i<meshData.faces.length;i++){
-      const f=meshData.faces[i],a=meshData.positions[f[0]],b=meshData.positions[f[1]],c=meshData.positions[f[2]];
-      const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
-      let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;const nLen=Math.hypot(nx,ny,nz);
-      if(nLen<=1e-12){dirs[i*3]=1;dirs[i*3+1]=0;dirs[i*3+2]=0;continue}
-      nx/=nLen;ny/=nLen;nz/=nLen;
-      const d=averagedPrincipalDirection(pcData.pd1,f,[nx,ny,nz])||averagedPrincipalDirection(pcData.pd2,f,[nx,ny,nz]);
-      if(d){dirs[i*3]=d[0];dirs[i*3+1]=d[1];dirs[i*3+2]=d[2]}
-      else{dirs[i*3]=1;dirs[i*3+1]=0;dirs[i*3+2]=0}
-    }
-    return dirs;
+  // ============ uv_unwrap_field WASM（分步流程）============
+  let fieldInst=null,fieldReady=false,fieldFailed=false,fieldPromise=null;
+  async function initFieldSolver(){
+    if(fieldReady)return true;if(fieldFailed)return false;
+    try{
+      if(typeof UvUnwrapFieldSolver!=='function')throw new Error('UvUnwrapFieldSolver 未加载');
+      if(!fieldPromise)fieldPromise=UvUnwrapFieldSolver({locateFile:(p)=>"assets/wasm/"+p});
+      fieldInst=await fieldPromise;
+      fieldReady=true;return true;
+    }catch(e){fieldFailed=true;console.error(e);return false;}
   }
 
   // ============ WASM 求解器 ============
-  let qcInst=null,qcReady=false,qcFailed=false;
-  let unifiedInst=null,unifiedReady=false,unifiedFailed=false,unifiedPromise=null;
-  const solverScriptPromises = {};
-
-  function loadSolverScript(src,globalName){
-    if(window[globalName])return Promise.resolve(true);
-    if(!solverScriptPromises[src]){
-      solverScriptPromises[src]=new Promise(function(resolve,reject){
-        const s=document.createElement('script');
-        s.src=src;
-        s.onload=function(){resolve(true)};
-        s.onerror=function(){reject(new Error('求解器脚本加载失败: '+src))};
-        document.head.appendChild(s);
-      });
-    }
-    return solverScriptPromises[src];
-  }
-
-  async function initQCSolver(){if(qcReady)return true;if(qcFailed)return false;try{await loadSolverScript('assets/wasm/quadcover_solver.js','QuadCoverSolver');qcInst=await QuadCoverSolver();qcReady=true;return true}catch(e){qcFailed=true;return false}}
+  // 本仓库只提供 QuadCover（uv_unwrap_field.wasm）。MIQ/PGP 仍是占位。
 
   function getMethod(){const c=document.querySelector('input[name="method"]:checked');return c?c.value:'quadcover'}
 
   function updateButtonState(){
     const m=getMethod();
     if(m==='miq'){
-      if(unifiedFailed){reloadBtn.textContent='引擎加载失败';reloadBtn.disabled=true}
-      else if(!unifiedReady){reloadBtn.textContent='引擎加载中...';reloadBtn.disabled=true}
-      else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
+      reloadBtn.textContent='未实现';reloadBtn.disabled=true;
       return;
     }
     if(m==='pgp'){reloadBtn.textContent='展开!';reloadBtn.disabled=false;return;}
-    const failed=(m==='quadcover'||m==='quadcover_full')&&qcFailed;
-    const loading=(m==='quadcover'||m==='quadcover_full')&&!qcReady&&!qcFailed;
-    if(failed){reloadBtn.textContent='引擎加载失败';reloadBtn.disabled=true}
-    else if(loading){reloadBtn.textContent='引擎加载中...';reloadBtn.disabled=true}
+    if(fieldFailed){reloadBtn.textContent='引擎加载失败';reloadBtn.disabled=true}
+    else if(!fieldReady){reloadBtn.textContent='引擎加载中...';reloadBtn.disabled=true}
     else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
-  }
-
-  async function initUnifiedSolver(){
-    if(unifiedReady)return true;if(unifiedFailed)return false;
-    try{if(typeof UnifiedSolver==='undefined')throw new Error('UnifiedSolver 未定义');if(!unifiedPromise)unifiedPromise=UnifiedSolver();unifiedInst=await unifiedPromise;unifiedReady=true;return true}catch(e){unifiedFailed=true;return false}
-  }
-
-  async function solveMiq(meshData){
-    await initUnifiedSolver();const v=meshData.positions,f=meshData.faces;
-    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
-    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
-    const pp=wasmWritePosInst(unifiedInst,fp),fpt=wasmWriteFacesInst(unifiedInst,ff);
-    try{
-      const rc=unifiedInst.ccall('solve_miq','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length]);
-      if(rc!==0)throw new Error("solve_miq 错误:"+rc);
-      const us=wasmReadUV(unifiedInst,'get_miq_uv_result_size','get_miq_uv_result');
-      unifiedInst.ccall('miq_dispose','void',[],[]);
-      const t=unifiedInst.ccall('get_miq_last_time_ms','number',[],[]);
-      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
-      return{uv,timeMs:t,method:'miq'};
-    }finally{unifiedInst._free(pp);unifiedInst._free(fpt)}
   }
 
   function wasmWritePosInst(inst,flat){
@@ -598,24 +514,28 @@
     return uvs;
   }
 
-  // ============ 求解器调用 ============
-  async function solveQuadCover(meshData,pcData,full){
-    await initQCSolver();const v=meshData.positions,f=meshData.faces;
-    if(!qcInst)throw new Error("QuadCover WASM 初始化失败");
+  // ============ 求解器调用（分 3 步） ============
+  async function solveQuadCover(meshData,full){
+    const ok=await initFieldSolver();if(!ok)throw new Error("uv_unwrap_field WASM 初始化失败");
+    const v=meshData.positions,f=meshData.faces;
     const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
     const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
-    const fd=buildQuadCoverFaceDirections(meshData,pcData);
-    const pp=wasmWritePosInst(qcInst,fp),fpt=wasmWriteFacesInst(qcInst,ff),dpt=wasmWritePosInst(qcInst,fd);
+    const pp=wasmWritePosInst(fieldInst,fp),fpt=wasmWriteFacesInst(fieldInst,ff);
     try{
-      const fn=full?'solve_qc_full_with_field':'solve_qc_with_field';
-      const rc=qcInst.ccall(fn,'number',['number','number','number','number','number','number'],[pp,fp.length,fpt,ff.length,dpt,fd.length]);
-      if(rc!==0)throw new Error(full&&rc===-2?"QuadCover完整 cover integration failed":"solve_qc 错误:"+rc);
-      const us=wasmReadUV(qcInst,'get_qc_uv_result_size','get_qc_uv_result');
-      qcInst.ccall('qc_dispose','void',[],[]);
-      const t=qcInst.ccall('get_qc_last_time_ms','number',[],[]);
+      let rc=fieldInst.ccall('load_mesh','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length]);
+      if(rc!==0)throw new Error("load_mesh 错误:"+rc);
+      rc=fieldInst.ccall('step1_compute_principal_field','number',[],[]);
+      if(rc!==0)throw new Error("step1_compute_principal_field 错误:"+rc);
+      rc=fieldInst.ccall('step2_smooth_and_matching','number',['number'],[3]);
+      if(rc!==0)throw new Error("step2_smooth_and_matching 错误:"+rc);
+      rc=fieldInst.ccall('step3_solve_quadcover','number',['number'],[full?1:0]);
+      if(rc!==0)throw new Error(full&&rc===-2?"QuadCover完整 cover integration failed":"step3_solve_quadcover 错误:"+rc);
+      const us=wasmReadUV(fieldInst,'get_uv_result_size','get_uv_result');
+      const t=fieldInst.ccall('get_last_time_ms','number',[],[]);
+      fieldInst.ccall('dispose','void',[],[]);
       const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
       return{uv,timeMs:t,method:full?'quadcover_full':'quadcover'};
-    }finally{qcInst._free(pp);qcInst._free(fpt);qcInst._free(dpt)}
+    }finally{fieldInst._free(pp);fieldInst._free(fpt)}
   }
 
   // ============ 加载 & 展开 ============
@@ -632,7 +552,6 @@
       if(currentModelGroup){modelScene.remove(currentModelGroup)}if(currentUvLines){uvScene.remove(currentUvLines)}if(currentUvPins){uvScene.remove(currentUvPins)}
       resetTextureRadios();
       clearPickMesh();
-      principalCurvCache=null;
       currentUvLines=null;currentUvPins=null;currentUnwrapUv=null;
       let meshData=rawText?parseObjMeshData(rawText):null;
       meshData=meshData?normalizeMeshData(meshData):collectMeshData(root);
@@ -654,14 +573,12 @@
     try{
       let r;
       if(method==='miq'){
-        r=await solveMiq(currentMeshData);
+        setStatus("MIQ 本仓库暂未提供 wasm 实现，请选择 QuadCover", "#ffd38a");setBusy(false);return;
       }else if(method==='pgp'){
         setStatus("PGP 暂未实现，请选择其他方法","#ffd38a");setBusy(false);return;
       }else{
-        setStatus("QuadCover: 正在计算主曲率...");
-        const pcData=await ensurePrincipalCurvatureData(currentMeshData);
-        setStatus(label+" 求解中...");
-        r=await solveQuadCover(currentMeshData,pcData,method==='quadcover_full');
+        setStatus("QuadCover: step1主曲率 -> step2平滑/匹配 -> step3参数化 ...");
+        r=await solveQuadCover(currentMeshData,method==='quadcover_full');
       }
       const ms=r.timeMs>0?r.timeMs:(performance.now()-t0);
       currentUnwrapUv=r.uv;
@@ -701,13 +618,16 @@
   window.addEventListener("resize",resize);
   modelSel.addEventListener("change",loadModel);
   reloadBtn.addEventListener("click",doUnwrap);
+  document.querySelectorAll('input[name="method"]').forEach(function(r){
+    r.addEventListener("change", function(){ updateButtonState(); });
+  });
   if(radioCheckerboard)radioCheckerboard.addEventListener("change",function(){if(radioCheckerboard.checked){setTextureDisplayEnabled(true,"checkerboard");if(radioDots)radioDots.checked=false}});
   if(radioDots)radioDots.addEventListener("change",function(){if(radioDots.checked){setTextureDisplayEnabled(true,"dots");if(radioCheckerboard)radioCheckerboard.checked=false;if(radioDistortion)radioDistortion.checked=false}});
   if(radioDistortion)radioDistortion.addEventListener("change",function(){if(radioDistortion.checked){setTextureDisplayEnabled(false);setDistortionEnabled(true)}});
   updateButtonState();
 
   // 预加载 WASM
-  Promise.all([initQCSolver(), initUnifiedSolver()]).then(()=>{updateButtonState();loadModel()});
+  initFieldSolver().then(()=>{updateButtonState();loadModel()});
   animate();
 })();
 </script>

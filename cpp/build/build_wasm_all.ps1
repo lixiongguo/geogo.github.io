@@ -117,6 +117,18 @@ $uvSimpleSources = @(
     (Join-Path $srcRoot "QcError.cpp")
 ) + $meshSrcs
 
+$dgpBasicSources = @(
+    (Join-Path $buildRoot "dgp-basic\wasm_dgp_basic.cpp"),
+    (Join-Path $srcRoot "geometry\GaussianCurvature.cpp"),
+    (Join-Path $srcRoot "geometry\PrincipalCurvatureField.cpp")
+) + $meshSrcs
+
+$uvFieldSources = @(
+    (Join-Path $buildRoot "uv-unwrap-field\wasm_uv_unwrap_field.cpp"),
+    (Join-Path $srcRoot "uv_unwrap_field\QuadCover.cpp"),
+    (Join-Path $srcRoot "geometry\PrincipalCurvatureField.cpp")
+) + $meshSrcs
+
 $targetSet = @{}
 foreach ($target in $Targets) {
     $targetSet[$target] = $true
@@ -132,11 +144,47 @@ if ($buildAll -or $targetSet.ContainsKey("uv_unwrap_simple") -or $targetSet.Cont
             "_solve_lscm","_solve_tutte_circle","_solve_tutte_square","_solve_scp",
             "_solve_linabf","_solve_abfpp","_solve_arap",
             "_solve_cp","_solve_cetm","_solve_ricci","_solve_hof",
-            "_get_uv_result","_get_uv_result_size","_get_last_time_ms","_get_cp_fallback_to_cetm","_dispose",
+            "_get_uv_result","_get_uv_result_size","_get_last_time_ms","_get_cp_fallback_to_cetm",
+            "_is_closed_mesh","_get_homology_genus","_get_homology_edge_pairs","_get_homology_edge_pairs_size",
+            "_dispose",
             "_load_mesh_with_uv","_compute_qc_error",
             "_get_qc_errors","_get_qc_errors_size","_get_qc_colors","_get_qc_colors_size"
         ) `
         (Join-Path $outDir "uv_unwrap_simple.js")
+}
+
+if ($buildAll -or $targetSet.ContainsKey("dgp_basic") -or $targetSet.ContainsKey("dgp")) {
+    Build-Target "dgp_basic" `
+        $dgpBasicSources `
+        "DgpBasicSolver" `
+        @(
+            "_malloc","_free",
+            "_load_mesh","_is_closed_mesh",
+            "_compute_gauss_curvature_per_area","_get_gc_result","_get_gc_result_size",
+            "_compute_principal_curvature_field","_get_pc_field","_get_pc_field_size",
+            "_get_pc_k1k2","_get_pc_k1k2_size",
+            "_dispose"
+        ) `
+        (Join-Path $outDir "dgp_basic.js")
+}
+
+if ($buildAll -or $targetSet.ContainsKey("uv_unwrap_field") -or $targetSet.ContainsKey("field")) {
+    Build-Target "uv_unwrap_field" `
+        $uvFieldSources `
+        "UvUnwrapFieldSolver" `
+        @(
+            "_malloc","_free",
+            "_load_mesh",
+            "_step1_compute_principal_field",
+            "_step2_smooth_and_matching",
+            "_step3_solve_quadcover",
+            "_get_last_time_ms",
+            "_get_face_dirs","_get_face_dirs_size",
+            "_get_matching","_get_matching_size",
+            "_get_uv_result","_get_uv_result_size",
+            "_dispose"
+        ) `
+        (Join-Path $outDir "uv_unwrap_field.js")
 }
 
 Write-Host ""

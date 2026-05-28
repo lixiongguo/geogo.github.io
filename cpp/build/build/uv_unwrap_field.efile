@@ -1,0 +1,1 @@
+["_malloc","_free","_load_mesh","_step1_compute_principal_field","_step2_smooth_and_matching","_step3_solve_quadcover","_get_last_time_ms","_get_face_dirs","_get_face_dirs_size","_get_matching","_get_matching_size","_get_uv_result","_get_uv_result_size","_dispose"]
