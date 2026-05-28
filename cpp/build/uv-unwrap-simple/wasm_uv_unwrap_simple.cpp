@@ -21,6 +21,7 @@
 #include "CirclePatterns.h"
 #include "Cetm.h"
 #include "RicciFlow.h"
+#include "ARAP.h"
 #include "QcError.h"
 
 static Mesh* g_mesh = nullptr;
@@ -159,6 +160,19 @@ int solve_abfpp(double* pos, int posLen, int* faces, int faceLen) {
     auto t0 = std::chrono::high_resolution_clock::now();
     g_mesh->delaunayize();
     AbfPlusPlus p(*g_mesh);
+    p.parameterize();
+    auto t1 = std::chrono::high_resolution_clock::now();
+    g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
+    extractUV();
+    return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int solve_arap(double* pos, int posLen, int* faces, int faceLen, int maxIter) {
+    if (!loadMesh(pos, posLen, faces, faceLen)) return -1;
+    auto t0 = std::chrono::high_resolution_clock::now();
+    g_mesh->delaunayize();
+    ARAP p(*g_mesh, maxIter > 0 ? maxIter : 8);
     p.parameterize();
     auto t1 = std::chrono::high_resolution_clock::now();
     g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();

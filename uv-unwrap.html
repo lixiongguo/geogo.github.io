@@ -285,8 +285,8 @@
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte" checked> Tutte</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="lscm"> LSCM</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Spectral Conformal Parameterization (Mullen et al.)"><input type="radio" name="method" value="scp"> SCP</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Linearized Angle Based Flattening"><input type="radio" name="method" value="linabf"> linABF</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Angle Based Flattening++ (iterative refinement)"><input type="radio" name="method" value="abfpp"> ABF++</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Angle Based Flattening++ (iterative refinement)"><input type="radio" name="method" value="abf"> ABF</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="As-Rigid-As-Possible flattening"><input type="radio" name="method" value="arap"> ARAP</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Circle Pattern (cone singularities)"><input type="radio" name="method" value="cp"> Circle Pattern</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="CETM (cone singularities)"><input type="radio" name="method" value="cetm"> CETM</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Ricci flow (cone singularities)"><input type="radio" name="method" value="ricci"> Ricci 流</label>
@@ -307,6 +307,18 @@
               边界:
               <label style="cursor:pointer;margin:0 4px;" title="映射到圆形边界"><input type="radio" name="tutte-boundary" value="circle" checked> 圆</label>
               <label style="cursor:pointer;margin:0 4px;" title="映射到正方形边界"><input type="radio" name="tutte-boundary" value="square"> 方</label>
+            </span>
+            <!-- ABF 子类型选择 -->
+            <span id="param-abf-type" style="display:none;font-size:12px;color:#c6d1f4;">
+              ABF方法:
+              <label style="cursor:pointer;margin:0 4px;" title="Angle Based Flattening++ (iterative refinement)"><input type="radio" name="abf-type" value="abfpp" checked> ABF++</label>
+              <label style="cursor:pointer;margin:0 4px;" title="Linearized Angle Based Flattening"><input type="radio" name="abf-type" value="linabf"> linABF</label>
+            </span>
+            <!-- ARAP 迭代次数 -->
+            <span id="param-arap-iters" style="display:none;font-size:12px;color:#c6d1f4;">
+              迭代次数:
+              <input type="range" id="arap-iters-slider" min="1" max="100" value="30" style="width:80px;vertical-align:middle;margin:0 4px;">
+              <span id="arap-iters-val" style="min-width:24px;display:inline-block;">30</span>
             </span>
             <!-- Tutte Laplace 权重（uniform 图 Laplace / cot-Laplace） -->
             <span id="param-tutte-weight" style="display:none;font-size:12px;color:#c6d1f4;">
@@ -925,7 +937,7 @@
           }
           simpleInstance = await UvUnwrapSimpleSolver();
           wasmReady = true;
-          console.log('WASM uv_unwrap_simple (LSCM/Tutte/SCP/linABF/ABF++/CP/CETM/Ricci) 加载成功');
+          console.log('WASM uv_unwrap_simple (LSCM/Tutte/SCP/ABF/ARAP/CP/CETM/Ricci) 加载成功');
           return true;
         } catch (err) {
           console.error('uv_unwrap_simple WASM 加载失败:', err);
@@ -950,6 +962,18 @@
 
       function supportsConeSelection(method) {
         return method === 'cp' || method === 'cetm' || method === 'ricci';
+      }
+
+      /** 获取 ABF 子类型 */
+      function getABFType() {
+        const r = document.querySelector('input[name="abf-type"]:checked');
+        return r ? r.value : 'abfpp';
+      }
+
+      /** 获取 ARAP 迭代次数 */
+      function getARAPIterations() {
+        const slider = document.getElementById('arap-iters-slider');
+        return slider ? parseInt(slider.value) : 30;
       }
 
       /** 获取 Tutte 边界类型 */
@@ -979,11 +1003,13 @@
         const m = getCurrentMethod();
         const panel = document.getElementById('param-panel');
         // 显隐参数面板
-        const hasParams = (m === 'tutte' || supportsConeSelection(m));
+        const hasParams = (m === 'tutte' || m === 'abf' || m === 'arap' || supportsConeSelection(m));
         document.getElementById('param-none').style.display = hasParams ? 'none' : '';
 
         document.getElementById('param-tutte-boundary').style.display = (m === 'tutte') ? '' : 'none';
         document.getElementById('param-tutte-weight').style.display = (m === 'tutte') ? '' : 'none';
+        document.getElementById('param-abf-type').style.display = (m === 'abf') ? '' : 'none';
+        document.getElementById('param-arap-iters').style.display = (m === 'arap') ? '' : 'none';
         document.getElementById('param-opt-scheme').style.display = supportsConeSelection(m) ? '' : 'none';
         document.getElementById('param-cone-controls').style.display = supportsConeSelection(m) ? '' : 'none';
         document.getElementById('param-lscm-pin').style.display = (m === 'lscm') ? '' : 'none';
@@ -1034,13 +1060,20 @@
         }
       }
 
-      // 方法切换 + Tutte 参数变化时更新 UI
+      // 方法切换 + Tutte / ABF / ARAP 参数变化时更新 UI
       document.querySelectorAll('input[name="method"]').forEach(function(radio) {
         radio.addEventListener('change', onParamChange);
       });
-      document.querySelectorAll('input[name="tutte-boundary"], input[name="tutte-weight"]').forEach(function(radio) {
+      document.querySelectorAll('input[name="tutte-boundary"], input[name="tutte-weight"], input[name="abf-type"]').forEach(function(radio) {
         radio.addEventListener('change', onParamChange);
       });
+      // ARAP 迭代次数滑块
+      const arapSlider = document.getElementById('arap-iters-slider');
+      if (arapSlider) {
+        arapSlider.addEventListener('input', function() {
+          document.getElementById('arap-iters-val').textContent = this.value;
+        });
+      }
       document.getElementById('change-pin-btn').addEventListener('click', onChangePinClick);
       document.getElementById('cone-btn').addEventListener('click', toggleConeMode);
       document.getElementById('auto-cone-btn').addEventListener('click', applyBenChenCones);
@@ -1742,6 +1775,11 @@
 
       async function solveABFPPAsync(meshData, onProgress) {
         return solveSimpleWasmMethod(meshData, "solve_abfpp", "abfpp", onProgress);
+      }
+
+      /** ARAP (As-Rigid-As-Possible) — C++ WASM implementation, default 30 iters */
+      async function solveARAPAsync(meshData, maxIter, onProgress) {
+        return solveSimpleWasmMethod(meshData, "solve_arap", "arap", onProgress, maxIter || 30);
       }
 
       async function solveCirclePatternAsync(meshData, onProgress) {
@@ -2555,8 +2593,10 @@
           methodLabel = 'Tutte (' + getTutteWeightLabel() + ', ' + (getTutteBoundary() === 'circle' ? '圆' : '方') + ')';
         }
         else if (method === 'scp') methodLabel = 'SCP (谱共形)';
-        else if (method === 'linabf') methodLabel = 'linABF (线性角度展开)';
-        else if (method === 'abfpp') methodLabel = 'ABF++ (角度展开)';
+        else if (method === 'linabf') methodLabel = 'ABF (linABF)';
+        else if (method === 'abfpp') methodLabel = 'ABF (ABF++)';
+        else if (method === 'abf') methodLabel = 'ABF (' + (getABFType() === 'abfpp' ? 'ABF++' : 'linABF') + ')';
+        else if (method === 'arap') methodLabel = 'ARAP (' + getARAPIterations() + ' iters)';
         else if (method === 'cp') methodLabel = 'Circle Pattern';
         else if (method === 'cetm') methodLabel = 'CETM';
         else if (method === 'ricci') methodLabel = 'Ricci 流';
@@ -2586,12 +2626,15 @@
             unwrapResult = await solveSCPAsync(currentMeshData, function(p, t) {
               updateTimingProgress(p, t);
             });
-          } else if (method === 'linabf') {
-            unwrapResult = await solveLinABFAsync(currentMeshData, function(p, t) {
-              updateTimingProgress(p, t);
-            });
-          } else if (method === 'abfpp') {
-            unwrapResult = await solveABFPPAsync(currentMeshData, function(p, t) {
+          } else if (method === 'linabf' || method === 'abfpp' || method === 'abf') {
+            const abfType = (method === 'abf') ? getABFType() : method;
+            unwrapResult = await (abfType === 'linabf'
+              ? solveLinABFAsync(currentMeshData, function(p, t) { updateTimingProgress(p, t); })
+              : solveABFPPAsync(currentMeshData, function(p, t) { updateTimingProgress(p, t); })
+            );
+          } else if (method === 'arap') {
+            const arapIters = getARAPIterations();
+            unwrapResult = await solveARAPAsync(currentMeshData, arapIters, function(p, t) {
               updateTimingProgress(p, t);
             });
           } else if (method === 'cp') {
@@ -2630,7 +2673,7 @@
           }
 
           // 更新 UV 面板标签
-          const methodNames = { lscm:'LSCM', tutte:'Tutte', scp:'SCP', linabf:'linABF', abfpp:'ABF++', cp:'Circle Pattern', cetm:'CETM', ricci:'Ricci 流' };
+          const methodNames = { lscm:'LSCM', tutte:'Tutte', scp:'SCP', linabf:'ABF', abfpp:'ABF', abf:'ABF', arap:'ARAP', cp:'Circle Pattern', cetm:'CETM', ricci:'Ricci 流' };
           document.getElementById('uv-panel-label').textContent =
             (methodNames[unwrapResult.method] || unwrapResult.method) + ' UV 网格';
 
