@@ -6,6 +6,10 @@ categories: [Parameterization, "Parameterization-ConformalMapping"]
 
 ## 2.5边界自动调整方法 BFF (Boundary First Flattening)
 
+
+
+![image-20260529132033157](D:\MyDocs\geogo.github.io\imgs\image-20260529132033157.png)
+
 ### 算法核心洞察
 
 前面介绍的 CETM、Circle Patterns、Ricci 流等方法，都是**同时求解内部和边界**的共形参数化。Sawhney & Crane (2017) 提出了一个截然不同的思路：**先处理边界，再处理内部**——这就是 BFF（Boundary First Flattening）的核心洞察。
