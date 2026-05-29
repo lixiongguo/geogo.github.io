@@ -18,11 +18,13 @@ MOSEK_INC ?= ../deps/mosek
 CXXFLAGS_COMMON := -std=c++17 -O2 -flto
 INC_FLAGS := -I$(SRC_ROOT) \
              -I$(SRC_ROOT)/uv_unwrap_simple \
+             -I$(SRC_ROOT)/Mosek \
              -I$(EIGEN_INC) -I$(GLM_INC)
 
 MESH_SRCS := $(SRC_ROOT)/Mesh.cpp \
              $(SRC_ROOT)/MeshIO.cpp \
              $(SRC_ROOT)/Parameterization.cpp \
+             $(SRC_ROOT)/Solver.cpp \
              $(SRC_ROOT)/Vertex.cpp \
              $(SRC_ROOT)/Edge.cpp \
              $(SRC_ROOT)/Face.cpp \
@@ -32,6 +34,14 @@ UV_SIMPLE_SRCS := uv-unwrap-simple/wasm_uv_unwrap_simple.cpp \
                   $(SRC_ROOT)/uv_unwrap_simple/Lscm.cpp \
                   $(SRC_ROOT)/uv_unwrap_simple/Tutte.cpp \
                   $(SRC_ROOT)/uv_unwrap_simple/Scp.cpp \
+                  $(SRC_ROOT)/uv_unwrap_simple/LinAbf.cpp \
+                  $(SRC_ROOT)/uv_unwrap_simple/AbfPlusPlus.cpp \
+                  $(SRC_ROOT)/uv_unwrap_simple/AugmentedLagrangian.cpp \
+                  $(SRC_ROOT)/uv_unwrap_simple/CirclePatterns.cpp \
+                  $(SRC_ROOT)/uv_unwrap_simple/Cetm.cpp \
+                  $(SRC_ROOT)/uv_unwrap_simple/RicciFlow.cpp \
+                  $(SRC_ROOT)/uv_unwrap_simple/ARAP.cpp \
+                  $(SRC_ROOT)/uv_unwrap_simple/HolomorphicOneForm.cpp \
                   $(SRC_ROOT)/QcError.cpp \
                   $(MESH_SRCS)
 
