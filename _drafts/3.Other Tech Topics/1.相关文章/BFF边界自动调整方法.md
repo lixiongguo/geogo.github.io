@@ -53,6 +53,10 @@ $$
 
 其中定义在边界上的 $h$ 称为 **Neumann 值**，它编码了边界曲率信息。
 
+### 共轭对偶
+
+![image-20260529130728969](D:\MyDocs\geogo.github.io\imgs\image-20260529130728969.png)
+
 ### Poincaré-Steklov 算子：边界条件转换
 
 BFF 的核心机制是 **Poincaré-Steklov 算子**——将 Poisson 方程的 Dirichlet 边界条件与 Neumann 边界条件相互转换。BFF 支持两种输入模式：
