@@ -32,6 +32,7 @@ MESH_SRCS := $(SRC_ROOT)/Mesh.cpp \
 
 UV_SIMPLE_SRCS := uv-unwrap-simple/wasm_uv_unwrap_simple.cpp \
                   $(SRC_ROOT)/uv_unwrap_simple/Lscm.cpp \
+                  $(SRC_ROOT)/uv_unwrap_simple/BoundedLscm.cpp \
                   $(SRC_ROOT)/uv_unwrap_simple/Tutte.cpp \
                   $(SRC_ROOT)/uv_unwrap_simple/Scp.cpp \
                   $(SRC_ROOT)/uv_unwrap_simple/LinAbf.cpp \

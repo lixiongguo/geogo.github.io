@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>向量场 — Trivial Connection / N-PolyVector</title>
-  <script src="./assets/wasm/principal_curvature.js"></script>
+  <script src="./assets/wasm/dgp_basic.js"></script>
   <script src="./assets/wasm/vector_field_solver.js"></script>
 
   <style>
@@ -277,6 +277,13 @@
           <option value="4">4 (4-RoSy)</option>
         </select>
       </div>
+      <div class="control-group" id="nrosy-algo-group">
+        <label>算法:</label>
+        <select id="nrosy-algo-select">
+          <option value="trivial" selected>平凡联络</option>
+          <option value="complex-poly">复数法</option>
+        </select>
+      </div>
       <div class="control-group">
         <label>模型:</label>
         <select id="model-select">
@@ -293,15 +300,6 @@
           <option value="elephant">Elephant</option>
           <option value="soccerball">Soccer Ball (57.6K)</option>
         </select>
-      </div>
-      <div class="control-group" id="nrosy-csv-group">
-        <button id="btn-load-nrosy">导入N-RoSy CSV</button>
-        <button id="btn-auto-load-nrosy">自动加载最近输出</button>
-        <button id="btn-clear-imported-nrosy" title="清除导入/自动加载的 CSV，恢复页面实时计算的 N-RoSy 场">恢复实时场</button>
-        <input id="nrosy-csv-input" type="file" accept=".csv,text/csv" style="display:none">
-      </div>
-      <div class="control-group">
-        <span id="field-source-status" class="status-badge">场来源: 实时计算</span>
       </div>
       <div class="control-group">
         <button id="btn-arrows" class="active">箭头</button>
@@ -615,8 +613,6 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   let trivialResult = null;
   let currentV = null;
   let currentF = null;
-  let importedNRosyTheta = null;
-  let importedNRosySourceType = null; // "manual" | "auto" | null
 (function() {
   const canvas = document.getElementById('main-canvas');
   const loader = document.getElementById('loader');
@@ -626,6 +622,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   let currentModel = 'sphere';
   let currentFieldSource = 'nrosy';
   let currentN = 1;
+  let currentAlgo = 'trivial';   // 'trivial' | 'complex-poly'
   let arrowMode = 'arrows';
   let density = 1;
   let showWireframe = true;
@@ -640,39 +637,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   currentV = null;              // Float32Array of vertex positions (V_rows x 3)
   currentF = null;              // Int32Array of face indices (F_rows x 3)
 
-  function setFieldSourceStatus(kind, detail = '') {
-    const el = document.getElementById('field-source-status');
-    if (!el) return;
-    let text = '场来源: 实时计算';
-    if (kind === 'computed') text = currentFieldSource === 'nrosy' ? '场来源: N-RoSy 向量场' : '场来源: 主曲率方向';
-    else if (kind === 'manual') text = '场来源: 手动导入 CSV';
-    else if (kind === 'auto') text = '场来源: 自动加载 CSV';
-    else if (kind === 'principal') text = '场来源: 主曲率 (WASM)';
-    if (detail) text += ` (${detail})`;
-    el.textContent = text;
-  }
-
-  function formatNRosyAlgorithm(algo) {
-    if (algo === '4rosy-complex-poly-wasm') return `${currentN}-RoSy Complex Poly WASM`;
-    if (algo === 'trivial-wasm') return `Trivial ${currentN}-RoSy WASM`;
-    if (algo === 'trivial-js') return `Trivial JS (N=${currentN})`;
-    if (algo === 'imported-csv') return 'CSV 导入场';
-    return '未知算法';
-  }
-
-  function clearImportedNRosyField() {
-    if (!mesh || !currentF || !isNRosySource()) return;
-    const hadImport = importedNRosyTheta != null;
-    importedNRosyTheta = null;
-    importedNRosySourceType = null;
-    if (!hadImport) {
-      setFieldSourceStatus('computed');
-      return;
-    }
-    trivialResult = computeNRosyField(currentV, currentF, currentN);
-    setFieldSourceStatus('computed', formatNRosyAlgorithm(trivialResult?.algorithm));
-    updateVisualization();
-  }
+  function isNRosySource() { return currentFieldSource === 'nrosy'; }
 
   // Three.js setup
   function sizeCanvas() {
@@ -817,22 +782,15 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     return { normal, ...curvature };
   }
 
-  // Initialize Principal Curvature WASM module
+  /** DgpBasicSolver — our own principal curvature (no libigl) */
   async function initPCModule() {
     if (pcModule) return pcModule;
-    try {
-      if (typeof window.PrincipalCurvatureSolver === 'undefined') {
-        throw new Error('PrincipalCurvatureSolver not loaded');
-      }
-      pcModule = await window.PrincipalCurvatureSolver({
-        noInitialRun: true,
-        locateFile: (p) => './assets/wasm/' + p
-      });
-      return pcModule;
-    } catch (err) {
-      console.error('Failed to init PC module:', err);
+    if (typeof window.DgpBasicSolver === 'undefined') {
+      console.warn('DgpBasicSolver not loaded');
       return null;
     }
+    pcModule = await window.DgpBasicSolver({ noInitialRun: true, locateFile: (p) => './assets/wasm/' + p });
+    return pcModule;
   }
 
   async function initFieldModule() {
@@ -1118,153 +1076,65 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     const frames = buildFaceFramesAndAdjacency(V, F, numF);
     const { normals, T1, T2, cent, adj } = frames;
 
-    // Prefer unified wasm solver (4-RoSy Complex Poly + trivial transport fallback).
     let theta = null;
     let algoKind = 'trivial-js';
-    if (N === 4 && fieldModule && typeof fieldModule._compute_4rosy_field === 'function') {
+
+    const useComplexPoly = (currentAlgo === 'complex-poly' && N === 4);
+
+    if (fieldModule && useComplexPoly && typeof fieldModule._compute_4rosy_field === 'function') {
+      // --- Complex polynomial method (WASM, N=4 only) ---
       try {
         const mod = fieldModule;
-        const V_rows = V.length / 3;
-        const F_rows = F.length / 3;
+        const V_rows = V.length / 3, F_rows = F.length / 3;
         const V_ptr = mod._malloc(V_rows * 3 * 4);
         const F_ptr = mod._malloc(F_rows * 3 * 4);
         mod.HEAPF32.set(V, V_ptr / 4);
         mod.HEAP32.set(F, F_ptr / 4);
         const rc = mod._compute_4rosy_field(V_ptr, V_rows, F_ptr, F_rows);
-        mod._free(V_ptr);
-        mod._free(F_ptr);
+        mod._free(V_ptr); mod._free(F_ptr);
         if (rc === 0) {
-          const ptr = mod._get_nrosy_theta();
-          const sz = mod._get_nrosy_theta_size();
+          const ptr = mod._get_nrosy_theta(), sz = mod._get_nrosy_theta_size();
           if (ptr && sz === numF) {
             theta = new Float32Array(mod.HEAPF32.buffer, ptr, sz);
             theta = new Float32Array(theta);
-            algoKind = '4rosy-complex-poly-wasm';
+            algoKind = 'complex-poly-wasm';
           }
         }
-        if (!theta && typeof mod._compute_trivial_nrosy_field === 'function') {
-          const V_ptr2 = mod._malloc(V_rows * 3 * 4);
-          const F_ptr2 = mod._malloc(F_rows * 3 * 4);
-          mod.HEAPF32.set(V, V_ptr2 / 4);
-          mod.HEAP32.set(F, F_ptr2 / 4);
-          const rc2 = mod._compute_trivial_nrosy_field(V_ptr2, V_rows, F_ptr2, F_rows);
-          mod._free(V_ptr2);
-          mod._free(F_ptr2);
-          if (rc2 === 0) {
-            const ptr2 = mod._get_nrosy_theta();
-            const sz2 = mod._get_nrosy_theta_size();
-            if (ptr2 && sz2 === numF) {
-              theta = new Float32Array(mod.HEAPF32.buffer, ptr2, sz2);
-              theta = new Float32Array(theta);
-              algoKind = 'trivial-wasm';
-            }
+      } catch(e) { console.warn('Complex-poly WASM failed:', e); }
+    } else if (fieldModule && currentAlgo === 'trivial' && typeof fieldModule._compute_trivial_nrosy_field === 'function') {
+      // --- Trivial connection method (WASM) ---
+      try {
+        const mod = fieldModule;
+        const V_rows = V.length / 3, F_rows = F.length / 3;
+        const V_ptr = mod._malloc(V_rows * 3 * 4);
+        const F_ptr = mod._malloc(F_rows * 3 * 4);
+        mod.HEAPF32.set(V, V_ptr / 4);
+        mod.HEAP32.set(F, F_ptr / 4);
+        const rc = mod._compute_trivial_nrosy_field(V_ptr, V_rows, F_ptr, F_rows);
+        mod._free(V_ptr); mod._free(F_ptr);
+        if (rc === 0) {
+          const ptr = mod._get_nrosy_theta(), sz = mod._get_nrosy_theta_size();
+          if (ptr && sz === numF) {
+            theta = new Float32Array(mod.HEAPF32.buffer, ptr, sz);
+            theta = new Float32Array(theta);
+            algoKind = 'trivial-wasm';
           }
         }
-      } catch (e) {
-        console.warn('N-RoSy wasm solve failed, fallback to JS:', e);
-      }
+      } catch(e) { console.warn('Trivial WASM failed:', e); }
     }
 
     if (!theta) {
-      // Use iterative complex polynomial smoothing (works for any N ≥ 1)
+      // JS fallback (works for any N)
       theta = solvePolyVectorFieldFromRepo(V, F, frames, N);
       algoKind = 'trivial-js';
     }
 
     return {
-      theta: theta,
-      T1: T1,
-      T2: T2,
-      normals: normals,
-      cent: cent,
-      adj: adj,
-      N: N,
-      numF: numF,
-      algorithm: algoKind
+      theta, T1, T2, normals, cent, adj, N, numF, algorithm: algoKind
     };
   }
 
-  function buildResultFromTheta(theta, frames, N) {
-    return {
-      theta: theta,
-      T1: frames.T1,
-      T2: frames.T2,
-      normals: frames.normals,
-      cent: frames.cent,
-      adj: frames.adj,
-      N: N,
-      numF: theta.length,
-      algorithm: 'imported-csv'
-    };
-  }
 
-  function parseFaceNRosyCsv(text, expectedFaces) {
-    const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-    if (lines.length < 2) throw new Error('CSV 内容为空');
-    const header = lines[0].split(',').map(s => s.trim());
-    const idxFace = header.indexOf('face');
-    const idxAlpha = header.indexOf('alpha_mod');
-    if (idxFace < 0 || idxAlpha < 0) {
-      throw new Error('CSV 缺少 face 或 alpha_mod 列');
-    }
-    const theta = new Float32Array(expectedFaces);
-    let filled = 0;
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',').map(s => s.trim());
-      if (cols.length <= Math.max(idxFace, idxAlpha)) continue;
-      const f = parseInt(cols[idxFace], 10);
-      const a = parseFloat(cols[idxAlpha]);
-      if (!Number.isFinite(f) || !Number.isFinite(a)) continue;
-      if (f < 0 || f >= expectedFaces) continue;
-      theta[f] = a;
-      filled++;
-    }
-    if (filled === 0) throw new Error('CSV 无有效 face/alpha 数据');
-    return theta;
-  }
-
-  function modelToNRosyBase(modelType) {
-    const filename = MODEL_FILES[modelType];
-    if (!filename) return null;
-    const dot = filename.lastIndexOf('.');
-    return dot > 0 ? filename.substring(0, dot) : filename;
-  }
-
-  async function tryAutoLoadNRosyCsvForCurrentModel() {
-    if (!mesh || !currentF || !isNRosySource()) {
-      alert('请先加载一个 N-RoSy 模型后再自动加载。');
-      return false;
-    }
-    const base = modelToNRosyBase(currentModel);
-    if (!base) {
-      alert('当前模型是程序生成体，暂无对应 CSV 约定路径，请手动导入。');
-      return false;
-    }
-    const candidates = [
-      `/assets/CP_Models/nrosy_tc_${base}/face_nrosy_field.csv`,
-      `/assets/CP_Models/trivial_connection_${base}/face_nrosy_field.csv`
-    ];
-
-    for (const url of candidates) {
-      try {
-        const resp = await fetch(url, { cache: 'no-store' });
-        if (!resp.ok) continue;
-        const text = await resp.text();
-        const numF = currentF.length / 3;
-        importedNRosyTheta = parseFaceNRosyCsv(text, numF);
-        importedNRosySourceType = 'auto';
-        const frames = buildFaceFramesAndAdjacency(currentV, currentF, numF);
-        trivialResult = buildResultFromTheta(importedNRosyTheta, frames, 4);
-        setFieldSourceStatus('auto', `${formatNRosyAlgorithm(trivialResult.algorithm)} / ${base}`);
-        updateVisualization();
-        return true;
-      } catch (e) {
-        // try next candidate
-      }
-    }
-    alert(`自动加载失败：未找到 face_nrosy_field.csv\n尝试路径:\n${candidates.join('\n')}`);
-    return false;
-  }
 
   function syncPolyControlsVisibility() {
     const nRosyOn = isNRosySource();
@@ -1286,101 +1156,76 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   }
 
   /**
-   * Compute principal curvature via libigl WASM.
-   * Stores result in pcResult for rendering.
+   * Compute principal curvature via our own DgpBasicSolver (Weingarten map).
+   * Stores result in pcResult (same shape for backward compat).
    */
   function computeCurvatureWASM(V_arr, F_arr, V_rows, F_rows) {
     const mod = pcModule;
     if (!mod) { pcResult = null; return; }
-    if (typeof mod._compute_principal_curvature !== 'function') {
-      pcResult = null;
-      return;
-    }
 
-    // Get heap buffer - try multiple compatibility paths
-    let heapBuffer;
-    if (mod.HEAPU8) {
-      heapBuffer = mod.HEAPU8.buffer;
-    } else if (mod.wasmMemory) {
-      heapBuffer = mod.wasmMemory.buffer;
-    } else {
-      console.error('Cannot access WASM heap');
-      pcResult = null;
-      return;
-    }
-    const f32Heap = new Float32Array(heapBuffer);
-    const i32Heap = new Int32Array(heapBuffer);
+    try {
+      const posLen = V_rows * 3, faceLen = F_rows * 3;
 
-    // Allocate V (float)
-    const V_ptr = mod._malloc(V_rows * 3 * 4);
-    f32Heap.set(V_arr, V_ptr / 4);
+      // Allocate V (double) & copy
+      const V_ptr = mod._malloc(posLen * 8);
+      const f64Heap = new Float64Array(mod.HEAPU8.buffer);
+      f64Heap.set(new Float64Array(V_arr.buffer), V_ptr / 8);
 
-    // Allocate F (int32)
-    const F_ptr = mod._malloc(F_rows * 3 * 4);
-    i32Heap.set(F_arr, F_ptr / 4);
+      // Allocate F (int32) & copy
+      const F_ptr = mod._malloc(faceLen * 4);
+      const i32Heap = new Int32Array(mod.HEAPU8.buffer);
+      for (let i = 0; i < faceLen; i++) i32Heap[F_ptr / 4 + i] = F_arr[i];
 
-    // Call C++ function
-    const resultPtr = mod._compute_principal_curvature(
-      V_ptr, V_rows,
-      F_ptr, F_rows
-    );
-
-    // Read header using fresh views (buffer may have changed after malloc)
-    const f32View = new Float32Array(heapBuffer);
-    const i32View = new Int32Array(heapBuffer);
-    const baseIdx = resultPtr / 4;
-
-    const magic = i32View[baseIdx];
-    if (magic !== 0xDEADBEEF) {
-      console.error('PC compute failed: bad magic', magic);
-      pcResult = null;
+      if (mod._load_mesh(V_ptr, posLen, F_ptr, faceLen) !== 0) {
+        pcResult = null; mod._free(V_ptr); mod._free(F_ptr); return;
+      }
       mod._free(V_ptr); mod._free(F_ptr);
-      return;
-    }
 
-    const numV   = i32View[baseIdx + 1];
-    const numF   = i32View[baseIdx + 2];
-    const offPD1f = i32View[baseIdx + 3];
-    const offPD2f = i32View[baseIdx + 4];
-    const offPV1f = i32View[baseIdx + 5];
-    const offPV2f = i32View[baseIdx + 6];
-    const offPD1v = i32View[baseIdx + 7];
-    const offPD2v = i32View[baseIdx + 8];
-    const offPV1v = i32View[baseIdx + 9];
-    const offPV2v = i32View[baseIdx + 10];
+      if (mod._compute_principal_curvature_field() !== 0) { pcResult = null; return; }
 
-    // Extract arrays with copy (static C++ buffer reused on next call)
-    pcResult = {
-      numV, numF,
-      PD1_face: new Float32Array(f32View.buffer, resultPtr + offPD1f * 4, numF * 3),
-      PD2_face: new Float32Array(f32View.buffer, resultPtr + offPD2f * 4, numF * 3),
-      PV1_face: new Float32Array(f32View.buffer, resultPtr + offPV1f * 4, numF),
-      PV2_face: new Float32Array(f32View.buffer, resultPtr + offPV2f * 4, numF),
-      PD1_vert: new Float32Array(f32View.buffer, resultPtr + offPD1v * 4, numV * 3),
-      PD2_vert: new Float32Array(f32View.buffer, resultPtr + offPD2v * 4, numV * 3),
-      PV1_vert: new Float32Array(f32View.buffer, resultPtr + offPV1v * 4, numV),
-      PV2_vert: new Float32Array(f32View.buffer, resultPtr + offPV2v * 4, numV)
-    };
+      const numF = F_rows, numV = V_rows;
 
-    // Copy data before freeing
-    pcResult.PD1_face = new Float32Array(pcResult.PD1_face);
-    pcResult.PD2_face = new Float32Array(pcResult.PD2_face);
-    pcResult.PV1_face = new Float32Array(pcResult.PV1_face);
-    pcResult.PV2_face = new Float32Array(pcResult.PV2_face);
-    pcResult.PD1_vert = new Float32Array(pcResult.PD1_vert);
-    pcResult.PD2_vert = new Float32Array(pcResult.PD2_vert);
-    pcResult.PV1_vert = new Float32Array(pcResult.PV1_vert);
-    pcResult.PV2_vert = new Float32Array(pcResult.PV2_vert);
+      // Per-face direction and curvatures from WASM
+      const pdPtr = mod._get_pc_field(), pdSz = mod._get_pc_field_size();
+      const kkPtr = mod._get_pc_k1k2(), kkSz = mod._get_pc_k1k2_size();
+      const pdRaw = new Float64Array(mod.HEAPU8.buffer, pdPtr, pdSz);
+      const kkRaw = new Float64Array(mod.HEAPU8.buffer, kkPtr, kkSz);
 
-    mod._free(V_ptr);
-    mod._free(F_ptr);
+      const PD1_face = new Float32Array(numF * 3);
+      const PD2_face = new Float32Array(numF * 3);
+      const PV1_face = new Float32Array(numF);
+      const PV2_face = new Float32Array(numF);
+      for (let i = 0; i < numF; i++) {
+        PD1_face[i*3]=pdRaw[i*3]; PD1_face[i*3+1]=pdRaw[i*3+1]; PD1_face[i*3+2]=pdRaw[i*3+2];
+        PD2_face[i*3]=pdRaw[i*3]; PD2_face[i*3+1]=pdRaw[i*3+1]; PD2_face[i*3+2]=pdRaw[i*3+2];
+        PV1_face[i]=kkRaw[i*2]; PV2_face[i]=kkRaw[i*2+1];
+      }
 
-    // Update curvature stat
-    if (pcResult.PV1_face.length > 0) {
-      let sumK = 0;
-      for (let i = 0; i < pcResult.PV1_face.length; i++) sumK += Math.abs(pcResult.PV1_face[i]);
-      document.getElementById('curvature').textContent = (sumK / pcResult.PV1_face.length).toFixed(4);
-    }
+      // Average face→vertex
+      const F = F_arr;
+      const PD1_v = new Float32Array(numV*3), PD2_v = new Float32Array(numV*3);
+      const PV1_v = new Float32Array(numV),  PV2_v = new Float32Array(numV);
+      const cnt = new Int32Array(numV);
+      for (let fi=0; fi<numF; fi++) {
+        const a=F[fi*3], b=F[fi*3+1], c=F[fi*3+2];
+        for (const v of [a,b,c]) { cnt[v]++; PV1_v[v]+=PV1_face[fi]; PV2_v[v]+=PV2_face[fi];
+          PD1_v[v*3]+=PD1_face[fi*3]; PD1_v[v*3+1]+=PD1_face[fi*3+1]; PD1_v[v*3+2]+=PD1_face[fi*3+2]; }
+      }
+      for (let i=0; i<numV; i++) if (cnt[i]>0) {
+        const inv=1/cnt[i]; PV1_v[i]*=inv; PV2_v[i]*=inv;
+        PD1_v[i*3]*=inv; PD1_v[i*3+1]*=inv; PD1_v[i*3+2]*=inv;
+      }
+      PD2_v.set(PD1_v);
+
+      pcResult = { numV, numF,
+        PD1_face, PD2_face, PV1_face, PV2_face,
+        PD1_vert: PD1_v, PD2_vert: PD2_v, PV1_vert: PV1_v, PV2_vert: PV2_v };
+
+      if (numF>0) {
+        let sumK=0; for (let i=0;i<numF;i++) sumK+=Math.abs(PV1_face[i]);
+        document.getElementById('curvature').textContent=(sumK/numF).toFixed(4);
+      }
+    } catch(e) { console.error('PC compute failed:',e); pcResult=null; }
   }
 
   // Generate arrows on each face: principal curvature (WASM) or N-RoSy field
@@ -1734,9 +1579,6 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
         geometry = new THREE.SphereGeometry(1, 32, 32);
     }
 
-    importedNRosyTheta = null;
-    importedNRosySourceType = null;
-    setFieldSourceStatus('computed');
     await setupMesh(geometry, vertCount, faceCount);
   }
 
@@ -1807,23 +1649,11 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     trivialResult = null;
     if (isNRosySource()) {
       await initFieldModule();
-      const frames = buildFaceFramesAndAdjacency(currentV, currentF, faceCount);
-      if (importedNRosyTheta && importedNRosyTheta.length === faceCount) {
-        trivialResult = buildResultFromTheta(importedNRosyTheta, frames, 4);
-        const srcKind = importedNRosySourceType === 'auto' ? 'auto' : 'manual';
-        const detail = importedNRosySourceType === 'auto'
-          ? `${formatNRosyAlgorithm(trivialResult.algorithm)}`
-          : formatNRosyAlgorithm(trivialResult.algorithm);
-        setFieldSourceStatus(srcKind, detail);
-      } else {
-        trivialResult = computeNRosyField(currentV, currentF, currentN);
-        setFieldSourceStatus('computed', formatNRosyAlgorithm(trivialResult?.algorithm));
-      }
+      trivialResult = computeNRosyField(currentV, currentF, currentN);
       document.getElementById('curvature').textContent = '—';
     } else {
       await initPCModule();
       computeCurvatureWASM(currentV, currentF, vertCount, faceCount);
-      setFieldSourceStatus('principal');
     }
 
     // Reset camera target to model center (already set during mesh setup)
@@ -1915,9 +1745,15 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   function syncFieldSourceUI() {
     const nrosyOn = (currentFieldSource === 'nrosy');
     const nGroup = document.getElementById('n-rosy-group');
-    const csvGroup = document.getElementById('nrosy-csv-group');
+    const aGroup = document.getElementById('nrosy-algo-group');
     if (nGroup) nGroup.style.display = nrosyOn ? 'flex' : 'none';
-    if (csvGroup) csvGroup.style.display = nrosyOn ? 'flex' : 'none';
+    if (aGroup) aGroup.style.display = nrosyOn ? 'flex' : 'none';
+    // Auto-switch algo when N changes to incompatible mode
+    const asym = document.getElementById('nrosy-algo-select');
+    if (asym && currentN !== 4 && currentAlgo === 'complex-poly') {
+      asym.value = 'trivial';
+      currentAlgo = 'trivial';
+    }
   }
 
   // Event listeners
@@ -1925,20 +1761,16 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     currentFieldSource = e.target.value;
     syncFieldSourceUI();
     if (!currentV || !currentF) return;
-    importedNRosyTheta = null;
-    importedNRosySourceType = null;
     if (currentFieldSource === 'nrosy') {
       await initFieldModule();
       trivialResult = computeNRosyField(currentV, currentF, currentN);
       pcResult = null;
-      setFieldSourceStatus('computed', formatNRosyAlgorithm(trivialResult?.algorithm));
     } else {
       await initPCModule();
       const vertCount = currentV.length / 3;
       const faceCount = currentF.length / 3;
       computeCurvatureWASM(currentV, currentF, vertCount, faceCount);
       trivialResult = null;
-      setFieldSourceStatus('principal');
     }
     updateVisualization();
   });
@@ -1951,11 +1783,17 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
   document.getElementById('n-rosy-select').addEventListener('change', (e) => {
     currentN = parseInt(e.target.value);
+    syncFieldSourceUI();  // auto‑switch algo if N!=4
     if (currentV && currentF && isNRosySource()) {
-      importedNRosyTheta = null;
-      importedNRosySourceType = null;
       trivialResult = computeNRosyField(currentV, currentF, currentN);
-      setFieldSourceStatus('computed', formatNRosyAlgorithm(trivialResult?.algorithm));
+      updateVisualization();
+    }
+  });
+
+  document.getElementById('nrosy-algo-select').addEventListener('change', (e) => {
+    currentAlgo = e.target.value;
+    if (currentV && currentF && isNRosySource()) {
+      trivialResult = computeNRosyField(currentV, currentF, currentN);
       updateVisualization();
     }
   });
@@ -1991,36 +1829,6 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     updateVisualization();
   });
 
-  const csvInput = document.getElementById('nrosy-csv-input');
-  document.getElementById('btn-load-nrosy').addEventListener('click', () => {
-    csvInput.value = '';
-    csvInput.click();
-  });
-  document.getElementById('btn-auto-load-nrosy').addEventListener('click', async () => {
-    await tryAutoLoadNRosyCsvForCurrentModel();
-  });
-  document.getElementById('btn-clear-imported-nrosy').addEventListener('click', () => {
-    clearImportedNRosyField();
-  });
-  csvInput.addEventListener('change', (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file || !mesh || !currentF || !isNRosySource()) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const numF = currentF.length / 3;
-        importedNRosyTheta = parseFaceNRosyCsv(String(reader.result || ''), numF);
-        importedNRosySourceType = 'manual';
-        const frames = buildFaceFramesAndAdjacency(currentV, currentF, numF);
-        trivialResult = buildResultFromTheta(importedNRosyTheta, frames, 4);
-        setFieldSourceStatus('manual', formatNRosyAlgorithm(trivialResult.algorithm));
-        updateVisualization();
-      } catch (err) {
-        alert('导入 N-RoSy CSV 失败: ' + err.message);
-      }
-    };
-    reader.readAsText(file);
-  });
 
   // Resize handler
   window.addEventListener('resize', () => {
