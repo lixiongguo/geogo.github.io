@@ -18,6 +18,7 @@ var helperFunctions = '\
   uniform sampler2D tiles;\
   uniform sampler2D causticTex;\
   uniform sampler2D water;\
+  uniform sampler2D sphereTex;\
   \
   vec2 intersectCube(vec3 origin, vec3 ray, vec3 cubeMin, vec3 cubeMax) {\
     vec3 tMin = (cubeMin - origin) / ray;\
@@ -42,8 +43,9 @@ var helperFunctions = '\
     return 1.0e6;\
   }\
   \
-  vec3 getSphereColor(vec3 point) {\
-    vec3 color = vec3(0.5);\
+  vec3 getSphereColor(vec3 point, vec2 uv) {\
+    /* sample texture */\
+    vec3 color = texture2D(sphereTex, uv).rgb;\
     \
     /* ambient occlusion with walls */\
     color *= 1.0 - 0.9 / pow((1.0 + sphereRadius - abs(point.x)) / sphereRadius, 3.0);\
@@ -108,6 +110,11 @@ function Renderer() {
     wrap: gl.REPEAT,
     format: gl.RGB
   });
+  this.sphereTexture = GL.Texture.fromImage(document.getElementById('sphereTex'), {
+    minFilter: gl.LINEAR_MIPMAP_LINEAR,
+    wrap: gl.REPEAT,
+    format: gl.RGB
+  });
   this.lightDir = new GL.Vector(2.0, 2.0, -1.0).unit();
   this.causticTex = new GL.Texture(1024, 1024);
   this.waterMesh = GL.Mesh.plane({ detail: 200 });
@@ -131,7 +138,10 @@ function Renderer() {
         vec3 color;\
         float q = intersectSphere(origin, ray, sphereCenter, sphereRadius);\
         if (q < 1.0e6) {\
-          color = getSphereColor(origin + ray * q);\
+          vec3 hit = origin + ray * q;\
+          vec3 dir = normalize(hit - sphereCenter);\
+          vec2 uv = vec2(atan(dir.z, dir.x) / (2.0 * 3.14159265) + 0.5, asin(dir.y) / 3.14159265 + 0.5);\
+          color = getSphereColor(hit, uv);\
         } else if (ray.y < 0.0) {\
           vec2 t = intersectCube(origin, ray, vec3(-1.0, -poolHeight, -1.0), vec3(1.0, 2.0, 1.0));\
           color = getWallColor(origin + ray * t.y);\
@@ -188,14 +198,19 @@ function Renderer() {
   this.sphereMesh = GL.Mesh.sphere({ detail: 10 });
   this.sphereShader = new GL.Shader(helperFunctions + '\
     varying vec3 position;\
+    varying vec2 vUv;\
     void main() {\
       position = sphereCenter + gl_Vertex.xyz * sphereRadius;\
+      /* spherical UV from vertex direction */\
+      vec3 dir = normalize(gl_Vertex.xyz);\
+      vUv = vec2(atan(dir.z, dir.x) / (2.0 * 3.14159265) + 0.5, asin(dir.y) / 3.14159265 + 0.5);\
       gl_Position = gl_ModelViewProjectionMatrix * vec4(position, 1.0);\
     }\
   ', helperFunctions + '\
     varying vec3 position;\
+    varying vec2 vUv;\
     void main() {\
-      gl_FragColor = vec4(getSphereColor(position), 1.0);\
+      gl_FragColor = vec4(getSphereColor(position, vUv), 1.0);\
       vec4 info = texture2D(water, position.xz * 0.5 + 0.5);\
       if (position.y < info.r) {\
         gl_FragColor.rgb *= underwaterColor * 1.2;\
@@ -307,6 +322,7 @@ Renderer.prototype.renderWater = function(water, sky) {
   this.tileTexture.bind(1);
   sky.bind(2);
   this.causticTex.bind(3);
+  this.sphereTexture.bind(4);
   gl.enable(gl.CULL_FACE);
   for (var i = 0; i < 2; i++) {
     gl.cullFace(i ? gl.BACK : gl.FRONT);
@@ -316,6 +332,7 @@ Renderer.prototype.renderWater = function(water, sky) {
       tiles: 1,
       sky: 2,
       causticTex: 3,
+      sphereTex: 4,
       eye: tracer.eye,
       sphereCenter: this.sphereCenter,
       sphereRadius: this.sphereRadius
@@ -327,10 +344,12 @@ Renderer.prototype.renderWater = function(water, sky) {
 Renderer.prototype.renderSphere = function() {
   water.textureA.bind(0);
   this.causticTex.bind(1);
+  this.sphereTexture.bind(2);
   this.sphereShader.uniforms({
     light: this.lightDir,
     water: 0,
     causticTex: 1,
+    sphereTex: 2,
     sphereCenter: this.sphereCenter,
     sphereRadius: this.sphereRadius
   }).draw(this.sphereMesh);
