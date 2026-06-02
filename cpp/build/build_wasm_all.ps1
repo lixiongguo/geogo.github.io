@@ -108,6 +108,7 @@ $uvSimpleSources = @(
     (Join-Path $srcRoot "uv_unwrap_simple\Tutte.cpp"),
     (Join-Path $srcRoot "uv_unwrap_simple\Scp.cpp"),
     (Join-Path $srcRoot "uv_unwrap_simple\CirclePatterns.cpp"),
+    (Join-Path $srcRoot "uv_unwrap_simple\AugmentedLagrangian.cpp"),
     (Join-Path $srcRoot "uv_unwrap_simple\Cetm.cpp"),
     (Join-Path $srcRoot "uv_unwrap_simple\RicciFlow.cpp"),
     (Join-Path $srcRoot "uv_unwrap_simple\LinAbf.cpp"),
