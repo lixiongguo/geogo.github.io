@@ -131,7 +131,10 @@ $uvFieldSources = @(
     (Join-Path $srcRoot "uv_unwrap_field\QuadCover.cpp"),
     (Join-Path $srcRoot "uv_unwrap_field\CrossFieldIntegerProgram.cpp"),
     (Join-Path $srcRoot "uv_unwrap_field\MIQQuad.cpp"),
-    (Join-Path $srcRoot "geometry\PrincipalCurvatureField.cpp")
+    (Join-Path $srcRoot "uv_unwrap_field\HolomorphicOneForm.cpp"),
+    (Join-Path $srcRoot "uv_unwrap_simple\Lscm.cpp"),
+    (Join-Path $srcRoot "geometry\PrincipalCurvatureField.cpp"),
+    (Join-Path $srcRoot "geometry\QcError.cpp")
 ) + $meshSrcs
 
 $abelJacobiSources = @(
@@ -196,6 +199,7 @@ if ($buildAll -or $targetSet.ContainsKey("uv_unwrap_field") -or $targetSet.Conta
             "_step2_smooth_and_matching",
             "_step3_solve_quadcover",
             "_solve_miq",
+            "_solve_hof",
             "_get_last_time_ms",
             "_get_miq_energy",
             "_get_face_dirs","_get_face_dirs_size",

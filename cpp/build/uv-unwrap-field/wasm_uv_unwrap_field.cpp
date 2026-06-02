@@ -17,6 +17,7 @@
 #include "MeshIO.h"
 #include "uv_unwrap_field/QuadCover.h"
 #include "uv_unwrap_field/MIQQuad.h"
+#include "uv_unwrap_field/HolomorphicOneForm.h"
 
 namespace {
 
@@ -244,6 +245,19 @@ int solve_miq(int crossIters, int jumpRefinePasses)
     g_last_time_ms = emscripten_get_now() - t0;
 
     snapshotMIQFields();
+    snapshotUV();
+    return 0;
+}
+
+/** HOF (Holomorphic One-Form) — global conformal via 1-form integration. */
+EMSCRIPTEN_KEEPALIVE
+int solve_hof()
+{
+    if (!g_mesh) return -1;
+    const double t0 = emscripten_get_now();
+    HolomorphicOneForm hof(*g_mesh);
+    hof.parameterize();
+    g_last_time_ms = emscripten_get_now() - t0;
     snapshotUV();
     return 0;
 }

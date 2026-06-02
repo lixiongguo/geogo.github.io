@@ -8,9 +8,9 @@
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
 
-  <script src="assets/wasm/uv_unwrap_field.js"></script>
-  <script src="assets/wasm/uv_unwrap_simple.js"></script>
-  <script src="assets/wasm/uv_unwrap_abel_jacobi.js"></script>
+  <script src="/assets/wasm/uv_unwrap_field.js"></script>
+  <script src="/assets/wasm/uv_unwrap_simple.js"></script>
+  <script src="/assets/wasm/uv_unwrap_abel_jacobi.js"></script>
 <style>
   *{box-sizing:border-box}html,body{margin:0;height:100%}
   body{overflow:hidden;background:#070b14;color:#d8def7;font-family:"Segoe UI",Arial,sans-serif}
@@ -74,6 +74,7 @@
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="miq"> MIQ (向量场引导)</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="pgp"> PGP (周期全局参数化)</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="abel_jacobi"> Abel–Jacobi (闭合 g≥1)</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="hof"> 全纯1-形式 (HOF)</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover" checked> QuadCover</label>
         </div>
       </fieldset>
@@ -610,7 +611,7 @@
     if(taReady)return true;if(taFailed)return false;
     try{
       if(typeof UvUnwrapSimpleSolver!=='function')throw new Error('UvUnwrapSimpleSolver 未加载');
-      taInst=await UvUnwrapSimpleSolver({locateFile:(p)=>"assets/wasm/"+p});
+      taInst=await UvUnwrapSimpleSolver({locateFile:(p)=>"/assets/wasm/"+p});
       taReady=true;return true
     }
     catch(e){taFailed=true;console.error(e);return false}
@@ -781,7 +782,7 @@
     if(ajReady)return true;if(ajFailed)return false;
     try{
       if(typeof UvUnwrapAbelJacobiSolver!=='function')throw new Error('UvUnwrapAbelJacobiSolver 未加载');
-      if(!ajPromise)ajPromise=UvUnwrapAbelJacobiSolver({locateFile:(p)=>"assets/wasm/"+p});
+      if(!ajPromise)ajPromise=UvUnwrapAbelJacobiSolver({locateFile:(p)=>"/assets/wasm/"+p});
       ajInst=await ajPromise;
       ajReady=true;return true;
     }catch(e){ajFailed=true;console.error(e);return false;}
@@ -826,7 +827,7 @@
     if(fieldReady)return true;if(fieldFailed)return false;
     try{
       if(typeof UvUnwrapFieldSolver!=='function')throw new Error('UvUnwrapFieldSolver 未加载');
-      if(!fieldPromise)fieldPromise=UvUnwrapFieldSolver({locateFile:(p)=>"assets/wasm/"+p});
+      if(!fieldPromise)fieldPromise=UvUnwrapFieldSolver({locateFile:(p)=>"/assets/wasm/"+p});
       fieldInst=await fieldPromise;
       fieldReady=true;return true;
     }catch(e){fieldFailed=true;console.error(e);return false;}
@@ -898,6 +899,25 @@
     }finally{fieldInst._free(pp);fieldInst._free(fpt)}
   }
 
+  async function solveHOF(meshData){
+    const ok=await initFieldSolver();if(!ok)throw new Error("uv_unwrap_field WASM 初始化失败");
+    const v=meshData.positions,f=meshData.faces;
+    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
+    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
+    const pp=wasmWritePosInst(fieldInst,fp),fpt=wasmWriteFacesInst(fieldInst,ff);
+    try{
+      let rc=fieldInst.ccall('load_mesh','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length]);
+      if(rc!==0)throw new Error("load_mesh 错误:"+rc);
+      rc=fieldInst.ccall('solve_hof','number',[],[]);
+      if(rc!==0)throw new Error("solve_hof 错误:"+rc);
+      const us=wasmReadUV(fieldInst,'get_uv_result_size','get_uv_result');
+      const t=fieldInst.ccall('get_last_time_ms','number',[],[]);
+      fieldInst.ccall('dispose','void',[],[]);
+      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
+      return{uv,timeMs:t,method:'hof'};
+    }finally{fieldInst._free(pp);fieldInst._free(fpt)}
+  }
+
   async function solveMIQ(meshData,crossIters,jumpRefinePasses){
     const ok=await initFieldSolver();if(!ok)throw new Error("uv_unwrap_field WASM 初始化失败");
     const v=meshData.positions,f=meshData.faces;
@@ -947,7 +967,7 @@
 
   async function doUnwrap(){
     if(busy||!currentMeshData)return;
-    const method=getMethod(),mNames={miq:'MIQ 向量场引导',pgp:'PGP 周期全局参数化',abel_jacobi:'Abel–Jacobi',quadcover:'QuadCover'};
+    const method=getMethod(),mNames={miq:'MIQ 向量场引导',pgp:'PGP 周期全局参数化',abel_jacobi:'Abel–Jacobi',hof:'全纯1-形式 (HOF)',quadcover:'QuadCover'};
     const label=mNames[method]||method;
     setBusy(true);setStatus(label+" 求解中...");
     const t0=performance.now();
@@ -961,6 +981,9 @@
       }else if(method==='abel_jacobi'){
         setStatus("Abel–Jacobi: 同调基 + 正规全纯1-形式 + 周期整数化 ...");
         r=await solveAbelJacobi(currentMeshData);
+      }else if(method==='hof'){
+        setStatus("全纯1-形式: 离散1-形式 + Hodge星 + 积分 ...");
+        r=await solveHOF(currentMeshData);
       }else{
         setStatus("QuadCover: step1主曲率 -> step2平滑/匹配 -> step3参数化 ...");
         r=await solveQuadCover(currentMeshData);
@@ -992,6 +1015,7 @@
     const a=ur.width/Math.max(ur.height,1),s=1.15;uvCam.left=-s*a;uvCam.right=s*a;uvCam.top=s;uvCam.bottom=-s;uvCam.updateProjectionMatrix();
   }
 
+  function setStatus(msg,color){statusText.textContent=msg;if(color)statusText.style.color=color}
   function animate(){requestAnimationFrame(animate);controls.update();modelR.render(modelScene,modelCam);uvR.render(uvScene,uvCam)}
 
   // 初始化 UV 网格
