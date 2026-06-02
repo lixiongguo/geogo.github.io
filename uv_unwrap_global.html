@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>全局参数化 - MIQ / QuadCover</title>
+  <title>UV Unwrap — Global Parameterization</title>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
@@ -71,8 +71,7 @@
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="miq"> MIQ (向量场引导)</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="pgp"> PGP (周期全局参数化)</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="abel_jacobi"> Abel–Jacobi (闭合 g≥1)</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover" checked> QuadCover简化</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover_full"> QuadCover完整</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover" checked> QuadCover</label>
         </div>
       </fieldset>
 
@@ -112,17 +111,15 @@
 <script>
 (function(){
 
-  // ============ Models2 ============
+  // ============ Models ============
   const MODELS = {
-    cow: { label: "Cow (5.8K)", file: "cow_F5804.obj" },
-    doubletorus: { label: "Double Torus (6.1K)", file: "double-torus_F6144.obj" },
-    holes3: { label: "3 Holes (7.2K)", file: "3holes_F7200.obj" },
-    torus: { label: "Torus (7.7K)", file: "torus_F7680.obj" },
-    fandisk: { label: "Fandisk (12.9K)", file: "fandisk_F12946.obj" },
-    kitten: { label: "Kitten (18.9K)", file: "kitten_F18894.obj" },
-    rocker: { label: "Rocker Arm (20.1K)", file: "rocker-arm_F20088.obj" },
-    bunny: { label: "Bunny (28.6K)", file: "bunny_F28576.obj" },
-    soccerball: { label: "Soccer Ball (57.6K)", file: "soccerball_F57600.obj" },
+    doubletorus:{ label: "Double Torus (6.1K)",file: "double-torus_F6144.obj" },
+    holes3:     { label: "3 Holes (7.2K)",     file: "3holes_F7200.obj" },
+    torus:      { label: "Torus (7.7K)",       file: "torus_F7680.obj" },
+    kitten:     { label: "Kitten (18.9K)",     file: "kitten_F18894.obj" },
+    rocker:     { label: "Rocker Arm (20.1K)", file: "rocker-arm_F20088.obj" },
+    bunny:      { label: "Bunny (28.6K)",      file: "bunny_F28576.obj" },
+    soccerball: { label: "Soccer Ball (57.6K)",file: "soccerball_F57600.obj" },
   };
 
   // ============ Three.js 初始化 ============
@@ -570,7 +567,7 @@
   }
 
   // ============ 求解器调用（分 3 步） ============
-  async function solveQuadCover(meshData,full){
+  async function solveQuadCover(meshData){
     const ok=await initFieldSolver();if(!ok)throw new Error("uv_unwrap_field WASM 初始化失败");
     const v=meshData.positions,f=meshData.faces;
     const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
@@ -583,13 +580,13 @@
       if(rc!==0)throw new Error("step1_compute_principal_field 错误:"+rc);
       rc=fieldInst.ccall('step2_smooth_and_matching','number',['number'],[3]);
       if(rc!==0)throw new Error("step2_smooth_and_matching 错误:"+rc);
-      rc=fieldInst.ccall('step3_solve_quadcover','number',['number'],[full?1:0]);
-      if(rc!==0)throw new Error(full&&rc===-2?"QuadCover完整 cover integration failed":"step3_solve_quadcover 错误:"+rc);
+      rc=fieldInst.ccall('step3_solve_quadcover','number',['number'],[1]);
+      if(rc!==0)throw new Error("step3_solve_quadcover 错误:"+rc);
       const us=wasmReadUV(fieldInst,'get_uv_result_size','get_uv_result');
       const t=fieldInst.ccall('get_last_time_ms','number',[],[]);
       fieldInst.ccall('dispose','void',[],[]);
       const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
-      return{uv,timeMs:t,method:full?'quadcover_full':'quadcover'};
+      return{uv,timeMs:t,method:'quadcover'};
     }finally{fieldInst._free(pp);fieldInst._free(fpt)}
   }
 
@@ -641,7 +638,7 @@
 
   async function doUnwrap(){
     if(busy||!currentMeshData)return;
-    const method=getMethod(),mNames={miq:'MIQ 向量场引导',pgp:'PGP 周期全局参数化',abel_jacobi:'Abel–Jacobi',quadcover:'QuadCover简化',quadcover_full:'QuadCover完整'};
+    const method=getMethod(),mNames={miq:'MIQ 向量场引导',pgp:'PGP 周期全局参数化',abel_jacobi:'Abel–Jacobi',quadcover:'QuadCover'};
     const label=mNames[method]||method;
     setBusy(true);setStatus(label+" 求解中...");
     const t0=performance.now();
@@ -657,7 +654,7 @@
         r=await solveAbelJacobi(currentMeshData);
       }else{
         setStatus("QuadCover: step1主曲率 -> step2平滑/匹配 -> step3参数化 ...");
-        r=await solveQuadCover(currentMeshData,method==='quadcover_full');
+        r=await solveQuadCover(currentMeshData);
       }
       const ms=r.timeMs>0?r.timeMs:(performance.now()-t0);
       currentUnwrapUv=r.uv;
