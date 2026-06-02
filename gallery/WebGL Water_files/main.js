@@ -28,6 +28,7 @@ var gl = GL.create();
 var water;
 var cubemap;
 var renderer;
+var fishSchool;
 var angleX = -25;
 var angleY = -200.5;
 
@@ -77,9 +78,11 @@ window.onload = function() {
     throw new Error('Rendering to floating-point textures is required but not supported');
   }
 
+  fishSchool = new FishSchool();
+
   center = oldCenter = new GL.Vector(-0.4, -0.75, 0.2);
   velocity = new GL.Vector();
-  gravity = new GL.Vector(0, -4, 0);
+  gravity = new GL.Vector(0, -1.2, 0);  // lighter sphere, floats higher
   radius = 0.25;
 
   for (var i = 0; i < 20; i++) {
@@ -234,7 +237,7 @@ window.onload = function() {
     } else if (useSpherePhysics) {
       // Fall down with viscosity under water
       var percentUnderWater = Math.max(0, Math.min(1, (radius - center.y) / (2 * radius)));
-      velocity = velocity.add(gravity.multiply(seconds - 1.1 * seconds * percentUnderWater));
+      velocity = velocity.add(gravity.multiply(seconds - 1.8 * seconds * percentUnderWater));
       velocity = velocity.subtract(velocity.unit().multiply(percentUnderWater * seconds * velocity.dot(velocity)));
       center = center.add(velocity.multiply(seconds));
 
@@ -254,6 +257,7 @@ window.onload = function() {
     water.stepSimulation();
     water.updateNormals();
     renderer.updateCaustics(water);
+    fishSchool.update(seconds);
   }
 
   function draw() {
@@ -275,6 +279,7 @@ window.onload = function() {
     renderer.sphereRadius = radius;
     renderer.renderCube();
     renderer.renderWater(water, cubemap);
+    fishSchool.render();
     renderer.renderSphere();
     gl.disable(gl.DEPTH_TEST);
   }
