@@ -255,7 +255,12 @@
       color: #707090;
       margin-top: 2px;
     }
-  </style>
+  .tree-btn{padding:5px 10px;background:#1a2e1a;border:1px solid rgba(100,220,120,.35);color:#a0f0b0;font-size:11px;border-radius:4px;cursor:pointer;transition:all .2s}
+  .tree-btn:hover:not(:disabled){background:#2a4e2a;border-color:rgba(100,220,180,.5)}
+  .tree-btn:disabled{opacity:.4;cursor:not-allowed}
+  .tree-btn.active{background:#206030;border-color:#60e060;box-shadow:0 0 8px rgba(80,220,80,.35)}
+  #tc-info-vf{font-size:10px;color:#80c0a0}
+</style>
 </head>
 <body>
 
@@ -316,6 +321,19 @@
           <span style="font-size:12px;color:#9fb2df">三角面线框</span>
         </label>
       </div>
+    </div>
+  </div>
+  <div class="header" style="padding:6px 20px; border-top:1px solid rgba(80,160,120,0.12);">
+    <div class="controls">
+      <button id="tree-btn-step1" class="tree-btn" title="Step 1: BFS 构建生成树">🌳 Step1 生成树</button>
+      <button id="tree-btn-step2" class="tree-btn" title="Step 2: 对偶图上构建余树" disabled>🌲 Step2 余树</button>
+      <button id="tree-btn-step3" class="tree-btn" title="Step 3: 非树非余树边 = 同调基底" disabled>🪓 Step3 同调基底</button>
+      <button id="tree-btn-link" class="tree-btn" style="background:#2a1a3a;border-color:rgba(220,120,240,.4);color:#e0a0f0" title="用生成树边连接同调基底顶点" disabled>🔗 连结</button>
+      <button id="tree-btn-auto" class="tree-btn" style="background:#1a2e3a;border-color:rgba(80,200,240,.45);color:#80d8ff" title="自动执行 Step1→Step2→Step3">🚀 一键执行</button>
+      <span style="color:#8aad9a;font-size:11px;">粗细</span>
+      <input type="range" id="tc-thickness" min="5" max="15" value="7" style="width:50px;height:14px;accent-color:#60d060;cursor:pointer;">
+      <span id="tc-info-vf"></span>
+      <span style="color:#8aad9a;font-size:10px;">金色生成树 · 青色余树 · 绿色同调基底</span>
     </div>
   </div>
 
@@ -664,6 +682,256 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
   const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
   camera.position.set(0, 2, 5);
+
+  // ============ Tree-Cotree ============
+  let tcData=null,tcTree=null,tcCotree=null,tcCurrView='',tcLinkEdges=[],homologyEdges=[];
+  let tcDisplayGroup=null;
+  const upVec=new THREE.Vector3(0,1,0);
+  const tmpQ=new THREE.Quaternion(),tmpMid=new THREE.Vector3(),tmpDir=new THREE.Vector3();
+  let tcSliceEl=document.getElementById('tc-thickness');
+
+  function getTcThickness(){const v=parseInt(tcSliceEl.value)||7;return v/1000;}
+
+  function resetTcState(){
+    tcData=null;tcTree=null;tcCotree=null;
+    homologyEdges=[];tcLinkEdges=[];tcCurrView='';updateTcInfo();
+    clearTcDisplay();
+    document.getElementById('tree-btn-step1').disabled=false;
+    document.getElementById('tree-btn-step2').disabled=true;
+    document.getElementById('tree-btn-step3').disabled=true;
+    document.getElementById('tree-btn-link').disabled=true;
+    document.getElementById('tree-btn-auto').disabled=false;
+  }
+
+  function clearTcDisplay(){
+    if(tcDisplayGroup){scene.remove(tcDisplayGroup);tcDisplayGroup=null;}
+  }
+
+  function updateTcInfo(){
+    const info=document.getElementById('tc-info-vf');
+    info.textContent=homologyEdges.length>0?homologyEdges.length+' 条割边':'';
+  }
+
+  function buildTcEdgeData(positions,faces){
+    if(tcData)return tcData;
+    const V=positions.length/3,F=faces.length/3;
+    const edgeMap=new Map();
+    for(let fi=0;fi<F;fi++){
+      const a=faces[fi*3],b=faces[fi*3+1],c=faces[fi*3+2];
+      for(const [u,v] of [[a,b],[b,c],[c,a]]){
+        const key=u<v?u+'_'+v:v+'_'+u;
+        if(!edgeMap.has(key))edgeMap.set(key,{a:Math.min(u,v),b:Math.max(u,v),faces:[]});
+        edgeMap.get(key).faces.push(fi);
+      }
+    }
+    const edges=Array.from(edgeMap.values());
+    const edgeIdx=new Map();
+    edges.forEach((e,i)=>edgeIdx.set(e.a+'_'+e.b,i));
+    const adj=Array.from({length:V},()=>[]);
+    for(const e of edges){
+      const ei=edgeIdx.get(e.a+'_'+e.b);
+      adj[e.a].push({to:e.b,edgeIdx:ei});
+      adj[e.b].push({to:e.a,edgeIdx:ei});
+    }
+    tcData={edges,edgeIdx,adj,nF:F};
+    return tcData;
+  }
+
+  function step1SpanningTree(){
+    if(!currentV||!currentF)return;
+    const d=buildTcEdgeData(currentV,currentF);
+    const V=currentV.length/3;
+    const inTree=new Array(d.edges.length).fill(false);
+    const visited=new Array(V).fill(false);
+    const queue=[0];visited[0]=true;
+    while(queue.length>0){
+      const u=queue.shift();
+      for(const nb of d.adj[u]){
+        if(!visited[nb.to]){visited[nb.to]=true;queue.push(nb.to);inTree[nb.edgeIdx]=true;}
+      }
+    }
+    tcTree=inTree;tcCotree=null;
+    homologyEdges=[];updateTcInfo();
+    tcCurrView='tree';displayTreeEdges(d.edges,inTree);
+    document.getElementById('tree-btn-step1').disabled=true;
+    document.getElementById('tree-btn-step2').disabled=false;
+    document.getElementById('tree-btn-step3').disabled=true;
+  }
+
+  function step2Cotree(){
+    if(!currentV||!currentF||!tcTree)return;
+    const d=buildTcEdgeData(currentV,currentF);
+    const dualAdj=Array.from({length:d.nF},()=>[]);
+    for(let ei=0;ei<d.edges.length;ei++){
+      if(tcTree[ei])continue;
+      const e=d.edges[ei];
+      if(e.faces.length===2){
+        dualAdj[e.faces[0]].push({to:e.faces[1],edgeIdx:ei});
+        dualAdj[e.faces[1]].push({to:e.faces[0],edgeIdx:ei});
+      }
+    }
+    const inCotree=new Array(d.edges.length).fill(false);
+    const dualVisited=new Array(d.nF).fill(false);
+    let startFace=-1;
+    for(let fi=0;fi<d.nF;fi++){if(!dualVisited[fi]){startFace=fi;break}}
+    if(startFace>=0){
+      const dualQueue=[startFace];dualVisited[startFace]=true;
+      while(dualQueue.length>0){
+        const fi=dualQueue.shift();
+        for(const nb of dualAdj[fi]){
+          if(!dualVisited[nb.to]){dualVisited[nb.to]=true;dualQueue.push(nb.to);inCotree[nb.edgeIdx]=true;}
+        }
+      }
+    }
+    tcCotree=inCotree;
+    tcCurrView='tree+cotree';displayTreePlusCotree(d.edges,tcTree,inCotree);
+    document.getElementById('tree-btn-step2').disabled=true;
+    document.getElementById('tree-btn-step3').disabled=false;
+  }
+
+  function step3HomologyBasis(){
+    if(!currentV||!currentF||!tcTree||!tcCotree)return;
+    const d=buildTcEdgeData(currentV,currentF);
+    homologyEdges=[];
+    for(let ei=0;ei<d.edges.length;ei++){
+      if(!tcTree[ei]&&!tcCotree[ei])homologyEdges.push(d.edges[ei]);
+    }
+    updateTcInfo();
+    tcCurrView='homology';displayHomologyBasis();
+    document.getElementById('tree-btn-step3').disabled=true;
+    document.getElementById('tree-btn-link').disabled=false;
+  }
+
+  function step4LinkLoop(){
+    if(!currentV||!tcTree||homologyEdges.length===0)return;
+    const d=buildTcEdgeData(currentV,currentF);
+    const hvSet=new Set();
+    for(const e of homologyEdges){hvSet.add(e.a);hvSet.add(e.b);}
+    const hv=Array.from(hvSet);
+    if(hv.length<2)return;
+    function treeBfsPath(from,to){
+      const V=currentV.length/3;
+      const prev=new Int32Array(V).fill(-1);
+      const queue=[from];prev[from]=from;
+      while(queue.length>0){
+        const v=queue.shift();
+        if(v===to){const path=[];let cur=to;while(cur!==from){const p=prev[cur];if(p<0)return[];path.push({a:Math.min(cur,p),b:Math.max(cur,p)});cur=p;}return path;}
+        for(const nb of d.adj[v]){
+          if(!tcTree[nb.edgeIdx])continue;
+          if(prev[nb.to]>=0)continue;
+          prev[nb.to]=v;queue.push(nb.to);
+        }
+      }
+      return [];
+    }
+    tcLinkEdges=[];const seenPath=new Set();
+    for(let i=1;i<hv.length;i++){
+      const path=treeBfsPath(hv[0],hv[i]);
+      for(const seg of path){const k=seg.a+'_'+seg.b;if(!seenPath.has(k)){seenPath.add(k);tcLinkEdges.push(seg);}}
+    }
+    tcCurrView='homology+link';displayHomologyWithLinks();
+    document.getElementById('tree-btn-link').disabled=true;
+  }
+
+  async function autoRunAllTreeCotreeSteps(){
+    if(!currentV||!currentF)return;
+    ['tree-btn-auto','tree-btn-step1','tree-btn-step2','tree-btn-step3'].forEach(id=>document.getElementById(id).disabled=true);
+    step1SpanningTree();await new Promise(r=>setTimeout(r,400));
+    step2Cotree();await new Promise(r=>setTimeout(r,400));
+    step3HomologyBasis();
+    document.getElementById('tree-btn-auto').disabled=false;
+  }
+
+  function onTcThicknessChange(){
+    if(!currentV||tcCurrView==='')return;
+    const d=buildTcEdgeData(currentV,currentF);
+    if(tcCurrView==='tree')displayTreeEdges(d.edges,tcTree);
+    else if(tcCurrView==='tree+cotree')displayTreePlusCotree(d.edges,tcTree,tcCotree);
+    else if(tcCurrView==='homology')displayHomologyBasis();
+    else if(tcCurrView==='homology+link')displayHomologyWithLinks();
+  }
+
+  function getPos(vi){return[getV(vi*3),getV(vi*3+1),getV(vi*3+2)];}
+  function getV(i){return currentV?currentV[i]:0;}
+
+  function addCylinderEdge(group,ax,ay,az,bx,by,bz,rGlow,rCore,glowColor,coreColor,glowOpacity,renderBase){
+    tmpDir.set(bx-ax,by-ay,bz-az);const len=tmpDir.length();if(len<1e-8)return;
+    tmpDir.multiplyScalar(1/len);tmpMid.set((ax+bx)*.5,(ay+by)*.5,(az+bz)*.5);tmpQ.setFromUnitVectors(upVec,tmpDir);
+    const gm=new THREE.MeshBasicMaterial({color:glowColor,transparent:true,opacity:glowOpacity,depthTest:false,depthWrite:false});
+    const g=new THREE.Mesh(new THREE.CylinderGeometry(rGlow,rGlow,len,6,1),gm);g.position.copy(tmpMid);g.quaternion.copy(tmpQ);g.renderOrder=renderBase;group.add(g);
+    const cm=new THREE.MeshBasicMaterial({color:coreColor,transparent:true,opacity:.95,depthTest:false,depthWrite:false});
+    const c=new THREE.Mesh(new THREE.CylinderGeometry(rCore,rCore,len,6,1),cm);c.position.copy(tmpMid);c.quaternion.copy(tmpQ);c.renderOrder=renderBase+1;group.add(c);
+  }
+
+  function displayTreeEdges(edges,inTree){
+    clearTcDisplay();if(!currentV)return;
+    const r=getTcThickness(),rc=r*.5;const group=new THREE.Group();group.renderOrder=10;
+    for(let ei=0;ei<edges.length;ei++){
+      if(!inTree[ei])continue;
+      const e=edges[ei],pa=getPos(e.a),pb=getPos(e.b);
+      addCylinderEdge(group,pa[0],pa[1],pa[2],pb[0],pb[1],pb[2],r,rc,0xffaa00,0xffd700,0.6,12);
+    }
+    scene.add(group);tcDisplayGroup=group;
+  }
+
+  function displayTreePlusCotree(edges,inTree,inCotree){
+    clearTcDisplay();if(!currentV)return;
+    const r=getTcThickness(),rc=r*.5;const group=new THREE.Group();group.renderOrder=10;
+    for(let ei=0;ei<edges.length;ei++){
+      if(!inTree[ei])continue;
+      const e=edges[ei],pa=getPos(e.a),pb=getPos(e.b);
+      addCylinderEdge(group,pa[0],pa[1],pa[2],pb[0],pb[1],pb[2],r,rc,0xdd9922,0xffd700,0.45,12);
+    }
+    for(let ei=0;ei<edges.length;ei++){
+      if(!inCotree[ei])continue;
+      const e=edges[ei],pa=getPos(e.a),pb=getPos(e.b);
+      addCylinderEdge(group,pa[0],pa[1],pa[2],pb[0],pb[1],pb[2],r,rc,0x00aaff,0x33eeff,0.75,14);
+    }
+    scene.add(group);tcDisplayGroup=group;
+  }
+
+  function displayHomologyBasis(){
+    clearTcDisplay();if(homologyEdges.length===0)return;
+    const r=getTcThickness()*2.5,rc=r*.55;const group=new THREE.Group();group.renderOrder=10;
+    for(const e of homologyEdges){
+      const pa=getPos(e.a),pb=getPos(e.b);
+      addCylinderEdge(group,pa[0],pa[1],pa[2],pb[0],pb[1],pb[2],r,rc,0x20ff20,0x66ff66,0.55,16);
+    }
+    const ptSet=new Set();
+    for(const e of homologyEdges){ptSet.add(e.a);ptSet.add(e.b);}
+    for(const vi of ptSet){
+      const p=getPos(vi),sg=r*3.5,sc=sg*.55;
+      const gs=new THREE.Mesh(new THREE.SphereGeometry(sg,16,8),new THREE.MeshBasicMaterial({color:0x20ff20,transparent:true,opacity:.6,depthTest:false,depthWrite:false}));
+      gs.position.set(p[0],p[1],p[2]);gs.renderOrder=18;group.add(gs);
+      const cs=new THREE.Mesh(new THREE.SphereGeometry(sc,16,8),new THREE.MeshBasicMaterial({color:0x44ff44,transparent:true,opacity:.98,depthTest:false,depthWrite:false}));
+      cs.position.set(p[0],p[1],p[2]);cs.renderOrder=19;group.add(cs);
+    }
+    scene.add(group);tcDisplayGroup=group;
+  }
+
+  function displayHomologyWithLinks(){
+    clearTcDisplay();if(homologyEdges.length===0)return;
+    const tr=getTcThickness();const r=tr*2.5,rc=r*.55;const group=new THREE.Group();group.renderOrder=10;
+    for(const e of homologyEdges){
+      const pa=getPos(e.a),pb=getPos(e.b);
+      addCylinderEdge(group,pa[0],pa[1],pa[2],pb[0],pb[1],pb[2],r,rc,0x20ff20,0x66ff66,0.55,16);
+    }
+    const lr=tr*1.8,lrc=lr*.5;
+    for(const seg of tcLinkEdges){
+      const pa=getPos(seg.a),pb=getPos(seg.b);
+      addCylinderEdge(group,pa[0],pa[1],pa[2],pb[0],pb[1],pb[2],lr,lrc,0xd040f0,0xf080ff,0.7,15);
+    }
+    const ptSet=new Set();
+    for(const e of homologyEdges){ptSet.add(e.a);ptSet.add(e.b);}
+    for(const vi of ptSet){
+      const p=getPos(vi),sg=r*3.5,sc=sg*.55;
+      const gs=new THREE.Mesh(new THREE.SphereGeometry(sg,16,8),new THREE.MeshBasicMaterial({color:0x20ff20,transparent:true,opacity:.6,depthTest:false,depthWrite:false}));
+      gs.position.set(p[0],p[1],p[2]);gs.renderOrder=18;group.add(gs);
+      const cs=new THREE.Mesh(new THREE.SphereGeometry(sc,16,8),new THREE.MeshBasicMaterial({color:0x44ff44,transparent:true,opacity:.98,depthTest:false,depthWrite:false}));
+      cs.position.set(p[0],p[1],p[2]);cs.renderOrder=19;group.add(cs);
+    }
+    scene.add(group);tcDisplayGroup=group;
+  }
 
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
@@ -1556,6 +1824,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   async function createModel(type) {
     // Clear existing
     meshGroup.clear();
+    resetTcState();
     Object.values(arrowGroups).forEach(g => { if (g) scene.remove(g); });
     if (streamlineGroup) scene.remove(streamlineGroup);
 
@@ -1859,6 +2128,14 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
       lastFpsTime = now;
     }
   }
+
+  // Tree-Cotree event listeners
+  document.getElementById('tree-btn-step1').addEventListener('click',step1SpanningTree);
+  document.getElementById('tree-btn-step2').addEventListener('click',step2Cotree);
+  document.getElementById('tree-btn-step3').addEventListener('click',step3HomologyBasis);
+  document.getElementById('tree-btn-link').addEventListener('click',step4LinkLoop);
+  document.getElementById('tree-btn-auto').addEventListener('click',autoRunAllTreeCotreeSteps);
+  tcSliceEl.addEventListener('input',onTcThicknessChange);
 
   // Initialize
   syncFieldSourceUI();

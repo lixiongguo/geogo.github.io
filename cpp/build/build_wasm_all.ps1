@@ -9,12 +9,14 @@ $buildRoot = $PSScriptRoot
 $cppRoot = Split-Path -Parent $buildRoot
 $repoRoot = Split-Path -Parent $cppRoot
 $srcRoot = Join-Path $cppRoot "conformal-parameterization"
+$omtRoot = Join-Path $cppRoot "MongeAmpere\optimal_mass_transport"
 $outDir = Join-Path $repoRoot "assets\wasm"
 $tmpDir = Join-Path $buildRoot "build"
 
 $emsdkPath = Join-Path $cppRoot "emsdk"
 $eigenInc = Join-Path $cppRoot "deps\eigen-3.4.0"
 $glmInc = Join-Path $cppRoot "deps\glm"
+$stbInc = Join-Path $cppRoot "deps\stb"
 
 if (!(Test-Path (Join-Path $emsdkPath "emsdk_env.ps1"))) {
     Write-Host "[ERROR] emsdk not found at: $emsdkPath" -ForegroundColor Red
@@ -233,6 +235,27 @@ if ($buildAll -or $targetSet.ContainsKey("abel_jacobi") -or $targetSet.ContainsK
         ) `
         (Join-Path $outDir "uv_unwrap_abel_jacobi.js") `
         $abelJacobiIncludes
+}
+
+# ── OMT: Optimal Mass Transport Image Interpolation ──
+$omtSources = @(
+    (Join-Path $buildRoot "omt\wasm_omt.cpp")
+)
+
+if ($buildAll -or $targetSet.ContainsKey("omt")) {
+    Build-Target "omt" `
+        $omtSources `
+        "OmTSolver" `
+        @(
+            "_malloc","_free",
+            "_solve_omt_series",
+            "_get_omt_last_time_ms",
+            "_get_omt_result_data","_get_omt_result_size",
+            "_get_omt_frame_width","_get_omt_frame_height","_get_omt_frame_count",
+            "_omt_dispose"
+        ) `
+        (Join-Path $outDir "omt_solver.js") `
+        @("-I$omtRoot", "-I$stbInc")
 }
 
 Write-Host ""

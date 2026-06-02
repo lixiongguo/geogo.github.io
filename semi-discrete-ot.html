@@ -33,6 +33,14 @@
 <body>
   <h1>半离散最优传输 — Power 图</h1>
   <div class="subtitle">Semi-discrete Optimal Transport · Laguerre Diagram</div>
+  <div style="margin-top:8px">
+    <label style="font-size:11px;color:#7a8db5;">实验：</label>
+    <select id="page-switch" style="padding:5px 10px;border:1px solid rgba(106,132,255,.25);border-radius:8px;background:#0d1528;color:#c8d8f0;font-size:13px;cursor:pointer">
+      <option value="semi-discrete-ot.html" selected>半离散最优传输 — Power 图</option>
+      <option value="ot-interpolation.html">OT 图像插值</option>
+    </select>
+  </div>
+  <script>document.getElementById('page-switch').addEventListener('change',function(){location.href=this.value})</script>
 
   <div class="controls">
     <label>站点数量
