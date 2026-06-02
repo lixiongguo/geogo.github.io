@@ -48,21 +48,19 @@
 <div class="sidebar-item sidebar-nav">
   	<ul class="nav">
 		<li class="nav-title">曲面展开</li>
-    {% assign param_cats = "Parameterization-Preface|Parameterization-BasicParameterization|Parameterization-ConformalMapping|Parameterization-QuadRemeshing|Parameterization-ComputationalConformalGeometry|Parameterization-OptimalTransport|Parameterization-Appendix|QuadRemeshing|Math" | split: "|" %}
+    {% assign param_cats = "Parameterization-Preface|Parameterization-BasicParameterization|Parameterization-ConformalMapping|Parameterization-DifferentialForm|Parameterization-GeometricOptimization|Parameterization-QuadRemeshing|Parameterization-OptimalTransport" | split: "|" %}
     {% for category in site.categories %}
     {% assign cat_name = category | first %}
     {% assign cat_count = category | last | size %}
     {% if param_cats contains cat_name %}
     {% case cat_name %}
-		  {% when 'Parameterization-Preface' %}{% assign cat_display = '前言' %}
-		  {% when 'Parameterization-BasicParameterization' %}{% assign cat_display = '基础曲面展开方法' %}
-		  {% when 'Parameterization-ConformalMapping' %}{% assign cat_display = '共形映射方法' %}
-		  {% when 'Parameterization-QuadRemeshing' %}{% assign cat_display = '四边形网格化' %}
-		  {% when 'QuadRemeshing' %}{% assign cat_display = '四边形网格化' %}
-		  {% when 'Parameterization-ComputationalConformalGeometry' %}{% assign cat_display = '计算共形几何' %}
-		  {% when 'Parameterization-OptimalTransport' %}{% assign cat_display = '最优传输' %}
-		  {% when 'Parameterization-Appendix' %}{% assign cat_display = '附录' %}
-		  {% when 'Math' %}{% assign cat_display = '数学理论' %}
+		  {% when 'Parameterization-Preface' %}{% assign cat_display = '0 前言' %}
+		  {% when 'Parameterization-BasicParameterization' %}{% assign cat_display = '1 基础曲面展开方法' %}
+		  {% when 'Parameterization-ConformalMapping' %}{% assign cat_display = '2 共形参数化探微' %}
+		  {% when 'Parameterization-DifferentialForm' %}{% assign cat_display = '3 基于微分形式的参数化' %}
+		  {% when 'Parameterization-GeometricOptimization' %}{% assign cat_display = '4 几何优化方法' %}
+		  {% when 'Parameterization-QuadRemeshing' %}{% assign cat_display = '5 向量场引导的参数化' %}
+		  {% when 'Parameterization-OptimalTransport' %}{% assign cat_display = '6 最优传输方法' %}
 		  {% else %}{% assign cat_display = cat_name %}
     {% endcase %}
 	    <li>
