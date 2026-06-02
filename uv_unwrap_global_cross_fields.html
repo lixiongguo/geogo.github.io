@@ -10,6 +10,7 @@
 
   <script src="assets/wasm/uv_unwrap_field.js"></script>
   <script src="assets/wasm/uv_unwrap_simple.js"></script>
+  <script src="assets/wasm/uv_unwrap_abel_jacobi.js"></script>
 <style>
   *{box-sizing:border-box}html,body{margin:0;height:100%}
   body{overflow:hidden;background:#070b14;color:#d8def7;font-family:"Segoe UI",Arial,sans-serif}
@@ -69,6 +70,7 @@
         <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="miq"> MIQ (向量场引导)</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="pgp"> PGP (周期全局参数化)</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="abel_jacobi"> Abel–Jacobi (闭合 g≥1)</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover" checked> QuadCover简化</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover_full"> QuadCover完整</label>
         </div>
@@ -468,6 +470,51 @@
     }
   }
 
+  // ============ uv_unwrap_abel_jacobi WASM ============
+  let ajInst=null,ajReady=false,ajFailed=false,ajPromise=null;
+  async function initAbelJacobiSolver(){
+    if(ajReady)return true;if(ajFailed)return false;
+    try{
+      if(typeof UvUnwrapAbelJacobiSolver!=='function')throw new Error('UvUnwrapAbelJacobiSolver 未加载');
+      if(!ajPromise)ajPromise=UvUnwrapAbelJacobiSolver({locateFile:(p)=>"assets/wasm/"+p});
+      ajInst=await ajPromise;
+      ajReady=true;return true;
+    }catch(e){ajFailed=true;console.error(e);return false;}
+  }
+
+  async function solveAbelJacobi(meshData){
+    const ok=await initAbelJacobiSolver();if(!ok)throw new Error("uv_unwrap_abel_jacobi WASM 初始化失败");
+    const v=meshData.positions,f=meshData.faces;
+    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
+    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
+    const anchors=chooseAnchorPair(v);
+    const baseVertex=anchors[0];
+    const pp=wasmWritePosInst(ajInst,fp),fpt=wasmWriteFacesInst(ajInst,ff);
+    try{
+      const rc=ajInst.ccall('solve_abel_jacobi','number',
+        ['number','number','number','number','number','number','number','number','number'],
+        [pp,fp.length,fpt,ff.length,baseVertex,0,0,0,0]);
+      if(rc!==0)throw new Error("solve_abel_jacobi 错误:"+rc);
+      const us=wasmReadUV(ajInst,'get_uv_result_size','get_uv_result');
+      const t=ajInst.ccall('get_last_time_ms','number',[],[]);
+      const genus=ajInst.ccall('get_genus','number',[],[]);
+      const built=ajInst.ccall('get_built','number',[],[]);
+      const fallback=ajInst.ccall('get_used_fallback','number',[],[]);
+      const poincare=ajInst.ccall('get_poincare_ok','number',[],[]);
+      const abelOk=ajInst.ccall('get_abel_ok','number',[],[]);
+      const latRes=ajInst.ccall('get_lattice_residual','number',[],[]);
+      ajInst.ccall('dispose','void',[],[]);
+      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
+      let details='genus='+genus;
+      if(fallback)details+=' / LSCM fallback';
+      else details+=' / Abel–Jacobi';
+      if(built)details+=' / lattice res='+latRes.toExponential(2);
+      if(!poincare)details+=' / Poincare-Hopf WARN';
+      if(!abelOk)details+=' / Abel WARN';
+      return{uv,timeMs:t,method:'abel_jacobi',details};
+    }finally{ajInst._free(pp);ajInst._free(fpt)}
+  }
+
   // ============ uv_unwrap_field WASM（分步流程）============
   let fieldInst=null,fieldReady=false,fieldFailed=false,fieldPromise=null;
   async function initFieldSolver(){
@@ -481,17 +528,25 @@
   }
 
   // ============ WASM 求解器 ============
-  // 本仓库只提供 QuadCover（uv_unwrap_field.wasm）。MIQ/PGP 仍是占位。
+  // uv_unwrap_field.wasm: QuadCover（分步）+ MIQ（整数规划向量场 + Poisson UV）。PGP 仍为占位。
 
   function getMethod(){const c=document.querySelector('input[name="method"]:checked');return c?c.value:'quadcover'}
 
   function updateButtonState(){
     const m=getMethod();
     if(m==='miq'){
-      reloadBtn.textContent='未实现';reloadBtn.disabled=true;
+      if(fieldFailed){reloadBtn.textContent='引擎加载失败';reloadBtn.disabled=true}
+      else if(!fieldReady){reloadBtn.textContent='引擎加载中...';reloadBtn.disabled=true}
+      else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
       return;
     }
     if(m==='pgp'){reloadBtn.textContent='展开!';reloadBtn.disabled=false;return;}
+    if(m==='abel_jacobi'){
+      if(ajFailed){reloadBtn.textContent='Abel引擎失败';reloadBtn.disabled=true}
+      else if(!ajReady){reloadBtn.textContent='Abel引擎加载中...';reloadBtn.disabled=true}
+      else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
+      return;
+    }
     if(fieldFailed){reloadBtn.textContent='引擎加载失败';reloadBtn.disabled=true}
     else if(!fieldReady){reloadBtn.textContent='引擎加载中...';reloadBtn.disabled=true}
     else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
@@ -538,6 +593,26 @@
     }finally{fieldInst._free(pp);fieldInst._free(fpt)}
   }
 
+  async function solveMIQ(meshData,crossIters,jumpRefinePasses){
+    const ok=await initFieldSolver();if(!ok)throw new Error("uv_unwrap_field WASM 初始化失败");
+    const v=meshData.positions,f=meshData.faces;
+    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
+    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
+    const pp=wasmWritePosInst(fieldInst,fp),fpt=wasmWriteFacesInst(fieldInst,ff);
+    try{
+      let rc=fieldInst.ccall('load_mesh','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length]);
+      if(rc!==0)throw new Error("load_mesh 错误:"+rc);
+      rc=fieldInst.ccall('solve_miq','number',['number','number'],[crossIters||12,jumpRefinePasses||2]);
+      if(rc!==0)throw new Error("solve_miq 错误:"+rc);
+      const us=wasmReadUV(fieldInst,'get_uv_result_size','get_uv_result');
+      const t=fieldInst.ccall('get_last_time_ms','number',[],[]);
+      const e=fieldInst.ccall('get_miq_energy','number',[],[]);
+      fieldInst.ccall('dispose','void',[],[]);
+      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
+      return{uv,timeMs:t,method:'miq',details:'cross-field E='+e.toExponential(3)};
+    }finally{fieldInst._free(pp);fieldInst._free(fpt)}
+  }
+
   // ============ 加载 & 展开 ============
   async function loadModel(){
     if(busy)return;setBusy(true);
@@ -566,16 +641,20 @@
 
   async function doUnwrap(){
     if(busy||!currentMeshData)return;
-    const method=getMethod(),mNames={miq:'MIQ 向量场引导',pgp:'PGP 周期全局参数化',quadcover:'QuadCover简化',quadcover_full:'QuadCover完整'};
+    const method=getMethod(),mNames={miq:'MIQ 向量场引导',pgp:'PGP 周期全局参数化',abel_jacobi:'Abel–Jacobi',quadcover:'QuadCover简化',quadcover_full:'QuadCover完整'};
     const label=mNames[method]||method;
     setBusy(true);setStatus(label+" 求解中...");
     const t0=performance.now();
     try{
       let r;
       if(method==='miq'){
-        setStatus("MIQ 本仓库暂未提供 wasm 实现，请选择 QuadCover", "#ffd38a");setBusy(false);return;
+        setStatus("MIQ: 交替 MIQP + 整数跳跃精化 + Poisson UV ...");
+        r=await solveMIQ(currentMeshData,12,2);
       }else if(method==='pgp'){
         setStatus("PGP 暂未实现，请选择其他方法","#ffd38a");setBusy(false);return;
+      }else if(method==='abel_jacobi'){
+        setStatus("Abel–Jacobi: 同调基 + 正规全纯1-形式 + 周期整数化 ...");
+        r=await solveAbelJacobi(currentMeshData);
       }else{
         setStatus("QuadCover: step1主曲率 -> step2平滑/匹配 -> step3参数化 ...");
         r=await solveQuadCover(currentMeshData,method==='quadcover_full');
@@ -594,7 +673,7 @@
       const uvV=buildUvMesh(r.uv,currentMeshData.faces,anchors);
       currentUvLines=uvV.lines;currentUvPins=uvV.pins;uvScene.add(currentUvLines);if(currentUvPins)uvScene.add(currentUvPins);
       const fc=countFlippedFaces(r.uv,currentMeshData.faces);
-      showTiming(ms,label+' / '+MODELS[modelSel.value].label+' / '+currentMeshData.positions.length+' 顶点 / '+currentMeshData.faces.length+' 三角面',fc);
+      showTiming(ms,(r.details?r.details+' / ':'')+label+' / '+MODELS[modelSel.value].label+' / '+currentMeshData.positions.length+' 顶点 / '+currentMeshData.faces.length+' 三角面',fc);
       setStatus(label+" 完成，翻转面 "+fc+" 个",fc===0?"#89f0b6":"#ffd38a");
     }catch(e){console.error(e);setStatus("失败: "+e.message,"#ff9d9d")}
     finally{setBusy(false)}
@@ -627,7 +706,7 @@
   updateButtonState();
 
   // 预加载 WASM
-  initFieldSolver().then(()=>{updateButtonState();loadModel()});
+  Promise.all([initFieldSolver(),initAbelJacobiSolver()]).then(()=>{updateButtonState();loadModel()});
   animate();
 })();
 </script>

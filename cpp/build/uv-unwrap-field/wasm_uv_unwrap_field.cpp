@@ -1,16 +1,13 @@
 /**
  * uv_unwrap_field WASM wrapper.
  *
- * Pipeline split:
- *  1) compute principal curvature initial face field
- *  2) smooth/denoise + matching
- *  3) QuadCover parameterization (simple/full)
- *
- * Mesh input is a triangle mesh via arrays (positions, faces). Internally written to a temp OBJ
- * and loaded by the existing Mesh reader to build halfedge connectivity.
+ * Pipelines:
+ *   QuadCover: step1 principal field -> step2 matching -> step3 quadcover
+ *   MIQ:       step1 (optional warm start) -> solve_miq (MIQP cross field + Poisson UV)
  */
 
 #include <emscripten.h>
+#include <emscripten/html5.h>
 #include <vector>
 #include <string>
 #include <sstream>
@@ -19,7 +16,7 @@
 #include "Mesh.h"
 #include "MeshIO.h"
 #include "uv_unwrap_field/QuadCover.h"
-#include <emscripten/html5.h>
+#include "uv_unwrap_field/MIQQuad.h"
 
 namespace {
 
@@ -38,36 +35,65 @@ public:
     using QuadCover::edgeList;
 };
 
+class MIQQuadWasm : public MIQQuad {
+public:
+    using MIQQuad::MIQQuad;
+    using MIQQuad::faceTheta;
+    using MIQQuad::edgeJumps;
+    using MIQQuad::numFaces;
+    using MIQQuad::numEdges;
+};
+
 Mesh* g_mesh = nullptr;
 QuadCoverWasm* g_qc = nullptr;
-bool g_inited = false;
+MIQQuadWasm* g_miq = nullptr;
+bool g_qc_inited = false;
 
-std::vector<double> g_face_dirs;     // nF*3
-std::vector<int> g_matching;         // nE (quarter turns -2..2 etc)
-std::vector<double> g_uv;            // nV*2
+std::vector<double> g_face_dirs;
+std::vector<int> g_matching;
+std::vector<double> g_face_theta;
+std::vector<int> g_edge_jumps;
+std::vector<double> g_uv;
 double g_last_time_ms = 0.0;
+double g_last_miq_energy = 0.0;
 
-bool loadMeshFromArrays(const double* positions, int posLen, const int* faces, int faceLen) {
-    if (g_qc) { delete g_qc; g_qc = nullptr; }
-    if (g_mesh) { delete g_mesh; g_mesh = nullptr; }
-    g_inited = false;
+bool loadMeshFromArrays(const double* positions, int posLen, const int* faces, int faceLen)
+{
+    if (g_qc) {
+        delete g_qc;
+        g_qc = nullptr;
+    }
+    if (g_miq) {
+        delete g_miq;
+        g_miq = nullptr;
+    }
+    if (g_mesh) {
+        delete g_mesh;
+        g_mesh = nullptr;
+    }
+    g_qc_inited = false;
     g_face_dirs.clear();
     g_matching.clear();
+    g_face_theta.clear();
+    g_edge_jumps.clear();
     g_uv.clear();
+    g_last_miq_energy = 0.0;
 
     if (!positions || !faces) return false;
     if (posLen < 9 || faceLen < 3) return false;
     if (posLen % 3 != 0 || faceLen % 3 != 0) return false;
 
-    const size_t nV = (size_t)posLen / 3;
-    const size_t nF = (size_t)faceLen / 3;
+    const size_t nV = static_cast<size_t>(posLen) / 3;
+    const size_t nF = static_cast<size_t>(faceLen) / 3;
 
     std::stringstream ss;
-    for (size_t i = 0; i < nV; i++) {
-        ss << "v " << positions[i * 3] << " " << positions[i * 3 + 1] << " " << positions[i * 3 + 2] << "\n";
+    for (size_t i = 0; i < nV; ++i) {
+        ss << "v " << positions[i * 3] << " " << positions[i * 3 + 1] << " "
+           << positions[i * 3 + 2] << "\n";
     }
-    for (size_t i = 0; i < nF; i++) {
-        ss << "f " << faces[i * 3] + 1 << " " << faces[i * 3 + 1] + 1 << " " << faces[i * 3 + 2] + 1 << "\n";
+    for (size_t i = 0; i < nF; ++i) {
+        ss << "f " << faces[i * 3] + 1 << " " << faces[i * 3 + 1] + 1 << " "
+           << faces[i * 3 + 2] + 1 << "\n";
     }
 
     const std::string obj = ss.str();
@@ -84,44 +110,70 @@ bool loadMeshFromArrays(const double* positions, int posLen, const int* faces, i
     }
 
     g_qc = new QuadCoverWasm(*g_mesh);
+    g_miq = new MIQQuadWasm(*g_mesh);
     return true;
 }
 
-bool ensureInit() {
+bool ensureQuadCoverInit()
+{
     if (!g_qc) return false;
-    if (g_inited) return true;
+    if (g_qc_inited) return true;
     if (!g_qc->initMeshData()) return false;
-    g_inited = true;
+    g_qc_inited = true;
     return true;
 }
 
-void snapshotFaceDirs() {
+void snapshotFaceDirsFromQC()
+{
     if (!g_qc) return;
-    // IMPORTANT: QuadCover only stores interior faces in its matrices.
-    // Using mesh->faces.size() can include boundary faces and cause Eigen out-of-bounds.
-    const int nF = (int)g_qc->faceDirs.rows();
-    g_face_dirs.resize((size_t)nF * 3);
+    const int nF = static_cast<int>(g_qc->faceDirs.rows());
+    g_face_dirs.resize(static_cast<size_t>(nF) * 3);
     for (int fi = 0; fi < nF; ++fi) {
-        g_face_dirs[fi * 3] = g_qc->faceDirs(fi, 0);
-        g_face_dirs[fi * 3 + 1] = g_qc->faceDirs(fi, 1);
-        g_face_dirs[fi * 3 + 2] = g_qc->faceDirs(fi, 2);
+        g_face_dirs[static_cast<size_t>(fi) * 3] = g_qc->faceDirs(fi, 0);
+        g_face_dirs[static_cast<size_t>(fi) * 3 + 1] = g_qc->faceDirs(fi, 1);
+        g_face_dirs[static_cast<size_t>(fi) * 3 + 2] = g_qc->faceDirs(fi, 2);
     }
 }
 
-void snapshotMatching() {
+void snapshotMatchingFromQC()
+{
     if (!g_qc) return;
-    const int nE = (int)g_qc->matching.size();
-    g_matching.resize((size_t)nE);
-    for (int ei = 0; ei < nE; ++ei) g_matching[ei] = (int)g_qc->matching[ei];
+    const int nE = static_cast<int>(g_qc->matching.size());
+    g_matching.resize(static_cast<size_t>(nE));
+    for (int ei = 0; ei < nE; ++ei) {
+        g_matching[static_cast<size_t>(ei)] = static_cast<int>(g_qc->matching[ei]);
+    }
 }
 
-void snapshotUV() {
+void snapshotMIQFields()
+{
+    if (!g_miq) return;
+    const int nF = g_miq->numFaces();
+    const int nE = g_miq->numEdges();
+    const Eigen::VectorXd& th = g_miq->faceTheta();
+    const Eigen::VectorXi& jmp = g_miq->edgeJumps();
+
+    g_face_theta.resize(static_cast<size_t>(nF));
+    for (int fi = 0; fi < nF; ++fi) {
+        g_face_theta[static_cast<size_t>(fi)] = th(fi);
+    }
+
+    g_edge_jumps.resize(static_cast<size_t>(nE));
+    for (int ei = 0; ei < nE; ++ei) {
+        g_edge_jumps[static_cast<size_t>(ei)] = jmp(ei);
+    }
+
+    g_last_miq_energy = g_miq->crossFieldEnergy();
+}
+
+void snapshotUV()
+{
     if (!g_mesh) return;
-    const int nV = (int)g_mesh->vertices.size();
-    g_uv.resize((size_t)nV * 2);
+    const int nV = static_cast<int>(g_mesh->vertices.size());
+    g_uv.resize(static_cast<size_t>(nV) * 2);
     for (int vi = 0; vi < nV; ++vi) {
-        g_uv[vi * 2] = g_mesh->vertices[vi].uv[0];
-        g_uv[vi * 2 + 1] = g_mesh->vertices[vi].uv[1];
+        g_uv[static_cast<size_t>(vi) * 2] = g_mesh->vertices[vi].uv[0];
+        g_uv[static_cast<size_t>(vi) * 2 + 1] = g_mesh->vertices[vi].uv[1];
     }
 }
 
@@ -130,44 +182,68 @@ void snapshotUV() {
 extern "C" {
 
 EMSCRIPTEN_KEEPALIVE
-int load_mesh(double* pos, int posLen, int* faces, int faceLen) {
+int load_mesh(double* pos, int posLen, int* faces, int faceLen)
+{
     return loadMeshFromArrays(pos, posLen, faces, faceLen) ? 0 : -1;
 }
 
-// -------- Step 1: principal curvature initial face field --------
 EMSCRIPTEN_KEEPALIVE
-int step1_compute_principal_field() {
-    if (!ensureInit()) return -1;
+int step1_compute_principal_field()
+{
+    if (!ensureQuadCoverInit()) return -1;
     g_qc->estimatePrincipalCurvature();
     g_qc->computeFaceTheta();
     g_qc->syncFaceDirsFromTheta();
-    snapshotFaceDirs();
+    snapshotFaceDirsFromQC();
     return 0;
 }
 
-// -------- Step 2: smoothing/denoise + matching --------
 EMSCRIPTEN_KEEPALIVE
-int step2_smooth_and_matching(int smoothIters) {
-    if (!ensureInit()) return -1;
+int step2_smooth_and_matching(int smoothIters)
+{
+    if (!ensureQuadCoverInit()) return -1;
     g_qc->computeFaceTheta();
     g_qc->syncFaceDirsFromTheta();
     if (smoothIters > 0) g_qc->smoothCrossField(smoothIters);
     g_qc->computeMatching();
-    snapshotFaceDirs();
-    snapshotMatching();
+    snapshotFaceDirsFromQC();
+    snapshotMatchingFromQC();
     return 0;
 }
 
-// -------- Step 3: QuadCover parameterization --------
 EMSCRIPTEN_KEEPALIVE
-int step3_solve_quadcover(int full) {
-    if (!ensureInit()) return -1;
+int step3_solve_quadcover(int full)
+{
+    if (!ensureQuadCoverInit()) return -1;
     const double t0 = emscripten_get_now();
     bool ok = true;
     if (full) ok = g_qc->parameterizeFull();
-    else { g_qc->parameterize(); ok = true; }
+    else {
+        g_qc->parameterize();
+        ok = true;
+    }
     g_last_time_ms = emscripten_get_now() - t0;
     if (!ok) return -2;
+    snapshotUV();
+    return 0;
+}
+
+/** MIQ: alternating MIQP + coordinate-descent integer refinement + Poisson UV. */
+EMSCRIPTEN_KEEPALIVE
+int solve_miq(int crossIters, int jumpRefinePasses)
+{
+    if (!g_mesh || !g_miq) return -1;
+    if (crossIters < 1) crossIters = 8;
+    if (jumpRefinePasses < 0) jumpRefinePasses = 2;
+
+    g_miq->setCrossFieldIterations(crossIters);
+    g_miq->setJumpRefinePasses(jumpRefinePasses);
+
+    const double t0 = emscripten_get_now();
+    g_miq->parameterize();
+    g_last_time_ms = emscripten_get_now() - t0;
+
+    snapshotMIQFields();
     snapshotUV();
     return 0;
 }
@@ -175,35 +251,74 @@ int step3_solve_quadcover(int full) {
 EMSCRIPTEN_KEEPALIVE
 double get_last_time_ms() { return g_last_time_ms; }
 
-// ---------- results getters ----------
 EMSCRIPTEN_KEEPALIVE
-double* get_face_dirs() { return g_face_dirs.empty() ? nullptr : g_face_dirs.data(); }
+double get_miq_energy() { return g_last_miq_energy; }
 
 EMSCRIPTEN_KEEPALIVE
-int get_face_dirs_size() { return (int)g_face_dirs.size(); }
+double* get_face_dirs()
+{
+    return g_face_dirs.empty() ? nullptr : g_face_dirs.data();
+}
 
 EMSCRIPTEN_KEEPALIVE
-int* get_matching() { return g_matching.empty() ? nullptr : g_matching.data(); }
+int get_face_dirs_size() { return static_cast<int>(g_face_dirs.size()); }
 
 EMSCRIPTEN_KEEPALIVE
-int get_matching_size() { return (int)g_matching.size(); }
+int* get_matching()
+{
+    return g_matching.empty() ? nullptr : g_matching.data();
+}
+
+EMSCRIPTEN_KEEPALIVE
+int get_matching_size() { return static_cast<int>(g_matching.size()); }
+
+EMSCRIPTEN_KEEPALIVE
+double* get_face_theta()
+{
+    return g_face_theta.empty() ? nullptr : g_face_theta.data();
+}
+
+EMSCRIPTEN_KEEPALIVE
+int get_face_theta_size() { return static_cast<int>(g_face_theta.size()); }
+
+EMSCRIPTEN_KEEPALIVE
+int* get_edge_jumps()
+{
+    return g_edge_jumps.empty() ? nullptr : g_edge_jumps.data();
+}
+
+EMSCRIPTEN_KEEPALIVE
+int get_edge_jumps_size() { return static_cast<int>(g_edge_jumps.size()); }
 
 EMSCRIPTEN_KEEPALIVE
 double* get_uv_result() { return g_uv.empty() ? nullptr : g_uv.data(); }
 
 EMSCRIPTEN_KEEPALIVE
-int get_uv_result_size() { return (int)g_uv.size(); }
+int get_uv_result_size() { return static_cast<int>(g_uv.size()); }
 
 EMSCRIPTEN_KEEPALIVE
-void dispose() {
+void dispose()
+{
     g_face_dirs.clear();
     g_matching.clear();
+    g_face_theta.clear();
+    g_edge_jumps.clear();
     g_uv.clear();
     g_last_time_ms = 0.0;
-    g_inited = false;
-    if (g_qc) { delete g_qc; g_qc = nullptr; }
-    if (g_mesh) { delete g_mesh; g_mesh = nullptr; }
+    g_last_miq_energy = 0.0;
+    g_qc_inited = false;
+    if (g_qc) {
+        delete g_qc;
+        g_qc = nullptr;
+    }
+    if (g_miq) {
+        delete g_miq;
+        g_miq = nullptr;
+    }
+    if (g_mesh) {
+        delete g_mesh;
+        g_mesh = nullptr;
+    }
 }
 
 } // extern "C"
-

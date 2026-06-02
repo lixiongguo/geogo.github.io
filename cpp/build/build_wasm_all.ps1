@@ -52,7 +52,7 @@ function Write-Efile($name, $funcs) {
     return "@$efile"
 }
 
-function Build-Target($name, $sources, $exportName, $funcs, $output) {
+function Build-Target($name, $sources, $exportName, $funcs, $output, [string[]]$ExtraIncludes = @()) {
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host "Building: $name" -ForegroundColor Cyan
@@ -66,7 +66,7 @@ function Build-Target($name, $sources, $exportName, $funcs, $output) {
         "-I$(Join-Path $srcRoot "Mosek")",
         "-I$eigenInc",
         "-I$glmInc"
-    )
+    ) + $ExtraIncludes
 
     $args = @(
         "-std=c++17",
@@ -126,8 +126,22 @@ $dgpBasicSources = @(
 $uvFieldSources = @(
     (Join-Path $buildRoot "uv-unwrap-field\wasm_uv_unwrap_field.cpp"),
     (Join-Path $srcRoot "uv_unwrap_field\QuadCover.cpp"),
+    (Join-Path $srcRoot "uv_unwrap_field\CrossFieldIntegerProgram.cpp"),
+    (Join-Path $srcRoot "uv_unwrap_field\MIQQuad.cpp"),
     (Join-Path $srcRoot "geometry\PrincipalCurvatureField.cpp")
 ) + $meshSrcs
+
+$abelJacobiSources = @(
+    (Join-Path $buildRoot "abel-jacobi\wasm_uv_unwrap_abel_jacobi.cpp"),
+    (Join-Path $srcRoot "Abel_Jacoi\AbelJacobi.cpp"),
+    (Join-Path $srcRoot "Abel_Jacoi\AbelJacobiParameterization.cpp"),
+    (Join-Path $srcRoot "uv_unwrap_simple\Lscm.cpp"),
+    (Join-Path $srcRoot "QcError.cpp")
+) + $meshSrcs
+
+$abelJacobiIncludes = @(
+    "-I$(Join-Path $srcRoot "Abel_Jacoi")"
+)
 
 $targetSet = @{}
 foreach ($target in $Targets) {
@@ -178,18 +192,53 @@ if ($buildAll -or $targetSet.ContainsKey("uv_unwrap_field") -or $targetSet.Conta
             "_step1_compute_principal_field",
             "_step2_smooth_and_matching",
             "_step3_solve_quadcover",
+            "_solve_miq",
             "_get_last_time_ms",
+            "_get_miq_energy",
             "_get_face_dirs","_get_face_dirs_size",
             "_get_matching","_get_matching_size",
+            "_get_face_theta","_get_face_theta_size",
+            "_get_edge_jumps","_get_edge_jumps_size",
             "_get_uv_result","_get_uv_result_size",
             "_dispose"
         ) `
         (Join-Path $outDir "uv_unwrap_field.js")
 }
 
+if ($buildAll -or $targetSet.ContainsKey("abel_jacobi") -or $targetSet.ContainsKey("global_cross_fields")) {
+    Build-Target "abel_jacobi" `
+        $abelJacobiSources `
+        "UvUnwrapAbelJacobiSolver" `
+        @(
+            "_malloc","_free",
+            "_load_mesh",
+            "_is_closed_mesh",
+            "_get_genus",
+            "_build_abel_jacobi",
+            "_solve_abel_jacobi",
+            "_get_built",
+            "_get_used_fallback",
+            "_get_poincare_ok",
+            "_get_abel_ok",
+            "_get_lattice_residual",
+            "_get_lattice_generators",
+            "_get_lattice_generators_size",
+            "_get_lattice_rows",
+            "_get_lattice_cols",
+            "_get_last_time_ms",
+            "_get_uv_result",
+            "_get_uv_result_size",
+            "_dispose"
+        ) `
+        (Join-Path $outDir "uv_unwrap_abel_jacobi.js") `
+        $abelJacobiIncludes
+}
+
 Write-Host ""
 Write-Host "Output files in ${outDir}:" -ForegroundColor Yellow
-Get-ChildItem -Path $outDir -Filter "uv_unwrap_simple.*" | ForEach-Object {
-    $size = "{0,8:N1} KB" -f ($_.Length / 1024)
-    Write-Host "  $size  $($_.Name)" -ForegroundColor White
+@("uv_unwrap_simple.*", "uv_unwrap_field.*", "uv_unwrap_abel_jacobi.*") | ForEach-Object {
+    Get-ChildItem -Path $outDir -Filter $_ -ErrorAction SilentlyContinue | ForEach-Object {
+        $size = "{0,8:N1} KB" -f ($_.Length / 1024)
+        Write-Host "  $size  $($_.Name)" -ForegroundColor White
+    }
 }
