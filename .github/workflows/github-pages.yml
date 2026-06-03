@@ -35,9 +35,6 @@ jobs:
           bundle lock --add-platform x86_64-linux
           bundle install --jobs 4
 
-      - name: Apply DDG exercises overlay
-        run: bash scripts/apply-ddg-overlay.sh
-
       - name: Build site
         run: bundle exec jekyll build
 
