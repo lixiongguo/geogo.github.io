@@ -192,12 +192,19 @@ int solve_arap(double* pos, int posLen, int* faces, int faceLen, int maxIter) {
 }
 
 EMSCRIPTEN_KEEPALIVE
-int solve_cp(double* pos, int posLen, int* faces, int faceLen, int optScheme) {
+int solve_cp(double* pos, int posLen, int* faces, int faceLen, int optScheme,
+             int* coneIdx, int coneIdxLen, double* coneAngles, int coneAnglesLen) {
     if (!loadMesh(pos, posLen, faces, faceLen)) return -1;
     g_cpFallbackToCetm = 0;
     auto t0 = std::chrono::high_resolution_clock::now();
     g_mesh->delaunayize();
     CirclePatterns p(*g_mesh, optScheme);
+    // set cone singularities if provided
+    if (coneIdx && coneAngles && coneIdxLen > 0) {
+        std::vector<int> idx(coneIdx, coneIdx + coneIdxLen);
+        std::vector<double> angles(coneAngles, coneAngles + std::min(coneIdxLen, coneAnglesLen));
+        p.setConeSingulars(idx, angles);
+    }
     p.parameterize();
     // On WASM builds CirclePatterns may run without MOSEK backend.
     // Fall back to CETM if UV collapsed after parameterization.
@@ -223,11 +230,18 @@ int solve_cp(double* pos, int posLen, int* faces, int faceLen, int optScheme) {
 }
 
 EMSCRIPTEN_KEEPALIVE
-int solve_cetm(double* pos, int posLen, int* faces, int faceLen, int optScheme) {
+int solve_cetm(double* pos, int posLen, int* faces, int faceLen, int optScheme,
+               int* coneIdx, int coneIdxLen, double* coneAngles, int coneAnglesLen) {
     if (!loadMesh(pos, posLen, faces, faceLen)) return -1;
     auto t0 = std::chrono::high_resolution_clock::now();
     g_mesh->delaunayize();
     Cetm p(*g_mesh, optScheme);
+    // set cone singularities if provided
+    if (coneIdx && coneAngles && coneIdxLen > 0) {
+        std::vector<int> idx(coneIdx, coneIdx + coneIdxLen);
+        std::vector<double> angles(coneAngles, coneAngles + std::min(coneIdxLen, coneAnglesLen));
+        p.setConeSingulars(idx, angles);
+    }
     p.parameterize();
     auto t1 = std::chrono::high_resolution_clock::now();
     g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
@@ -236,11 +250,18 @@ int solve_cetm(double* pos, int posLen, int* faces, int faceLen, int optScheme) 
 }
 
 EMSCRIPTEN_KEEPALIVE
-int solve_ricci(double* pos, int posLen, int* faces, int faceLen, int optScheme) {
+int solve_ricci(double* pos, int posLen, int* faces, int faceLen, int optScheme,
+                int* coneIdx, int coneIdxLen, double* coneAngles, int coneAnglesLen) {
     if (!loadMesh(pos, posLen, faces, faceLen)) return -1;
     auto t0 = std::chrono::high_resolution_clock::now();
     g_mesh->delaunayize();
     RicciFlow p(*g_mesh, optScheme);
+    // set cone singularities if provided
+    if (coneIdx && coneAngles && coneIdxLen > 0) {
+        std::vector<int> idx(coneIdx, coneIdx + coneIdxLen);
+        std::vector<double> angles(coneAngles, coneAngles + std::min(coneIdxLen, coneAnglesLen));
+        p.setConeSingulars(idx, angles);
+    }
     p.parameterize();
     auto t1 = std::chrono::high_resolution_clock::now();
     g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();

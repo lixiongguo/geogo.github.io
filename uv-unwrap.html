@@ -2369,7 +2369,7 @@
         return _harmonicParameterizationJs(vertices, faces, boundaryType, lapFn);
       }
 
-      async function solveSimpleWasmMethod(meshData, wasmFuncName, methodName, onProgress, optScheme) {
+      async function solveSimpleWasmMethod(meshData, wasmFuncName, methodName, onProgress, optScheme, coneVertices) {
         const vertices = meshData.positions, faces = meshData.faces;
         if (!wasmReady) {
           const loaded = await initSimpleSolver();
@@ -2395,13 +2395,38 @@
         const facePtr = simpleInstance._malloc(flatFaces.length * 4);
         for (let i = 0; i < flatFaces.length; i++) simpleInstance.setValue(facePtr + i * 4, flatFaces[i], "i32");
 
+        // Prepare cone singularity data if provided
+        let conePtr = 0, coneAnglesPtr = 0;
+        const hasCones = coneVertices && coneVertices.length > 0;
+        if (hasCones) {
+          const coneIdx = new Int32Array(coneVertices.length);
+          const coneAng = new Float64Array(coneVertices.length);
+          for (let i = 0; i < coneVertices.length; i++) {
+            coneIdx[i] = coneVertices[i].index;
+            coneAng[i] = coneVertices[i].angle || (4 * Math.PI);
+          }
+          conePtr = simpleInstance._malloc(coneIdx.length * 4);
+          for (let i = 0; i < coneIdx.length; i++) simpleInstance.setValue(conePtr + i * 4, coneIdx[i], "i32");
+          coneAnglesPtr = simpleInstance._malloc(coneAng.length * 8);
+          for (let i = 0; i < coneAng.length; i++) simpleInstance.setValue(coneAnglesPtr + i * 8, coneAng[i], "double");
+        }
+
         try {
           let ret;
-          if (typeof optScheme === 'number') {
+          if (hasCones) {
+            // Cone-enabled methods: 9 params (pos, posLen, faces, faceLen, optScheme, coneIdx, coneIdxLen, coneAngles, coneAnglesLen)
+            ret = simpleInstance.ccall(wasmFuncName, "number",
+              ["number", "number", "number", "number", "number",
+               "number", "number", "number", "number"],
+              [posPtr, flatPositions.length, facePtr, flatFaces.length, optScheme || 0,
+               conePtr, coneVertices.length, coneAnglesPtr, coneVertices.length]);
+          } else if (typeof optScheme === 'number') {
+            // Methods with optScheme but no cones (e.g. ARAP): 5 params
             ret = simpleInstance.ccall(wasmFuncName, "number",
               ["number", "number", "number", "number", "number"],
               [posPtr, flatPositions.length, facePtr, flatFaces.length, optScheme]);
           } else {
+            // Methods without optScheme or cones: 4 params
             ret = simpleInstance.ccall(wasmFuncName, "number",
               ["number", "number", "number", "number"],
               [posPtr, flatPositions.length, facePtr, flatFaces.length]);
@@ -2430,6 +2455,8 @@
         } finally {
           simpleInstance._free(posPtr);
           simpleInstance._free(facePtr);
+          if (conePtr) simpleInstance._free(conePtr);
+          if (coneAnglesPtr) simpleInstance._free(coneAnglesPtr);
         }
       }
 
@@ -2451,20 +2478,20 @@
       }
 
       async function solveCirclePatternAsync(meshData, onProgress) {
-        const result = await solveSimpleWasmMethod(meshData, "solve_cp", "cp", onProgress, getOptScheme());
+        const result = await solveSimpleWasmMethod(meshData, "solve_cp", "cp", onProgress, getOptScheme(), coneVertices);
         result.cones = coneVertices.length;
         result.cpFallbackToCetm = simpleInstance.ccall("get_cp_fallback_to_cetm", "number", [], []) !== 0;
         return result;
       }
 
       async function solveCETMAsync(meshData, onProgress) {
-        const result = await solveSimpleWasmMethod(meshData, "solve_cetm", "cetm", onProgress, getOptScheme());
+        const result = await solveSimpleWasmMethod(meshData, "solve_cetm", "cetm", onProgress, getOptScheme(), coneVertices);
         result.cones = coneVertices.length;
         return result;
       }
 
       async function solveRicciAsync(meshData, onProgress) {
-        const result = await solveSimpleWasmMethod(meshData, "solve_ricci", "ricci", onProgress, getOptScheme());
+        const result = await solveSimpleWasmMethod(meshData, "solve_ricci", "ricci", onProgress, getOptScheme(), coneVertices);
         result.cones = coneVertices.length;
         return result;
       }
@@ -2665,8 +2692,13 @@
           if (boundary[i]) continue;
           const curvature = twoPi - angleSum[i];
           if (Math.abs(curvature) < 0.08) continue;
-          const angle = Math.max(Math.PI * 0.5, Math.min(Math.PI * 4, twoPi - curvature));
-          candidates.push({ index: i, angle: angle, score: Math.abs(curvature) });
+          // Cone angle: use 2π + curvature surplus to amplify effect
+          // Positive curvature (angleSum < 2π) → coneAngle > 2π for visible cone pinch
+          // Use 2π + k * |curvature|, where k amplifies small curvature into visible cone
+          const k = 8.0;  // amplification factor
+          const coneAngle = twoPi + curvature * k;
+          const clampedAngle = Math.max(Math.PI * 0.75, Math.min(Math.PI * 6, coneAngle));
+          candidates.push({ index: i, angle: clampedAngle, score: Math.abs(curvature) });
         }
         candidates.sort(function (a, b) { return b.score - a.score; });
 
@@ -2692,7 +2724,7 @@
       function addOrRemoveConeVertex(vertexIndex) {
         const idx = coneVertices.findIndex(function (c) { return c.index === vertexIndex; });
         if (idx >= 0) coneVertices.splice(idx, 1);
-        else coneVertices.push({ index: vertexIndex, angle: 2 * Math.PI });
+        else coneVertices.push({ index: vertexIndex, angle: 4 * Math.PI });  // default cone angle = 4π
         updateConeDisplay();
       }
 
