@@ -22,9 +22,7 @@
 #include "Cetm.h"
 #include "RicciFlow.h"
 #include "ARAP.h"
-#include "HolomorphicOneForm.h"
-#include "QcError.h"
-#include "topology/TreeCotreeBasis.h"
+#include "geometry/QcError.h"
 
 static Mesh* g_mesh = nullptr;
 static double g_lastTimeMs = 0.0;
@@ -32,8 +30,6 @@ static int g_cpFallbackToCetm = 0;
 static std::vector<double> g_uv_result;
 static std::vector<double> g_qc_errors;
 static std::vector<double> g_qc_colors;
-static std::vector<int> g_homology_edge_pairs; // [v0,v1, v0,v1, ...] (2g edges)
-static int g_homology_genus = 0;
 
 static bool isClosedMesh(const Mesh& m) {
     if (!m.boundaries.empty()) return false;
@@ -41,81 +37,6 @@ static bool isClosedMesh(const Mesh& m) {
         if (e->isBoundary()) return false;
     }
     return true;
-}
-
-static int computeGenusClosed(const Mesh& m) {
-    const int nV = (int)m.vertices.size();
-    const int nE = (int)m.edges.size();
-    int nF = 0;
-    for (FaceCIter f = m.faces.begin(); f != m.faces.end(); ++f) {
-        if (!f->isBoundary()) ++nF;
-    }
-    const int chi = nV - nE + nF;
-    const int g = (2 - chi) / 2;
-    return g < 0 ? 0 : g;
-}
-
-static void computeHomologyBasisEdgesTreeCotree() {
-    g_homology_edge_pairs.clear();
-    g_homology_genus = 0;
-    if (!g_mesh) return;
-    if (!isClosedMesh(*g_mesh)) return;
-
-    const int nV = (int)g_mesh->vertices.size();
-    int nF = 0;
-    for (FaceCIter f = g_mesh->faces.begin(); f != g_mesh->faces.end(); ++f) {
-        if (!f->isBoundary()) ++nF;
-    }
-    const int genus = computeGenusClosed(*g_mesh);
-    g_homology_genus = genus;
-    if (genus <= 0) return;
-
-    std::vector<topology::TreeCotreeBasis::Edge> edges;
-    edges.reserve(g_mesh->edges.size());
-    for (EdgeCIter e = g_mesh->edges.begin(); e != g_mesh->edges.end(); ++e) {
-        if (e->isBoundary()) continue;
-        const int a = e->he->vertex->index;
-        const int b = e->he->flip->vertex->index;
-        const int v0 = std::min(a, b);
-        const int v1 = std::max(a, b);
-        const int f0 = e->he->face->index;
-        const int f1 = e->he->flip->face->index;
-        topology::TreeCotreeBasis::Edge te;
-        te.v0 = v0;
-        te.v1 = v1;
-        te.f0 = f0;
-        te.f1 = f1;
-        edges.push_back(te);
-    }
-
-    auto findEdge = [&](int a, int b) -> int {
-        int v0 = std::min(a, b);
-        int v1 = std::max(a, b);
-        for (int ei = 0; ei < (int)edges.size(); ++ei) {
-            if (edges[ei].v0 == v0 && edges[ei].v1 == v1) return ei;
-        }
-        return -1;
-    };
-
-    auto edgeSign = [&](int from, int to) -> int {
-        int ei = findEdge(from, to);
-        if (ei < 0) return 0;
-        if (from == edges[ei].v0 && to == edges[ei].v1) return +1;
-        if (from == edges[ei].v1 && to == edges[ei].v0) return -1;
-        return 0;
-    };
-
-    // Build basis cycles (2g of them). For visualization we return one representative edge per cycle:
-    // the first signed edge entry is always the chosen remaining edge in TreeCotreeBasis.
-    auto cycles = topology::TreeCotreeBasis::buildClosedMeshBasis(nV, nF, edges, genus, findEdge, edgeSign);
-    const int target = 2 * genus;
-    for (int i = 0; i < (int)cycles.size() && i < target; ++i) {
-        if (cycles[i].empty()) continue;
-        const int eIdx = cycles[i][0].first;
-        if (eIdx < 0 || eIdx >= (int)edges.size()) continue;
-        g_homology_edge_pairs.push_back(edges[eIdx].v0);
-        g_homology_edge_pairs.push_back(edges[eIdx].v1);
-    }
 }
 
 static bool loadMesh(const double* positions, int posLen,
@@ -187,35 +108,34 @@ int solve_lscm(double* pos, int posLen, int* faces, int faceLen, int anchor0, in
     auto t1 = std::chrono::high_resolution_clock::now();
     g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
     extractUV();
-    computeHomologyBasisEdgesTreeCotree();
     return 0;
 }
 
 EMSCRIPTEN_KEEPALIVE
-int solve_tutte_circle(double* pos, int posLen, int* faces, int faceLen) {
+int solve_tutte_circle(double* pos, int posLen, int* faces, int faceLen, int weight) {
     if (!loadMesh(pos, posLen, faces, faceLen)) return -1;
     auto t0 = std::chrono::high_resolution_clock::now();
     g_mesh->delaunayize();
-    Tutte p(*g_mesh, TutteBoundary::CIRCLE);
+    TutteWeight tw = (weight == 0) ? TutteWeight::COTAN : TutteWeight::UNIFORM;
+    Tutte p(*g_mesh, TutteBoundary::CIRCLE, tw);
     p.parameterize();
     auto t1 = std::chrono::high_resolution_clock::now();
     g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
     extractUV();
-    computeHomologyBasisEdgesTreeCotree();
     return 0;
 }
 
 EMSCRIPTEN_KEEPALIVE
-int solve_tutte_square(double* pos, int posLen, int* faces, int faceLen) {
+int solve_tutte_square(double* pos, int posLen, int* faces, int faceLen, int weight) {
     if (!loadMesh(pos, posLen, faces, faceLen)) return -1;
     auto t0 = std::chrono::high_resolution_clock::now();
     g_mesh->delaunayize();
-    Tutte p(*g_mesh, TutteBoundary::SQUARE);
+    TutteWeight tw = (weight == 0) ? TutteWeight::COTAN : TutteWeight::UNIFORM;
+    Tutte p(*g_mesh, TutteBoundary::SQUARE, tw);
     p.parameterize();
     auto t1 = std::chrono::high_resolution_clock::now();
     g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
     extractUV();
-    computeHomologyBasisEdgesTreeCotree();
     return 0;
 }
 
@@ -229,7 +149,6 @@ int solve_scp(double* pos, int posLen, int* faces, int faceLen) {
     auto t1 = std::chrono::high_resolution_clock::now();
     g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
     extractUV();
-    computeHomologyBasisEdgesTreeCotree();
     return 0;
 }
 
@@ -243,7 +162,6 @@ int solve_linabf(double* pos, int posLen, int* faces, int faceLen) {
     auto t1 = std::chrono::high_resolution_clock::now();
     g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
     extractUV();
-    computeHomologyBasisEdgesTreeCotree();
     return 0;
 }
 
@@ -257,7 +175,6 @@ int solve_abfpp(double* pos, int posLen, int* faces, int faceLen) {
     auto t1 = std::chrono::high_resolution_clock::now();
     g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
     extractUV();
-    computeHomologyBasisEdgesTreeCotree();
     return 0;
 }
 
@@ -271,7 +188,6 @@ int solve_arap(double* pos, int posLen, int* faces, int faceLen, int maxIter) {
     auto t1 = std::chrono::high_resolution_clock::now();
     g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
     extractUV();
-    computeHomologyBasisEdgesTreeCotree();
     return 0;
 }
 
@@ -303,7 +219,6 @@ int solve_cp(double* pos, int posLen, int* faces, int faceLen, int optScheme) {
     auto t1 = std::chrono::high_resolution_clock::now();
     g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
     extractUV();
-    computeHomologyBasisEdgesTreeCotree();
     return 0;
 }
 
@@ -317,7 +232,6 @@ int solve_cetm(double* pos, int posLen, int* faces, int faceLen, int optScheme) 
     auto t1 = std::chrono::high_resolution_clock::now();
     g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
     extractUV();
-    computeHomologyBasisEdgesTreeCotree();
     return 0;
 }
 
@@ -331,39 +245,12 @@ int solve_ricci(double* pos, int posLen, int* faces, int faceLen, int optScheme)
     auto t1 = std::chrono::high_resolution_clock::now();
     g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
     extractUV();
-    computeHomologyBasisEdgesTreeCotree();
-    return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE
-int solve_hof(double* pos, int posLen, int* faces, int faceLen) {
-    if (!loadMesh(pos, posLen, faces, faceLen)) return -1;
-    auto t0 = std::chrono::high_resolution_clock::now();
-    g_mesh->delaunayize();
-    HolomorphicOneForm p(*g_mesh);
-    p.parameterize();
-    auto t1 = std::chrono::high_resolution_clock::now();
-    g_lastTimeMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
-    extractUV();
-    computeHomologyBasisEdgesTreeCotree();
     return 0;
 }
 
 EMSCRIPTEN_KEEPALIVE int is_closed_mesh() {
     if (!g_mesh) return 0;
     return isClosedMesh(*g_mesh) ? 1 : 0;
-}
-
-EMSCRIPTEN_KEEPALIVE int get_homology_genus() {
-    return g_homology_genus;
-}
-
-EMSCRIPTEN_KEEPALIVE int* get_homology_edge_pairs() {
-    return g_homology_edge_pairs.empty() ? nullptr : g_homology_edge_pairs.data();
-}
-
-EMSCRIPTEN_KEEPALIVE int get_homology_edge_pairs_size() {
-    return static_cast<int>(g_homology_edge_pairs.size());
 }
 
 EMSCRIPTEN_KEEPALIVE double* get_uv_result() {
@@ -448,9 +335,6 @@ EMSCRIPTEN_KEEPALIVE void dispose() {
     g_uv_result.shrink_to_fit();
     g_qc_errors.clear();
     g_qc_colors.clear();
-    g_homology_edge_pairs.clear();
-    g_homology_edge_pairs.shrink_to_fit();
-    g_homology_genus = 0;
 }
 
 } // extern "C"

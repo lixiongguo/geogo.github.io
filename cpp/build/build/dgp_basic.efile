@@ -1,1 +1,0 @@
-["_malloc","_free","_load_mesh","_is_closed_mesh","_compute_gauss_curvature_per_area","_get_gc_result","_get_gc_result_size","_compute_principal_curvature_field","_get_pc_field","_get_pc_field_size","_get_pc_k1k2","_get_pc_k1k2_size","_dispose"]
