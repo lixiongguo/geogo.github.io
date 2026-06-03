@@ -10,6 +10,7 @@
   
   <script src="assets/wasm/uv_unwrap_simple.js"></script>
   <script src="assets/wasm/dgp_basic.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
@@ -294,6 +295,26 @@
         opacity: 0.4;
         cursor: not-allowed;
       }
+      #pdf-btn {
+        padding: 9px 18px;
+        background: linear-gradient(135deg, #1a3a5a 0%, #2a5a7a 100%);
+        color: #8cc8ff;
+        border: 1px solid rgba(80,180,255,0.3);
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      #pdf-btn:not(:disabled):hover {
+        background: linear-gradient(135deg, #2a5a8a 0%, #3a6a9a 100%);
+        color: #fff;
+        border-color: rgba(120,200,255,0.5);
+      }
+      #pdf-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
       #change-pin-btn {
         padding: 4px 10px;
         font-size: 12px;
@@ -423,6 +444,7 @@
         </fieldset>
         <button id="reload-btn"><span class="btn-text">展开</span><span class="btn-excl">!</span></button>
         <button id="clear-btn">清除</button>
+        <button id="pdf-btn" disabled>📄 保存PDF</button>
         <fieldset id="texture-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:6px 10px;margin:0;display:flex;gap:12px;align-items:center;">
           <legend style="color:#8a9dd4;font-size:11px;padding:0 4px;">纹理显示</legend>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;">
@@ -504,6 +526,7 @@
       const modelSelect = document.getElementById("model-select");
       const reloadBtn = document.getElementById("reload-btn");
       const clearBtn = document.getElementById("clear-btn");
+      const pdfBtn = document.getElementById("pdf-btn");
       const btnGc = document.getElementById("btn-gc");
       const btnPc = document.getElementById("btn-pc");
       const btnClearOther = document.getElementById("btn-clear-other");
@@ -3185,6 +3208,7 @@
           currentUvLines = null;
           currentUvPins = null;
           currentUnwrapUv = null;
+          pdfBtn.disabled = true;
           textureEnabled = false;
           // 重置纹理显示单选框为未选中
           if (radioCheckerboard) radioCheckerboard.checked = false;
@@ -3338,6 +3362,7 @@
 
           const elapsedMs = unwrapResult.timeMs > 0 ? unwrapResult.timeMs : (performance.now() - startTime);
           currentUnwrapUv = unwrapResult.uv;
+          pdfBtn.disabled = false;
 
           // 清除旧的扭曲显示（UV 变了）
           clearDistortionMesh();
@@ -3423,6 +3448,105 @@
       modelSelect.addEventListener("change", loadModelPreview);
       reloadBtn.addEventListener("click", updateModel);
       clearBtn.addEventListener("click", clearAndReload);
+      pdfBtn.addEventListener("click", saveUVtoPDF);
+
+      /** Save current UV mesh to A4 PDF */
+      function saveUVtoPDF() {
+        if (!currentUnwrapUv || !currentMeshData) {
+          setStatus("No UV data to save", "#ffd38a");
+          return;
+        }
+        if (typeof window.jspdf === 'undefined' && typeof jspdf === 'undefined') {
+          setStatus("PDF library loading...", "#ffd38a");
+          return;
+        }
+        const { jsPDF } = window.jspdf || { jsPDF: jspdf };
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const pageW = 297, pageH = 210;
+        const margin = 10;
+        const drawW = pageW - 2 * margin;
+        const drawH = pageH - 2 * margin;
+
+        const uv = currentUnwrapUv;
+        const faces = currentMeshData.faces;
+
+        // Compute UV bounding box
+        let minU = Infinity, minV = Infinity, maxU = -Infinity, maxV = -Infinity;
+        for (let i = 0; i < uv.length; i++) {
+          if (uv[i][0] < minU) minU = uv[i][0];
+          if (uv[i][0] > maxU) maxU = uv[i][0];
+          if (uv[i][1] < minV) minV = uv[i][1];
+          if (uv[i][1] > maxV) maxV = uv[i][1];
+        }
+        const rangeU = maxU - minU || 1, rangeV = maxV - minV || 1;
+
+        // Uniform scale: preserve aspect ratio, fit within draw area
+        const scale = Math.min(drawW / rangeU, drawH / rangeV);
+        const uvW = rangeU * scale, uvH = rangeV * scale;
+
+        // Hi-res off-screen canvas
+        const res = 4;
+        const canvasW = Math.round(drawW * res), canvasH = Math.round(drawH * res);
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = canvasW;
+        offCanvas.height = canvasH;
+        const ctx = offCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvasW, canvasH);
+
+        // Map UV [0,1] coordinates to canvas, centered
+        const offX = (canvasW - uvW * res) / 2;
+        const offY = (canvasH - uvH * res) / 2;
+        function ux(u) { return offX + (u - minU) * scale * res; }
+        function uy(v) { return canvasH - offY - (v - minV) * scale * res; }
+
+        // Draw filled triangles with thin edge
+        ctx.lineWidth = 0.8;
+        ctx.strokeStyle = '#334466';
+        ctx.fillStyle = '#f0f4ff';
+        for (let fi = 0; fi < faces.length; fi++) {
+          const f = faces[fi], p0 = uv[f[0]], p1 = uv[f[1]], p2 = uv[f[2]];
+          ctx.beginPath();
+          ctx.moveTo(ux(p0[0]), uy(p0[1]));
+          ctx.lineTo(ux(p1[0]), uy(p1[1]));
+          ctx.lineTo(ux(p2[0]), uy(p2[1]));
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // Boundary edges thicker
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#cc4400';
+        const edgeSet = new Set();
+        for (let fi = 0; fi < faces.length; fi++) {
+          const f = faces[fi];
+          for (const [a, b] of [[f[0], f[1]], [f[1], f[2]], [f[2], f[0]]]) {
+            const key = Math.min(a, b) + '_' + Math.max(a, b);
+            if (edgeSet.has(key)) { edgeSet.delete(key); }
+            else { edgeSet.add(key); }
+          }
+        }
+        for (const key of edgeSet) {
+          const [a, b] = key.split('_').map(Number);
+          ctx.beginPath();
+          ctx.moveTo(ux(uv[a][0]), uy(uv[a][1]));
+          ctx.lineTo(ux(uv[b][0]), uy(uv[b][1]));
+          ctx.stroke();
+        }
+
+        // Add to PDF: center the image on the landscape page
+        const imgData = offCanvas.toDataURL('image/png');
+        doc.addImage(imgData, 'PNG', margin, margin, drawW, drawH);
+
+        // Footer
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(new Date().toISOString().slice(0, 10), margin, pageH - 6);
+
+        doc.save('uv_unwrap.pdf');
+        setStatus("PDF saved", "#89f0b6");
+      }
 
       if (btnClearOther) btnClearOther.addEventListener("click", function () {
         clearOtherOverlays();
