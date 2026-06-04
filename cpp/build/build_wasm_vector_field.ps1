@@ -7,7 +7,7 @@ $outDir = Join-Path $repoRoot "assets\wasm"
 
 $emsdkPath = Join-Path $cppRoot "emsdk"
 $eigenInc = Join-Path $cppRoot "deps\eigen-3.4.0"
-$srcFile = Join-Path $cppRoot "vector_field_unified_wasm.cpp"
+$srcFile = Join-Path $cppRoot "VectorFileds\vector_field_unified_wasm.cpp"
 
 if (!(Test-Path (Join-Path $emsdkPath "emsdk_env.ps1"))) {
   Write-Host "[ERROR] emsdk not found: $emsdkPath" -ForegroundColor Red

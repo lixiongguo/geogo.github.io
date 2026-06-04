@@ -1343,63 +1343,43 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
     const frames = buildFaceFramesAndAdjacency(V, F, numF);
     const { normals, T1, T2, cent, adj } = frames;
+    const V_rows = V.length / 3, F_rows = F.length / 3;
 
-    let theta = null;
-    let algoKind = 'trivial-js';
+    if (!fieldModule) throw new Error('VectorFieldSolver WASM 未加载');
 
-    const useComplexPoly = (currentAlgo === 'complex-poly' && N === 4);
-
-    if (fieldModule && useComplexPoly && typeof fieldModule._compute_4rosy_field === 'function') {
-      // --- Complex polynomial method (WASM, N=4 only) ---
-      try {
-        const mod = fieldModule;
-        const V_rows = V.length / 3, F_rows = F.length / 3;
-        const V_ptr = mod._malloc(V_rows * 3 * 4);
-        const F_ptr = mod._malloc(F_rows * 3 * 4);
-        mod.HEAPF32.set(V, V_ptr / 4);
-        mod.HEAP32.set(F, F_ptr / 4);
-        const rc = mod._compute_4rosy_field(V_ptr, V_rows, F_ptr, F_rows);
-        mod._free(V_ptr); mod._free(F_ptr);
-        if (rc === 0) {
-          const ptr = mod._get_nrosy_theta(), sz = mod._get_nrosy_theta_size();
-          if (ptr && sz === numF) {
-            theta = new Float32Array(mod.HEAPF32.buffer, ptr, sz);
-            theta = new Float32Array(theta);
-            algoKind = 'complex-poly-wasm';
-          }
-        }
-      } catch(e) { console.warn('Complex-poly WASM failed:', e); }
-    } else if (fieldModule && currentAlgo === 'trivial' && typeof fieldModule._compute_trivial_nrosy_field === 'function') {
-      // --- Trivial connection method (WASM) ---
-      try {
-        const mod = fieldModule;
-        const V_rows = V.length / 3, F_rows = F.length / 3;
-        const V_ptr = mod._malloc(V_rows * 3 * 4);
-        const F_ptr = mod._malloc(F_rows * 3 * 4);
-        mod.HEAPF32.set(V, V_ptr / 4);
-        mod.HEAP32.set(F, F_ptr / 4);
-        const rc = mod._compute_trivial_nrosy_field(V_ptr, V_rows, F_ptr, F_rows);
-        mod._free(V_ptr); mod._free(F_ptr);
-        if (rc === 0) {
-          const ptr = mod._get_nrosy_theta(), sz = mod._get_nrosy_theta_size();
-          if (ptr && sz === numF) {
-            theta = new Float32Array(mod.HEAPF32.buffer, ptr, sz);
-            theta = new Float32Array(theta);
-            algoKind = 'trivial-wasm';
-          }
-        }
-      } catch(e) { console.warn('Trivial WASM failed:', e); }
+    if (currentAlgo === 'complex-poly') {
+      if (N !== 4) throw new Error('复数法仅支持 N=4，当前 N=' + N);
+      if (typeof fieldModule._compute_4rosy_field !== 'function')
+        throw new Error('_compute_4rosy_field 未导出 — 请重新编译 vector_field_solver');
+      const mod = fieldModule;
+      const V_ptr = mod._malloc(V_rows * 3 * 4);
+      const F_ptr = mod._malloc(F_rows * 3 * 4);
+      mod.HEAPF32.set(V, V_ptr / 4);
+      mod.HEAP32.set(F, F_ptr / 4);
+      const rc = mod._compute_4rosy_field(V_ptr, V_rows, F_ptr, F_rows);
+      mod._free(V_ptr); mod._free(F_ptr);
+      if (rc !== 0) throw new Error('_compute_4rosy_field 返回错误码: ' + rc);
+      const ptr = mod._get_nrosy_theta(), sz = mod._get_nrosy_theta_size();
+      if (!ptr || sz !== numF) throw new Error('复数法 theta 数据异常: ptr=' + ptr + ' sz=' + sz + ' expected=' + numF);
+      const theta = new Float32Array(mod.HEAPF32.buffer, ptr, sz);
+      return { theta: new Float32Array(theta), T1, T2, normals, cent, adj, N, numF, algorithm: 'complex-poly-wasm' };
     }
 
-    if (!theta) {
-      // JS fallback (works for any N)
-      theta = solvePolyVectorFieldFromRepo(V, F, frames, N);
-      algoKind = 'trivial-js';
-    }
-
-    return {
-      theta, T1, T2, normals, cent, adj, N, numF, algorithm: algoKind
-    };
+    // trivial connection
+    if (typeof fieldModule._compute_trivial_nrosy_field !== 'function')
+      throw new Error('_compute_trivial_nrosy_field 未导出 — 请重新编译 vector_field_solver');
+    const mod = fieldModule;
+    const V_ptr = mod._malloc(V_rows * 3 * 4);
+    const F_ptr = mod._malloc(F_rows * 3 * 4);
+    mod.HEAPF32.set(V, V_ptr / 4);
+    mod.HEAP32.set(F, F_ptr / 4);
+    const rc = mod._compute_trivial_nrosy_field(V_ptr, V_rows, F_ptr, F_rows);
+    mod._free(V_ptr); mod._free(F_ptr);
+    if (rc !== 0) throw new Error('_compute_trivial_nrosy_field 返回错误码: ' + rc);
+    const ptr = mod._get_nrosy_theta(), sz = mod._get_nrosy_theta_size();
+    if (!ptr || sz !== numF) throw new Error('平凡联络 theta 数据异常: ptr=' + ptr + ' sz=' + sz + ' expected=' + numF);
+    const theta = new Float32Array(mod.HEAPF32.buffer, ptr, sz);
+    return { theta: new Float32Array(theta), T1, T2, normals, cent, adj, N, numF, algorithm: 'trivial-wasm' };
   }
 
 
@@ -1918,7 +1898,8 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     trivialResult = null;
     if (isNRosySource()) {
       await initFieldModule();
-      trivialResult = computeNRosyField(currentV, currentF, currentN);
+      try { trivialResult = computeNRosyField(currentV, currentF, currentN); }
+      catch(e) { console.error('N-RoSy 计算失败:', e.message); }
       document.getElementById('curvature').textContent = '—';
     } else {
       await initPCModule();
@@ -2032,7 +2013,8 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     if (!currentV || !currentF) return;
     if (currentFieldSource === 'nrosy') {
       await initFieldModule();
-      trivialResult = computeNRosyField(currentV, currentF, currentN);
+      try { trivialResult = computeNRosyField(currentV, currentF, currentN); }
+      catch(e) { console.error('N-RoSy 计算失败:', e.message); }
       pcResult = null;
     } else {
       await initPCModule();
@@ -2054,7 +2036,8 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     currentN = parseInt(e.target.value);
     syncFieldSourceUI();  // auto‑switch algo if N!=4
     if (currentV && currentF && isNRosySource()) {
-      trivialResult = computeNRosyField(currentV, currentF, currentN);
+      try { trivialResult = computeNRosyField(currentV, currentF, currentN); }
+      catch(e) { console.error('N-RoSy 计算失败:', e.message); }
       updateVisualization();
     }
   });
@@ -2062,7 +2045,8 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
   document.getElementById('nrosy-algo-select').addEventListener('change', (e) => {
     currentAlgo = e.target.value;
     if (currentV && currentF && isNRosySource()) {
-      trivialResult = computeNRosyField(currentV, currentF, currentN);
+      try { trivialResult = computeNRosyField(currentV, currentF, currentN); }
+      catch(e) { console.error('N-RoSy 计算失败:', e.message); }
       updateVisualization();
     }
   });

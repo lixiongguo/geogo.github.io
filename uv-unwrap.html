@@ -2438,8 +2438,8 @@
           const uvs = [];
           for (let i = 0; i < uvSize; i++) uvs.push(simpleInstance.getValue(uvPtr + i * 8, "double"));
 
-          simpleInstance.ccall("dispose", "void", [], []);
           const timeMs = simpleInstance.ccall("get_last_time_ms", "number", [], []);
+          simpleInstance.ccall("dispose", "void", [], []);
           if (onProgress) onProgress(1, 1);
 
           const n = vertices.length;

@@ -311,6 +311,11 @@ int compute_4rosy_field(float* V_ptr, int V_rows, int* F_ptr, int F_rows) {
     SpMat ATA = AH * A;
     Eigen::VectorXcd rhs = AH * b.head(r);
 
+    // Regularisation: add small diagonal to improve conditioning
+    // (critical for closed meshes where only 1 constraint is added)
+    for (int fi = 0; fi < F_rows; ++fi)
+      ATA.coeffRef(fi, fi) += std::complex<double>(1e-6, 0.0);
+
     Eigen::SimplicialLDLT<SpMat> solver;
     solver.compute(ATA);
     if (solver.info() != Eigen::Success) return -2;
