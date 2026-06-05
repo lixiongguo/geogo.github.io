@@ -1,9 +1,9 @@
----
+<!-- ---
 layout: post
 category: Parameterization
 categories: ["Parameterization", "Parameterization-DifferentialForm"]
 title: "第3章 §3.3 Gortler 1-form方法与q-CCM"
----
+--- -->
 
  **$q$-CCM** 可以看作 CCM 在**多边界、任意亏格**上的推广：内部顶点仍满足正权重凸组合（对应后文公式 (7)(8) 的调和条件），但在 seam 上额外加入 $q$ -fold 旋转约束 $e^{i2\pi r/q}$。
 
