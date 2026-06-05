@@ -55,12 +55,12 @@
     {% if param_cats contains cat_name %}
     {% case cat_name %}
 		  {% when 'Parameterization-Preface' %}{% assign cat_display = '0 前言' %}
-		  {% when 'Parameterization-BasicParameterization' %}{% assign cat_display = '1 基础曲面展开方法' %}
-		  {% when 'Parameterization-ConformalMapping' %}{% assign cat_display = '2 共形参数化探微' %}
-		  {% when 'Parameterization-DifferentialForm' %}{% assign cat_display = '3 基于微分形式的参数化' %}
-		  {% when 'Parameterization-GeometricOptimization' %}{% assign cat_display = '4 几何优化方法' %}
-		  {% when 'Parameterization-QuadRemeshing' %}{% assign cat_display = '5 向量场引导的参数化' %}
-		  {% when 'Parameterization-OptimalTransport' %}{% assign cat_display = '6 最优传输方法' %}
+		  {% when 'Parameterization-BasicParameterization' %}{% assign cat_display = '基础曲面展开方法' %}
+		  {% when 'Parameterization-ConformalMapping' %}{% assign cat_display = '共形参数化探微' %}
+		  {% when 'Parameterization-DifferentialForm' %}{% assign cat_display = '基于微分形式的参数化' %}
+		  {% when 'Parameterization-GeometricOptimization' %}{% assign cat_display = '几何优化方法' %}
+		  {% when 'Parameterization-QuadRemeshing' %}{% assign cat_display = '向量场引导的参数化' %}
+		  {% when 'Parameterization-OptimalTransport' %}{% assign cat_display = '最优传输方法' %}
 		  {% else %}{% assign cat_display = cat_name %}
     {% endcase %}
 	    <li>
