@@ -8,7 +8,7 @@ categories: [Parameterization, "Parameterization-ConformalMapping"]
 
 
 
-![image-20260529132033157](D:\MyDocs\geogo.github.io\imgs\image-20260529132033157.png)
+![image-20260529132033157](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260529132033157.png)
 
 ### 算法核心洞察
 
@@ -59,7 +59,7 @@ $$
 
 ### 共轭对偶
 
-![image-20260529130728969](D:\MyDocs\geogo.github.io\imgs\image-20260529130728969.png)
+![image-20260529130728969](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260529130728969.png)
 
 ### Poincaré-Steklov 算子：边界条件转换
 
