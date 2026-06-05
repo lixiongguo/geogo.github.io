@@ -9,7 +9,7 @@ permalink: /gallery/
     {% for item in site.data.gallery %}
     <a class="gallery-index-card" href="{{ item.detail_url }}">
       <div class="gallery-thumb-wrap">
-        <img class="gallery-thumb" src="/gallery/ThumbNails/{{ item.title }}.png" alt="{{ item.title }}">
+        <img class="gallery-thumb" src="{{ item.thumbnail }}" alt="{{ item.title }}">
       </div>
       <h3 class="gallery-index-card-title">{{ item.title }}</h3>
       <p class="gallery-index-card-desc">{{ item.description }}</p>

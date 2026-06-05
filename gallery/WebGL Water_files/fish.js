@@ -80,7 +80,7 @@ FishSchool.prototype.update = function(dt) {
     for (var j = 0; j < n; j++) {
       if (i === j) continue;
       var g = fish[j];
-      var d = f.pos.distance(g.pos);
+      var d = f.pos.subtract(g.pos).length();
       if (d < 1e-6) continue;
 
       if (d < 0.18) {  // separation range

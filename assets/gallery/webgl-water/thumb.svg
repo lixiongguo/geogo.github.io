@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" role="img" aria-label="WebGL Water thumbnail">
-  <rect width="800" height="480" fill="#000814" />
-  <path d="M0 280 Q200 220 400 280 T800 280 V480 H0 Z" fill="#0ea5e9" opacity="0.45" />
-  <path d="M0 330 Q160 270 320 330 T640 330 T800 330 V480 H0 Z" fill="#38bdf8" opacity="0.35" />
-  <circle cx="620" cy="180" r="48" fill="#94a3b8" opacity="0.85" />
-  <text x="60" y="90" fill="#e0f2fe" font-size="52" font-family="Georgia, serif" font-style="italic">WebGL Water</text>
-</svg>
