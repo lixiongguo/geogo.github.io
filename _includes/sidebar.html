@@ -44,37 +44,57 @@
 	</ul>
 </div> -->
 
-<!-- 文章分类: 仅索引 1.Parameterization 文件夹 (Parameterization, QuadRemeshing, Math) -->
+<!-- 曲面展开 - 文章目录树 -->
 <div class="sidebar-item sidebar-nav">
-  	<ul class="nav">
-		<li class="nav-title">曲面展开</li>
-    {% assign param_cats = "Parameterization-Preface|Parameterization-BasicParameterization|Parameterization-ConformalMapping|Parameterization-DifferentialForm|Parameterization-GeometricOptimization|Parameterization-QuadRemeshing|Parameterization-OptimalTransport" | split: "|" %}
-    {% for category in site.categories %}
-    {% assign cat_name = category | first %}
-    {% assign cat_count = category | last | size %}
-    {% if param_cats contains cat_name %}
-    {% case cat_name %}
-		  {% when 'Parameterization-Preface' %}{% assign cat_display = '0 前言' %}
-		  {% when 'Parameterization-BasicParameterization' %}{% assign cat_display = '基础曲面展开方法' %}
-		  {% when 'Parameterization-ConformalMapping' %}{% assign cat_display = '共形参数化探微' %}
-		  {% when 'Parameterization-DifferentialForm' %}{% assign cat_display = '基于微分形式的参数化' %}
-		  {% when 'Parameterization-GeometricOptimization' %}{% assign cat_display = '几何优化方法' %}
-		  {% when 'Parameterization-QuadRemeshing' %}{% assign cat_display = '向量场引导的参数化' %}
-		  {% when 'Parameterization-OptimalTransport' %}{% assign cat_display = '最优传输方法' %}
-		  {% else %}{% assign cat_display = cat_name %}
-    {% endcase %}
-	    <li>
-	    	<a class="nav-item algo-link-with-icon" href="{{ root_url }}/{{ site.category_dir }}#{{ cat_name }}">
-				<span class="algo-mini-icon" aria-hidden="true"></span>
-				<span class="name">{{ cat_display }}</span>
-				<span class="cat-count">({{ cat_count }})</span>
-	    	</a>
- 		</li>
-    {% endif %}
+  <ul class="nav">
+    <li class="nav-title">曲面展开</li>
+    {% assign param_cats = "Parameterization-Preface|Parameterization-BasicParameterization|Parameterization-ConformalMapping|Parameterization-QuadRemeshing|Parameterization-DifferentialForm|Parameterization-GeometricOptimization|Parameterization-OptimalTransport" | split: "|" %}
+    {% assign cat_displays = "0 前言|1. 基础曲面展开方法|2. 共形参数化探微|3. 向量场引导的参数化|4. 高观点下的参数化|5. 几何优化方法|6. 最优传输方法" | split: "|" %}
+    {% for cat in param_cats %}
+      {% assign cat_idx = forloop.index0 %}
+      {% assign cat_display = cat_displays[cat_idx] %}
+      {%- assign cat_posts = '' | split: '' -%}
+      {%- for post in site.posts -%}
+        {%- if post.categories contains cat -%}
+          {%- assign cat_posts = cat_posts | push: post -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {%- assign post_count = cat_posts | size -%}
+      {% if post_count > 0 %}
+      <li class="sidebar-post-group">
+        <a class="nav-item sidebar-cat-toggle" href="javascript:void(0)" onclick="toggleSidebarGroup(this)" title="展开/折叠">
+          <span class="toggle-icon">▾</span>
+          <span class="name">{{ cat_display }}</span>
+          <!-- <span class="cat-count">({{ post_count }})</span> -->
+        </a>
+        <ul class="sidebar-post-list" style="display:block;">
+          {% for post in cat_posts reversed %}
+          <li class="sidebar-post-item">
+            <a href="{{ post.url | relative_url }}" class="sidebar-post-link" title="{{ post.title | escape }}">
+              {{ post.title | escape }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </li>
+      {% endif %}
     {% endfor %}
-	  </nav>
-	</ul>
+  </ul>
 </div>
+
+<script>
+function toggleSidebarGroup(el) {
+  var list = el.parentElement.querySelector('.sidebar-post-list');
+  var icon = el.querySelector('.toggle-icon');
+  if (list.style.display === 'none') {
+    list.style.display = 'block';
+    icon.textContent = '▾';
+  } else {
+    list.style.display = 'none';
+    icon.textContent = '▸';
+  }
+}
+</script>
 
 <!-- 算法测试: 静态链接 + 图形学 Demo -->
 <div class="sidebar-item sidebar-nav algo-section">
