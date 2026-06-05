@@ -1,4 +1,4 @@
-<script>
+<!-- <script>
   // 首次访问首页时，随机跳转到一篇参数化文章
   var paramUrls = [
     {% assign param_posts = site.posts | where_exp: "post", "post.path contains 'Parameterization'" %}
@@ -15,7 +15,7 @@
       }
     }
   })();
-</script>
+</script> -->
 
 <article class="post">
   <header class="post-header home">
@@ -23,6 +23,10 @@
   </header>
 
   <div class="post-content">
+    {%- assign preface_post = site.posts | where_exp: "post", "post.title == '曲面展开前言'" | first -%}
+    {%- if preface_post -%}
+      {{ preface_post.content }}
+    {%- else -%}
     <section class="home-demo-hub" style="margin-bottom:2rem;padding:1.25rem 1.5rem;background:#faf8f5;border:1px solid rgba(44,62,80,0.12);border-radius:12px;">
       <h2 style="margin:0 0 0.5rem;font-size:1.25rem;font-weight:600">📐 曲面参数化 — 交互实验</h2>
       <p style="margin:0 0 1rem;color:#6c757d;font-size:0.95rem">
@@ -66,6 +70,7 @@
     </nav>
     {%- endif -%}
   {%- endif -%}
+    {%- endif -%}
   </div>
 </article>
 

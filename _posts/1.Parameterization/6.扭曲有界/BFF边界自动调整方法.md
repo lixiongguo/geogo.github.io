@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "曲面展开-BFF边界优先展平"
+title: "曲面展开-BFF边界优先展开"
 categories: [Parameterization, "Parameterization-ConformalMapping"]
 ---
 
@@ -178,9 +178,9 @@ $$
 
 ---
 
-> **代码实现**：BFF 算法的完整 C++ 源码、WebAssembly 编译命令、JavaScript 调用接口和复杂度分析已统一归集到 [代码实现汇总](https://lixiongguo.github.io/parameterization/2019/12/01/代码实现汇总/#1-bff-边界优先展平)。
+> **代码实现**：BFF 算法的完整 C++ 源码、WebAssembly 编译命令、JavaScript 调用接口和复杂度分析已统一归集到 [代码实现汇总](https://lixiongguo.github.io/parameterization/2019/12/01/代码实现汇总/#1-bff-边界优先展开)。
 > 
-> 在线演示：[https://lixiongguo.github.io/uv-unwrap.html](https://lixiongguo.github.io/uv-unwrap.html)，选择 **"BFF (边界优先展平)"**。
+> 在线演示：[https://lixiongguo.github.io/uv-unwrap.html](https://lixiongguo.github.io/uv-unwrap.html)，选择 **"BFF (边界优先展开)"**。
 
 **参考文献**：
 

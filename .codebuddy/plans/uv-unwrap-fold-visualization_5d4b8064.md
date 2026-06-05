@@ -1,6 +1,6 @@
 ---
 name: uv-unwrap-fold-visualization
-overview: 在 UV 展平面板中，根据 3D 网格边的二面角将边分类为"峰折"（凸边/山脊）和"谷折"（凹边/沟槽），并用不同颜色渲染，直观展示展平后每条边的折叠类型。
+overview: 在 UV 展开面板中，根据 3D 网格边的二面角将边分类为"峰折"（凸边/山脊）和"谷折"（凹边/沟槽），并用不同颜色渲染，直观展示展开后每条边的折叠类型。
 todos:
   - id: compute-fold-types
     content: 新增 computeEdgeFoldTypes 函数：基于 3D 顶点坐标和三角形面计算每条边的峰折/谷折/平坦分类
@@ -19,7 +19,7 @@ todos:
 
 ## 需求概述
 
-在 UV 展开页面的右侧 UV 网格面板中，基于原始 3D 网格的二面角计算，对展平后的每条边用不同颜色渲染，以区分峰折（mountain fold）、谷折（valley fold）和平坦/边界边。
+在 UV 展开页面的右侧 UV 网格面板中，基于原始 3D 网格的二面角计算，对展开后的每条边用不同颜色渲染，以区分峰折（mountain fold）、谷折（valley fold）和平坦/边界边。
 
 ## 核心功能
 

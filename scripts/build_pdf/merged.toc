@@ -18,9 +18,9 @@
 \contentsline {subsubsection}{1.1.1 曲面展开(参数化)定义}{5}{section*.19}%
 \contentsline {subsubsection}{1.1.2 一个生活中的例子}{5}{section*.20}%
 \contentsline {subsubsection}{1.1.3 其他应用}{7}{section*.21}%
-\contentsline {section}{第3章 曲面展开-一个简单的展平算法}{9}{section*.22}%
-\contentsline {subsection}{1.2 一个简单的展平算法}{9}{section*.23}%
-\contentsline {subsubsection}{1.2.1 一个简单的展平算法-Tutte参数化方法}{9}{section*.24}%
+\contentsline {section}{第3章 曲面展开-一个简单的展开算法}{9}{section*.22}%
+\contentsline {subsection}{1.2 一个简单的展开算法}{9}{section*.23}%
+\contentsline {subsubsection}{1.2.1 一个简单的展开算法-Tutte参数化方法}{9}{section*.24}%
 \contentsline {subsubsection}{1.2.2 理论保证---Tutte 嵌入定理}{11}{section*.25}%
 \contentsline {subsubsection}{1.2.3 算法缺陷分析}{11}{section*.26}%
 \contentsline {section}{第4章 曲面展开-离散微分几何-Laplace算子}{12}{section*.27}%
