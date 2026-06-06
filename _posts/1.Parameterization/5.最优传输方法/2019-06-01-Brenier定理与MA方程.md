@@ -55,11 +55,7 @@ $$
 
 这个非线性二阶偏微分方程就是 **Monge–Ampère 方程**，它是最优传输理论和保面积参数化的核心方程。
 
-### 解的结构
-
-综上，二次代价下的最优传输问题可归结为：
-
- 存在唯一的凸函数 $$\phi$$（Brenier 势），使得：
+综上，二次代价下的最优传输问题可归结为, 存在唯一的凸函数 $$\phi$$（Brenier 势），使得：
 
  - $$T = \nabla \phi$$ 是唯一的最优传输映射
  - $$\phi$$ 满足 Monge-Ampère 方程 $$\det(D^2\phi) \cdot \nu(\nabla\phi) = \mu$$
@@ -139,6 +135,3 @@ $$
 x \xrightarrow{\;T\;} y \in \partial^c \psi(x),  T(x) = \nabla \phi(x) \;\text{（二次代价）}.
 $$
 
----
-
-## 
