@@ -28,7 +28,7 @@ var gl = GL.create();
 var water;
 var cubemap;
 var renderer;
-var fishSchool;
+// var fishSchool;
 var angleX = -25;
 var angleY = -200.5;
 
@@ -43,11 +43,11 @@ var paused = false;
 
 window.onload = function() {
   var ratio = window.devicePixelRatio || 1;
-  var help = document.getElementById('help');
+  var canvasPanel = document.getElementById('canvas-panel');
 
   function onresize() {
-    var width = innerWidth - help.clientWidth - 20;
-    var height = innerHeight;
+    var width = canvasPanel.clientWidth;
+    var height = canvasPanel.clientHeight;
     gl.canvas.width = width * ratio;
     gl.canvas.height = height * ratio;
     gl.canvas.style.width = width + 'px';
@@ -60,7 +60,7 @@ window.onload = function() {
     draw();
   }
 
-  document.body.appendChild(gl.canvas);
+  canvasPanel.appendChild(gl.canvas);
   gl.clearColor(0, 0, 0, 1);
 
   water = new Water();
@@ -78,7 +78,7 @@ window.onload = function() {
     throw new Error('Rendering to floating-point textures is required but not supported');
   }
 
-  fishSchool = new FishSchool();
+  // fishSchool = new FishSchool();
 
   center = oldCenter = new GL.Vector(-0.4, -0.75, 0.2);
   velocity = new GL.Vector();
@@ -182,7 +182,7 @@ window.onload = function() {
   }
 
   function isHelpElement(element) {
-    return element === help || element.parentNode && isHelpElement(element.parentNode);
+    return element === document.getElementById('help') || element.parentNode && isHelpElement(element.parentNode);
   }
 
   document.onmousedown = function(e) {
@@ -257,7 +257,7 @@ window.onload = function() {
     water.stepSimulation();
     water.updateNormals();
     renderer.updateCaustics(water);
-    fishSchool.update(seconds);
+    // fishSchool.update(seconds);
   }
 
   function draw() {
@@ -279,7 +279,7 @@ window.onload = function() {
     renderer.sphereRadius = radius;
     renderer.renderCube();
     renderer.renderWater(water, cubemap);
-    fishSchool.render();
+    // fishSchool.render();
     renderer.renderSphere();
     gl.disable(gl.DEPTH_TEST);
   }
