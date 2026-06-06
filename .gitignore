@@ -23,3 +23,5 @@ scripts/_pdf_images
 assets/renderer/CausticsLens/
 **.pdf
 **/bin/
+
+scripts/AccessKey.csv
