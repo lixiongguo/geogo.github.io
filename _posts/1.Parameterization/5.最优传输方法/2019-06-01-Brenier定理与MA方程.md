@@ -1,4 +1,9 @@
-## Brenier 定理（1987/1991）
+---
+layout: post
+title: "二次代价与Brenier定理"
+category: Parameterization
+categories: ["Parameterization", "Parameterization-OptimalTransport"]
+---
 
 针对最重要的**二次代价函数** $$c(x,y) = \frac{1}{2}\|x - y\|^2$$，Brenier 给出了最优传输映射的显式结构：
 
@@ -45,7 +50,7 @@ $$
 
 
 
-### Monge-Ampère 方程
+## Monge-Ampère 方程
 
 推前条件 $$T_{\#}\mu = \nu$$ 在 $$T = \nabla \phi$$ 下可写为：
 
@@ -63,13 +68,9 @@ $$
 
 ![image-20250928212316955](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250928212316955.png)
 
-*图：由 $c(x,y)=\frac{1}{2}\|x-y\|^2$ 展开，Kantorovich 势取 $\tilde\phi(x)=\phi(x)-\frac{1}{2}\|x\|^2$、$\tilde\psi(y)=\phi^*(y)-\frac{1}{2}\|y\|^2$，满足 $\tilde\phi(x)+\tilde\psi(y)=\langle x,y\rangle$ 于最优对上。*
+*由 $c(x,y)=\frac{1}{2}\|x-y\|^2$ 展开，Kantorovich 势取 $\tilde\phi(x)=\phi(x)-\frac{1}{2}\|x\|^2$、$\tilde\psi(y)=\phi^*(y)-\frac{1}{2}\|y\|^2$，满足 $\tilde\phi(x)+\tilde\psi(y)=\langle x,y\rangle$ 于最优对上。
 
 ![image-20250928212149743](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250928212149743.png)
-
-*图：Brenier 势 $\phi$ 与 Kantorovich 势 $\phi_K$ 的换元关系（见上）。*
-
-![image-20250928212412091](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250928212412091.png)
 
 **最终公式（二次代价下）**：用源空间 Kantorovich 势 $$\phi_K$$ 表示传输映射
 
@@ -94,20 +95,15 @@ $$
 这也意味着在最优传输中，$$\nabla_x c(x,y)$$ 唯一确定了 $$y$$，从而保证了传输映射 $$T$$ 的存在性：
 
 $$
- T(x) = \arg\min_y \left[ c(x,y) - \psi(y) \right] \quad \text{或等价地} \quad T(x) = \nabla c(x, \cdot)^{-1}(\nabla \phi(x))
+T(x) = \arg\min_y \left[ c(x,y) - \psi(y) \right] \quad \text{或等价地} \quad T(x) = \nabla c(x, \cdot)^{-1}(\nabla \phi(x))
 $$
 
-![image-20250928212605275](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250928212605275.png)
-
 *图：一般代价下，Kantorovich 势与传输映射满足*
-
 $$
 \boxed{\nabla_x \phi(x) = -\nabla_x c(x, T(x))}
 $$
 
 其中 $$\phi$$ 是 Kantorovich 势（源空间侧）。
-
-![image-20250928212705825](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250928212705825.png)
 
 *图：**例子**——若 $c(x,y)=\frac{1}{2}\|x-y\|^2$，则 $\nabla_x c = x-y$，代入得*
 
