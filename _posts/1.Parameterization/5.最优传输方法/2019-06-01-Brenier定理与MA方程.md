@@ -50,12 +50,8 @@ $$
 推前条件 $$T_{\#}\mu = \nu$$ 在 $$T = \nabla \phi$$ 下可写为：
 
 $$
- \nu(\nabla\phi(x)) \cdot \det(D^2\phi(x)) = \mu(x)
+\nu(\nabla\phi(x)) \cdot \det(D^2\phi(x)) = \mu(x)
 $$
-
-![image-20250928212234034](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250928212234034.png)
-
-*图：Monge-Ampère 方程的 Jacobian 解释——$\det D^2\phi$ 给出体积变化率。*
 
 这个非线性二阶偏微分方程就是 **Monge–Ampère 方程**，它是最优传输理论和保面积参数化的核心方程。
 

@@ -1,167 +1,15 @@
 ---
 layout: post
-title: "最优传输-Monge问题与Kantorivch问题"
+title: "Monge问题与Kantorivch问题"
 category: Parameterization
 categories: ["Parameterization", "Parameterization-OptimalTransport"]
 ---
 
-一些简单情况的最优传输
+最优传输问题源于法国数学家 **Gaspard Monge** 于 1781 年提出的"**堆土问题**"：如何将一堆土以最小总代价搬运到指定位置，形成目标土堆。其核心是寻找一个将源分布映射到目标分布的最优方案。20 世纪 40 年代，**Kantorovich** 将问题松弛为联合分布上的线性规划，奠定了最优传输的现代数学基础，并因此获得 1975 年诺贝尔经济学奖。如今，最优传输广泛应用于计算机图形学、图像处理、机器学习、经济均衡分析等领域。
 
-## 1) 一维情况下
+## Monge问题与Kantorivch问题
 
-1D 情况下，当代价为凸函数（如二次代价）时，最优传输由累计分布函数（CDF）直接给出。
-$$
-F(x)=\int_{-\infty}^{x} f(t)\,dt,
-G(x)=\int_{-\infty}^{x} g(t)\,dt.
-$$
-
-$$
-T(x)=G^{-1}(F(x)).
-$$
-
-当 $G$ 在某些区间不可逆（如出现平台）时，用广义逆：
-
-$$
-G^{-1}(x)=\inf\{y\in\mathbb{R}:G(y)>x\}.
-$$
-
-### Gauss 情况
-
-图中给出了高斯到高斯的 Wasserstein-2 闭式公式。  
-若 $\mathcal{N}_0=\mathcal{N}(\mu_0,\Sigma_0),\ \mathcal{N}_1=\mathcal{N}(\mu_1,\Sigma_1)$，则
-
-$$
-W_2^2(\mathcal{N}_0,\mathcal{N}_1)
-=\|\mu_0-\mu_1\|^2
-+\operatorname{tr}\!\left(\Sigma_0+\Sigma_1-2\Sigma_{0,1}\right),
-$$
-
-其中
-
-$$
-\Sigma_{0,1}=\left(\Sigma_0^{1/2}\Sigma_1\Sigma_0^{1/2}\right)^{1/2}.
-$$
-
-位移插值仍为高斯族。高斯到高斯的位移插值（displacement interpolation）为
-
-$$
-\nu_t = \mathcal{N}\!\left((1-t)\mu_0 + t\mu_1,\; \Sigma_t\right), 
-\Sigma_t = \left((1-t)I + t\,\Sigma_0^{-1/2}\Sigma_{0,1}\Sigma_0^{-1/2}\right)^2 \Sigma_0.
-$$
-
-**高斯重心（Wasserstein barycenter）** 的协方差 $\bar\Sigma$ 可通过固定点迭代求得：给定权重 $w_i$ 与高斯 $\mathcal{N}(\mu_i, \Sigma_i)$，迭代
-
-$$
-\bar\Sigma \leftarrow \sum_i w_i \left(\bar\Sigma^{1/2}\Sigma_i\bar\Sigma^{1/2}\right)^{1/2},
-$$
-
-均值则为 $\bar\mu = \sum_i w_i \mu_i$。
-
-## 离散分布
-
-对于两个都是离散分布，则是一个线性规划
-
-![image-20250928213629121](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250928213629121.png)
-
-*图：离散-离散 OT 写成标准线性规划。原始问题（式 3.1）为*
-
-$$
-L_{\mathbf{C}}(\mathbf{a}, \mathbf{b}) = \min_{\mathbf{P} \in \mathbf{U}(\mathbf{a}, \mathbf{b})} \sum_{i=1}^{n} \sum_{j=1}^{m} \mathbf{C}_{ij} \mathbf{P}_{ij}.
-
-$$
-
-*按列拉直 $\mathbf{P} \mapsto \mathbf{p} \in \mathbb{R}^{nm}$，约束矩阵用 Kronecker 积编码行和与列和，化为标准 LP（式 3.2）：*
-
-$$
-\min_{p \in \mathbb{R}_+^{nm}} c^\top p,\quad Ap = \begin{bmatrix}a \\ b\end{bmatrix}
-
-$$
-
-其中约束矩阵 $A$ 用 Kronecker 积编码行和与列和约束：
-
-$$
-A = \begin{bmatrix}
-\mathbf{1}_n^\top \otimes I_m \\
-I_n \otimes \mathbf{1}_m^\top
-\end{bmatrix} \in \mathbb{R}^{(n+m) \times nm}
-$$
-
-向量 $p = \operatorname{vec}(P) \in \mathbb{R}^{nm}$ 为耦合矩阵按列拉直，$c = \operatorname{vec}(C)$ 为代价向量。
-
-$$
-\min_{P\in U(a,b)}\sum_{i,j} C_{ij}P_{ij}.
-$$
-
-## 4) 半离散 (Semi-discrete)
-
-面包房案例
-
-![image-20250928213528176](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250928213528176.png)
-
-*Figure 4: Semi-discrete optimal transport leads to power diagrams. 10 个面包房中，橙色点产能较大（多块面包），粉色点产能为 1 单位。均匀密度的居民被分配到各面包房，总运输代价最小时形成 cell 分解——每个居民去往指定的面包房（箭头）。产能大的面包房对应更大的 cell（蓝色区域）。注意面包房不一定要位于其对应 cell 内部（此处所有产能为 1 的面包房都在其 cell 之外）。*
-
-最优传输把平面划分为加权单元（power/Laguerre cells），使每个单元人口恰好匹配对应面包房需求，并最小化总运输代价。数学上，设连续源测度 $\mu$、离散目标 $\nu=\sum_j \lambda_j \delta_{y_j}$，Kantorovich 势 $\psi_j$ 诱导 Laguerre 单元（见后文 $c$-上微分一节）：
-
-$$
-L_j(\psi) = \left\{ x \;\middle|\; \|x-y_j\|^2 - \psi_j \leq \|x-y_k\|^2 - \psi_k,\; \forall k \right\},
-$$
-
-单元 $L_j$ 内所有点经最优映射送往 $y_j$，且 $\mu(L_j)=\lambda_j$。
-
-### 半离散最优传输与GMM（高斯混合模型）
-
-![image-20250928213828770](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250928213828770.png)
-
-*图：GMM 之间的 OT 化为"分量级离散 OT + 分量内高斯代价"（Chen et al.）。两个 GMM 写为*
-
-$$
-\mu_i = \sum_{\ell=1}^{N_i} p_i^\ell \,\nu_i^\ell, \quad i = 0, 1.
-$$
-
-*等价于支撑在 Gaussians 上的离散测度。分量间代价取 $W_2^2$，解离散 OT*
-
-$$
-c(i,j) = W_2^2(\nu_0^i, \nu_1^j)
-$$
-
-$$
-\min_{\pi \in \Pi(p_0, p_1)} \sum_{i,j} c(i,j)\,\pi(i,j)
-
-$$
-
-取最优耦 $\pi^*$，定义 GMM 空间上的度量（式 8）：
-
-$$
-d(\mu_0, \mu_1) = \sqrt{\sum_{i,j} c(i,j)\,\pi^*(i,j)}
-
-$$
-
-可以证明 $d$ 是 $\mathcal{M}(\mathbb{R}^d)$ 上的**内在度量**（intrinsic metric）：
-
-$$
-d(\mu_0, \mu_1) = \sup_{0=t_0 < t_1 < \cdots < t_s = 1} \sum_k d(\mu_{t_k}, \mu_{t_{k+1}}).
-$$
-
-连接 $\mu_0$ 和 $\mu_1$ 的测地线由加权位移插值给出（式 9–10）：
-
-$$
-\mu_t = \sum_{i,j} \pi^*(i,j)\,\nu_t^{ij}
-
-$$
-
-其中 $\nu_t^{ij}$ 是 $\nu_0^i$ 与 $\nu_1^j$ 之间的位移插值（仍为高斯分布），满足
-
-$$
-d(\mu_s, \mu_t) = (t-s)\,d(\mu_0, \mu_1), \quad 0 \leq s < t \leq 1.
-
-$$
-
-注意到 $\mu_t$ 仍为 GMM（因为是高斯分布的加权平均）；最优耦 $\pi^*$ 对一般 $\mu_0, \mu_1$ 未必唯一，但对"generic" GMM 唯一。
-
-
-### Monge 问题（MP）
-
- **Monge 问题（原始形式）**：给定两个概率测度 $$\mu$$（定义在 $$X$$ 上）和 $$\nu$$（定义在 $$Y$$ 上），以及代价函数 $$c(x,y)$$（表示将单位质量从 $$x$$ 运到 $$y$$ 所需的代价），求映射 $$T: X \to Y$$ 使得：
+**Monge 问题（原始形式）**：给定两个概率测度 $$\mu$$（定义在 $$X$$ 上）和 $$\nu$$（定义在 $$Y$$ 上），以及代价函数 $$c(x,y)$$（表示将单位质量从 $$x$$ 运到 $$y$$ 所需的代价），求映射 $$T: X \to Y$$ 使得：
 $$
  \min_{T} \int_X c(x, T(x)) \, d\mu(x) \quad \text{s.t.} \quad T_{\#}\mu = \nu
 $$
@@ -173,11 +21,7 @@ $$
 
 Monge 问题的本质困难在于：$$T$$ 必须是**映射**（每个 $$x$$ 只能映射到唯一一个 $$y$$），这意味着质量不允许分裂。这导致问题**非凸且可能无解**。
 
-
-
-### Kantorovich问题(KP)
-
- **Kantorovich 松弛**：将映射要求放宽为**传输计划（transport plan）** $$\pi$$——一个定义在乘积空间 $$X \times Y$$ 上的联合概率测度。$$\pi(x,y)$$ 表示从 $$x$$ 运往 $$y$$ 的质量份额：
+ **Kantorovich 问题**：将映射要求放宽为**传输计划（transport plan）** $$\pi$$——一个定义在乘积空间 $$X \times Y$$ 上的联合概率测度。$$\pi(x,y)$$ 表示从 $$x$$ 运往 $$y$$ 的质量份额：
 
 $$
  \min_{\pi \in \Pi(\mu,\nu)} \int_{X \times Y} c(x,y) \, d\pi(x,y)
@@ -198,11 +42,11 @@ $$
 \min_{\pi \in \Pi(\mu,\nu)} \int c \, d\pi \;=\; \sup_{(\phi,\psi)} \left\{ \int_X \phi \, d\mu + \int_Y \psi \, d\nu \;\mid\; \phi(x) + \psi(y) \leq c(x,y) \right\}
 $$
 
-其中满足不等式约束的函数对 $$(\phi,\psi)$$ 称为 **Kantorovich 势（Kantorovich Potential）**。$$\psi$$ 可通过 $$c$$-变换由 $$\phi$$ 确定。
+其中满足不等式约束的函数对 $$(\phi,\psi)$$ 称为 （Kantorovich Potential）**,$\psi$ 可通过 $$c$$-变换由 $$\phi$$ 确定。
 
+**Kantorovich 势**也称为"**影子价格**"：在最优传输的经济解释中，$$\phi(x)$$ 代表产地 $$x$$ 的资源"出厂价"，$$\psi(y)$$ 代表消费地 $$y$$ 的"收货价"。约束 $$\phi(x) + \psi(y) \leq c(x,y)$$ 意味着买入价与卖出价之差不高于运输成本，若差价高于运费，商人可倒卖牟利。当等号成立时，价格场 $$(\phi,\psi)$$ 达到均衡，此时对偶目标 $$\int \phi d\mu + \int \psi d\nu$$ 达到最大的社会总剩余，而最优传输计划正是由这些均衡价格导出的资源配置。
 
-
-### $$c$$-变换
+## $$c$$-变换与Legredre变换
 
  **定义（$$c$$-变换）**：给定函数 $$\psi: Y \to \mathbb{R}$$，其 $$c$$-变换定义为：
 
@@ -215,29 +59,11 @@ $$
 \phi^c(y) = \inf_{x \in X} \left[ c(x,y) - \phi(x) \right]
 $$
 
-（注：文献中 $$\phi$$ 的 $$c$$-变换有时也记为 $$\phi_c$$；下文统一写 $$\phi^c$$ 以与 $$\psi^c$$ 对称。）
+对固定的 $x$ $$y \mapsto c(x,y) - \psi(y)$$ 的下确界
 
-$$\psi^c$$ 给出了在已知目标地价格 $$\psi(y)$$ 和运费 $$c(x,y)$$ 时，在 $$x$$ 处的最优买入价。几何上，对固定的 $$x$$，函数 $$y \mapsto c(x,y) - \psi(y)$$ 的下确界就是"运费减去卖出价"的包络——这正是 **$$c$$-Legendre 变换** 的一般形式。
+**$$c$$-凹性（$$c$$-concavity）**：若 $$c$$ 连续，则 $$\psi^c$$ 是 **$$c$$-凹函数**——即 $$-\psi^c$$ 是 $$c$$-凸函数。直观地说，$$c$$-变换把任意函数"投影"到满足对偶结构的 $$c$$-凹函数类中。
 
-![image-20250928211016803](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250928211016803.png)
-
-#### 基本性质
-
-1. **自动满足对偶约束**：对任意 $$\psi$$，函数对 $$(\psi^c, \psi)$$ 自动满足 Kantorovich 不等式
-   $$
-   \psi^c(x) + \psi(y) \leq c(x,y), \quad \forall x \in X,\; y \in Y.
-   $$
-   证明只需将 $$\psi^c(x)$$ 的定义代入即可。
-
-2. **$$c$$-凹性（$$c$$-concavity）**：若 $$c$$ 连续，则 $$\psi^c$$ 是 **$$c$$-凹函数**——即 $$-\psi^c$$ 是 $$c$$-凸函数。直观地说，$$c$$-变换把任意函数"投影"到满足对偶结构的 $$c$$-凹函数类中。
-
-3. **单调性**：若 $$\psi_1 \leq \psi_2$$，则 $$\psi_1^c \geq \psi_2^c$$（买入价随卖出价升高而降低）。
-
-4. **二次 $$c$$-变换**：定义 $$\psi^{cc}(x) = (\psi^c)^c(x)$$，则恒有 $$\psi^{cc} \geq \psi$$。在最优传输中，真正起作用的是 **$$c$$-共轭函数**——满足 $$\psi^{cc} = \psi$$ 的函数；对偶问题的最优势必为 $$c$$-共轭对。
-
-#### 对偶问题的化简
-
-原始对偶需要在所有函数对 $$(\phi, \psi)$$ 中搜索。利用 $$c$$-变换，问题可化为仅含一个势函数：
+原始对偶需要在所有函数对 $$(\phi, \psi)$$ 中搜索。利用 $$c$$-变换，**问题可化为仅含一个势函数**：
 
 $$
 \min_{\pi \in \Pi(\mu,\nu)} \int c \, d\pi
@@ -268,13 +94,29 @@ $$
 \psi^c(x) = \frac{1}{2}\|x\|^2 - \bar\psi^*(x),
 $$
 
-其中 $$\bar\psi^*$$ 是经典的 Legendre-Fenchel 共轭。因此 Brenier 势 $$\phi = \psi^c$$ 与凸函数 $$\bar\psi$$ 的共轭直接对应——最优传输映射为 $$T(x) = \nabla \bar\psi^*(x) = \nabla \phi(x)$$。
+其中 $$\bar\psi^*$$ 是经典的 Legendre-Fenchel 共轭。
 
-### $$c$$-上微分（$$c$$-superdifferential）
+#### 内积代价与 Legendre 变换
+
+当代价函数为内积 $$c(x,y) = \langle x, y \rangle$$ 时，$$c$$-变换退化为 Legendre 变换（凸共轭）的负号版本：
+
+$$
+\psi^c(x) = \inf_{y} \left[ \langle x, y \rangle - \psi(y) \right], \qquad 
+\phi^*(y) = \sup_{x} \left[ \langle x, y \rangle - \phi(x) \right],
+$$
+
+即 $$\phi^* = (-\phi)^c$$。此时 $$c$$-上微分还原为次微分 $$\partial^c \phi(y) = \partial \phi^*(y)$$，约束 $$\phi(x) + \psi(y) \leq \langle x, y \rangle$$ 等价于 Fenchel 不等式 $$\psi(y) \leq \phi^*(y)$$，最优解处 $$\psi = \phi^*$$。
+
+二次代价可通过展开化为内积形式：
+$$
+c(x,y) = \frac{1}{2}\|x-y\|^2 = \frac{1}{2}\|x\|^2 - \langle x, y \rangle + \frac{1}{2}\|y\|^2.
+$$
+
+
+
+## $c$-上微分（$c$-superdifferential）
 
 $$c$$-变换刻画了"价格"之间的对偶关系；**$$c$$-上微分**则刻画在最优解处"谁与谁配对运输"——它是次微分（subdifferential）概念在一般代价下的推广。
-
-#### 定义
 
 给定函数 $$\psi: Y \to \mathbb{R}$$（Kantorovich 对偶中 $$Y$$ 侧的势），点 $$x \in X$$ 处的 **$$c$$-上微分** 定义为：
 
@@ -288,13 +130,13 @@ $$
 \psi^c(x) = c(x, y) - \psi(y) = \inf_{y' \in Y} \left[ c(x, y') - \psi(y') \right].
 $$
 
-对称地，对 $$c$$-凹函数 $$\phi: X \to \mathbb{R}$$，定义
+对称地，对 $$c$$-凹函数 $\psi: X \to \mathbb{R}$，定义
 
 $$
-\partial^c \phi(y) := \left\{ x \in X \;\middle|\; \phi(x) + \phi^c(y) = c(x, y) \right\}.
+\partial^c \psi(y) := \left\{ x \in X \;\middle|\; \psi(x) + \psi^c(y) = c(x, y) \right\}.
 $$
 
-**几何含义**：$$\partial^c \psi(x)$$ 是使不等式 $$\psi^c(x) + \psi(y) \leq c(x,y)$$ **取等号**的所有目标点 $$y$$。在"价格-运费"语言中，这些 $$y$$ 正是从 $$x$$ 出发**无套利地**能运输到的目的地——再多付一分钱运费就会违反价格约束。
+$$\partial^c \psi(x)$$ 是使不等式 $$\psi^c(x) + \psi(y) \leq c(x,y)$$ **取等号**的所有目标点 $$y$$。
 
 #### 与最优传输映射的关系
 
@@ -334,23 +176,7 @@ $$
 
 在 $$\bar\phi$$ 可微的点处退化为梯度映射。不可微点处，次微分是多值的，对应质量分裂的 Kantorovich 计划。
 
-#### 最优性判据（Rockafellar 型）
 
-传输计划 $$\pi \in \Pi(\mu, \nu)$$ 为 Kantorovich 最优解，当且仅当存在 $$c$$-共轭势 $$\psi$$ 使得
-
-$$
-\operatorname{supp}(\pi) \subset \left\{ (x,y) \in X \times Y \;\middle|\; y \in \partial^c \psi(x) \right\}.
-$$
-
-这称为 **$$c$$-循环单调性（$$c$$-cyclical monotonicity）** 的集合版本：最优计划的所有质量都沿 $$c$$-上微分图运输。对绝对连续源测度 $$\mu$$，最优计划唯一且由 Monge 映射 $$T$$ 诱导：$$\pi = (\mathrm{id} \times T)_\# \mu$$。
-
-更精细地，集合 $$\Gamma \subset X \times Y$$ 称为 **$$c$$-循环单调的**，若对任意 $$k \geq 1$$ 与 $$(x_i, y_i)_{i=1}^k \subset \Gamma$$ 有
-
-$$
-\sum_{i=1}^{k} c(x_i, y_i) \leq \sum_{i=1}^{k} c(x_i, y_{i+1}), \quad y_{k+1} := y_1.
-$$
-
-直观理解：沿任意闭环"改道"运输不会降低总代价。Rockafellar 定理断言：$$\pi$$ 最优当且仅当 $$\operatorname{supp}(\pi)$$ 包含于某个 $$c$$-循环单调集；而 $$c$$-循环单调集恰为某个 $$c$$-共轭势 $$\psi$$ 的 $$c$$-上微分图的子集。
 
 #### 半离散情形：Laguerre 单元
 
@@ -390,40 +216,6 @@ $$
 
 （三角不等式直接推出）。Kantorovich-Rubinstein 对偶正是把一般对偶化简为单个 1-Lipschitz 函数 $$f = -\psi^c$$ 的情形——这也是 WGAN 中 critic 必须满足 Lipschitz 约束的来源（详见后文 WGAN 一节）。
 
-### 内积代价下的凸共轭（Legendre 变换）
-
-当代价函数为内积形式 $$c(x,y) = \langle x, y \rangle$$ 时，$$c$$-变换
-
-$$
-\psi^c(x) = \inf_{y \in Y} \left[ \langle x, y \rangle - \psi(y) \right]
-$$
-
-在 $$Y = \mathbb{R}^d$$ 且无约束时退化为经典的 **Legendre 变换（凸共轭）** 的"负号版本"；对凸函数 $$\phi: X \to \mathbb{R}$$，
-
-$$
- \phi^*(y) = \sup_{x \in X} \left[ \langle x, y \rangle - \phi(x) \right]
-$$
-
-即 $$\phi^* = (-\phi)^c$$（差一个符号约定）。此时 $$c$$-上微分变为
-
-$$
-\partial^c \phi(y) = \left\{ x \;\middle|\; \phi(x) + \phi^*(y) = \langle x, y \rangle \right\} = \partial \phi^*(y),
-$$
-
-即 Legendre 变换的次微分——最优配对 $$(x, y)$$ 满足 $$x \in \partial \phi^*(y)$$ 且 $$y \in \partial \phi(x)$$。
-
-约束 $$\phi(x) + \psi(y) \leq \langle x, y \rangle$$ 等价于 $$\psi(y) \leq \phi^*(y)$$；在最优解处，$$\psi = \phi^*$$（对偶变量互为凸共轭）。
-
-![image-20250928213017899](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250928213017899.png)
-
-*图：Legendre-Fenchel 对应 $c(x,y)=\langle x,y\rangle$；通过变量替换，二次代价也可化为内积形式：*
-
-$$
-c(x,y) = \frac{1}{2}\|x-y\|^2 = \frac{1}{2}\|x\|^2 - \langle x, y \rangle + \frac{1}{2}\|y\|^2.
-$$
-
-*将 $\frac{1}{2}\|x\|^2$、$\frac{1}{2}\|y\|^2$ 吸收进势函数，即得到下文 Brenier 势与 Kantorovich 势之间的标准换元关系。*
-
 
 
 ## WGAN与最优传输
@@ -438,9 +230,7 @@ $$
 
 JS 散度的一个著名缺陷是：当两个分布的支撑集不重叠时，散度为常数 $$\log 2$$，梯度消失，导致生成器无法训练（vanishing gradient）。Arjovsky & Bottou (2017) 指出这在高维空间中几乎必然发生。
 
-![image-20260209162948709](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260209162948709.png)
-
-*图：原始 GAN 的三大问题——(1) 训练不稳定：判别器 $D$ 过强时生成器梯度消失 $\nabla \log(1-D(G(z)))\to 0$；(2) 梯度无意义：$P_r$ 与 $P_g$ 支撑不交时 JS 散度为常数 $\log 2$；(3) 模式坍塌。*
+原始 GAN 的三大问题——(1) 训练不稳定：判别器 $D$ 过强时生成器梯度消失 $\nabla \log(1-D(G(z)))\to 0$；(2) 梯度无意义：$P_r$ 与 $P_g$ 支撑不交时 JS 散度为常数 $\log 2$；(3) 模式坍塌。
 
 WGAN 在一定程度上也缓解了原始 GAN 的**模式坍塌**，但它主要解决的核心问题是**训练不稳定和梯度消失/无意义**。原始 GAN 判别器训练越好，梯度越接近零，生成器无法获得有意义的梯度信号，训练极易崩溃。
 
@@ -449,8 +239,6 @@ WGAN 在一定程度上也缓解了原始 GAN 的**模式坍塌**，但它主要
 ### Wasserstein-1 距离 = Kantorovich 问题
 
 回顾 Kantorovich 问题——当代价函数 $$c(x,y) = \|x - y\|$$（欧氏距离）时：
-
-![image-20260209162413239](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260209162413239.png)
 
 *图：1-Wasserstein 距离的**原始问题**——给定 $P_r$（真实分布）与 $P_g$（生成分布），在度量空间 $(\mathcal{X}, d)$ 上（通常 $\mathcal{X}=\mathbb{R}^d$，$d(x,y)=\|x-y\|$）：*
 
@@ -496,10 +284,7 @@ $$
 
 ### Kantorovich-Rubinstein 对偶：WGAN 的数学核心
 
-![image-20260209162539581](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260209162539581.png)
-
-*图：**Kantorovich-Rubinstein 对偶定理**——若 $\mathcal{X}$ 是 Polish 空间，则*
-
+**Kantorovich-Rubinstein 对偶定理**——若 $\mathcal{X}$ 是 Polish 空间，则*
 $$
 W_1(P_r, P_g) = \sup_{\substack{f:\mathcal{X}\to\mathbb{R} \\ \|f\|_{\mathrm{Lip}}\leq 1}}
 \left\{ \mathbb{E}_{x\sim P_r}[f(x)] - \mathbb{E}_{y\sim P_g}[f(y)] \right\},
@@ -529,9 +314,7 @@ $$
 
 ### WGAN 的 Loss 设计
 
-![image-20260209163242598](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260209163242598.png)
-
-*图：因遍历所有联合分布 $\Pi(p_r,p_g)$ 计算 $\inf$ 不可行，WGAN 利用 KR 对偶化为 $\sup$ 问题。一般 Lipschitz 常数 $K$ 下：*
+因遍历所有联合分布 $\Pi(p_r,p_g)$ 计算 $\inf$ 不可行，WGAN 利用 KR 对偶化为 $\sup$ 问题。一般 Lipschitz 常数 $K$ 下
 
 $$
 W(p_r, p_g) = \frac{1}{K} \sup_{\|f\|_L \leq K}
