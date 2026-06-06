@@ -7,6 +7,6 @@
 - slug: cpu-path-tracing
   title: CPU 路径追踪
   description: 纯 CPU 实现的路径追踪渲染器，与 cpp/CPUPathTracing 同构演示。
-  thumbnail: /assets/galler/cpu_pathtracing.png
+  thumbnail: /assets/gallery/cpu_pathtracing.png
   detail_url: "/gallery/cpu-path-tracing.html"
 
