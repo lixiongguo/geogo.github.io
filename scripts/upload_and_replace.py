@@ -45,7 +45,9 @@ CT = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
 def extract_filename(path_str):
     normalized = path_str.replace('\\', '/')
     idx = normalized.find('imgs/')
-    return normalized[idx + 5:] if idx != -1 else None
+    if idx == -1:
+        return None
+    return normalized[idx + 5:].lstrip('/')
 
 
 def is_local(path_str):
