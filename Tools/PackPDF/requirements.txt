@@ -1,3 +1,4 @@
 Pillow>=9.0
 PyPDF2>=3.0
 oss2>=2.18.0
+PyQt5>=5.15

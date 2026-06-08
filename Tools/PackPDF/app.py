@@ -1,22 +1,37 @@
 #!/usr/bin/env python3
-"""文档整理工具 — PDF 打包、图床上传、公式检查。"""
+"""文档整理工具 — PDF 打包、图床上传、公式检查（PyQt5 UI）。"""
 
 from __future__ import annotations
 
 import os
 import subprocess
 import sys
-import threading
-import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+
+from PyQt5.QtCore import QThread, pyqtSignal, Qt
+from PyQt5.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QSplitter,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 
 from packpdf.config import AppConfig, default_project_root, load_config, save_config
-from packpdf.core import merge_chapters_to_pdf, merge_to_pdf
+from packpdf.core import merge_chapters_to_pdf
 from packpdf.deps import check_deps, format_deps_report
 from packpdf.math_check import check_directory
 from packpdf.oss import scan_summary, upload_and_replace
@@ -27,167 +42,335 @@ from packpdf.paths import (
     pdf_output_dir,
     subdir_path,
 )
-from packpdf.ui.chapter_list import ChapterCheckList
+from packpdf.ui.chapter_list import ChapterList
 from packpdf.ui.rules_dialog import show_check_report, show_check_rules
 from packpdf.ui.log_panel import LogLevel, LogPanel
 
-PAD = {'padx': 8, 'pady': 4}
+
+# ── Worker Threads ──────────────────────────────────────
+
+class _PdfWorker(QThread):
+    log_signal = pyqtSignal(str, str)
+    done_signal = pyqtSignal(object)
+
+    def __init__(
+        self,
+        chapters: list[tuple[str, str]],
+        output: str,
+        title: str,
+        single_chapter: bool,
+        extra_path: list[str] | None = None,
+    ) -> None:
+        super().__init__()
+        self._chapters = chapters
+        self._output = output
+        self._title = title
+        self._single = single_chapter
+        self._extra_path = extra_path
+
+    def run(self) -> None:
+        result = merge_chapters_to_pdf(
+            self._chapters,
+            self._output,
+            self._title,
+            single_chapter=self._single,
+            extra_path=self._extra_path,
+            on_log=lambda m: self.log_signal.emit(m, 'info'),
+        )
+        self.done_signal.emit(result)
 
 
-class DocToolsApp(tk.Tk):
+class _OssScanWorker(QThread):
+    log_signal = pyqtSignal(str, str)
+    done_signal = pyqtSignal()
+
+    def __init__(self, project_path: Path, ak: str, sk: str) -> None:
+        super().__init__()
+        self._path = project_path
+        self._ak = ak
+        self._sk = sk
+
+    def run(self) -> None:
+        summary = scan_summary(self._path)
+        self.log_signal.emit(
+            f'唯一图片: {summary["unique"]} 张，引用: {summary["refs"]} 处', 'info'
+        )
+        if summary.get('missing'):
+            self.log_signal.emit(
+                f'本地缺失 {len(summary["missing"])} 张:', 'warn'
+            )
+            for fn in summary['missing'][:30]:
+                self.log_signal.emit(f'  - {fn}', 'warn')
+            if len(summary['missing']) > 30:
+                self.log_signal.emit(
+                    f'  ... 还有 {len(summary["missing"]) - 30} 张', 'warn'
+                )
+        upload_and_replace(
+            self._path, self._ak, self._sk,
+            dry_run=True,
+            on_log=lambda m, l: self.log_signal.emit(m, l),
+        )
+        self.done_signal.emit()
+
+
+class _OssWorker(QThread):
+    log_signal = pyqtSignal(str, str)
+    done_signal = pyqtSignal(object)
+
+    def __init__(self, project_path: Path, ak: str, sk: str) -> None:
+        super().__init__()
+        self._path = project_path
+        self._ak = ak
+        self._sk = sk
+
+    def run(self) -> None:
+        result = upload_and_replace(
+            self._path, self._ak, self._sk,
+            dry_run=False,
+            on_log=lambda m, l: self.log_signal.emit(m, l),
+        )
+        self.done_signal.emit(result)
+
+
+class _MathWorker(QThread):
+    log_signal = pyqtSignal(str, str)
+    done_signal = pyqtSignal(object)
+
+    def __init__(self, root: str, recursive: bool) -> None:
+        super().__init__()
+        self._root = root
+        self._recursive = recursive
+
+    def run(self) -> None:
+        result = check_directory(self._root, recursive=self._recursive)
+        self.done_signal.emit(result)
+
+
+class _DepsWorker(QThread):
+    done_signal = pyqtSignal(object)
+
+    def __init__(self, extra_path: list[str] | None = None) -> None:
+        super().__init__()
+        self._extra = extra_path
+
+    def run(self) -> None:
+        self.done_signal.emit(check_deps(self._extra))
+
+
+# ── Main Window ────────────────────────────────────────
+
+class DocToolsApp(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.title('文档整理工具 — PDF / 图床 / 公式')
-        self.minsize(760, 600)
+        self.setWindowTitle('文档整理工具 — PDF / 图床 / 公式')
+        self.resize(820, 720)
         self.cfg = load_config()
         if self.cfg.window_geometry:
-            self.geometry(self.cfg.window_geometry)
+            try:
+                w, h = map(int, self.cfg.window_geometry.lower().replace('x', ' ').split())
+                self.resize(w, h)
+            except Exception:
+                pass
 
         self._busy = False
+        self._worker: QThread | None = None
+        self._deps_worker: QThread | None = None
+
         self._build_ui()
         self._ensure_project_root()
         self._load_fields()
         self._refresh_subdirs()
         self._refresh_deps(quiet=True)
-        self.protocol('WM_DELETE_WINDOW', self._on_close)
 
     # ── UI ──────────────────────────────────────────────
 
     def _build_ui(self) -> None:
-        root = ttk.Frame(self, padding=8)
-        root.pack(fill=tk.BOTH, expand=True)
+        central = QWidget()
+        self.setCentralWidget(central)
+        root_layout = QVBoxLayout(central)
+        root_layout.setContentsMargins(10, 10, 10, 10)
+        root_layout.setSpacing(6)
 
-        proj = ttk.LabelFrame(root, text='项目根目录', padding=6)
-        proj.pack(fill=tk.X, pady=(0, 6))
-        self.var_project = tk.StringVar()
-        self.ent_project = ttk.Entry(proj, textvariable=self.var_project, state='readonly')
-        self.ent_project.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
-        self.var_change_root = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            proj,
-            text='修改根目录',
-            variable=self.var_change_root,
-            command=self._on_change_root_toggle,
-        ).pack(side=tk.LEFT)
+        # Project root bar
+        proj_group = QGroupBox('项目根目录')
+        proj_layout = QHBoxLayout(proj_group)
+        self._ent_project = QLineEdit()
+        self._ent_project.setReadOnly(True)
+        proj_layout.addWidget(self._ent_project)
+        self._cb_change_root = QCheckBox('修改根目录')
+        self._cb_change_root.stateChanged.connect(self._on_change_root_toggle)
+        proj_layout.addWidget(self._cb_change_root)
+        root_layout.addWidget(proj_group)
 
-        self.notebook = ttk.Notebook(root)
-        self.notebook.pack(fill=tk.BOTH, expand=True)
+        # Splitter: tabs on top, log on bottom
+        splitter = QSplitter(Qt.Vertical)
+        root_layout.addWidget(splitter)
 
+        self._tabs = QTabWidget()
         self._build_pdf_tab()
         self._build_oss_tab()
         self._build_math_tab()
+        splitter.addWidget(self._tabs)
 
-        log_frame = ttk.LabelFrame(root, text='运行日志', padding=4)
-        log_frame.pack(fill=tk.BOTH, expand=True, pady=(6, 0))
-        self.log = LogPanel(log_frame, height=12)
-        self.log.pack(fill=tk.BOTH, expand=True)
+        log_group = QGroupBox('运行日志')
+        log_inner = QVBoxLayout(log_group)
+        log_inner.setContentsMargins(4, 4, 4, 4)
+        self._log = LogPanel(height=10)
+        log_inner.addWidget(self._log)
+        splitter.addWidget(log_group)
+
+        splitter.setSizes([500, 180])
 
     def _build_pdf_tab(self) -> None:
-        tab = ttk.Frame(self.notebook, padding=8)
-        self.notebook.add(tab, text='PDF 打包')
+        tab = QWidget()
+        self._tabs.addTab(tab, 'PDF 打包')
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(6)
 
-        ttk.Label(tab, text='选择章节').grid(row=0, column=0, sticky='nw', **PAD)
-        chapter_frame = ttk.Frame(tab)
-        chapter_frame.grid(row=0, column=1, columnspan=2, sticky='nsew', **PAD)
-        self.chapter_list = ChapterCheckList(chapter_frame, on_change=self._on_chapters_changed, height=72)
-        self.chapter_list.pack(fill=tk.BOTH, expand=True)
-        ttk.Button(tab, text='刷新列表', command=self._refresh_subdirs).grid(row=0, column=3, sticky='n', **PAD)
+        # Chapter selection
+        row_header = QHBoxLayout()
+        row_header.addWidget(QLabel('选择章节'))
+        row_header.addStretch()
+        btn_refresh = QPushButton('刷新列表')
+        btn_refresh.clicked.connect(self._refresh_subdirs)
+        row_header.addWidget(btn_refresh)
+        layout.addLayout(row_header)
 
-        ttk.Label(tab, text='文档标题').grid(row=1, column=0, sticky='w', **PAD)
-        self.var_title = tk.StringVar()
-        self.ent_title = ttk.Entry(tab, textvariable=self.var_title, state='readonly')
-        self.ent_title.grid(row=1, column=1, columnspan=3, sticky='ew', **PAD)
+        self._chapter_list = ChapterList(on_change=self._on_chapters_changed, height=60)
+        layout.addWidget(self._chapter_list)
 
-        ttk.Label(tab, text='输出 PDF').grid(row=2, column=0, sticky='w', **PAD)
-        self.var_output = tk.StringVar()
-        self.ent_output = ttk.Entry(tab, textvariable=self.var_output, state='readonly')
-        self.ent_output.grid(row=2, column=1, columnspan=3, sticky='ew', **PAD)
+        # Title
+        title_row = QHBoxLayout()
+        title_row.addWidget(QLabel('文档标题'))
+        self._ent_title = QLineEdit()
+        self._ent_title.setReadOnly(True)
+        title_row.addWidget(self._ent_title)
+        layout.addLayout(title_row)
 
-        self.var_single = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            tab,
-            text='单章模式（章内文章不加「第 N 章」前缀；多章时各章以目录名分节）',
-            variable=self.var_single,
-        ).grid(row=3, column=0, columnspan=4, sticky='w', **PAD)
+        # Output PDF
+        out_row = QHBoxLayout()
+        out_row.addWidget(QLabel('输出 PDF'))
+        self._ent_output = QLineEdit()
+        self._ent_output.setReadOnly(True)
+        out_row.addWidget(self._ent_output)
+        layout.addLayout(out_row)
 
-        row = ttk.Frame(tab)
-        row.grid(row=4, column=0, columnspan=4, sticky='w', **PAD)
-        self.btn_pdf = ttk.Button(row, text='生成 PDF', command=self._start_pdf)
-        self.btn_pdf.pack(side=tk.LEFT)
-        ttk.Button(row, text='检测 pandoc/xelatex', command=self._refresh_deps).pack(side=tk.LEFT, padx=6)
-        ttk.Button(row, text='打开 PDF_output', command=self._open_pdf_output_dir).pack(side=tk.LEFT)
-        ttk.Button(row, text='打开输出 PDF', command=self._open_output).pack(side=tk.LEFT, padx=6)
+        # Options
+        self._cb_single = QCheckBox('单章模式（章内文章不加「第 N 章」前缀；多章时各章以目录名分节）')
+        self._cb_single.setChecked(True)
+        layout.addWidget(self._cb_single)
 
-        ttk.Label(
-            tab,
-            text='勾选要打包的章节；多章合并为一个 PDF，输出至根目录/PDF_output/',
-            foreground='#666',
-        ).grid(row=5, column=0, columnspan=4, sticky='w', **PAD)
+        # Buttons
+        btn_row = QHBoxLayout()
+        self._btn_pdf = QPushButton('生成 PDF')
+        self._btn_pdf.clicked.connect(self._start_pdf)
+        btn_row.addWidget(self._btn_pdf)
+        btn_deps = QPushButton('检测 pandoc/xelatex')
+        btn_deps.clicked.connect(self._refresh_deps)
+        btn_row.addWidget(btn_deps)
+        btn_open_dir = QPushButton('打开 PDF_output')
+        btn_open_dir.clicked.connect(self._open_pdf_output_dir)
+        btn_row.addWidget(btn_open_dir)
+        btn_open = QPushButton('打开输出 PDF')
+        btn_open.clicked.connect(self._open_output)
+        btn_row.addWidget(btn_open)
+        btn_help = QPushButton('📖 帮助说明')
+        btn_help.clicked.connect(self._show_pdf_help)
+        btn_row.addWidget(btn_help)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
 
-        self.lbl_deps = ttk.Label(tab, text='', foreground='#555')
-        self.lbl_deps.grid(row=6, column=0, columnspan=4, sticky='w', **PAD)
-        tab.columnconfigure(1, weight=1)
-        tab.rowconfigure(0, weight=1)
+        hint = QLabel('勾选要打包的章节；多章合并为一个 PDF，输出至根目录/PDF_output/')
+        hint.setStyleSheet('color: #888;')
+        layout.addWidget(hint)
+
+        self._lbl_deps = QLabel('')
+        layout.addWidget(self._lbl_deps)
 
     def _build_oss_tab(self) -> None:
-        tab = ttk.Frame(self.notebook, padding=8)
-        self.notebook.add(tab, text='图床上传')
+        tab = QWidget()
+        self._tabs.addTab(tab, '图床上传')
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(6)
 
-        ttk.Label(tab, text='说明：扫描 _posts/ 中引用 imgs/ 的本地图片，上传阿里云 OSS 并替换路径。').grid(
-            row=0, column=0, columnspan=3, sticky='w', **PAD
+        layout.addWidget(
+            QLabel('说明：扫描 _posts/ 中引用 imgs/ 的本地图片，上传阿里云 OSS 并替换路径。')
         )
 
-        ttk.Label(tab, text='AccessKey ID').grid(row=1, column=0, sticky='w', **PAD)
-        self.var_ak = tk.StringVar(value=os.environ.get('OSS_ACCESS_KEY_ID', ''))
-        ttk.Entry(tab, textvariable=self.var_ak, show='').grid(row=1, column=1, sticky='ew', **PAD)
+        # AK
+        ak_row = QHBoxLayout()
+        ak_row.addWidget(QLabel('AccessKey ID'))
+        self._ent_ak = QLineEdit()
+        self._ent_ak.setText(os.environ.get('OSS_ACCESS_KEY_ID', ''))
+        ak_row.addWidget(self._ent_ak)
+        layout.addLayout(ak_row)
 
-        ttk.Label(tab, text='AccessKey Secret').grid(row=2, column=0, sticky='w', **PAD)
-        self.var_sk = tk.StringVar(value=os.environ.get('OSS_ACCESS_KEY_SECRET', ''))
-        ttk.Entry(tab, textvariable=self.var_sk, show='*').grid(row=2, column=1, sticky='ew', **PAD)
+        # SK
+        sk_row = QHBoxLayout()
+        sk_row.addWidget(QLabel('AccessKey Secret'))
+        self._ent_sk = QLineEdit()
+        self._ent_sk.setEchoMode(QLineEdit.Password)
+        self._ent_sk.setText(os.environ.get('OSS_ACCESS_KEY_SECRET', ''))
+        sk_row.addWidget(self._ent_sk)
+        layout.addLayout(sk_row)
 
-        self.var_remember_oss = tk.BooleanVar(value=False)
-        ttk.Checkbutton(tab, text='记住密钥到本地 config.json（勿提交 git）', variable=self.var_remember_oss).grid(
-            row=3, column=0, columnspan=3, sticky='w', **PAD
-        )
+        self._cb_remember_oss = QCheckBox('记住密钥到本地 config.json（勿提交 git）')
+        layout.addWidget(self._cb_remember_oss)
 
-        row = ttk.Frame(tab)
-        row.grid(row=4, column=0, columnspan=3, sticky='w', **PAD)
-        self.btn_oss_scan = ttk.Button(row, text='扫描预览', command=self._scan_oss)
-        self.btn_oss_scan.pack(side=tk.LEFT)
-        self.btn_oss_run = ttk.Button(row, text='上传并替换', command=self._start_oss)
-        self.btn_oss_run.pack(side=tk.LEFT, padx=6)
-        tab.columnconfigure(1, weight=1)
+        btn_row = QHBoxLayout()
+        self._btn_oss_scan = QPushButton('扫描预览')
+        self._btn_oss_scan.clicked.connect(self._scan_oss)
+        btn_row.addWidget(self._btn_oss_scan)
+        self._btn_oss_run = QPushButton('上传并替换')
+        self._btn_oss_run.clicked.connect(self._start_oss)
+        btn_row.addWidget(self._btn_oss_run)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+        layout.addStretch()
 
     def _build_math_tab(self) -> None:
-        tab = ttk.Frame(self.notebook, padding=8)
-        self.notebook.add(tab, text='公式检查')
+        tab = QWidget()
+        self._tabs.addTab(tab, '公式检查')
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(6)
 
-        ttk.Label(tab, text='检查目录').grid(row=0, column=0, sticky='w', **PAD)
-        self.var_check_dir = tk.StringVar()
-        ttk.Entry(tab, textvariable=self.var_check_dir).grid(row=0, column=1, sticky='ew', **PAD)
-        ttk.Button(tab, text='浏览…', command=self._pick_check_dir).grid(row=0, column=2, **PAD)
+        dir_row = QHBoxLayout()
+        dir_row.addWidget(QLabel('检查目录'))
+        self._ent_check_dir = QLineEdit()
+        dir_row.addWidget(self._ent_check_dir)
+        btn_browse = QPushButton('浏览…')
+        btn_browse.clicked.connect(self._pick_check_dir)
+        dir_row.addWidget(btn_browse)
+        layout.addLayout(dir_row)
 
-        self.var_recursive = tk.BooleanVar(value=True)
-        ttk.Checkbutton(tab, text='递归子目录', variable=self.var_recursive).grid(
-            row=1, column=0, columnspan=3, sticky='w', **PAD
-        )
+        self._cb_recursive = QCheckBox('递归子目录')
+        self._cb_recursive.setChecked(True)
+        layout.addWidget(self._cb_recursive)
 
-        row = ttk.Frame(tab)
-        row.grid(row=2, column=0, columnspan=3, sticky='w', **PAD)
-        self.btn_math = ttk.Button(row, text='开始检查', command=self._start_math_check)
-        self.btn_math.pack(side=tk.LEFT)
-        ttk.Button(row, text='查看检查依据', command=self._show_math_rules).pack(side=tk.LEFT, padx=6)
-        tab.columnconfigure(1, weight=1)
+        btn_row = QHBoxLayout()
+        self._btn_math = QPushButton('开始检查')
+        self._btn_math.clicked.connect(self._start_math_check)
+        btn_row.addWidget(self._btn_math)
+        btn_rules = QPushButton('查看检查依据')
+        btn_rules.clicked.connect(lambda: show_check_rules(self))
+        btn_row.addWidget(btn_rules)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+        layout.addStretch()
 
-    # ── 配置与路径 ────────────────────────────────────────
+    # ── Config & Paths ──────────────────────────────────
 
     def _ensure_project_root(self) -> None:
         root = self.cfg.project_root.strip()
         if root and os.path.isdir(root):
             return
-        path = filedialog.askdirectory(
-            title='首次使用：请选择项目根目录',
-            initialdir=root or default_project_root(),
+        path = QFileDialog.getExistingDirectory(
+            self,
+            '首次使用：请选择项目根目录',
+            root or default_project_root(),
         )
         if path:
             self.cfg.project_root = path
@@ -198,32 +381,34 @@ class DocToolsApp(tk.Tk):
                 self.cfg.project_root = fallback
 
     def _load_fields(self) -> None:
-        self.var_project.set(self.cfg.project_root or default_project_root())
-        self.var_single.set(self.cfg.single_chapter)
-        self.var_check_dir.set(self.cfg.check_dir or os.path.join(self.var_project.get(), '_posts'))
+        self._ent_project.setText(self.cfg.project_root or default_project_root())
+        self._cb_single.setChecked(self.cfg.single_chapter)
+        self._ent_check_dir.setText(
+            self.cfg.check_dir or os.path.join(self._ent_project.text(), '_posts')
+        )
         if self.cfg.oss_access_key_id:
-            self.var_ak.set(self.cfg.oss_access_key_id)
+            self._ent_ak.setText(self.cfg.oss_access_key_id)
         if self.cfg.oss_access_key_secret:
-            self.var_sk.set(self.cfg.oss_access_key_secret)
-        self.var_remember_oss.set(self.cfg.remember_oss_keys)
+            self._ent_sk.setText(self.cfg.oss_access_key_secret)
+        self._cb_remember_oss.setChecked(self.cfg.remember_oss_keys)
 
     def _save_fields(self) -> None:
-        self.cfg.project_root = self.var_project.get().strip()
-        selected = self.chapter_list.get_selected()
+        self.cfg.project_root = self._ent_project.text().strip()
+        selected = self._chapter_list.get_selected()
         if selected:
             self.cfg.selected_chapters = selected
             self.cfg.last_markdown_subdir = selected[0]
-        self.cfg.single_chapter = self.var_single.get()
-        self.cfg.check_dir = self.var_check_dir.get().strip()
-        self.cfg.remember_oss_keys = self.var_remember_oss.get()
+        self.cfg.single_chapter = self._cb_single.isChecked()
+        self.cfg.check_dir = self._ent_check_dir.text().strip()
+        self.cfg.remember_oss_keys = self._cb_remember_oss.isChecked()
         if self.cfg.remember_oss_keys:
-            self.cfg.oss_access_key_id = self.var_ak.get().strip()
-            self.cfg.oss_access_key_secret = self.var_sk.get().strip()
-        self.cfg.window_geometry = self.geometry()
+            self.cfg.oss_access_key_id = self._ent_ak.text().strip()
+            self.cfg.oss_access_key_secret = self._ent_sk.text().strip()
+        self.cfg.window_geometry = f'{self.width()}x{self.height()}'
         save_config(self.cfg)
 
     def _project_path(self) -> Path:
-        p = self.var_project.get().strip() or default_project_root()
+        p = self._ent_project.text().strip() or default_project_root()
         return Path(p).resolve()
 
     def _refresh_subdirs(self) -> None:
@@ -231,10 +416,10 @@ class DocToolsApp(tk.Tk):
         names = list_markdown_subdirs(root)
 
         if not names:
-            self.chapter_list.set_chapters([], set())
-            self.var_title.set('')
-            self.var_output.set('')
-            self.log.warn(f'根目录下未找到含 .md 的一层子目录: {root}')
+            self._chapter_list.set_chapters([], set())
+            self._ent_title.setText('')
+            self._ent_output.setText('')
+            self._log.warn(f'根目录下未找到含 .md 的一层子目录: {root}')
             return
 
         saved = set(self.cfg.selected_chapters) & set(names)
@@ -242,98 +427,98 @@ class DocToolsApp(tk.Tk):
             saved = {self.cfg.last_markdown_subdir}
         if not saved:
             saved = set(names)
-        self.chapter_list.set_chapters(names, saved)
+        self._chapter_list.set_chapters(names, saved)
         self._on_chapters_changed()
 
     def _on_chapters_changed(self) -> None:
-        selected = self.chapter_list.get_selected()
+        selected = self._chapter_list.get_selected()
         root = self._project_path()
         if not selected:
-            self.var_title.set('')
-            self.var_output.set('')
+            self._ent_title.setText('')
+            self._ent_output.setText('')
             return
-        self.var_title.set(document_title_for_chapters(root, selected))
+        self._ent_title.setText(document_title_for_chapters(root, selected))
         out = output_pdf_for_chapters(root, selected)
         pdf_output_dir(root)
-        self.var_output.set(str(out))
+        self._ent_output.setText(str(out))
         if len(selected) == 1:
-            self.var_check_dir.set(str(subdir_path(root, selected[0])))
+            self._ent_check_dir.setText(str(subdir_path(root, selected[0])))
 
     def _on_change_root_toggle(self) -> None:
-        if not self.var_change_root.get():
+        if not self._cb_change_root.isChecked():
             return
-        initial = self.var_project.get() or default_project_root()
-        path = filedialog.askdirectory(title='选择新的项目根目录', initialdir=initial)
-        self.var_change_root.set(False)
+        self._cb_change_root.setChecked(False)
+        initial = self._ent_project.text() or default_project_root()
+        path = QFileDialog.getExistingDirectory(self, '选择新的项目根目录', initial)
         if not path:
             return
-        self.var_project.set(path)
+        self._ent_project.setText(path)
         self.cfg.project_root = path
         save_config(self.cfg)
-        self.log.info(f'根目录已更新: {path}')
+        self._log.info(f'根目录已更新: {path}')
         self._refresh_subdirs()
 
-    # ── 日志桥接 ────────────────────────────────────────
-
-    def _log_cb(self, msg: str, level: str = 'info') -> None:
-        lvl = LogLevel.INFO
-        if level == 'error':
-            lvl = LogLevel.ERROR
-        elif level == 'warn':
-            lvl = LogLevel.WARN
-        self.after(0, lambda: self.log.append(msg, lvl))
-
-    def _core_log(self, msg: str) -> None:
-        self._log_cb(msg, 'info')
-
-    # ── 文件选择 ────────────────────────────────────────
-
-    def _pick_check_dir(self) -> None:
-        path = filedialog.askdirectory(
-            title='选择要检查的目录',
-            initialdir=self.var_check_dir.get() or self.var_project.get(),
-        )
-        if path:
-            self.var_check_dir.set(path)
-
-    # ── 任务控制 ────────────────────────────────────────
+    # ── Task Control ────────────────────────────────────
 
     def _set_busy(self, busy: bool) -> None:
         self._busy = busy
-        state = tk.DISABLED if busy else tk.NORMAL
-        for btn in (self.btn_pdf, self.btn_oss_scan, self.btn_oss_run, self.btn_math):
-            btn.configure(state=state)
+        for btn in (self._btn_pdf, self._btn_oss_scan, self._btn_oss_run, self._btn_math):
+            btn.setEnabled(not busy)
 
-    def _run_async(self, worker, on_done) -> None:
+    def _start_worker(self, worker: QThread, on_done) -> None:
         if self._busy:
             return
         self._save_fields()
         self._set_busy(True)
+        self._worker = worker
 
-        def wrap() -> None:
-            try:
-                worker()
-            finally:
-                self.after(0, on_done)
+        def log_handler(msg: str, level: str = 'info') -> None:
+            lvl = LogLevel.INFO
+            if level == 'error':
+                lvl = LogLevel.ERROR
+            elif level == 'warn':
+                lvl = LogLevel.WARN
+            self._log.append(msg, lvl)
 
-        threading.Thread(target=wrap, daemon=True).start()
+        if hasattr(worker, 'log_signal'):
+            worker.log_signal.connect(log_handler)
+
+        def cleanup(result: object) -> None:
+            self._set_busy(False)
+            self._worker = None
+            on_done(result)
+
+        worker.done_signal.connect(cleanup)
+        worker.start()
 
     # ── PDF ─────────────────────────────────────────────
 
     def _refresh_deps(self, quiet: bool = False) -> None:
-        status = check_deps(self.cfg.extra_path or None)
-        report = format_deps_report(status)
-        ok = all(s.found for s in status.values())
-        self.lbl_deps.configure(text=report.replace('\n', '  |  '), foreground='#080' if ok else '#a00')
-        if not quiet:
-            for line in report.splitlines():
-                lvl = 'error' if '[缺失]' in line else 'info'
-                self._log_cb(line, lvl)
+        self._log.info('—— 检测依赖 ——')
+
+        if self._deps_worker and self._deps_worker.isRunning():
+            self._log.warn('依赖检测正在进行中…')
+            return
+
+        self._deps_worker = _DepsWorker(self.cfg.extra_path or None)
+
+        def on_done(status) -> None:
+            report = format_deps_report(status)
+            ok = all(s.found for s in status.values())
+            self._lbl_deps.setText(report.replace('\n', '  |  '))
+            self._lbl_deps.setStyleSheet(f'color: {"#080" if ok else "#a00"};')
+            if not quiet:
+                for line in report.splitlines():
+                    lvl = 'error' if '[缺失]' in line else 'info'
+                    self._log.append(line, LogLevel.ERROR if lvl == 'error' else LogLevel.INFO)
+
+        self._deps_worker.done_signal.connect(on_done)
+        self._deps_worker.start()
 
     def _start_pdf(self) -> None:
-        selected = self.chapter_list.get_selected()
+        selected = self._chapter_list.get_selected()
         if not selected:
-            messagebox.showwarning('提示', '请至少勾选一个章节')
+            QMessageBox.warning(self, '提示', '请至少勾选一个章节')
             return
 
         root = self._project_path()
@@ -341,155 +526,170 @@ class DocToolsApp(tk.Tk):
         title = document_title_for_chapters(root, selected)
         output = str(output_pdf_for_chapters(root, selected))
 
-        self.log.info('—— 开始生成 PDF ——')
-        self.log.info(f'已选 {len(selected)} 章: {", ".join(selected)}')
-        self.log.info(f'输出: {output}')
-        result_holder: dict = {}
+        self._log.info('—— 开始生成 PDF ——')
+        self._log.info(f'已选 {len(selected)} 章: {", ".join(selected)}')
+        self._log.info(f'输出: {output}')
 
-        def worker() -> None:
-            result_holder['r'] = merge_chapters_to_pdf(
-                chapters,
-                output,
-                title,
-                single_chapter=self.var_single.get(),
-                extra_path=self.cfg.extra_path or None,
-                on_log=self._core_log,
-            )
-
-        def done() -> None:
-            self._set_busy(False)
-            r = result_holder.get('r')
+        def on_done(r) -> None:
             if r and r.success:
-                self.var_output.set(r.output_pdf)
-                self.log.info(f'PDF 已生成: {r.output_pdf} ({r.pages} 页, {r.size_kb:.1f} KB)')
-                messagebox.showinfo('完成', f'已生成 PDF\n\n{r.output_pdf}\n{r.pages} 页')
+                self._ent_output.setText(r.output_pdf)
+                self._log.info(f'PDF 已生成: {r.output_pdf} ({r.pages} 页, {r.size_kb:.1f} KB)')
+                QMessageBox.information(self, '完成', f'已生成 PDF\n\n{r.output_pdf}\n{r.pages} 页')
             else:
                 err = (r.error if r else '') or '未知错误'
-                self.log.error(err)
-                messagebox.showerror('失败', err)
+                self._log.error(err)
+                QMessageBox.critical(self, '失败', err)
 
-        self._run_async(worker, done)
+        w = _PdfWorker(
+            chapters, output, title,
+            single_chapter=self._cb_single.isChecked(),
+            extra_path=self.cfg.extra_path or None,
+        )
+        self._start_worker(w, on_done)
+
+    def _show_pdf_help(self) -> None:
+        msg = QMessageBox(self)
+        msg.setWindowTitle('PDF 打包说明')
+        msg.setIcon(QMessageBox.Information)
+        msg.setText(
+            '<h3>📦 依赖安装</h3>'
+            '<p><b>macOS：</b></p>'
+            '<pre>brew install pandoc\nbrew install --cask mactex    # 完整版（~4GB）\n# 或\nbrew install --cask basictex  # 精简版（~100MB）</pre>'
+            '<p><b>Windows：</b></p>'
+            '<pre>winget install Pandoc.Pandoc\nwinget install MiKTeX.MiKTeX\n# 或手动下载安装包</pre>'
+            '<p>安装后重启终端，点击「检测 pandoc/xelatex」确认两项均显示 [OK]。</p>'
+            '<hr>'
+            '<h3>⚙️ 打包流程</h3>'
+            '<ol>'
+            '<li><b>选择章节</b> — 勾选 _posts/ 下的子目录（每个目录即为一章）</li>'
+            '<li><b>拼接 Markdown</b> — 将章节内所有 .md 文件按文件名排序拼接，合并为单个临时 .md</li>'
+            '<li><b>下载远程图片</b> — 将 远程引用的图片下载到本地临时目录</li>'
+            '<li><b>pandoc 转换</b> — <code>pandoc input.md -o output.tex --standalone</code> 生成 LaTeX 中间文件</li>'
+            '<li><b>xelatex 编译</b> — <code>xelatex output.tex</code> 编译两次，生成最终 PDF（支持中文）</li>'
+            '<li><b>合并页面</b> — 使用 PyPDF2 合并多个 PDF 为单一文件</li>'
+            '</ol>'
+            '<hr>'
+            '<h3>💡 提示</h3>'
+            '<ul>'
+            '<li>单章模式下各文章不加「第 N 章」前缀；多章时自动分节</li>'
+            '<li>输出目录为 <code>项目根目录/PDF_output/</code></li>'
+            '<li>章节内 .md 文件建议按日期命名以便排序</li>'
+            '</ul>'
+        )
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.exec_()
 
     # ── OSS ─────────────────────────────────────────────
 
     def _scan_oss(self) -> None:
-        self.log.info('—— 扫描本地图片引用 ——')
-
-        def worker() -> None:
-            summary = scan_summary(self._project_path())
-            self._log_cb(f'唯一图片: {summary["unique"]} 张，引用: {summary["refs"]} 处', 'info')
-            if summary['missing']:
-                self._log_cb(f'本地缺失 {len(summary["missing"])} 张:', 'warn')
-                for fn in summary['missing'][:30]:
-                    self._log_cb(f'  - {fn}', 'warn')
-                if len(summary['missing']) > 30:
-                    self._log_cb(f'  ... 还有 {len(summary["missing"]) - 30} 张', 'warn')
-            upload_and_replace(
-                self._project_path(),
-                access_key_id=self.var_ak.get().strip(),
-                access_key_secret=self.var_sk.get().strip(),
-                dry_run=True,
-                on_log=self._log_cb,
-            )
-
-        self._run_async(worker, lambda: self._set_busy(False))
+        self._log.info('—— 扫描本地图片引用 ——')
+        ak = self._ent_ak.text().strip()
+        sk = self._ent_sk.text().strip()
+        w = _OssScanWorker(self._project_path(), ak, sk)
+        self._start_worker(w, lambda _r: None)
 
     def _start_oss(self) -> None:
-        if not self.var_ak.get().strip() or not self.var_sk.get().strip():
-            messagebox.showwarning('提示', '请填写 OSS AccessKey')
+        ak = self._ent_ak.text().strip()
+        sk = self._ent_sk.text().strip()
+        if not ak or not sk:
+            QMessageBox.warning(self, '提示', '请填写 OSS AccessKey')
             return
-        if not messagebox.askyesno('确认', '将上传图片到 OSS 并修改 _posts/ 下的 .md 文件，是否继续？'):
+        reply = QMessageBox.question(
+            self,
+            '确认',
+            '将上传图片到 OSS 并修改 _posts/ 下的 .md 文件，是否继续？',
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
             return
 
-        self.log.info('—— 开始上传并替换 ——')
-        result_holder: dict = {}
+        self._log.info('—— 开始上传并替换 ——')
 
-        def worker() -> None:
-            result_holder['r'] = upload_and_replace(
-                self._project_path(),
-                access_key_id=self.var_ak.get().strip(),
-                access_key_secret=self.var_sk.get().strip(),
-                dry_run=False,
-                on_log=self._log_cb,
-            )
-
-        def done() -> None:
-            self._set_busy(False)
-            r = result_holder.get('r')
+        def on_done(r) -> None:
             if r and r.success:
-                messagebox.showinfo('完成', f'上传 {r.uploaded} 张，替换 {r.replaced} 处')
+                QMessageBox.information(self, '完成', f'上传 {r.uploaded} 张，替换 {r.replaced} 处')
             elif r and r.error:
-                self.log.error(r.error)
-                messagebox.showerror('失败', r.error)
+                self._log.error(r.error)
+                QMessageBox.critical(self, '失败', r.error)
             elif r and r.failed:
-                messagebox.showwarning('部分失败', f'{len(r.failed)} 张上传失败，详见日志')
+                QMessageBox.warning(self, '部分失败', f'{len(r.failed)} 张上传失败，详见日志')
 
-        self._run_async(worker, done)
+        w = _OssWorker(self._project_path(), ak, sk)
+        self._start_worker(w, on_done)
 
-    # ── 公式检查 ────────────────────────────────────────
+    # ── Math Check ──────────────────────────────────────
 
-    def _show_math_rules(self) -> None:
-        show_check_rules(self)
+    def _pick_check_dir(self) -> None:
+        path = QFileDialog.getExistingDirectory(
+            self,
+            '选择要检查的目录',
+            self._ent_check_dir.text() or self._ent_project.text(),
+        )
+        if path:
+            self._ent_check_dir.setText(path)
 
     def _start_math_check(self) -> None:
-        root = self.var_check_dir.get().strip()
+        root = self._ent_check_dir.text().strip()
         if not root or not os.path.isdir(root):
-            messagebox.showwarning('提示', '请选择有效的检查目录')
+            QMessageBox.warning(self, '提示', '请选择有效的检查目录')
             return
 
-        self.log.info(f'—— 检查公式规范: {root} ——')
-        result_holder: dict = {}
+        self._log.info(f'—— 检查公式规范: {root} ——')
 
-        def worker() -> None:
-            result_holder['r'] = check_directory(root, recursive=self.var_recursive.get())
-
-        def done() -> None:
-            self._set_busy(False)
-            r = result_holder.get('r')
+        def on_done(r) -> None:
             if not r:
                 return
             if r.files_with_issues == 0:
-                self.log.info(f'全部通过 ({r.total_files} 个文件)')
+                self._log.info(f'全部通过 ({r.total_files} 个文件)')
             else:
-                self.log.warn(f'{r.files_with_issues}/{r.total_files} 个文件有问题，共 {r.total_issues} 处')
+                self._log.warn(f'{r.files_with_issues}/{r.total_files} 个文件有问题，共 {r.total_issues} 处')
                 for fr in r.files:
-                    self.log.warn(f'{fr.path} ({len(fr.issues)} 处)')
+                    self._log.warn(f'{fr.path} ({len(fr.issues)} 处)')
                     for issue in fr.issues:
-                        self.log.warn(f'  {issue.format_log()}')
+                        self._log.warn(f'  {issue.format_log()}')
             show_check_report(self, r)
 
-        self._run_async(worker, done)
+        w = _MathWorker(root, recursive=self._cb_recursive.isChecked())
+        self._start_worker(w, on_done)
 
-    # ── 杂项 ────────────────────────────────────────────
+    # ── Misc ────────────────────────────────────────────
 
     def _open_pdf_output_dir(self) -> None:
-        path = pdf_output_dir(self._project_path())
-        self._open_path(str(path))
+        self._open_path(str(pdf_output_dir(self._project_path())))
 
     def _open_output(self) -> None:
-        path = self.var_output.get().strip()
+        path = self._ent_output.text().strip()
         if path and os.path.exists(path):
             self._open_path(path)
         else:
-            messagebox.showinfo('提示', '输出文件尚不存在')
+            QMessageBox.information(self, '提示', '输出文件尚不存在')
 
     @staticmethod
     def _open_path(path: str) -> None:
         if sys.platform == 'win32':
-            os.startfile(path)  # type: ignore[attr-defined]
+            os.startfile(path)
         elif sys.platform == 'darwin':
             subprocess.run(['open', path], check=False)
         else:
             subprocess.run(['xdg-open', path], check=False)
 
-    def _on_close(self) -> None:
+    def closeEvent(self, event) -> None:
         self._save_fields()
-        self.destroy()
+        for w in (self._worker, self._deps_worker):
+            if w is not None and w.isRunning():
+                w.quit()
+                w.wait(2000)
+        super().closeEvent(event)
 
 
 def main() -> None:
-    app = DocToolsApp()
-    app.mainloop()
+    app = QApplication(sys.argv)
+    # Dark-ish style
+    app.setStyle('Fusion')
+    window = DocToolsApp()
+    window.show()
+    sys.exit(app.exec_())
 
 
 if __name__ == '__main__':

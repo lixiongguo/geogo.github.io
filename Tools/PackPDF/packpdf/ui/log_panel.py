@@ -1,11 +1,16 @@
-"""彩色日志面板：普通信息（白）、警告（黄）、错误（红）。"""
+"""彩色日志面板：INFO（白）、WARN（黄）、ERROR（红）。"""
 
 from __future__ import annotations
 
 import enum
-import tkinter as tk
-from tkinter import scrolledtext, ttk
-from typing import Callable
+from PyQt5.QtWidgets import (
+    QPlainTextEdit,
+    QPushButton,
+    QVBoxLayout,
+    QHBoxLayout,
+    QWidget,
+    QLabel,
+)
 
 
 class LogLevel(enum.Enum):
@@ -14,51 +19,56 @@ class LogLevel(enum.Enum):
     ERROR = 'error'
 
 
-class LogPanel(ttk.Frame):
-    BG = '#1e1e1e'
-    FG = {
-        LogLevel.INFO: '#f0f0f0',
-        LogLevel.WARN: '#ffd54f',
-        LogLevel.ERROR: '#ff5252',
-    }
+_COLORS = {
+    LogLevel.INFO:  '#e0e0e0',
+    LogLevel.WARN:  '#ffd54f',
+    LogLevel.ERROR: '#ff5252',
+}
 
-    def __init__(self, master: tk.Misc, *, height: int = 14) -> None:
-        super().__init__(master)
-        toolbar = ttk.Frame(self)
-        toolbar.pack(fill=tk.X, pady=(0, 4))
-        ttk.Label(toolbar, text='日志').pack(side=tk.LEFT)
-        ttk.Button(toolbar, text='清空', command=self.clear, width=8).pack(side=tk.RIGHT)
 
-        self.text = scrolledtext.ScrolledText(
-            self,
-            height=height,
-            wrap=tk.WORD,
-            state=tk.DISABLED,
-            bg=self.BG,
-            fg=self.FG[LogLevel.INFO],
-            insertbackground=self.FG[LogLevel.INFO],
-            font=('Consolas', 10),
-            relief=tk.FLAT,
-            borderwidth=0,
+class LogPanel(QWidget):
+    def __init__(self, parent: QWidget | None = None, *, height: int = 14) -> None:
+        super().__init__(parent)
+        self._log = QPlainTextEdit()
+        self._log.setReadOnly(True)
+        self._log.setStyleSheet(
+            'QPlainTextEdit {'
+            '  background-color: #1e1e1e;'
+            '  color: #e0e0e0;'
+            '  font-family: Menlo, "Courier New", "DejaVu Sans Mono", Consolas, monospace;'
+            '  font-size: 11px;'
+            '  border: none;'
+            '}'
         )
-        self.text.pack(fill=tk.BOTH, expand=True)
-        for level in LogLevel:
-            self.text.tag_configure(level.value, foreground=self.FG[level])
+        self._log.setMinimumHeight(height * 17)
+        self._log.document().setMaximumBlockCount(2000)
+
+        toolbar = QHBoxLayout()
+        toolbar.setContentsMargins(0, 0, 0, 4)
+        toolbar.addWidget(QLabel('日志'))
+        toolbar.addStretch()
+        btn = QPushButton('清空')
+        btn.setFixedWidth(60)
+        btn.clicked.connect(self.clear)
+        toolbar.addWidget(btn)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addLayout(toolbar)
+        layout.addWidget(self._log)
 
     def clear(self) -> None:
-        self.text.configure(state=tk.NORMAL)
-        self.text.delete('1.0', tk.END)
-        self.text.configure(state=tk.DISABLED)
+        self._log.clear()
 
     def append(self, msg: str, level: LogLevel = LogLevel.INFO) -> None:
-        line = msg.rstrip('\n') + '\n'
-        self.text.configure(state=tk.NORMAL)
-        self.text.insert(tk.END, line, level.value)
-        self.text.see(tk.END)
-        self.text.configure(state=tk.DISABLED)
-
-    def callback(self, level: LogLevel = LogLevel.INFO) -> Callable[[str], None]:
-        return lambda msg: self.append(msg, level)
+        color = _COLORS.get(level, _COLORS[LogLevel.INFO])
+        escaped = msg.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        html = f'<span style="color:{color};">{escaped}</span><br>'
+        self._log.appendHtml(html)
+        self._log.verticalScrollBar().setValue(
+            self._log.verticalScrollBar().maximum()
+        )
 
     def info(self, msg: str) -> None:
         self.append(msg, LogLevel.INFO)
