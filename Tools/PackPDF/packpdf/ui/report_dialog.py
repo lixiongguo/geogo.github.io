@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import (
 
 from packpdf.math_check import AUTO_FIXABLE_RULE_IDS, MathCheckResult
 from packpdf.math_fix import MathFixResult
+from packpdf.word_count import WordCountResult
 
 
 def format_check_report(result: MathCheckResult, base: str = '') -> str:
@@ -165,5 +166,39 @@ def show_fix_report(
         title = '自动修复报告'
         summary = f'已修复 {result.fixed_files} 个文件，共 {total_changes} 处'
     body = format_fix_report(result, base, check_before)
+    dlg = TextReportDialog(parent, title=title, summary=summary, body=body)
+    dlg.exec_()
+
+
+def format_word_count_report(result: WordCountResult, base: str = '') -> str:
+    if not result.files:
+        return '未找到 .md 文件。'
+    lines: list[str] = []
+    for fr in result.files:
+        rel = fr.rel_path(base) if base else fr.path
+        lines.append(f'{rel}  总字符 {fr.chars}  中文 {fr.cjk}')
+    lines.append('')
+    lines.append(
+        f'合计  {result.total_files} 个文件  '
+        f'总字符 {result.total_chars}  中文 {result.total_cjk}'
+    )
+    return '\n'.join(lines)
+
+
+def show_word_count_report(
+    parent: QWidget | None,
+    result: WordCountResult,
+    base: str = '',
+) -> None:
+    if not result.files:
+        title = '字数统计'
+        summary = '未找到 .md 文件'
+    else:
+        title = '字数统计报告'
+        summary = (
+            f'{result.total_files} 个文件，'
+            f'总字符 {result.total_chars}，中文 {result.total_cjk}'
+        )
+    body = format_word_count_report(result, base)
     dlg = TextReportDialog(parent, title=title, summary=summary, body=body)
     dlg.exec_()

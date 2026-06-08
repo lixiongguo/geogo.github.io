@@ -48,7 +48,8 @@ from packpdf.ui.chapter_list import ChapterList
 from packpdf.ui.docs_dialog import show_docs_dialog
 from packpdf.ui.log_panel import LogLevel, LogPanel
 from packpdf.ui.oss_settings_dialog import oss_credentials, show_oss_settings
-from packpdf.ui.report_dialog import show_check_report, show_fix_report
+from packpdf.ui.report_dialog import show_check_report, show_fix_report, show_word_count_report
+from packpdf.word_count import WordCountResult, count_paths
 
 
 # ── Worker Threads ──────────────────────────────────────
@@ -154,6 +155,17 @@ class _MathFixWorker(QThread):
 
     def run(self) -> None:
         self.done_signal.emit(fix_files(self._paths))
+
+
+class _WordCountWorker(QThread):
+    done_signal = pyqtSignal(object)
+
+    def __init__(self, paths: list[str]) -> None:
+        super().__init__()
+        self._paths = paths
+
+    def run(self) -> None:
+        self.done_signal.emit(count_paths(self._paths))
 
 
 class _DepsWorker(QThread):
@@ -293,6 +305,12 @@ class DocToolsApp(QMainWindow):
         self._btn_math_fix.setEnabled(False)
         self._btn_math_fix.clicked.connect(self._start_math_fix)
         check_layout.addWidget(self._btn_math_fix)
+
+        check_layout.addSpacing(16)
+
+        self._btn_word_count = QPushButton('字数统计')
+        self._btn_word_count.clicked.connect(self._start_word_count)
+        check_layout.addWidget(self._btn_word_count)
 
         check_layout.addSpacing(16)
 
@@ -450,7 +468,13 @@ class DocToolsApp(QMainWindow):
 
     def _set_busy(self, busy: bool) -> None:
         self._busy = busy
-        for btn in (self._btn_pdf, self._btn_oss_scan, self._btn_oss_run, self._btn_math):
+        for btn in (
+            self._btn_pdf,
+            self._btn_oss_scan,
+            self._btn_oss_run,
+            self._btn_math,
+            self._btn_word_count,
+        ):
             btn.setEnabled(not busy)
         self._btn_math_fix.setEnabled(not busy and self._math_fix_available)
 
@@ -605,6 +629,42 @@ class DocToolsApp(QMainWindow):
                 self._log_oss_scan_result(r, root)
 
         w = _OssScanWorker(root, selected, self.cfg.imgs_subdir)
+        self._start_worker(w, on_done)
+
+    def _log_word_count_result(self, result: WordCountResult, base: str) -> None:
+        if not result.files:
+            self._log.warn('未找到 .md 文件')
+            self._log.info('—— 字数统计结束 ——')
+            return
+
+        self._log.info(
+            f'共 {result.total_files} 个文件，'
+            f'总字符 {result.total_chars}，中文 {result.total_cjk}'
+        )
+        for fr in result.files:
+            rel = fr.rel_path(base)
+            self._log.error(f'文档: {rel}')
+            self._log.info(f'  总字符 {fr.chars}  中文 {fr.cjk}')
+        self._log.info('—— 字数统计结束 ——')
+
+    def _start_word_count(self) -> None:
+        selected = self._chapter_list.get_selected()
+        if not selected:
+            QMessageBox.warning(self, '提示', '请勾选要统计的章节')
+            return
+
+        base = str(self._project_path())
+        paths = [str(p) for p in self._selected_chapter_paths()]
+        self._log.clear()
+        self._log.info(f'—— 字数统计: {len(selected)} 个章节 ——')
+
+        def on_done(r: WordCountResult | None) -> None:
+            if not r:
+                return
+            self._log_word_count_result(r, base)
+            show_word_count_report(self, r, base)
+
+        w = _WordCountWorker(paths)
         self._start_worker(w, on_done)
 
     def _start_oss(self) -> None:

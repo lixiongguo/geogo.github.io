@@ -3,35 +3,29 @@
 from __future__ import annotations
 
 import os
-import re
 import sys
+from pathlib import Path
+
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+if APP_DIR not in sys.path:
+    sys.path.insert(0, APP_DIR)
+
+from packpdf.word_count import count_directory  # noqa: E402
 
 
-def count_chinese(text: str) -> int:
-    return len(re.findall(r'[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]', text))
-
-
-def count_files(folder: str, ext: str = '.md') -> None:
-    folder = os.path.abspath(folder)
-    files = sorted(f for f in os.listdir(folder) if f.endswith(ext))
-    if not files:
-        print(f'未找到 {ext} 文件')
+def count_files(folder: str) -> None:
+    result = count_directory(folder, recursive=False)
+    if not result.files:
+        print('未找到 .md 文件')
         return
 
     print(f'{"#":>3}  {"文件名":<45} {"总字符":>8} {"中文":>8}')
     print('-' * 68)
-    total_all = total_cjk = 0
-    for i, f in enumerate(files, 1):
-        path = os.path.join(folder, f)
-        with open(path, 'r', encoding='utf-8') as fh:
-            text = fh.read()
-        total = len(text)
-        cjk = count_chinese(text)
-        total_all += total
-        total_cjk += cjk
-        print(f'{i:>3}  {f:<45} {total:>8} {cjk:>8}')
+    for i, fr in enumerate(result.files, 1):
+        name = Path(fr.path).name
+        print(f'{i:>3}  {name:<45} {fr.chars:>8} {fr.cjk:>8}')
     print('-' * 68)
-    print(f'  {"合计":<45} {total_all:>8} {total_cjk:>8}')
+    print(f'  {"合计":<45} {result.total_chars:>8} {result.total_cjk:>8}')
 
 
 def main() -> int:
