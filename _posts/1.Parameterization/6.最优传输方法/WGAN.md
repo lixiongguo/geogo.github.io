@@ -38,11 +38,11 @@ $$
 
 对任意一对分布，$$W_1$$ 都具有良好定义的梯度信息——不像 JS 散度在支撑不交时退化：
 
-![image-20260209163519850](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260209163519850.png)
+![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260209163519850.png)
 
 *图：Arjovsky & Bottou 的经典反例——$P$ 支撑在 $x=0$、$Q$ 支撑在 $x=\theta$（$y\sim U(0,1)$），当 $\theta\neq 0$ 时两分布支撑不交。*
 
-![image-20260209163549080](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260209163549080.png)
+![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260209163549080.png)
 
 *图：三种度量的对比（$\theta\neq 0$ 时）：*
 

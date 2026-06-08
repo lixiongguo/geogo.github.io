@@ -66,11 +66,11 @@ $$
  - $$\phi$$ 满足 Monge-Ampère 方程 $$\det(D^2\phi) \cdot \nu(\nabla\phi) = \mu$$
  - $$\phi^*$$（$$\phi$$ 的凸共轭）是 Kantorovich 对偶问题的解
 
-![image-20250928212316955](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250928212316955.png)
+![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250928212316955.png)
 
 *由 $c(x,y)=\frac{1}{2}\|x-y\|^2$ 展开，Kantorovich 势取 $\tilde\phi(x)=\phi(x)-\frac{1}{2}\|x\|^2$、$\tilde\psi(y)=\phi^*(y)-\frac{1}{2}\|y\|^2$，满足 $\tilde\phi(x)+\tilde\psi(y)=\langle x,y\rangle$ 于最优对上。
 
-![image-20250928212149743](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250928212149743.png)
+![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250928212149743.png)
 
 **最终公式（二次代价下）**：用源空间 Kantorovich 势 $$\phi_K$$ 表示传输映射
 

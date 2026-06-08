@@ -20,6 +20,7 @@ from PyQt5.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QSplitter,
     QTabWidget,
     QVBoxLayout,
@@ -229,16 +230,14 @@ class DocToolsApp(QMainWindow):
         layout.setSpacing(6)
 
         # Chapter selection
-        row_header = QHBoxLayout()
-        row_header.addWidget(QLabel('选择章节'))
-        row_header.addStretch()
-        btn_refresh = QPushButton('刷新列表')
-        btn_refresh.clicked.connect(self._refresh_subdirs)
-        row_header.addWidget(btn_refresh)
-        layout.addLayout(row_header)
+        chapter_group = QGroupBox('选择章节')
+        chapter_layout = QVBoxLayout(chapter_group)
+        chapter_layout.setContentsMargins(8, 6, 8, 6)
+        chapter_layout.setSpacing(0)
 
-        self._chapter_list = ChapterList(on_change=self._on_chapters_changed, height=60)
-        layout.addWidget(self._chapter_list)
+        self._chapter_list = ChapterList(on_change=self._on_chapters_changed, max_height=52)
+        chapter_layout.addWidget(self._chapter_list)
+        layout.addWidget(chapter_group)
 
         # Title
         title_row = QHBoxLayout()
@@ -269,6 +268,9 @@ class DocToolsApp(QMainWindow):
         btn_deps = QPushButton('检测 pandoc/xelatex')
         btn_deps.clicked.connect(self._refresh_deps)
         btn_row.addWidget(btn_deps)
+        btn_refresh = QPushButton('刷新章节')
+        btn_refresh.clicked.connect(self._refresh_subdirs)
+        btn_row.addWidget(btn_refresh)
         btn_open_dir = QPushButton('打开 PDF_output')
         btn_open_dir.clicked.connect(self._open_pdf_output_dir)
         btn_row.addWidget(btn_open_dir)

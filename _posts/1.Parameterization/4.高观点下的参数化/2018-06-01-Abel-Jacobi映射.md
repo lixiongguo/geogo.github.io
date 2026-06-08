@@ -44,7 +44,7 @@ $$
 
 亚纯函数的主除子
 
-![image-20250721194208550](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250721194208550.png)
+![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250721194208550.png)
 
 
 
@@ -208,7 +208,7 @@ $$
 
 环面上不存在 5,7-三角化，即不存在恰有两个异常顶点、价数分别为 5 和 7 的三角化。
 
-![image-20260605111848155](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260605111848155.png)
+![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260605111848155.png)
 
 证明思路：将 5,7-三角化 $\mathcal{T}$ 的每个面视为欧氏等边三角形，可构造共形结构 $\mathcal{A}$。在面 $f$、边 $e$、顶点 $v$ 上分别取局部坐标 $z_f, z_e, z_v$；对价数为 $k$ 的奇异顶点，局部坐标与等距嵌入 $w_v$ 的关系为
 
