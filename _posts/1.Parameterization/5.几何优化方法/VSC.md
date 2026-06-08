@@ -21,13 +21,13 @@
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251010142836409.png)
 
-通过连续变形一条曲线$\gamma$,使得一方面distortion尽可能小，另外长度尽可能小
+通过连续变形一条曲线 $\gamma$,使得一方面distortion尽可能小，另外长度尽可能小
 
 用Dirichlet能量来度量distortion
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251010143206213.png)
 
-仅要求distortion尽可能小，那么问题就是ill-posed，由于可以通过不断延展$\gamma$的长度来减小distortion，所以需要对curve长度进行约束
+仅要求distortion尽可能小，那么问题就是ill-posed，由于可以通过不断延展 $\gamma$ 的长度来减小distortion，所以需要对curve长度进行约束
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251010143507440.png)
 

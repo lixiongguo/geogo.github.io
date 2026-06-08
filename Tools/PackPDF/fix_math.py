@@ -2,33 +2,14 @@
 """批量修复 markdown 文件的常见公式规范问题。"""
 from __future__ import annotations
 
-import glob
-import re
 import sys
 from pathlib import Path
 
+APP_DIR = Path(__file__).resolve().parent
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
 
-def fix_file(filepath: str | Path) -> bool:
-    text = Path(filepath).read_text('utf-8')
-    original = text
-    segments = re.split(r'(\$\$.+?\$\$)', text, flags=re.DOTALL)
-
-    for i, seg in enumerate(segments):
-        if seg.startswith('$$') and seg.endswith('$$'):
-            body = seg[2:-2]
-            body = re.sub(r'\n\s*\n', '\n', body)
-            body = re.sub(r'\\sub(?=\s|\{|\[)(?!section|stack|set)', r'\\subset', body)
-            segments[i] = '$$' + body + '$$'
-        else:
-            seg = re.sub(r'([\u4e00-\u9fff])\$(?!\$)', r'\1 $', seg)
-            seg = re.sub(r'(?<!\$)\$(?!\$)([\u4e00-\u9fff])', r'$ \1', seg)
-            segments[i] = seg
-
-    text = ''.join(segments)
-    if text != original:
-        Path(filepath).write_text(text, 'utf-8')
-        return True
-    return False
+from packpdf.math_fix import fix_directory, fix_file
 
 
 def main() -> int:
@@ -36,20 +17,25 @@ def main() -> int:
         print('用法: python fix_math.py <目录路径>')
         return 1
 
-    root = sys.argv[1]
-    files = sorted(glob.glob(f'{root}/*.md'))
-    if not files:
-        print(f'未找到 .md 文件: {root}')
-        return 1
-
-    fixed = 0
-    for f in files:
-        if fix_file(f):
-            print(f'[已修复] {f}')
-            fixed += 1
+    root = Path(sys.argv[1])
+    if root.is_file():
+        ok, changes = fix_file(root)
+        if ok:
+            print(f'[已修复] {root}')
+            for c in changes:
+                print(f'  - {c}')
         else:
-            print(f'[无变化] {f}')
-    print(f'\n共修复 {fixed}/{len(files)} 个文件')
+            print(f'[无变化] {root}')
+        return 0
+
+    result = fix_directory(root, recursive=False)
+    for path, changes in result.details:
+        print(f'[已修复] {path}')
+        for c in changes:
+            print(f'  - {c}')
+    for _ in range(result.unchanged_files):
+        pass
+    print(f'\n共修复 {result.fixed_files}/{result.scanned} 个文件')
     return 0
 
 

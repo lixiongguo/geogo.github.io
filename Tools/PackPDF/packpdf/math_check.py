@@ -84,23 +84,59 @@ class CheckIssue:
     rule_id: str
     line: int | None
     detail: str
+    line_text: str = ''
 
     @property
     def rule(self) -> CheckRule:
         return _RULE_BY_ID[self.rule_id]
 
+    def _location(self, file_path: str = '') -> str:
+        loc = f'第 {self.line} 行' if self.line else '文件末尾'
+        if file_path:
+            return f'{file_path} · {loc}'
+        return loc
+
     def format_short(self) -> str:
         loc = f'L{self.line}' if self.line else 'EOF'
-        return f'[{self.rule.title}] {loc}: {self.detail}'
+        return f'{loc} | {self.rule.title} | {self.detail}'
 
-    def format_log(self) -> str:
-        return self.format_short()
+    def snippet_text(self, max_len: int = 120) -> str:
+        if not self.line_text:
+            return ''
+        text = self.line_text
+        if len(text) > max_len:
+            return text[: max_len - 3] + '...'
+        return text
+
+    def format_log_lines(self, file_path: str = '') -> list[str]:
+        """结构化日志行：位置、违反规则、问题、行内容、规则说明。"""
+        lines = [
+            f'位置: {self._location(file_path)}',
+            f'违反: {self.rule.title}',
+            f'问题: {self.detail}',
+        ]
+        if self.line_text:
+            snippet = self.line_text
+            if len(snippet) > 120:
+                snippet = snippet[:117] + '...'
+            lines.append(f'内容: {snippet}')
+        lines.append(f'说明: {self.rule.description}')
+        return lines
+
+    def format_log(self, file_path: str = '') -> str:
+        return '\n'.join(f'  {line}' for line in self.format_log_lines(file_path))
 
 
 @dataclass
 class FileCheckResult:
     path: str
     issues: list[CheckIssue] = field(default_factory=list)
+
+    def rel_path(self, root: str | Path) -> str:
+        try:
+            return str(Path(self.path).relative_to(Path(root).resolve()))
+        except ValueError:
+            return self.path
 
 
 @dataclass
@@ -129,45 +165,75 @@ def get_check_rules() -> tuple[CheckRule, ...]:
     return CHECK_RULES
 
 
+def format_rules_markdown() -> str:
+    """生成公式检查规范的 Markdown 文本。"""
+    lines = [
+        '# 公式检查规范',
+        '',
+        '以下规则用于自动扫描 `.md` 文件中的公式写法，避免 pandoc / xelatex 编译失败。',
+        '',
+    ]
+    for rule in CHECK_RULES:
+        lines.extend([
+            f'## {rule.title}',
+            '',
+            rule.description,
+            '',
+            f'- **错误示例**：`{rule.wrong}`',
+            f'- **正确示例**：`{rule.correct}`',
+            f'- **原因**：{rule.reason}',
+            '',
+        ])
+    return '\n'.join(lines)
+
+
 def check_file(filepath: str | Path) -> list[CheckIssue]:
     text = Path(filepath).read_text('utf-8')
     issues: list[CheckIssue] = []
     lines = text.split('\n')
 
+    def _line_text(line_num: int | None) -> str:
+        if line_num and 1 <= line_num <= len(lines):
+            return lines[line_num - 1].strip()
+        return ''
+
+    def _issue(rule_id: str, line_num: int | None, detail: str) -> CheckIssue:
+        return CheckIssue(rule_id, line_num, detail, _line_text(line_num))
+
     for m in re.finditer(r'[\u4e00-\u9fff]\$[^\$]|\$[^\$][\u4e00-\u9fff]', text):
         ln = text[: m.start()].count('\n') + 1
-        issues.append(CheckIssue('space', ln, '$ 前后缺少空格'))
+        issues.append(_issue('space', ln, '$ 前后缺少空格'))
 
     for m in re.finditer(r'(?<!\$)\$(?!\$)((?:(?!\$).)+?)\$(?!\$)', text):
         body = m.group(1)
         body_no_text = re.sub(r'\\text\{[^}]*\}', '', body)
         if re.search(r'[\u4e00-\u9fff]', body_no_text):
             ln = text[: m.start()].count('\n') + 1
-            issues.append(CheckIssue('cjk_inline', ln, '行内公式含中文'))
+            issues.append(_issue('cjk_inline', ln, '行内公式含裸中文，应移出 $...$ 或用 \\text{} 包裹'))
 
     for m in re.finditer(r'(?<!\$)\$(?!\$)(.+?)\\begin\{cases\}(.+?)\$(?!\$)', text, re.DOTALL):
         ln = text[: m.start()].count('\n') + 1
-        issues.append(CheckIssue('cases_inline', ln, '\\begin{cases} 在行内公式中'))
+        issues.append(_issue('cases_inline', ln, '\\begin{cases} 不得放在行内 $...$ 中，应改为 $$...$$'))
 
     for m in re.finditer(r'\$\$(.+?)\$\$', text, re.DOTALL):
         if '\n\n' in m.group(1):
             ln = text[: m.start()].count('\n') + 1
-            issues.append(CheckIssue('display_blank', ln, '$$ 块内存在空行'))
+            issues.append(_issue('display_blank', ln, '$$ 块内存在空行'))
 
     for m in re.finditer(r'\\sub(?![a-zA-Z])', text):
         ln = text[: m.start()].count('\n') + 1
-        issues.append(CheckIssue('sub_cmd', ln, '\\sub 应改为 \\subset'))
+        issues.append(_issue('sub_cmd', ln, '\\sub 应改为 \\subset 或 \\subseteq'))
 
     for m in re.finditer(r'\\\(\$[^$]*\$\\\)', text):
         ln = text[: m.start()].count('\n') + 1
-        issues.append(CheckIssue('double_wrap', ln, '\\(\\) 与 $ 双重包裹'))
+        issues.append(_issue('double_wrap', ln, '\\(\\) 与 $ 双重包裹'))
 
     in_block = False
     for line in lines:
         if line.strip() == '$$':
             in_block = not in_block
     if in_block:
-        issues.append(CheckIssue('dollar_pair', None, '$$ 未配对'))
+        issues.append(_issue('dollar_pair', None, '$$ 未配对（文件末尾仍有未闭合块）'))
 
     return issues
 
@@ -178,6 +244,22 @@ def check_directory(root: str | Path, *, recursive: bool = True) -> MathCheckRes
     files = sorted(root.glob(pattern))
     result = MathCheckResult(total_files=len(files))
     for fp in files:
+        issues = check_file(fp)
+        if issues:
+            result.files.append(FileCheckResult(path=str(fp), issues=issues))
+    return result
+
+
+def check_paths(paths: list[str | Path]) -> MathCheckResult:
+    """递归检查多个章节目录下的 .md 文件。"""
+    md_files: list[Path] = []
+    for raw in paths:
+        root = Path(raw)
+        if root.is_dir():
+            md_files.extend(root.rglob('*.md'))
+    unique = sorted({fp.resolve() for fp in md_files})
+    result = MathCheckResult(total_files=len(unique))
+    for fp in unique:
         issues = check_file(fp)
         if issues:
             result.files.append(FileCheckResult(path=str(fp), issues=issues))

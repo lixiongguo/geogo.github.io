@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""文档整理工具 — PDF 打包、图床上传、公式检查（PyQt5 UI）。"""
+"""文档整理工具 — PDF 打包、文档格式检查（PyQt5 UI）。"""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PyQt5.QtCore import QThread, pyqtSignal, Qt
+from PyQt5.QtCore import QThread, QTimer, pyqtSignal, Qt
 from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -22,7 +22,7 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QSplitter,
-    QTabWidget,
+    QToolBar,
     QVBoxLayout,
     QWidget,
 )
@@ -32,10 +32,11 @@ if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 
 from packpdf.config import AppConfig, default_project_root, load_config, save_config
-from packpdf.core import merge_chapters_to_pdf
-from packpdf.deps import check_deps, format_deps_report
-from packpdf.math_check import check_directory
-from packpdf.oss import scan_summary, upload_and_replace
+from packpdf.core import MergeResult, merge_chapters_to_pdf
+from packpdf.deps import check_deps, format_deps_report, format_deps_summary
+from packpdf.math_check import MathCheckResult, check_paths
+from packpdf.math_fix import MathFixResult, fix_files
+from packpdf.oss import OssScanResult, scan_pack_chapters, upload_and_replace
 from packpdf.paths import (
     document_title_for_chapters,
     list_markdown_subdirs,
@@ -44,8 +45,10 @@ from packpdf.paths import (
     subdir_path,
 )
 from packpdf.ui.chapter_list import ChapterList
-from packpdf.ui.rules_dialog import show_check_report, show_check_rules
+from packpdf.ui.docs_dialog import show_docs_dialog
 from packpdf.ui.log_panel import LogLevel, LogPanel
+from packpdf.ui.oss_settings_dialog import oss_credentials, show_oss_settings
+from packpdf.ui.report_dialog import show_check_report, show_fix_report
 
 
 # ── Worker Threads ──────────────────────────────────────
@@ -70,48 +73,45 @@ class _PdfWorker(QThread):
         self._extra_path = extra_path
 
     def run(self) -> None:
-        result = merge_chapters_to_pdf(
-            self._chapters,
-            self._output,
-            self._title,
-            single_chapter=self._single,
-            extra_path=self._extra_path,
-            on_log=lambda m: self.log_signal.emit(m, 'info'),
-        )
+        try:
+            result = merge_chapters_to_pdf(
+                self._chapters,
+                self._output,
+                self._title,
+                single_chapter=self._single,
+                extra_path=self._extra_path,
+                on_log=lambda m: self.log_signal.emit(m, 'info'),
+            )
+        except Exception as exc:
+            result = MergeResult(
+                success=False,
+                output_pdf=self._output,
+                error=f'生成失败: {exc}',
+            )
         self.done_signal.emit(result)
 
 
 class _OssScanWorker(QThread):
-    log_signal = pyqtSignal(str, str)
-    done_signal = pyqtSignal()
+    done_signal = pyqtSignal(object)
 
-    def __init__(self, project_path: Path, ak: str, sk: str) -> None:
+    def __init__(
+        self,
+        project_root: Path,
+        chapter_names: list[str],
+        imgs_subdir: str,
+    ) -> None:
         super().__init__()
-        self._path = project_path
-        self._ak = ak
-        self._sk = sk
+        self._root = project_root
+        self._chapters = chapter_names
+        self._imgs_subdir = imgs_subdir
 
     def run(self) -> None:
-        summary = scan_summary(self._path)
-        self.log_signal.emit(
-            f'唯一图片: {summary["unique"]} 张，引用: {summary["refs"]} 处', 'info'
+        result = scan_pack_chapters(
+            self._root,
+            self._chapters,
+            imgs_subdir=self._imgs_subdir,
         )
-        if summary.get('missing'):
-            self.log_signal.emit(
-                f'本地缺失 {len(summary["missing"])} 张:', 'warn'
-            )
-            for fn in summary['missing'][:30]:
-                self.log_signal.emit(f'  - {fn}', 'warn')
-            if len(summary['missing']) > 30:
-                self.log_signal.emit(
-                    f'  ... 还有 {len(summary["missing"]) - 30} 张', 'warn'
-                )
-        upload_and_replace(
-            self._path, self._ak, self._sk,
-            dry_run=True,
-            on_log=lambda m, l: self.log_signal.emit(m, l),
-        )
-        self.done_signal.emit()
+        self.done_signal.emit(result)
 
 
 class _OssWorker(QThread):
@@ -137,14 +137,23 @@ class _MathWorker(QThread):
     log_signal = pyqtSignal(str, str)
     done_signal = pyqtSignal(object)
 
-    def __init__(self, root: str, recursive: bool) -> None:
+    def __init__(self, paths: list[str]) -> None:
         super().__init__()
-        self._root = root
-        self._recursive = recursive
+        self._paths = paths
 
     def run(self) -> None:
-        result = check_directory(self._root, recursive=self._recursive)
-        self.done_signal.emit(result)
+        self.done_signal.emit(check_paths(self._paths))
+
+
+class _MathFixWorker(QThread):
+    done_signal = pyqtSignal(object)
+
+    def __init__(self, file_paths: list[str]) -> None:
+        super().__init__()
+        self._paths = file_paths
+
+    def run(self) -> None:
+        self.done_signal.emit(fix_files(self._paths))
 
 
 class _DepsWorker(QThread):
@@ -163,7 +172,7 @@ class _DepsWorker(QThread):
 class DocToolsApp(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle('文档整理工具 — PDF / 图床 / 公式')
+        self.setWindowTitle('文档整理工具 — PackPDF')
         self.resize(820, 720)
         self.cfg = load_config()
         if self.cfg.window_geometry:
@@ -176,7 +185,11 @@ class DocToolsApp(QMainWindow):
         self._busy = False
         self._worker: QThread | None = None
         self._deps_worker: QThread | None = None
+        self._math_fix_available = False
+        self._last_math_base = ''
+        self._last_math_result: MathCheckResult | None = None
 
+        self._build_toolbar()
         self._build_ui()
         self._ensure_project_root()
         self._load_fields()
@@ -184,6 +197,22 @@ class DocToolsApp(QMainWindow):
         self._refresh_deps(quiet=True)
 
     # ── UI ──────────────────────────────────────────────
+
+    def _build_toolbar(self) -> None:
+        toolbar = QToolBar('工具栏', self)
+        toolbar.setMovable(False)
+        self.addToolBar(toolbar)
+        toolbar.addAction('查看文档', self._show_docs)
+        toolbar.addSeparator()
+        toolbar.addAction('检测依赖(pandoc/xelatex)', lambda: self._refresh_deps())
+        toolbar.addAction('打开输出目录', self._open_pdf_output_dir)
+        toolbar.addAction('图床设置', self._show_oss_settings)
+
+    def _show_docs(self) -> None:
+        show_docs_dialog(self)
+
+    def _show_oss_settings(self) -> None:
+        show_oss_settings(self, self.cfg)
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -193,53 +222,46 @@ class DocToolsApp(QMainWindow):
         root_layout.setSpacing(6)
 
         # Project root bar
-        proj_group = QGroupBox('项目根目录')
-        proj_layout = QHBoxLayout(proj_group)
+        self._proj_group = QGroupBox('项目根目录')
+        proj_layout = QHBoxLayout(self._proj_group)
         self._ent_project = QLineEdit()
         self._ent_project.setReadOnly(True)
         proj_layout.addWidget(self._ent_project)
         self._cb_change_root = QCheckBox('修改根目录')
         self._cb_change_root.stateChanged.connect(self._on_change_root_toggle)
         proj_layout.addWidget(self._cb_change_root)
-        root_layout.addWidget(proj_group)
+        root_layout.addWidget(self._proj_group)
 
-        # Splitter: tabs on top, log on bottom
-        splitter = QSplitter(Qt.Vertical)
-        root_layout.addWidget(splitter)
+        # Splitter: tabs on top (1/3), log on bottom (2/3)
+        self._splitter = QSplitter(Qt.Vertical)
+        root_layout.addWidget(self._splitter, 1)
 
-        self._tabs = QTabWidget()
-        self._build_pdf_tab()
-        self._build_oss_tab()
-        self._build_math_tab()
-        splitter.addWidget(self._tabs)
+        self._work_widget = QWidget()
+        self._build_work_tab(self._work_widget)
+        self._splitter.addWidget(self._work_widget)
 
         log_group = QGroupBox('运行日志')
         log_inner = QVBoxLayout(log_group)
         log_inner.setContentsMargins(4, 4, 4, 4)
-        self._log = LogPanel(height=10)
+        self._log = LogPanel()
         log_inner.addWidget(self._log)
-        splitter.addWidget(log_group)
+        self._splitter.addWidget(log_group)
 
-        splitter.setSizes([500, 180])
+        self._splitter.setStretchFactor(0, 1)
+        self._splitter.setStretchFactor(1, 8)
+        QTimer.singleShot(0, self._apply_splitter_ratio)
 
-    def _build_pdf_tab(self) -> None:
-        tab = QWidget()
-        self._tabs.addTab(tab, 'PDF 打包')
+    def _build_work_tab(self, tab: QWidget) -> None:
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
+        layout.setSpacing(8)
 
-        # Chapter selection
-        chapter_group = QGroupBox('选择章节')
-        chapter_layout = QVBoxLayout(chapter_group)
-        chapter_layout.setContentsMargins(8, 6, 8, 6)
-        chapter_layout.setSpacing(0)
+        # ── PDF 打包 ──
+        chapter_row = QHBoxLayout()
+        self._chapter_list = ChapterList(on_change=self._on_chapters_changed)
+        chapter_row.addWidget(self._chapter_list, 1)
+        layout.addLayout(chapter_row)
 
-        self._chapter_list = ChapterList(on_change=self._on_chapters_changed, max_height=52)
-        chapter_layout.addWidget(self._chapter_list)
-        layout.addWidget(chapter_group)
-
-        # Title
         title_row = QHBoxLayout()
         title_row.addWidget(QLabel('文档标题'))
         self._ent_title = QLineEdit()
@@ -247,7 +269,6 @@ class DocToolsApp(QMainWindow):
         title_row.addWidget(self._ent_title)
         layout.addLayout(title_row)
 
-        # Output PDF
         out_row = QHBoxLayout()
         out_row.addWidget(QLabel('输出 PDF'))
         self._ent_output = QLineEdit()
@@ -255,112 +276,67 @@ class DocToolsApp(QMainWindow):
         out_row.addWidget(self._ent_output)
         layout.addLayout(out_row)
 
-        # Options
-        self._cb_single = QCheckBox('单章模式（章内文章不加「第 N 章」前缀；多章时各章以目录名分节）')
-        self._cb_single.setChecked(True)
-        layout.addWidget(self._cb_single)
-
-        # Buttons
         btn_row = QHBoxLayout()
-        self._btn_pdf = QPushButton('生成 PDF')
-        self._btn_pdf.clicked.connect(self._start_pdf)
-        btn_row.addWidget(self._btn_pdf)
-        btn_deps = QPushButton('检测 pandoc/xelatex')
-        btn_deps.clicked.connect(self._refresh_deps)
-        btn_row.addWidget(btn_deps)
-        btn_refresh = QPushButton('刷新章节')
-        btn_refresh.clicked.connect(self._refresh_subdirs)
-        btn_row.addWidget(btn_refresh)
-        btn_open_dir = QPushButton('打开 PDF_output')
-        btn_open_dir.clicked.connect(self._open_pdf_output_dir)
-        btn_row.addWidget(btn_open_dir)
-        btn_open = QPushButton('打开输出 PDF')
-        btn_open.clicked.connect(self._open_output)
-        btn_row.addWidget(btn_open)
-        btn_help = QPushButton('📖 帮助说明')
-        btn_help.clicked.connect(self._show_pdf_help)
-        btn_row.addWidget(btn_help)
+      
         btn_row.addStretch()
         layout.addLayout(btn_row)
 
-        hint = QLabel('勾选要打包的章节；多章合并为一个 PDF，输出至根目录/PDF_output/')
-        hint.setStyleSheet('color: #888;')
-        layout.addWidget(hint)
+        # ── 公式检查 + 图床检查（同一行）──
+        check_group = QGroupBox('文档格式检查（已选章节）')
+        check_layout = QHBoxLayout(check_group)
+        check_layout.setSpacing(8)
 
-        self._lbl_deps = QLabel('')
-        layout.addWidget(self._lbl_deps)
+        self._btn_math = QPushButton('公式检查')
+        self._btn_math.clicked.connect(self._start_math_check)
+        check_layout.addWidget(self._btn_math)
+        self._btn_math_fix = QPushButton('自动修复')
+        self._btn_math_fix.setEnabled(False)
+        self._btn_math_fix.clicked.connect(self._start_math_fix)
+        check_layout.addWidget(self._btn_math_fix)
 
-    def _build_oss_tab(self) -> None:
-        tab = QWidget()
-        self._tabs.addTab(tab, '图床上传')
-        layout = QVBoxLayout(tab)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
+        check_layout.addSpacing(16)
 
-        layout.addWidget(
-            QLabel('说明：扫描 _posts/ 中引用 imgs/ 的本地图片，上传阿里云 OSS 并替换路径。')
-        )
-
-        # AK
-        ak_row = QHBoxLayout()
-        ak_row.addWidget(QLabel('AccessKey ID'))
-        self._ent_ak = QLineEdit()
-        self._ent_ak.setText(os.environ.get('OSS_ACCESS_KEY_ID', ''))
-        ak_row.addWidget(self._ent_ak)
-        layout.addLayout(ak_row)
-
-        # SK
-        sk_row = QHBoxLayout()
-        sk_row.addWidget(QLabel('AccessKey Secret'))
-        self._ent_sk = QLineEdit()
-        self._ent_sk.setEchoMode(QLineEdit.Password)
-        self._ent_sk.setText(os.environ.get('OSS_ACCESS_KEY_SECRET', ''))
-        sk_row.addWidget(self._ent_sk)
-        layout.addLayout(sk_row)
-
-        self._cb_remember_oss = QCheckBox('记住密钥到本地 config.json（勿提交 git）')
-        layout.addWidget(self._cb_remember_oss)
-
-        btn_row = QHBoxLayout()
-        self._btn_oss_scan = QPushButton('扫描预览')
+        self._btn_oss_scan = QPushButton('图片检查')
         self._btn_oss_scan.clicked.connect(self._scan_oss)
-        btn_row.addWidget(self._btn_oss_scan)
+        check_layout.addWidget(self._btn_oss_scan)
         self._btn_oss_run = QPushButton('上传并替换')
         self._btn_oss_run.clicked.connect(self._start_oss)
-        btn_row.addWidget(self._btn_oss_run)
-        btn_row.addStretch()
-        layout.addLayout(btn_row)
-        layout.addStretch()
+        check_layout.addWidget(self._btn_oss_run)
 
-    def _build_math_tab(self) -> None:
-        tab = QWidget()
-        self._tabs.addTab(tab, '公式检查')
-        layout = QVBoxLayout(tab)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
+        check_layout.addStretch()
+        layout.addWidget(check_group)
 
-        dir_row = QHBoxLayout()
-        dir_row.addWidget(QLabel('检查目录'))
-        self._ent_check_dir = QLineEdit()
-        dir_row.addWidget(self._ent_check_dir)
-        btn_browse = QPushButton('浏览…')
-        btn_browse.clicked.connect(self._pick_check_dir)
-        dir_row.addWidget(btn_browse)
-        layout.addLayout(dir_row)
+        # ── 生成 PDF（主操作）──
+        self._btn_pdf = QPushButton('▶  生成 PDF')
+        self._btn_pdf.setMinimumHeight(52)
+        self._btn_pdf.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self._btn_pdf.setCursor(Qt.PointingHandCursor)
+        self._btn_pdf.clicked.connect(self._start_pdf)
+        self._btn_pdf.setStyleSheet(
+            'QPushButton {'
+            '  background-color: #1565c0;'
+            '  color: #ffffff;'
+            '  font-size: 18px;'
+            '  font-weight: bold;'
+            '  border: 2px solid #0d47a1;'
+            '  border-radius: 8px;'
+            '  padding: 12px 20px;'
+            '}'
+            'QPushButton:hover {'
+            '  background-color: #1976d2;'
+            '  border-color: #1565c0;'
+            '}'
+            'QPushButton:pressed {'
+            '  background-color: #0d47a1;'
+            '}'
+            'QPushButton:disabled {'
+            '  background-color: #424242;'
+            '  color: #9e9e9e;'
+            '  border-color: #616161;'
+            '}'
+        )
+        layout.addWidget(self._btn_pdf)
 
-        self._cb_recursive = QCheckBox('递归子目录')
-        self._cb_recursive.setChecked(True)
-        layout.addWidget(self._cb_recursive)
-
-        btn_row = QHBoxLayout()
-        self._btn_math = QPushButton('开始检查')
-        self._btn_math.clicked.connect(self._start_math_check)
-        btn_row.addWidget(self._btn_math)
-        btn_rules = QPushButton('查看检查依据')
-        btn_rules.clicked.connect(lambda: show_check_rules(self))
-        btn_row.addWidget(btn_rules)
-        btn_row.addStretch()
-        layout.addLayout(btn_row)
         layout.addStretch()
 
     # ── Config & Paths ──────────────────────────────────
@@ -384,15 +360,6 @@ class DocToolsApp(QMainWindow):
 
     def _load_fields(self) -> None:
         self._ent_project.setText(self.cfg.project_root or default_project_root())
-        self._cb_single.setChecked(self.cfg.single_chapter)
-        self._ent_check_dir.setText(
-            self.cfg.check_dir or os.path.join(self._ent_project.text(), '_posts')
-        )
-        if self.cfg.oss_access_key_id:
-            self._ent_ak.setText(self.cfg.oss_access_key_id)
-        if self.cfg.oss_access_key_secret:
-            self._ent_sk.setText(self.cfg.oss_access_key_secret)
-        self._cb_remember_oss.setChecked(self.cfg.remember_oss_keys)
 
     def _save_fields(self) -> None:
         self.cfg.project_root = self._ent_project.text().strip()
@@ -400,14 +367,35 @@ class DocToolsApp(QMainWindow):
         if selected:
             self.cfg.selected_chapters = selected
             self.cfg.last_markdown_subdir = selected[0]
-        self.cfg.single_chapter = self._cb_single.isChecked()
-        self.cfg.check_dir = self._ent_check_dir.text().strip()
-        self.cfg.remember_oss_keys = self._cb_remember_oss.isChecked()
-        if self.cfg.remember_oss_keys:
-            self.cfg.oss_access_key_id = self._ent_ak.text().strip()
-            self.cfg.oss_access_key_secret = self._ent_sk.text().strip()
         self.cfg.window_geometry = f'{self.width()}x{self.height()}'
         save_config(self.cfg)
+
+    def _selected_chapter_paths(self) -> list[Path]:
+        root = self._project_path()
+        return [subdir_path(root, name) for name in self._chapter_list.get_selected()]
+
+    def _pdf_single_chapter_mode(self) -> bool:
+        return len(self._chapter_list.get_selected()) <= 1
+
+    def _apply_splitter_ratio(self) -> None:
+        """日志区占窗口中央区域高度的 6/7。"""
+        central = self.centralWidget()
+        if not central:
+            return
+        total = central.height()
+        splitter_h = self._splitter.height()
+        if total <= 0 or splitter_h <= 0:
+            return
+        log_h = total * 6 // 7
+        tabs_h = splitter_h - log_h
+        if tabs_h < 64:
+            tabs_h = 64
+            log_h = max(splitter_h - tabs_h, 200)
+        self._splitter.setSizes([tabs_h, log_h])
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        QTimer.singleShot(0, self._apply_splitter_ratio)
 
     def _project_path(self) -> Path:
         p = self._ent_project.text().strip() or default_project_root()
@@ -443,8 +431,6 @@ class DocToolsApp(QMainWindow):
         out = output_pdf_for_chapters(root, selected)
         pdf_output_dir(root)
         self._ent_output.setText(str(out))
-        if len(selected) == 1:
-            self._ent_check_dir.setText(str(subdir_path(root, selected[0])))
 
     def _on_change_root_toggle(self) -> None:
         if not self._cb_change_root.isChecked():
@@ -466,6 +452,13 @@ class DocToolsApp(QMainWindow):
         self._busy = busy
         for btn in (self._btn_pdf, self._btn_oss_scan, self._btn_oss_run, self._btn_math):
             btn.setEnabled(not busy)
+        self._btn_math_fix.setEnabled(not busy and self._math_fix_available)
+
+    def _update_math_fix_button(self, result: MathCheckResult | None, base: str = '') -> None:
+        self._last_math_result = result
+        self._last_math_base = base
+        self._math_fix_available = bool(result and result.files_with_issues > 0)
+        self._btn_math_fix.setEnabled(not self._busy and self._math_fix_available)
 
     def _start_worker(self, worker: QThread, on_done) -> None:
         if self._busy:
@@ -496,23 +489,28 @@ class DocToolsApp(QMainWindow):
     # ── PDF ─────────────────────────────────────────────
 
     def _refresh_deps(self, quiet: bool = False) -> None:
-        self._log.info('—— 检测依赖 ——')
+        if not quiet:
+            self._log.info('—— 检测依赖 ——')
 
         if self._deps_worker and self._deps_worker.isRunning():
-            self._log.warn('依赖检测正在进行中…')
+            if not quiet:
+                self._log.warn('依赖检测正在进行中…')
             return
 
         self._deps_worker = _DepsWorker(self.cfg.extra_path or None)
 
         def on_done(status) -> None:
-            report = format_deps_report(status)
-            ok = all(s.found for s in status.values())
-            self._lbl_deps.setText(report.replace('\n', '  |  '))
-            self._lbl_deps.setStyleSheet(f'color: {"#080" if ok else "#a00"};')
             if not quiet:
+                ok = all(s.found for s in status.values())
+                self._log.info(format_deps_summary(status))
+                report = format_deps_report(status)
                 for line in report.splitlines():
                     lvl = 'error' if '[缺失]' in line else 'info'
                     self._log.append(line, LogLevel.ERROR if lvl == 'error' else LogLevel.INFO)
+                if ok:
+                    self._log.info('依赖检测通过')
+                else:
+                    self._log.warn('存在缺失依赖，请安装后重试')
 
         self._deps_worker.done_signal.connect(on_done)
         self._deps_worker.start()
@@ -544,57 +542,75 @@ class DocToolsApp(QMainWindow):
 
         w = _PdfWorker(
             chapters, output, title,
-            single_chapter=self._cb_single.isChecked(),
+            single_chapter=self._pdf_single_chapter_mode(),
             extra_path=self.cfg.extra_path or None,
         )
         self._start_worker(w, on_done)
 
-    def _show_pdf_help(self) -> None:
-        msg = QMessageBox(self)
-        msg.setWindowTitle('PDF 打包说明')
-        msg.setIcon(QMessageBox.Information)
-        msg.setText(
-            '<h3>📦 依赖安装</h3>'
-            '<p><b>macOS：</b></p>'
-            '<pre>brew install pandoc\nbrew install --cask mactex    # 完整版（~4GB）\n# 或\nbrew install --cask basictex  # 精简版（~100MB）</pre>'
-            '<p><b>Windows：</b></p>'
-            '<pre>winget install Pandoc.Pandoc\nwinget install MiKTeX.MiKTeX\n# 或手动下载安装包</pre>'
-            '<p>安装后重启终端，点击「检测 pandoc/xelatex」确认两项均显示 [OK]。</p>'
-            '<hr>'
-            '<h3>⚙️ 打包流程</h3>'
-            '<ol>'
-            '<li><b>选择章节</b> — 勾选 _posts/ 下的子目录（每个目录即为一章）</li>'
-            '<li><b>拼接 Markdown</b> — 将章节内所有 .md 文件按文件名排序拼接，合并为单个临时 .md</li>'
-            '<li><b>下载远程图片</b> — 将 远程引用的图片下载到本地临时目录</li>'
-            '<li><b>pandoc 转换</b> — <code>pandoc input.md -o output.tex --standalone</code> 生成 LaTeX 中间文件</li>'
-            '<li><b>xelatex 编译</b> — <code>xelatex output.tex</code> 编译两次，生成最终 PDF（支持中文）</li>'
-            '<li><b>合并页面</b> — 使用 PyPDF2 合并多个 PDF 为单一文件</li>'
-            '</ol>'
-            '<hr>'
-            '<h3>💡 提示</h3>'
-            '<ul>'
-            '<li>单章模式下各文章不加「第 N 章」前缀；多章时自动分节</li>'
-            '<li>输出目录为 <code>项目根目录/PDF_output/</code></li>'
-            '<li>章节内 .md 文件建议按日期命名以便排序</li>'
-            '</ul>'
-        )
-        msg.setStandardButtons(QMessageBox.Ok)
-        msg.exec_()
-
     # ── OSS ─────────────────────────────────────────────
 
+    def _log_oss_scan_result(self, result: OssScanResult, root: Path) -> None:
+        """图床扫描：红=文档，黄=本地图片 URL，白=规则/状态说明。"""
+        chapters = '、'.join(result.chapter_names)
+        self._log.info(f'扫描章节: {chapters}')
+        self._log.info(f'图片目录: {result.imgs_dir}')
+
+        if result.refs == 0:
+            self._log.info('未发现本地图片 URL，文档中的图片均为 OSS/远程地址')
+            self._log.info('—— 扫描结束 ——')
+            return
+
+        self._log.warn(
+            f'发现 {result.unique} 张唯一本地图片，共 {result.refs} 处引用'
+        )
+
+        for md, items in result.refs_by_document():
+            try:
+                rel = str(md.relative_to(root))
+            except ValueError:
+                rel = str(md)
+            self._log.error(f'文档: {rel}（{len(items)} 处）')
+            if rel != str(md):
+                self._log.error(f'      {md}')
+
+            for i, (fn, path_str) in enumerate(items, 1):
+                exists = (result.imgs_dir / fn).exists()
+                status = '本地 imgs/ 存在' if exists else '本地 imgs/ 缺失'
+                self._log.warn(f'  [{i}] {path_str}')
+                self._log.info(f'      文件: {fn} · {status}')
+
+        if result.missing:
+            self._log.warn(f'imgs/ 目录缺失 {len(result.missing)} 张图片:')
+            for fn in result.missing:
+                self._log.warn(f'  - {fn}')
+
+        self._log.info('[预览] 未上传、未修改任何文件')
+        self._log.info('—— 扫描结束 ——')
+
     def _scan_oss(self) -> None:
-        self._log.info('—— 扫描本地图片引用 ——')
-        ak = self._ent_ak.text().strip()
-        sk = self._ent_sk.text().strip()
-        w = _OssScanWorker(self._project_path(), ak, sk)
-        self._start_worker(w, lambda _r: None)
+        selected = self._chapter_list.get_selected()
+        if not selected:
+            QMessageBox.warning(
+                self,
+                '提示',
+                '请勾选要打包的章节',
+            )
+            return
+
+        root = self._project_path()
+        self._log.info(f'—— 扫描本地图片 URL（待打包文档）——')
+
+        def on_done(r) -> None:
+            if r:
+                self._log_oss_scan_result(r, root)
+
+        w = _OssScanWorker(root, selected, self.cfg.imgs_subdir)
+        self._start_worker(w, on_done)
 
     def _start_oss(self) -> None:
-        ak = self._ent_ak.text().strip()
-        sk = self._ent_sk.text().strip()
+        ak, sk = oss_credentials(self.cfg)
         if not ak or not sk:
-            QMessageBox.warning(self, '提示', '请填写 OSS AccessKey')
+            QMessageBox.warning(self, '提示', '请先在工具栏「图床设置」中填写 OSS AccessKey')
             return
         reply = QMessageBox.question(
             self,
@@ -622,38 +638,119 @@ class DocToolsApp(QMainWindow):
 
     # ── Math Check ──────────────────────────────────────
 
-    def _pick_check_dir(self) -> None:
-        path = QFileDialog.getExistingDirectory(
-            self,
-            '选择要检查的目录',
-            self._ent_check_dir.text() or self._ent_project.text(),
-        )
-        if path:
-            self._ent_check_dir.setText(path)
-
-    def _start_math_check(self) -> None:
-        root = self._ent_check_dir.text().strip()
-        if not root or not os.path.isdir(root):
-            QMessageBox.warning(self, '提示', '请选择有效的检查目录')
+    def _log_math_check_result(self, result: MathCheckResult, base: str) -> None:
+        """公式检查结果：红=文档，黄=问题公式，白=触犯规则。"""
+        self._log.info(f'共扫描 {result.total_files} 个文件')
+        if result.files_with_issues == 0:
+            self._log.info('全部通过，未发现问题')
             return
 
-        self._log.info(f'—— 检查公式规范: {root} ——')
+        self._log.warn(
+            f'发现 {result.files_with_issues} 个文件有问题，共 {result.total_issues} 处'
+        )
+        for fr in result.files:
+            rel = fr.rel_path(base)
+            self._log.error(f'文档: {rel}（{len(fr.issues)} 处）')
+            if rel != fr.path:
+                self._log.error(f'      {fr.path}')
+
+            for i, issue in enumerate(fr.issues, 1):
+                loc = f'第 {issue.line} 行' if issue.line else '文件末尾'
+                self._log.info(f'  [{i}] {loc}')
+                self._log.info(f'      违反: {issue.rule.title}')
+                self._log.info(f'      问题: {issue.detail}')
+                self._log.info(f'      说明: {issue.rule.description}')
+                snippet = issue.snippet_text()
+                if snippet:
+                    self._log.warn(f'      公式: {snippet}')
+
+        self._log.info('—— 检查结束 ——')
+
+    def _start_math_check(self) -> None:
+        selected = self._chapter_list.get_selected()
+        if not selected:
+            QMessageBox.warning(self, '提示', '请至少勾选一个章节')
+            return
+
+        paths = [str(p) for p in self._selected_chapter_paths()]
+        base = str(self._project_path())
+        self._log.info(f'—— 检查公式规范: {", ".join(selected)} ——')
+        self._update_math_fix_button(None)
 
         def on_done(r) -> None:
             if not r:
+                self._update_math_fix_button(None)
                 return
-            if r.files_with_issues == 0:
-                self._log.info(f'全部通过 ({r.total_files} 个文件)')
-            else:
-                self._log.warn(f'{r.files_with_issues}/{r.total_files} 个文件有问题，共 {r.total_issues} 处')
-                for fr in r.files:
-                    self._log.warn(f'{fr.path} ({len(fr.issues)} 处)')
-                    for issue in fr.issues:
-                        self._log.warn(f'  {issue.format_log()}')
-            show_check_report(self, r)
+            self._log_math_check_result(r, base)
+            self._update_math_fix_button(r, base)
+            show_check_report(self, r, base)
 
-        w = _MathWorker(root, recursive=self._cb_recursive.isChecked())
+        w = _MathWorker(paths)
         self._start_worker(w, on_done)
+
+    def _log_math_fix_result(self, result: MathFixResult, base: str) -> None:
+        if result.error:
+            self._log.error(f'自动修复失败: {result.error}')
+            return
+
+        self._log.info(
+            f'自动修复完成: {result.fixed_files} 个文件已修改，'
+            f'{result.unchanged_files} 个无变化'
+        )
+        root_path = Path(base)
+        for path, changes in result.details:
+            try:
+                rel = str(Path(path).relative_to(root_path))
+            except ValueError:
+                rel = path
+            self._log.error(f'文档: {rel}')
+            for change in changes:
+                self._log.info(f'  · {change}')
+        if result.fixed_files == 0:
+            self._log.warn('未能自动修复的问题（如 $$ 未配对）请手动修改')
+        self._log.info('—— 自动修复结束 ——')
+
+    def _start_math_fix(self) -> None:
+        if not self._last_math_result or not self._last_math_result.files:
+            QMessageBox.information(self, '提示', '请先执行公式检查并发现问题')
+            return
+
+        base = self._last_math_base or str(self._project_path())
+        file_count = self._last_math_result.files_with_issues
+        issue_count = self._last_math_result.total_issues
+        reply = QMessageBox.question(
+            self,
+            '确认自动修复',
+            f'将尝试修复 {file_count} 个文件中的公式规范问题（共 {issue_count} 处）。\n'
+            f'会直接改写 .md 文件，是否继续？',
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        paths = [fr.path for fr in self._last_math_result.files]
+        self._log.info(f'—— 自动修复公式: {len(paths)} 个文件 ——')
+
+        def on_fix_done(r: MathFixResult) -> None:
+            if not r:
+                return
+            self._log_math_fix_result(r, base)
+            show_fix_report(self, r, base)
+
+            def on_recheck(check: MathCheckResult | None) -> None:
+                if check:
+                    self._log_math_check_result(check, base)
+                    show_check_report(self, check, base)
+                self._update_math_fix_button(check, base)
+
+            self._log.info('—— 重新检查 ——')
+            paths = [str(p) for p in self._selected_chapter_paths()]
+            recheck = _MathWorker(paths)
+            self._start_worker(recheck, on_recheck)
+
+        w = _MathFixWorker(paths)
+        self._start_worker(w, on_fix_done)
 
     # ── Misc ────────────────────────────────────────────
 

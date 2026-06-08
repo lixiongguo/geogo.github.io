@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import urllib.request
 from dataclasses import dataclass
 from typing import Callable
@@ -33,6 +34,46 @@ def _log(msg: str, on_log: LogFn | None) -> None:
         on_log(msg)
     else:
         print(msg)
+
+
+def _install_output_pdf(
+    pdf_src: str,
+    output_pdf: str,
+    on_log: LogFn | None,
+) -> tuple[bool, str, str]:
+    """将编译好的 PDF 写入输出路径；若目标被占用则尝试带时间戳的备用文件名。"""
+    os.makedirs(os.path.dirname(output_pdf) or '.', exist_ok=True)
+
+    def _copy(dst: str) -> None:
+        shutil.copy(pdf_src, dst)
+
+    try:
+        _copy(output_pdf)
+        return True, output_pdf, ''
+    except PermissionError:
+        pass
+    except OSError as exc:
+        if getattr(exc, 'errno', None) not in (13, None):
+            return False, output_pdf, f'无法写入 PDF:\n{output_pdf}\n\n{exc}'
+
+    base, ext = os.path.splitext(output_pdf)
+    alt = f'{base}_{time.strftime("%Y%m%d_%H%M%S")}{ext}'
+    try:
+        _copy(alt)
+        _log(
+            f'[警告] 无法覆盖（文件可能正被打开）: {output_pdf}，已改存: {alt}',
+            on_log,
+        )
+        return True, alt, ''
+    except (PermissionError, OSError):
+        err = (
+            f'无法写入 PDF（权限被拒绝）:\n{output_pdf}\n\n'
+            f'常见原因：\n'
+            f'  · 该 PDF 正在阅读器中打开\n'
+            f'  · OneDrive 正在同步该文件\n\n'
+            f'请先关闭相关程序后重试。'
+        )
+        return False, output_pdf, err
 
 
 def _download(url: str, dl_dir: str, on_log: LogFn | None) -> str:
@@ -238,21 +279,29 @@ def _compile_merged_md(
         with open(pdf_src, 'rb') as f:
             content = f.read()
         if content.rfind(b'%%EOF') > 0 and content.rfind(b'startxref') > 0:
-            os.makedirs(os.path.dirname(output_pdf) or '.', exist_ok=True)
-            shutil.copy(pdf_src, output_pdf)
-            sz = os.path.getsize(output_pdf) / 1024
+            ok, final_pdf, err = _install_output_pdf(pdf_src, output_pdf, on_log)
+            if not ok:
+                _dl_cache.clear()
+                return MergeResult(
+                    success=False,
+                    output_pdf=output_pdf,
+                    merged_count=merged_count,
+                    work_dir=work,
+                    error=err,
+                )
+            sz = os.path.getsize(final_pdf) / 1024
             pages: int | str = '?'
             try:
                 from PyPDF2 import PdfReader
 
-                pages = len(PdfReader(output_pdf).pages)
+                pages = len(PdfReader(final_pdf).pages)
             except Exception:
                 pass
-            _log(f'已生成: {output_pdf} ({sz:.1f} KB, {pages} 页)', on_log)
+            _log(f'已生成: {final_pdf} ({sz:.1f} KB, {pages} 页)', on_log)
             _dl_cache.clear()
             return MergeResult(
                 success=True,
-                output_pdf=output_pdf,
+                output_pdf=final_pdf,
                 pages=pages,
                 size_kb=sz,
                 merged_count=merged_count,

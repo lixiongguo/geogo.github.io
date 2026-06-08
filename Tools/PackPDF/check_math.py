@@ -33,8 +33,10 @@ def main() -> int:
         result = check_directory(root)
         for fr in result.files:
             print(f'\n[检查] {fr.path}: {len(fr.issues)} 个问题')
-            for issue in fr.issues:
-                print(f'  {issue.format_short()}')
+            for i, issue in enumerate(fr.issues, 1):
+                print(f'  [{i}] {issue.format_short()}')
+                for line in issue.format_log_lines()[1:]:
+                    print(f'      {line}')
         print(f"\n{'=' * 60}")
         print(f'总计: {result.files_with_issues}/{result.total_files} 个文件有问题, 共 {result.total_issues} 处')
         return 0
@@ -42,8 +44,10 @@ def main() -> int:
     issues = check_file(sys.argv[1])
     if issues:
         print(f'[检查] {sys.argv[1]}: 发现 {len(issues)} 个问题')
-        for i in issues:
-            print(f'  {i.format_short()}')
+        for i, issue in enumerate(issues, 1):
+            print(f'  [{i}] {issue.format_short()}')
+            for line in issue.format_log_lines()[1:]:
+                print(f'      {line}')
         return 1
     print(f'[通过] {sys.argv[1]}')
     return 0

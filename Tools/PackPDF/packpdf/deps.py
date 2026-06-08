@@ -85,6 +85,17 @@ def deps_ok(extra_dirs: Iterable[str] | None = None) -> bool:
     return all(s.found for s in check_deps(extra_dirs).values())
 
 
+def format_deps_summary(status: dict[str, ToolStatus]) -> str:
+    """单行依赖状态摘要。"""
+    parts: list[str] = []
+    for s in status.values():
+        if s.found:
+            parts.append(f'{s.name}: OK')
+        else:
+            parts.append(f'{s.name}: 缺失')
+    return '  |  '.join(parts)
+
+
 def format_deps_report(status: dict[str, ToolStatus]) -> str:
     lines = ['依赖检测:']
     for s in status.values():

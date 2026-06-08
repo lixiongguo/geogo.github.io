@@ -159,9 +159,10 @@ class MathCheckReportDialog(QDialog):
         lines: list[str] = []
         for fr in result.files:
             lines.append(f'▶ {fr.path}')
-            for issue in fr.issues:
-                lines.append(f'    ⚠ {issue.format_short()}')
-                lines.append(f'      → {issue.rule.description}')
+            for i, issue in enumerate(fr.issues, 1):
+                lines.append(f'  [{i}] {issue.format_short()}')
+                for detail in issue.format_log_lines()[1:]:
+                    lines.append(f'      {detail}')
             lines.append('')
         return '\n'.join(lines)
 

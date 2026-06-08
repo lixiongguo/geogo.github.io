@@ -18,13 +18,13 @@ Provably good mapping
 
 
 
-$\omega$连续
+$\omega$ 连续
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250715204737220.png)
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250715203901258.png)
 
-通过$\omega$连续来表达Distortion
+通过 $\omega$ 连续来表达Distortion
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250715204858420.png)
 
