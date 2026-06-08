@@ -1,0 +1,6 @@
+build/
+build/monograph/
+config.json
+.venv/
+__pycache__/
+*.pyc
