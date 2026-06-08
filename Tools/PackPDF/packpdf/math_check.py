@@ -78,6 +78,16 @@ CHECK_RULES: tuple[CheckRule, ...] = (
 
 _RULE_BY_ID = {r.id: r for r in CHECK_RULES}
 
+# 自动修复可处理的规则（dollar_pair 等须手动改）
+AUTO_FIXABLE_RULE_IDS = frozenset({
+    'space',
+    'cjk_inline',
+    'cases_inline',
+    'display_blank',
+    'sub_cmd',
+    'double_wrap',
+})
+
 
 @dataclass
 class CheckIssue:
@@ -200,20 +210,23 @@ def check_file(filepath: str | Path) -> list[CheckIssue]:
     def _issue(rule_id: str, line_num: int | None, detail: str) -> CheckIssue:
         return CheckIssue(rule_id, line_num, detail, _line_text(line_num))
 
-    for m in re.finditer(r'[\u4e00-\u9fff]\$[^\$]|\$[^\$][\u4e00-\u9fff]', text):
+    for m in re.finditer(r'[\u4e00-\u9fff]\$(?!\$)', text):
         ln = text[: m.start()].count('\n') + 1
-        issues.append(_issue('space', ln, '$ 前后缺少空格'))
+        issues.append(_issue('space', ln, '$ 前缺少空格'))
+
+    for m in re.finditer(r'(?<!\$)\$(?!\$)([\u4e00-\u9fff])', text):
+        ln = text[: m.start()].count('\n') + 1
+        issues.append(_issue('space', ln, '$ 后缺少空格'))
 
     for m in re.finditer(r'(?<!\$)\$(?!\$)((?:(?!\$).)+?)\$(?!\$)', text):
         body = m.group(1)
+        if r'\begin{cases}' in body or '\\begin{cases}' in body:
+            ln = text[: m.start()].count('\n') + 1
+            issues.append(_issue('cases_inline', ln, '\\begin{cases} 不得放在行内 $...$ 中，应改为 $$...$$'))
         body_no_text = re.sub(r'\\text\{[^}]*\}', '', body)
         if re.search(r'[\u4e00-\u9fff]', body_no_text):
             ln = text[: m.start()].count('\n') + 1
             issues.append(_issue('cjk_inline', ln, '行内公式含裸中文，应移出 $...$ 或用 \\text{} 包裹'))
-
-    for m in re.finditer(r'(?<!\$)\$(?!\$)(.+?)\\begin\{cases\}(.+?)\$(?!\$)', text, re.DOTALL):
-        ln = text[: m.start()].count('\n') + 1
-        issues.append(_issue('cases_inline', ln, '\\begin{cases} 不得放在行内 $...$ 中，应改为 $$...$$'))
 
     for m in re.finditer(r'\$\$(.+?)\$\$', text, re.DOTALL):
         if '\n\n' in m.group(1):

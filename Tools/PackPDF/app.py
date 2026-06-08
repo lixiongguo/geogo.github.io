@@ -730,13 +730,17 @@ class DocToolsApp(QMainWindow):
             return
 
         paths = [fr.path for fr in self._last_math_result.files]
+        self._log.clear()
         self._log.info(f'—— 自动修复公式: {len(paths)} 个文件 ——')
 
         def on_fix_done(r: MathFixResult) -> None:
             if not r:
                 return
             self._log_math_fix_result(r, base)
-            show_fix_report(self, r, base)
+            show_fix_report(self, r, base, self._last_math_result)
+
+            self._log.clear()
+            self._log.info('—— 重新检查 ——')
 
             def on_recheck(check: MathCheckResult | None) -> None:
                 if check:
@@ -744,9 +748,8 @@ class DocToolsApp(QMainWindow):
                     show_check_report(self, check, base)
                 self._update_math_fix_button(check, base)
 
-            self._log.info('—— 重新检查 ——')
-            paths = [str(p) for p in self._selected_chapter_paths()]
-            recheck = _MathWorker(paths)
+            recheck_paths = [str(p) for p in self._selected_chapter_paths()]
+            recheck = _MathWorker(recheck_paths)
             self._start_worker(recheck, on_recheck)
 
         w = _MathFixWorker(paths)
