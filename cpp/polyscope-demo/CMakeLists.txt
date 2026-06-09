@@ -22,4 +22,8 @@ endif()
 # ── Demo executable ───────────────────────────────────
 add_executable(vector_field_demo main.cpp)
 target_include_directories(vector_field_demo PRIVATE ${EIGEN3_INCLUDE_DIR})
+# MSVC C++17 removed std::binder1st/binder2nd; Eigen 3.4 still references them.
+if(MSVC)
+    target_compile_definitions(vector_field_demo PRIVATE _HAS_AUTO_PTR_ETC=1)
+endif()
 target_link_libraries(vector_field_demo PRIVATE polyscope)
