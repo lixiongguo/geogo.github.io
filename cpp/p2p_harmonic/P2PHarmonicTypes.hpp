@@ -16,12 +16,6 @@ using VecX = Eigen::VectorXd;
 using MatX = Eigen::MatrixXd;
 using SpMatC = Eigen::SparseMatrix<Complex>;
 
-#pragma once
-
-#include "P2PHarmonicTypes.hpp"
-
-namespace p2p_harmonic {
-
 enum class HarmonicEnergyType { SymmDirichlet = 0, Exp_SymmDirichlet = 1, AMIPS = 2 };
 
 enum class HarmonicSolverType {
@@ -118,7 +112,5 @@ HarmonicEnergyType energyTypeFromString(const std::string& name);
 HarmonicSolverType solverTypeFromString(const std::string& name);
 std::string toString(HarmonicEnergyType energy);
 std::string toString(HarmonicSolverType solver);
-
-}  // namespace p2p_harmonic
 
 }  // namespace p2p_harmonic

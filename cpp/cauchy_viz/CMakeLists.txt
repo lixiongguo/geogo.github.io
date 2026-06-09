@@ -57,6 +57,8 @@ target_link_libraries(cauchy_viz PRIVATE
 
 if(WIN32)
     target_link_libraries(cauchy_viz PRIVATE opengl32)
+elseif(APPLE)
+    target_link_libraries(cauchy_viz PRIVATE "-framework OpenGL")
 else()
     target_link_libraries(cauchy_viz PRIVATE GL)
 endif()
