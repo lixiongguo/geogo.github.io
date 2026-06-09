@@ -48,8 +48,8 @@
 <div class="sidebar-item sidebar-nav">
   <ul class="nav">
     <li class="nav-title">📚 曲面展开</li>
-    {% assign param_cats = "Parameterization-Preface|Parameterization-BasicParameterization|Parameterization-ConformalMapping|Parameterization-QuadRemeshing|Parameterization-DifferentialForm|Parameterization-GeometricOptimization|Parameterization-OptimalTransport|Parameterization-Appendix" | split: "|" %}
-    {% assign cat_displays = "0 前言|基础曲面展开方法|共形参数化探微|向量场引导的参数化|高观点下的参数化|几何优化方法|最优传输方法|附录-数值计算与最优化" | split: "|" %}
+    {% assign param_cats = "Parameterization-Preface|Parameterization-BasicParameterization|Parameterization-ConformalMapping|Parameterization-GeometricOptimization|Parameterization-QuadRemeshing|Parameterization-OptimalTransport|Parameterization-Appendix" | split: "|" %}
+    {% assign cat_displays = "0 前言|基础曲面展开方法|共形参数化探微|几何优化方法|全局参数化与四边形网格化|最优传输方法|附录-数值计算与最优化" | split: "|" %}
     {% for cat in param_cats %}
       {% assign cat_idx = forloop.index0 %}
       {% assign cat_display = cat_displays[cat_idx] %}
