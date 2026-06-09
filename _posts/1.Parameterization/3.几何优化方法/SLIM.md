@@ -4,9 +4,6 @@ title: "SLIM"
 categories: [TechRelated]
 ---
 
-
-![Lucy](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/Lucy.png)
-
 ![image-20251204204236054](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251204204236054.png)
 
 ARAP是有翻转的
