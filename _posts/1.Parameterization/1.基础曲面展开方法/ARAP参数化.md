@@ -1,6 +1,6 @@
 ##  交替优化方法(Local/Global)求解能量优化
 
-**ARAP(As Rigid As Possible)**采用**迭代**优化的策略：先从一个简单算法（如 Tutte）初始化，然后交替进行如下两步——首先为每个三角形寻找一个尽量保持原形状的局部近似（**Local 优化**），再回头调整 Jacobian 矩阵使网格整体保持连接（**Global 优化**）。
+**(As Rigid As Possible)**采用**迭代**优化的策略：先从一个简单算法（如 Tutte）初始化，然后交替进行如下两步——首先为每个三角形寻找一个尽量保持原形状的局部近似（**Local 优化**），再回头调整 Jacobian 矩阵使网格整体保持连接（**Global 优化**）。
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251023215121312-1778207385711-1.png)
 

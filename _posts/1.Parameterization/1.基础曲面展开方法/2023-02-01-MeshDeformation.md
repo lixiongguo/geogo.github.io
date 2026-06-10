@@ -8,9 +8,6 @@
 
 
 
-**Thin-Shell 能量**
-
-![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251218193348048.png)
 
 
 
