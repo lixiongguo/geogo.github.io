@@ -15,53 +15,6 @@ title: "Abel-Jacobi映射"
 
 反过来，给定一个共形结构，是否总能找到一个"好"的四边形网格？答案是否定的——这是一个受全局拓扑约束的问题。
 
-四边形网格与共形结构的关系是**双向**的：
-
-- **四边形网格 → 共形结构**：每个面映射到 $[0,1]^2$，转移函数为整数平移 + $90^\circ$ 旋转，图册天然共形。
-- **四边形网格 → 平展锥度量（flat cone metric）**：理想四边形网格在普通 4-价顶点附近曲率为零，曲率集中在 extraordinary vertex 上。若顶点价数为 $n$，局部锥角为
-
-$$
-\Theta_v = n \cdot \frac{\pi}{2},  K_v = 2\pi - \Theta_v = \left(4 - n\right)\frac{\pi}{2}.
-$$
-
-这正是 Poincaré-Hopf 指数 $I(v) = 1 - n/4$ 的几何含义——奇异点 index 以 $\frac{1}{4}$ 为单位，来自 $2\pi$ 与 $\frac{\pi}{2}$ 对称性的比例关系。
-
-**共形结构 → 四边形网格**：需要额外满足 **Abel 约束与周期整数化**，不是自动成立的。
-
-## Riemann-Roch定理
-
-设亚纯函数 $q$ 在 $p_i$ 处有零点或极点（阶 $n_i$，正为零点、负为极点），除子为：
-
-$$
-(q) = \sum_i n_i \, p_i
-$$
-
-设 $D$ 是奇异点的除子（divisor），即每个奇异点的"度数"（degree = 4 - 价数）构成一个形式线性组合。四边形网格的存在性等价于：存在一个亚纯二次微分（meromorphic quadratic differential）$\omega$ 使得 $(\omega)$（$\omega$ 的除子）恰好是 $D$。
-
-除子
-
-根据刘维尔定理，在紧黎曼面(封闭，有界的黎曼面)上，**有界全纯函数一定是常函数**，所以要研究紧黎曼面用**亚纯函数(meromorphic)**
-
-亚纯函数的主除子
-
-![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250721194208550.png)
-
-
-
-### Riemann-Roch
-
-$$
-\ell(D) - \ell(K - D) = \deg(D) + 1 - g
-$$
-
-其中 $K$ 是典范除子，$g$ 是亏格。这个公式限制了**在给定亏格下能配置多少以及何种奇异点**。
-
-
-
-## 四边形网格奇异点的拓扑
-
-四边形网格的奇异点配置不是任意的，它受到深刻的拓扑约束 
-
 ##### Poincaré–Hopf 定理（一般形式）
 
 设 $V$ 为曲面 $M$ 上的光滑向量场，$p$ 为孤立奇点，$I(p)$ 为奇点指数（绕奇点一圈向量转过的圈数除以 $2\pi$），则：
@@ -80,9 +33,51 @@ $$
 \sum_{k \neq 4} (4 - k) \, n_k = 4\chi(M)
 $$
 
-这是 **Poincaré-Hopf 定理** 的直接推论——四边形网格的指数可以定义为 $I(v) = 1 - k/4$。然而，Poincaré-Hopf 只是**必要条件**，不是充分条件。顾险峰进一步用 **Riemann-Roch 定理** 揭示了更精细的约束：
+这是 **Poincaré-Hopf 定理** 的直接推论——四边形网格的指数可以定义为 $I(v) = 1 - k/4$。
+
+理想四边形网格在普通 4-价顶点附近曲率为零，曲率集中在 extraordinary vertex 上。若顶点价数为 $n$，局部锥角为
+$$
+\Theta_v = n \cdot \frac{\pi}{2},  K_v = 2\pi - \Theta_v = \left(4 - n\right)\frac{\pi}{2}.
+$$
+
+这正是 Poincaré-Hopf 指数 $I(v) = 1 - n/4$ 的几何含义——奇异点 index 以 $\frac{1}{4}$ 为单位，来自 $2\pi$ 与 $\frac{\pi}{2}$ 对称性的比例关系。
+
+然而Poincaré-Hopf 只是**必要条件**，不是充分条件。从共形结构到四边形网格 需要额外满足 **Abel 约束。
 
 
+
+## 除子与Riemann-Roch定理
+
+设亚纯函数 $q$ 在 $p_i$ 处有零点或极点（阶 $n_i$，正为零点、负为极点），除子为：
+
+$$
+(q) = \sum_i n_i \, p_i
+$$
+
+设 $D$ 是奇异点的除子（divisor），即每个奇异点的"度数"（degree = 4 - 价数）构成一个形式线性组合。四边形网格的存在性等价于：存在一个亚纯二次微分（meromorphic quadratic differential）$\omega$ 使得 $(\omega)$（$\omega$ 的除子）恰好是 $D$。
+
+除子
+
+根据刘维尔定理，在紧黎曼面(封闭，有界的黎曼面)上，**有界全纯函数一定是常函数**，所以要研究紧黎曼面用**亚纯函数(meromorphic)**
+
+对于紧黎曼面 $S$ 上的亚纯函数 $f$，其在各点的零点/极点的加权和称为**主除子（principal divisor）**：
+
+$$
+\operatorname{div}(f) = \sum_{p \in S} \operatorname{ord}_p(f) \cdot p
+$$
+
+其中 $\operatorname{ord}_p(f)$ 是 $f$ 在点 $p$ 的阶数：
+- $\operatorname{ord}_p(f) = k > 0$：$f$ 在 $p$ 处有 $k$ 阶零点
+- $\operatorname{ord}_p(f) = -k < 0$：$f$ 在 $p$ 处有 $k$ 阶极点
+- $\operatorname{ord}_p(f) = 0$：$f$ 在 $p$ 处正则且非零
+
+展开写为：
+
+$$
+\operatorname{div}(f) = \sum_i m_i P_i - \sum_j n_j Q_j
+$$
+
+其中 $\{P_i\}$ 是零点、$\{Q_j\}$ 是极点，$m_i,n_j$ 为相应的重数。主除子的总度数恒为零：$\deg(\operatorname{div}(f)) = \sum_p \operatorname{ord}_p(f) = 0$。
 
 #### 奇异点与除子的对应
 
@@ -99,6 +94,14 @@ $$
 $$
 
 两种表述通过整数等值线的拓扑结构完全同构。
+
+### Riemann-Roch
+
+$$
+\ell(D) - \ell(K - D) = \deg(D) + 1 - g
+$$
+
+其中 $K$ 是典范除子，$g$ 是亏格。这个公式限制了**在给定亏格下能配置多少以及何种奇异点**。
 
 
 
@@ -140,6 +143,7 @@ $$
 
 
 在 $2g$ 个同调基底 $\{a_1, \ldots, a_g, b_1, \ldots, b_g\}$ 上对 1-form 积分，得到 $2g$ 个周期向量：
+
 $$
 \text{Period}(a_i) = \int_{a_i} \omega \in \mathbb{C}^g, \quad
 \text{Period}(b_i) = \int_{b_i} \omega \in \mathbb{C}^g
@@ -166,6 +170,7 @@ $\mathbb{C}^g$ 中的 $g$ 维复格点 $\Gamma$ 定义为
 $$
 \Gamma = \left\{ \sum_{k=1}^g (s_k \lambda_{a_k} + t_k \lambda_{b_k}) : s_k, t_k \in \mathbb{Z} \right\}.
 $$
+
 雅可比簇 **Jacobian Variety $J(S)$** 定义在黎曼面 $S$ 上，是紧商空间
 
 $$
@@ -174,7 +179,8 @@ $$
 
 ### Abel–Jacobi 映射
 
-**Abel–Jacobi 映射**是将**几何对象**（点、除子、代数圈）转化为**复环面上的点**的桥梁。以某个固定基点 $p_0 \in S$ 为原点，Abel-Jacobian 映射 $\mu : S \to J(S)$ 定义为：对任意 $p \in S$，
+**Abel–Jacobi 映射**是将**几何对象**（点、除子、代数圈）转化为**复环面上的点**的桥梁。以某个固定基点 $p_0 \in S$ 为原点，Abel-Jacobian 映射 $\mu : S \to J(S)$ 定义为：对任意 $p \in S$
+
 $$
 \mu(p) = \left( \int_{p_0}^p \varphi_1, \dots, \int_{p_0}^p \varphi_g \right) \pmod \Gamma,
 $$
@@ -186,23 +192,19 @@ $$
 $$
 \mu(D) = \sum_i d_i \,\mu(p_i).
 $$
+
 亚纯函数除子 $(f)$ 通过 Abel-Jacobian 映射后满足 **Abel-Jacobi 定理**：
 
 $$
 \mu((f)) = \sum_{p \in S} \nu_p(f) \mu(p) = 0.
 $$
-**Abel 定理**（19世纪）给出了一个除子能否成为亚纯函数零极点的充要条件：除子 $D$ 在 Abel-Jacobi 映射下的像必须属于 Jacobi 簇的格点 $\Gamma$：
+
+**Abel 定理**（19世纪）给出了一个除子能否成为亚纯函数零极点的充要条件：
 $$
 \mu(D) \equiv 0 \pmod{\Gamma}
 $$
 
-对于四边形网格化，这转化为：**给定一组候选奇异点 $\{p_1, \ldots, p_n\}$ 及其度数 $\{d_1, \ldots, d_n\}$，它们能成为一个全局四边形网格的奇异点当且仅当**：
-
-1. 总度数满足 $\sum d_i = 4\chi(M)$（Poincaré-Hopf）
-2. 在 Abel-Jacobi 映射下，$\sum d_i \cdot \mu(p_i) \equiv 0 \pmod{\Gamma}$
-
-
-
+除子 $D$ 在 Abel-Jacobi 映射下的像必须属于 Jacobi 簇的格点 $\Gamma$
 
 ### 示例
 
