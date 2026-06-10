@@ -1,5 +1,3 @@
-### 几何变形
-
 
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251218193200146.png)
