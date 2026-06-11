@@ -295,7 +295,7 @@
         opacity: 0.4;
         cursor: not-allowed;
       }
-      #pdf-btn, #svg-btn {
+      #pdf-btn, #svg-btn, #fold-sim-btn {
         padding: 9px 18px;
         background: linear-gradient(135deg, #1a3a5a 0%, #2a5a7a 100%);
         color: #8cc8ff;
@@ -306,14 +306,72 @@
         cursor: pointer;
         transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       }
-      #pdf-btn:not(:disabled):hover, #svg-btn:not(:disabled):hover {
+      #pdf-btn:not(:disabled):hover, #svg-btn:not(:disabled):hover, #fold-sim-btn:not(:disabled):hover {
         background: linear-gradient(135deg, #2a5a8a 0%, #3a6a9a 100%);
         color: #fff;
         border-color: rgba(120,200,255,0.5);
       }
-      #pdf-btn:disabled, #svg-btn:disabled {
+      #pdf-btn:disabled, #svg-btn:disabled, #fold-sim-btn:disabled {
         opacity: 0.4;
         cursor: not-allowed;
+      }
+      #fold-sim-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        flex-direction: column;
+        background: rgba(7, 11, 20, 0.96);
+      }
+      #fold-sim-overlay.open {
+        display: flex;
+      }
+      .fold-sim-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 10px 16px;
+        border-bottom: 1px solid rgba(106, 132, 255, 0.2);
+        background: rgba(9, 15, 28, 0.98);
+        flex-shrink: 0;
+      }
+      .fold-sim-header > span:first-child {
+        font-weight: 600;
+        color: #c6d1f4;
+      }
+      .fold-sim-hint {
+        flex: 1;
+        font-size: 11px;
+        color: #8292bd;
+      }
+      #fold-sim-close {
+        padding: 6px 14px;
+        background: #2a3a5a;
+        color: #c6d1f4;
+        border: 1px solid rgba(106, 132, 255, 0.25);
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      #fold-sim-close:hover {
+        background: #3a4a6a;
+      }
+      .fold-sim-loading {
+        display: none;
+        padding: 8px 16px;
+        font-size: 12px;
+        color: #8cc8ff;
+        background: rgba(26, 58, 90, 0.5);
+      }
+      .fold-sim-loading.visible {
+        display: block;
+      }
+      #fold-sim-iframe {
+        flex: 1;
+        width: 100%;
+        border: none;
+        min-height: 0;
+        background: #fff;
       }
       #change-pin-btn {
         padding: 4px 10px;
@@ -431,6 +489,7 @@
         <button id="clear-btn">清除</button>
         <button id="pdf-btn" disabled>📄 保存PDF</button>
         <button id="svg-btn" disabled style="display:none;">📐 导出折痕SVG</button>
+        <button id="fold-sim-btn" disabled style="display:none;" title="在 Origami Simulator 中模拟折叠">🔮 模拟折叠</button>
         <fieldset id="texture-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:6px 10px;margin:0;display:flex;gap:12px;align-items:center;">
           <legend style="color:#8a9dd4;font-size:11px;padding:0 4px;">纹理显示</legend>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;">
@@ -499,6 +558,16 @@
         <div class="footer-note">右侧展示展开后的线框 UV 结果。</div>
       </section>
     </div>
+
+    <div id="fold-sim-overlay" aria-hidden="true">
+      <div class="fold-sim-header">
+        <span>Origami Simulator 折叠模拟</span>
+        <span class="fold-sim-hint">共形展开可能与原始 3D 有偏差；闭合物体需切割线。峰/谷方向反了可在模拟器中将 Fold Percent 调至 -100%。</span>
+        <button id="fold-sim-close" type="button">关闭</button>
+      </div>
+      <div class="fold-sim-loading" id="fold-sim-loading">正在加载 Origami Simulator…</div>
+      <iframe id="fold-sim-iframe" title="Origami Simulator" src="about:blank"></iframe>
+    </div>
   </div>
 
   <script>
@@ -525,6 +594,13 @@
       const clearBtn = document.getElementById("clear-btn");
       const pdfBtn = document.getElementById("pdf-btn");
       const svgBtn = document.getElementById("svg-btn");
+      const foldSimBtn = document.getElementById("fold-sim-btn");
+      const foldSimOverlay = document.getElementById("fold-sim-overlay");
+      const foldSimIframe = document.getElementById("fold-sim-iframe");
+      const foldSimClose = document.getElementById("fold-sim-close");
+      const foldSimLoading = document.getElementById("fold-sim-loading");
+      const UV_FOLD_SVG_KEY = "uvFoldPatternSvg";
+      let foldSimIframeReady = false;
       const btnGc = document.getElementById("btn-gc");
       const btnClearOther = document.getElementById("btn-clear-other");
       const otherCalcInfo = document.getElementById("other-calc-info");
@@ -2691,14 +2767,169 @@
         if (!origamiCheckbox.checked || total === 0) {
           legend.style.display = 'none';
           svgBtn.style.display = 'none';
+          if (foldSimBtn) { foldSimBtn.style.display = 'none'; foldSimBtn.disabled = true; }
         } else {
           legend.style.display = 'flex';
           svgBtn.style.display = '';
           svgBtn.disabled = false;
+          if (foldSimBtn) { foldSimBtn.style.display = ''; foldSimBtn.disabled = false; }
           peakEl.textContent = ' ' + peakCount + '条';
           valleyEl.textContent = ' ' + valleyCount + '条';
           flatEl.textContent = ' ' + flatCount + '条';
         }
+      }
+
+      function refreshUvFoldVisual() {
+        if (!currentUnwrapUv || !currentMeshData) return;
+        const anchors = getValidatedAnchors(currentMeshData.positions);
+        clearGroup(uvScene, currentUvLines);
+        clearGroup(uvScene, currentUvPins);
+        const uvVisual = buildUvMesh(
+          currentUnwrapUv,
+          currentMeshData.faces,
+          anchors,
+          shouldShowPinPoints(),
+          origamiCheckbox.checked
+        );
+        currentUvLines = uvVisual.lines;
+        currentUvPins = uvVisual.pins;
+        uvScene.add(currentUvLines);
+        if (currentUvPins) uvScene.add(currentUvPins);
+        updateFoldLegend(uvVisual);
+      }
+
+      function buildMeshEdgeSets(faces) {
+        const intEdgeSet = new Set();
+        const bndEdgeSet = new Set();
+        function addEdge(a, b) {
+          const key = Math.min(a, b) + '_' + Math.max(a, b);
+          if (intEdgeSet.has(key)) { intEdgeSet.delete(key); }
+          else if (bndEdgeSet.has(key)) { bndEdgeSet.delete(key); intEdgeSet.add(key); }
+          else { bndEdgeSet.add(key); }
+        }
+        if (isQuadMesh && currentRawFaces && currentRawFaces.length > 0) {
+          for (let i = 0; i < currentRawFaces.length; i++) {
+            const f = currentRawFaces[i];
+            for (let k = 0; k < f.length; k++) {
+              addEdge(f[k], f[(k + 1) % f.length]);
+            }
+          }
+        } else {
+          for (let fi = 0; fi < faces.length; fi++) {
+            const f = faces[fi];
+            for (const [a, b] of [[f[0], f[1]], [f[1], f[2]], [f[2], f[0]]]) {
+              addEdge(a, b);
+            }
+          }
+        }
+        return { intEdgeSet: intEdgeSet, bndEdgeSet: bndEdgeSet };
+      }
+
+      /** Build Origami Simulator-compatible SVG string, or null if unavailable. */
+      function buildFoldSVG() {
+        if (!currentUnwrapUv || !currentMeshData) return null;
+        if (!origamiCheckbox.checked || !currentFoldTypes || currentFoldTypes.size === 0) return null;
+
+        const uv = currentUnwrapUv;
+        const faces = currentMeshData.faces;
+        const pad = 20;
+        const svgW = 800, svgH = 800;
+
+        let minU = Infinity, minV = Infinity, maxU = -Infinity, maxV = -Infinity;
+        for (let i = 0; i < uv.length; i++) {
+          if (uv[i][0] < minU) minU = uv[i][0];
+          if (uv[i][0] > maxU) maxU = uv[i][0];
+          if (uv[i][1] < minV) minV = uv[i][1];
+          if (uv[i][1] > maxV) maxV = uv[i][1];
+        }
+        const rangeU = maxU - minU || 1, rangeV = maxV - minV || 1;
+        const scale = Math.min((svgW - 2 * pad) / rangeU, (svgH - 2 * pad) / rangeV);
+        const ox = pad + ((svgW - 2 * pad) - rangeU * scale) / 2;
+        const oy = pad + ((svgH - 2 * pad) - rangeV * scale) / 2;
+        const sx = function(u) { return (ox + (u - minU) * scale).toFixed(1); };
+        const sy = function(v) { return (svgH - oy - (v - minV) * scale).toFixed(1); };
+
+        const edgeSets = buildMeshEdgeSets(faces);
+        const intEdgeSet = edgeSets.intEdgeSet;
+        const bndEdgeSet = edgeSets.bndEdgeSet;
+
+        const mountainD = [];
+        const valleyD = [];
+        const boundaryD = [];
+
+        for (const key of intEdgeSet) {
+          const parts = key.split('_').map(Number);
+          const a = parts[0], b = parts[1];
+          const d = 'M' + sx(uv[a][0]) + ',' + sy(uv[a][1]) + 'L' + sx(uv[b][0]) + ',' + sy(uv[b][1]);
+          const ft = currentFoldTypes.get(key);
+          if (ft === 'peak') {
+            mountainD.push(d);
+          } else if (ft === 'valley') {
+            valleyD.push(d);
+          } else {
+            boundaryD.push(d);
+          }
+        }
+        for (const key of bndEdgeSet) {
+          const parts = key.split('_').map(Number);
+          const a = parts[0], b = parts[1];
+          boundaryD.push('M' + sx(uv[a][0]) + ',' + sy(uv[a][1]) + 'L' + sx(uv[b][0]) + ',' + sy(uv[b][1]));
+        }
+
+        const totalW = rangeU * scale + 2 * pad, totalH = rangeV * scale + 2 * pad;
+        const pathAttrs = 'stroke-width="1" fill="none" stroke-linecap="round"';
+        const lines = [
+          '<?xml version="1.0" encoding="UTF-8"?>',
+          '<svg xmlns="http://www.w3.org/2000/svg" width="' + totalW + '" height="' + totalH + '" viewBox="0 0 ' + totalW + ' ' + totalH + '">',
+          '<rect width="' + totalW + '" height="' + totalH + '" fill="#ffffff"/>',
+          '<g>'
+        ];
+        if (boundaryD.length) {
+          lines.push('  <path stroke="#000000" ' + pathAttrs + ' d="' + boundaryD.join(' ') + '"/>');
+        }
+        if (valleyD.length) {
+          lines.push('  <path stroke="#0000ff" ' + pathAttrs + ' d="' + valleyD.join(' ') + '"/>');
+        }
+        if (mountainD.length) {
+          lines.push('  <path stroke="#ff0000" ' + pathAttrs + ' d="' + mountainD.join(' ') + '"/>');
+        }
+        lines.push('</g>', '</svg>');
+        return lines.join('\n');
+      }
+
+      function pushFoldSvgToSimulator(svgText) {
+        sessionStorage.setItem(UV_FOLD_SVG_KEY, svgText);
+        if (foldSimIframeReady && foldSimIframe && foldSimIframe.contentWindow) {
+          foldSimIframe.contentWindow.postMessage({ type: 'uv-fold-svg', svg: svgText }, window.location.origin);
+        }
+      }
+
+      function openFoldSimulator() {
+        const svgText = buildFoldSVG();
+        if (!svgText) {
+          setStatus("请先勾选「折纸展开」并展开以获取折痕数据", "#ffd38a");
+          return;
+        }
+        pushFoldSvgToSimulator(svgText);
+        if (foldSimLoading) foldSimLoading.classList.add('visible');
+        if (foldSimOverlay) {
+          foldSimOverlay.classList.add('open');
+          foldSimOverlay.setAttribute('aria-hidden', 'false');
+        }
+        if (!foldSimIframeReady) {
+          foldSimIframe.src = 'origami-simulator/index.html?autoload=uv';
+        } else if (foldSimLoading) {
+          foldSimLoading.classList.remove('visible');
+        }
+        setStatus("已加载折痕图到 Origami Simulator", "#89f0b6");
+      }
+
+      function closeFoldSimulator() {
+        if (foldSimOverlay) {
+          foldSimOverlay.classList.remove('open');
+          foldSimOverlay.setAttribute('aria-hidden', 'true');
+        }
+        if (foldSimLoading) foldSimLoading.classList.remove('visible');
       }
 
 
@@ -3127,6 +3358,8 @@
           const foldLegend = document.getElementById('fold-legend');
           if (foldLegend) foldLegend.style.display = 'none';
           if (svgBtn) { svgBtn.style.display = 'none'; svgBtn.disabled = true; }
+          if (foldSimBtn) { foldSimBtn.style.display = 'none'; foldSimBtn.disabled = true; }
+          closeFoldSimulator();
 
           setStatus("正在提取三角网格...");
           let meshData = collectMeshData(root);
@@ -3531,91 +3764,11 @@
 
       /** Export UV fold pattern as SVG (Origami Simulator standard format) */
       function saveFoldSVG() {
-        if (!currentUnwrapUv || !currentMeshData) {
-          setStatus("No UV data to export", "#ffd38a");
-          return;
-        }
-        if (!origamiCheckbox.checked || !currentFoldTypes || currentFoldTypes.size === 0) {
+        const svgText = buildFoldSVG();
+        if (!svgText) {
           setStatus("请先勾选「折纸展开」并展开以获取折痕数据", "#ffd38a");
           return;
         }
-
-        const uv = currentUnwrapUv;
-        const faces = currentMeshData.faces;
-        const pad = 20;
-        const svgW = 800, svgH = 800;
-
-        // Compute UV bounding box
-        let minU = Infinity, minV = Infinity, maxU = -Infinity, maxV = -Infinity;
-        for (let i = 0; i < uv.length; i++) {
-          if (uv[i][0] < minU) minU = uv[i][0];
-          if (uv[i][0] > maxU) maxU = uv[i][0];
-          if (uv[i][1] < minV) minV = uv[i][1];
-          if (uv[i][1] > maxV) maxV = uv[i][1];
-        }
-        const rangeU = maxU - minU || 1, rangeV = maxV - minV || 1;
-        const scale = Math.min((svgW - 2 * pad) / rangeU, (svgH - 2 * pad) / rangeV);
-        const ox = pad + ((svgW - 2 * pad) - rangeU * scale) / 2;
-        const oy = pad + ((svgH - 2 * pad) - rangeV * scale) / 2;
-        const sx = function(u) { return (ox + (u - minU) * scale).toFixed(1); };
-        const sy = function(v) { return (svgH - oy - (v - minV) * scale).toFixed(1); };
-
-        // Build edge sets
-        const intEdgeSet = new Set();
-        const bndEdgeSet = new Set();
-        for (let fi = 0; fi < faces.length; fi++) {
-          const f = faces[fi];
-          for (const [a, b] of [[f[0], f[1]], [f[1], f[2]], [f[2], f[0]]]) {
-            const key = Math.min(a, b) + '_' + Math.max(a, b);
-            if (intEdgeSet.has(key)) { intEdgeSet.delete(key); }
-            else if (bndEdgeSet.has(key)) { bndEdgeSet.delete(key); intEdgeSet.add(key); }
-            else { bndEdgeSet.add(key); }
-          }
-        }
-
-        // Origami Simulator standard CSS classes
-        // mountain: red dashed   valley: blue dashed   boundary: black solid
-        // flat edges → treated as boundary (non-folding)
-        const mountainD = [];
-        const valleyD = [];
-        const boundaryD = [];
-
-        for (const key of intEdgeSet) {
-          const [a, b] = key.split('_').map(Number);
-          const d = 'M' + sx(uv[a][0]) + ',' + sy(uv[a][1]) + 'L' + sx(uv[b][0]) + ',' + sy(uv[b][1]);
-          const ft = currentFoldTypes.get(key);
-          if (ft === 'peak') {
-            mountainD.push(d);
-          } else if (ft === 'valley') {
-            valleyD.push(d);
-          } else {
-            boundaryD.push(d);
-          }
-        }
-        for (const key of bndEdgeSet) {
-          const [a, b] = key.split('_').map(Number);
-          boundaryD.push('M' + sx(uv[a][0]) + ',' + sy(uv[a][1]) + 'L' + sx(uv[b][0]) + ',' + sy(uv[b][1]));
-        }
-
-        const totalW = rangeU * scale + 2 * pad, totalH = rangeV * scale + 2 * pad;
-        const svg = [
-          '<?xml version="1.0" encoding="UTF-8"?>',
-          '<svg xmlns="http://www.w3.org/2000/svg" width="' + totalW + '" height="' + totalH + '" viewBox="0 0 ' + totalW + ' ' + totalH + '">',
-          '<style>',
-          '  .mountain { stroke: #e53e3e; stroke-width: 1; stroke-dasharray: 4,4; fill: none; stroke-linecap: round; }',
-          '  .valley   { stroke: #3182ce; stroke-width: 1; stroke-dasharray: 2,4; fill: none; stroke-linecap: round; }',
-          '  .boundary { stroke: #000000; stroke-width: 1; fill: none; stroke-linecap: round; }',
-          '</style>',
-          '<rect width="' + totalW + '" height="' + totalH + '" fill="#ffffff"/>',
-          '<g>',
-          '  <path class="boundary" d="' + boundaryD.join(' ') + '"/>',
-          '  <path class="valley" d="' + valleyD.join(' ') + '"/>',
-          '  <path class="mountain" d="' + mountainD.join(' ') + '"/>',
-          '</g>',
-          '</svg>'
-        ];
-
-        const svgText = svg.join('\n');
         const blob = new Blob([svgText], { type: 'image/svg+xml' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -3629,6 +3782,24 @@
       }
 
       svgBtn.addEventListener("click", saveFoldSVG);
+      if (foldSimBtn) foldSimBtn.addEventListener("click", openFoldSimulator);
+      if (foldSimClose) foldSimClose.addEventListener("click", closeFoldSimulator);
+      if (origamiCheckbox) origamiCheckbox.addEventListener("change", refreshUvFoldVisual);
+      window.addEventListener("message", function (e) {
+        if (e.origin !== window.location.origin || !e.data) return;
+        if (e.data.type === "uv-fold-bridge-ready") {
+          foldSimIframeReady = true;
+          if (foldSimLoading) foldSimLoading.classList.remove('visible');
+        }
+      });
+      if (foldSimIframe) {
+        foldSimIframe.addEventListener("load", function () {
+          if (foldSimIframe.src && foldSimIframe.src !== "about:blank") {
+            foldSimIframeReady = true;
+            if (foldSimLoading) foldSimLoading.classList.remove('visible');
+          }
+        });
+      }
 
       if (btnClearOther) btnClearOther.addEventListener("click", function () {
         clearOtherOverlays();
