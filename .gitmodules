@@ -16,4 +16,4 @@
 	url = https://github.com/lixiongguo/OrigamiSimulator.git
 [submodule "cpp/ddg-exercises"]
 	path = cpp/ddg-exercises
-	url = https://github.com/GeometryCollective/ddg-exercises.git
+	url = https://github.com/lixiongguo/ddg-exercises.git
