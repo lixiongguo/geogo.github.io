@@ -25,4 +25,4 @@ assets/renderer/CausticsLens/
 **/bin/
 
 scripts/AccessKey.csv
-cpp/cauchy_viz/build
+**/build/

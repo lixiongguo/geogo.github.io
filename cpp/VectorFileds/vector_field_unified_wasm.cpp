@@ -1,7 +1,5 @@
 #include <emscripten.h>
 
-#include <Eigen/Core>
-#include <Eigen/Geometry>
 #include <Eigen/SparseCholesky>
 #include <Eigen/SparseCore>
 
@@ -14,16 +12,11 @@
 #include <utility>
 #include <vector>
 
+#include "vector_field_topology.hpp"
+
 namespace {
 
-constexpr double kEps = 1e-20;
 constexpr int kRosyN = 4;
-
-struct FaceBasis {
-  Eigen::Vector3d x;
-  Eigen::Vector3d y;
-  Eigen::Vector3d n;
-};
 
 struct EdgeUse {
   int face = -1;
@@ -34,8 +27,10 @@ struct EdgeUse {
 struct InteriorEdgeEq {
   int fi = -1;
   int fj = -1;
-  int va = -1;
-  int vb = -1;
+  int va_f = -1;
+  int vb_f = -1;
+  int va_g = -1;
+  int vb_g = -1;
 };
 
 struct BoundaryConstraint {
@@ -52,39 +47,18 @@ struct Neighbor {
 
 std::vector<float> g_theta;
 double g_lastMs = 0.0;
-int g_lastAlgorithm = 0;  // 1: trivial, 2: complex-poly
+int g_lastAlgorithm = 0;
 
-static inline uint64_t edgeKey(int a, int b) {
-  const uint32_t lo = static_cast<uint32_t>(std::min(a, b));
-  const uint32_t hi = static_cast<uint32_t>(std::max(a, b));
-  return (static_cast<uint64_t>(lo) << 32) | static_cast<uint64_t>(hi);
-}
-
-static std::vector<FaceBasis> buildFaceBases(const float* V_ptr, const int* F_ptr, int F_rows) {
-  std::vector<FaceBasis> bases(static_cast<size_t>(F_rows));
+static std::vector<vf::FaceBasis> buildFaceBases(const float* V_ptr, const int* F_ptr, int F_rows) {
+  std::vector<vf::FaceBasis> bases(static_cast<size_t>(F_rows));
   for (int fi = 0; fi < F_rows; ++fi) {
     const int i0 = F_ptr[fi * 3];
     const int i1 = F_ptr[fi * 3 + 1];
     const int i2 = F_ptr[fi * 3 + 2];
-
     const Eigen::Vector3d p0(V_ptr[i0 * 3], V_ptr[i0 * 3 + 1], V_ptr[i0 * 3 + 2]);
     const Eigen::Vector3d p1(V_ptr[i1 * 3], V_ptr[i1 * 3 + 1], V_ptr[i1 * 3 + 2]);
     const Eigen::Vector3d p2(V_ptr[i2 * 3], V_ptr[i2 * 3 + 1], V_ptr[i2 * 3 + 2]);
-
-    FaceBasis b;
-    b.x = p1 - p0;
-    if (b.x.norm() < 1e-12) b.x = Eigen::Vector3d::UnitX();
-    b.x.normalize();
-
-    b.n = (p1 - p0).cross(p2 - p0);
-    if (b.n.norm() < 1e-12) b.n = Eigen::Vector3d::UnitZ();
-    b.n.normalize();
-
-    b.y = b.n.cross(b.x);
-    if (b.y.norm() < 1e-12) b.y = Eigen::Vector3d::UnitY();
-    b.y.normalize();
-
-    bases[static_cast<size_t>(fi)] = b;
+    bases[static_cast<size_t>(fi)] = vf::buildFaceBasis(p0, p1, p2);
   }
   return bases;
 }
@@ -103,7 +77,7 @@ static void buildTopology(
     for (int e = 0; e < 3; ++e) {
       const int va = tri[e];
       const int vb = tri[(e + 1) % 3];
-      edgeUses[edgeKey(va, vb)].push_back({fi, va, vb});
+      edgeUses[vf::edgeKey(va, vb)].push_back({fi, va, vb});
     }
   }
 
@@ -118,11 +92,9 @@ static void buildTopology(
     if (uses.size() == 2) {
       const EdgeUse& u0 = uses[0];
       const EdgeUse& u1 = uses[1];
-      const int va = std::min(u0.va, u0.vb);
-      const int vb = std::max(u0.va, u0.vb);
-      interiorEdges.push_back({u0.face, u1.face, va, vb});
-      faceAdj[static_cast<size_t>(u0.face)].push_back({u1.face, va, vb});
-      faceAdj[static_cast<size_t>(u1.face)].push_back({u0.face, va, vb});
+      interiorEdges.push_back({u0.face, u1.face, u0.va, u0.vb, u1.va, u1.vb});
+      faceAdj[static_cast<size_t>(u0.face)].push_back({u1.face, u0.va, u0.vb});
+      faceAdj[static_cast<size_t>(u1.face)].push_back({u0.face, u1.va, u1.vb});
     } else if (uses.size() == 1) {
       const EdgeUse& u = uses[0];
       boundaryEdges.push_back({u.face, u.va, u.vb});
@@ -130,65 +102,15 @@ static void buildTopology(
   }
 }
 
-static std::complex<double> unitComplexPowNFromDir(
-    const Eigen::Vector3d& dir,
-    const FaceBasis& b,
-    int n) {
-  Eigen::Vector3d d = dir;
-  const double len = d.norm();
-  if (len < 1e-12) d = b.x;
-  else d /= len;
-
-  const std::complex<double> c(d.dot(b.x), d.dot(b.y));
-  const double ang = std::atan2(c.imag(), c.real()) * static_cast<double>(n);
-  return {std::cos(ang), std::sin(ang)};
-}
-
 static std::complex<double> edgeComplexConjPowN(
     const float* V_ptr,
-    const FaceBasis& b,
+    const vf::FaceBasis& b,
     int va,
     int vb,
     int n) {
-  Eigen::Vector3d e(
-      V_ptr[va * 3] - V_ptr[vb * 3],
-      V_ptr[va * 3 + 1] - V_ptr[vb * 3 + 1],
-      V_ptr[va * 3 + 2] - V_ptr[vb * 3 + 2]);
-  const double l = e.norm();
-  if (l < 1e-12) e = b.x;
-  else e /= l;
-
-  std::complex<double> c(e.dot(b.x), e.dot(b.y));
-  c = std::conj(c);
-  const double ang = std::atan2(c.imag(), c.real()) * static_cast<double>(n);
-  return {std::cos(ang), std::sin(ang)};
-}
-
-static double parallelTransportTau(
-    const FaceBasis& a,
-    const FaceBasis& b,
-    const float* V_ptr,
-    int va,
-    int vb) {
-  Eigen::Vector3d t(
-      V_ptr[vb * 3] - V_ptr[va * 3],
-      V_ptr[vb * 3 + 1] - V_ptr[va * 3 + 1],
-      V_ptr[vb * 3 + 2] - V_ptr[va * 3 + 2]);
-  const double tl = t.norm();
-  if (tl < 1e-12) return 0.0;
-  t /= tl;
-
-  Eigen::Vector3d ua = a.n.cross(t);
-  Eigen::Vector3d ub = b.n.cross(t);
-  const double la = ua.norm();
-  const double lb = ub.norm();
-  if (la < 1e-12 || lb < 1e-12) return 0.0;
-  ua /= la;
-  ub /= lb;
-
-  const double sinb = ua.cross(ub).dot(t);
-  const double cosb = ua.dot(ub);
-  return std::atan2(sinb, cosb);
+  const Eigen::Vector3d posA(V_ptr[va * 3], V_ptr[va * 3 + 1], V_ptr[va * 3 + 2]);
+  const Eigen::Vector3d posB(V_ptr[vb * 3], V_ptr[vb * 3 + 1], V_ptr[vb * 3 + 2]);
+  return vf::edgeConjPowN(posA, posB, b, n);
 }
 
 }  // namespace
@@ -196,7 +118,7 @@ static double parallelTransportTau(
 extern "C" {
 
 EMSCRIPTEN_KEEPALIVE
-int compute_trivial_nrosy_field(float* V_ptr, int V_rows, int* F_ptr, int F_rows) {
+int compute_lc_propagated_field(float* V_ptr, int V_rows, int* F_ptr, int F_rows) {
   (void)V_rows;
   auto t0 = std::chrono::high_resolution_clock::now();
   g_theta.clear();
@@ -205,7 +127,7 @@ int compute_trivial_nrosy_field(float* V_ptr, int V_rows, int* F_ptr, int F_rows
   if (!V_ptr || !F_ptr || F_rows <= 0) return -1;
 
   try {
-    const std::vector<FaceBasis> bases = buildFaceBases(V_ptr, F_ptr, F_rows);
+    const std::vector<vf::FaceBasis> bases = buildFaceBases(V_ptr, F_ptr, F_rows);
     std::vector<InteriorEdgeEq> interiorEdges;
     std::vector<BoundaryConstraint> boundaryEdges;
     std::vector<std::vector<Neighbor>> faceAdj;
@@ -226,13 +148,18 @@ int compute_trivial_nrosy_field(float* V_ptr, int V_rows, int* F_ptr, int F_rows
       size_t qh = 0;
       while (qh < queue.size()) {
         const int fi = queue[qh++];
-        const FaceBasis& fb = bases[static_cast<size_t>(fi)];
+        const vf::FaceBasis& fb = bases[static_cast<size_t>(fi)];
         for (const Neighbor& nb : faceAdj[static_cast<size_t>(fi)]) {
           const int gj = nb.other;
           if (visited[static_cast<size_t>(gj)]) continue;
-          const FaceBasis& gb = bases[static_cast<size_t>(gj)];
-          const double tau = parallelTransportTau(fb, gb, V_ptr, nb.va, nb.vb);
-          g_theta[static_cast<size_t>(gj)] = static_cast<float>(g_theta[static_cast<size_t>(fi)] + tau);
+          const vf::FaceBasis& gb = bases[static_cast<size_t>(gj)];
+          const Eigen::Vector3d posA(
+              V_ptr[nb.va * 3], V_ptr[nb.va * 3 + 1], V_ptr[nb.va * 3 + 2]);
+          const Eigen::Vector3d posB(
+              V_ptr[nb.vb * 3], V_ptr[nb.vb * 3 + 1], V_ptr[nb.vb * 3 + 2]);
+          const double tau = vf::lcTransportAngle(fb, gb, posA, posB);
+          g_theta[static_cast<size_t>(gj)] =
+              static_cast<float>(g_theta[static_cast<size_t>(fi)] + tau);
           visited[static_cast<size_t>(gj)] = 1;
           queue.push_back(gj);
         }
@@ -249,6 +176,11 @@ int compute_trivial_nrosy_field(float* V_ptr, int V_rows, int* F_ptr, int F_rows
 }
 
 EMSCRIPTEN_KEEPALIVE
+int compute_trivial_nrosy_field(float* V_ptr, int V_rows, int* F_ptr, int F_rows) {
+  return compute_lc_propagated_field(V_ptr, V_rows, F_ptr, F_rows);
+}
+
+EMSCRIPTEN_KEEPALIVE
 int compute_4rosy_field(float* V_ptr, int V_rows, int* F_ptr, int F_rows) {
   (void)V_rows;
   auto t0 = std::chrono::high_resolution_clock::now();
@@ -258,7 +190,7 @@ int compute_4rosy_field(float* V_ptr, int V_rows, int* F_ptr, int F_rows) {
   if (!V_ptr || !F_ptr || F_rows <= 0) return -1;
 
   try {
-    const std::vector<FaceBasis> bases = buildFaceBases(V_ptr, F_ptr, F_rows);
+    const std::vector<vf::FaceBasis> bases = buildFaceBases(V_ptr, F_ptr, F_rows);
 
     std::vector<InteriorEdgeEq> interiorEdges;
     std::vector<BoundaryConstraint> boundaryEdges;
@@ -268,38 +200,43 @@ int compute_4rosy_field(float* V_ptr, int V_rows, int* F_ptr, int F_rows) {
     using SpMat = Eigen::SparseMatrix<std::complex<double>>;
     using Trip = Eigen::Triplet<std::complex<double>>;
 
+    const bool needGauge = boundaryEdges.empty() && F_rows > 0;
     const int rowCount = static_cast<int>(interiorEdges.size()) +
                          static_cast<int>(boundaryEdges.size()) +
-                         ((boundaryEdges.empty() && F_rows > 0) ? 1 : 0);
+                         (needGauge ? 1 : 0);
     std::vector<Trip> trips;
     trips.reserve(static_cast<size_t>(rowCount) * 2);
     Eigen::VectorXcd b = Eigen::VectorXcd::Zero(rowCount);
 
     int r = 0;
     for (const InteriorEdgeEq& e : interiorEdges) {
-      const std::complex<double> ef = edgeComplexConjPowN(V_ptr, bases[static_cast<size_t>(e.fi)], e.va, e.vb, kRosyN);
-      const std::complex<double> eg = edgeComplexConjPowN(V_ptr, bases[static_cast<size_t>(e.fj)], e.va, e.vb, kRosyN);
+      const std::complex<double> ef =
+          edgeComplexConjPowN(V_ptr, bases[static_cast<size_t>(e.fi)], e.va_f, e.vb_f, kRosyN);
+      const std::complex<double> eg =
+          edgeComplexConjPowN(V_ptr, bases[static_cast<size_t>(e.fj)], e.va_g, e.vb_g, kRosyN);
       trips.emplace_back(r, e.fi, ef);
       trips.emplace_back(r, e.fj, -eg);
       ++r;
     }
 
     for (const BoundaryConstraint& bc : boundaryEdges) {
-      const FaceBasis& fb = bases[static_cast<size_t>(bc.fi)];
+      const vf::FaceBasis& fb = bases[static_cast<size_t>(bc.fi)];
       Eigen::Vector3d p0(V_ptr[bc.va * 3], V_ptr[bc.va * 3 + 1], V_ptr[bc.va * 3 + 2]);
       Eigen::Vector3d p1(V_ptr[bc.vb * 3], V_ptr[bc.vb * 3 + 1], V_ptr[bc.vb * 3 + 2]);
-      Eigen::Vector3d dir = p0 - p1;
-      const double dl = dir.norm();
-      if (dl < 1e-12) dir = fb.x;
-      else dir /= dl;
-      const Eigen::Vector3d pp = dir.cross(fb.n);
-      const std::complex<double> zn = unitComplexPowNFromDir(pp, fb, kRosyN);
+      Eigen::Vector3d edgeTan = p1 - p0;
+      const double dl = edgeTan.norm();
+      if (dl < 1e-12) edgeTan = fb.x;
+      else edgeTan /= dl;
+      Eigen::Vector3d inPlane = edgeTan - edgeTan.dot(fb.n) * fb.n;
+      if (inPlane.norm() < 1e-12) inPlane = fb.y;
+      else inPlane.normalize();
+      const std::complex<double> zn = vf::directionConjPowN(inPlane, fb, kRosyN);
       trips.emplace_back(r, bc.fi, std::complex<double>(1.0, 0.0));
       b[r] = zn;
       ++r;
     }
 
-    if (boundaryEdges.empty() && F_rows > 0) {
+    if (needGauge) {
       trips.emplace_back(r, 0, std::complex<double>(1.0, 0.0));
       b[r] = std::complex<double>(1.0, 0.0);
       ++r;
@@ -311,10 +248,9 @@ int compute_4rosy_field(float* V_ptr, int V_rows, int* F_ptr, int F_rows) {
     SpMat ATA = AH * A;
     Eigen::VectorXcd rhs = AH * b.head(r);
 
-    // Regularisation: add small diagonal to improve conditioning
-    // (critical for closed meshes where only 1 constraint is added)
-    for (int fi = 0; fi < F_rows; ++fi)
-      ATA.coeffRef(fi, fi) += std::complex<double>(1e-6, 0.0);
+    for (int fi = 0; fi < F_rows; ++fi) {
+      ATA.coeffRef(fi, fi) += std::complex<double>(1e-8, 0.0);
+    }
 
     Eigen::SimplicialLDLT<SpMat> solver;
     solver.compute(ATA);
@@ -326,7 +262,7 @@ int compute_4rosy_field(float* V_ptr, int V_rows, int* F_ptr, int F_rows) {
     g_theta.resize(static_cast<size_t>(F_rows), 0.0f);
     for (int fi = 0; fi < F_rows; ++fi) {
       const std::complex<double> z = x[fi];
-      if (std::isfinite(z.real()) && std::isfinite(z.imag()) && std::abs(z) > kEps) {
+      if (std::isfinite(z.real()) && std::isfinite(z.imag()) && std::abs(z) > vf::kEps) {
         g_theta[static_cast<size_t>(fi)] =
             static_cast<float>(std::atan2(z.imag(), z.real()) / static_cast<double>(kRosyN));
       }

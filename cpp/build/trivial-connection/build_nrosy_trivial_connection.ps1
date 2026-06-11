@@ -11,6 +11,7 @@ $ErrorActionPreference = "Stop"
 $buildRoot = Split-Path -Parent $PSScriptRoot
 $cppRoot   = Split-Path -Parent $buildRoot
 $repoRoot  = Split-Path -Parent $cppRoot
+$vfRoot    = Join-Path $cppRoot "VectorFileds"
 $srcRoot   = Join-Path $cppRoot "conformal-parameterization"
 $simpleDir = Join-Path $srcRoot "uv_unwrap_simple"
 $eigenInc  = Join-Path $cppRoot "deps\eigen-3.3.9"
@@ -39,11 +40,11 @@ if (!$cl) {
 New-Item -ItemType Directory -Path $outBinDir -Force | Out-Null
 
 $sources = @(
-    (Join-Path $PSScriptRoot "nrosy_trivial_connection.cpp"),
+    (Join-Path $vfRoot "nrosy_trivial_connection.cpp"),
     (Join-Path $srcRoot "Mesh.cpp"),
     (Join-Path $srcRoot "MeshIO.cpp"),
     (Join-Path $srcRoot "Parameterization.cpp"),
-    (Join-Path $srcRoot "QcError.cpp"),
+    (Join-Path $srcRoot "geometry\QcError.cpp"),
     (Join-Path $srcRoot "Vertex.cpp"),
     (Join-Path $srcRoot "Edge.cpp"),
     (Join-Path $srcRoot "Face.cpp"),
@@ -54,6 +55,7 @@ $sources = @(
 $includes = @(
     "/I`"$srcRoot`"",
     "/I`"$simpleDir`"",
+    "/I`"$vfRoot`"",
     "/I`"$eigenInc`""
 )
 

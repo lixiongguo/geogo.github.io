@@ -228,4 +228,49 @@ $$
 |\psi^c(x) - \psi^c(x')| \leq \|x - x'\|
 $$
 
-（三角不等式直接推出）。Kantorovich-Rubinstein 对偶正是把一般对偶化简为单个 1-Lipschitz 函数 $$f = -\psi^c$$ 的情形——这也是 WGAN 中 critic 必须满足 Lipschitz 约束的来源（详见后文 WGAN 一节）。
+（三角不等式直接推出）。Kantorovich-Rubinstein 对偶正是把一般对偶化简为单个 1-Lipschitz 函数 $$f = -\psi^c$$ 的情形——这也是 WGAN 中 critic 必须满足 Lipschitz 约束的来源。
+
+---
+
+## WGAN 与最优传输
+
+WGAN（Arjovsky et al. 2017）是 Kantorovich 对偶在机器学习中最为人熟知的应用。原始 GAN 用 JS 散度度量分布距离，但两分布支撑不交时 JS 散度为常数 $\log 2$，梯度消失导致训练崩溃。WGAN 用 **Wasserstein-1 距离**替代 JS 散度：
+
+$$
+\boxed{W_1(P_r, P_g) = \min_{\pi \in \Pi(P_r,P_g)} \int \|x-y\| \, d\pi(x,y)}
+$$
+
+### Kantorovich-Rubinstein 对偶形式
+
+以上原始问题涉及高维耦合变量 $\pi$，难以直接计算。利用 Kantorovich 对偶（See §Kantorovich 对偶），当代价 $c(x,y) = \|x-y\|$ 时：
+
+$$
+\boxed{W_1(P_r, P_g) = \sup_{\|f\|_L \leq 1} \Big[ \mathbb{E}_{x\sim P_r}[f(x)] - \mathbb{E}_{x\sim P_g}[f(x)] \Big]}
+$$
+
+其中 $\|f\|_L \leq 1$ 表示 $f$ 是 1-Lipschitz 函数：$|f(x)-f(y)| \leq \|x-y\|$。推导来自一般对偶的化简——约束 $\phi(x)+\psi(y) \leq \|x-y\|$ 在 $W_1$ 代价下退化为 $\phi = -f,\; \psi = f$，且 $f$ 自动 1-Lipschitz。
+
+WGAN 中的 **critic**（或 discriminator）$f_w$ 正是 Kantorovich 势在 KR 对偶中的化身：$f$ 最大化 $\mathbb{E}_{P_r}[f] - \mathbb{E}_{P_g}[f]$，其梯度指导生成器的更新方向。
+
+### WGAN 与原始 GAN 的区别
+
+| 维度 | 原始 GAN | WGAN |
+|:---|:---|:---|
+| 判别器 | 概率（sigmoid） | 标量分数（无激活） |
+| 分布度量 | JS 散度 | $W_1$（Earth Mover's Distance） |
+| Lipschitz | 无约束 | Weight Clip / Gradient Penalty / Spectral Norm |
+| 梯度行为 | 支撑不交时消失 | 平滑、始终有意义 |
+| 训练稳定性 | 差，易模式坍塌 | 显著改善 |
+
+### 与最优传输理论的对应
+
+| 最优传输 | WGAN |
+|:---|:---|
+| Monge 问题 | 生成器 $G: z \mapsto x$（决定性的推前映射） |
+| Kantorovich 问题 | $W_1(P_r, P_g)$（Earth Mover's Distance） |
+| Kantorovich 对偶 | $W_1 = \sup_{\|f\|_L \leq 1} \mathbb{E}_{P_r}[f] - \mathbb{E}_{P_g}[f]$ |
+| Kantorovich 势 $\phi,\psi$ | Critic $f$ |
+| 代价 $c(x,y)=\|x-y\|$ | 1-Wasserstein 距离的度量 |
+| 1-Lipschitz 约束 | Weight Clip / Gradient Penalty / Spectral Norm |
+
+> 生成器 $G(z)$ 天然是一个 **Monge 映射**——将低维噪声分布推前为数据分布。WGAN 用 Kantorovich 松弛度量该映射质量，用 critic 梯度改进映射。这是最优传输理论在深度学习中最直接的应用实例。

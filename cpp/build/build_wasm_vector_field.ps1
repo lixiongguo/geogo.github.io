@@ -7,7 +7,8 @@ $outDir = Join-Path $repoRoot "assets\wasm"
 
 $emsdkPath = Join-Path $cppRoot "emsdk"
 $eigenInc = Join-Path $cppRoot "deps\eigen-3.4.0"
-$srcFile = Join-Path $cppRoot "VectorFileds\vector_field_unified_wasm.cpp"
+$vfDir   = Join-Path $cppRoot "VectorFileds"
+$srcFile = Join-Path $vfDir "vector_field_unified_wasm.cpp"
 
 if (!(Test-Path (Join-Path $emsdkPath "emsdk_env.ps1"))) {
   Write-Host "[ERROR] emsdk not found: $emsdkPath" -ForegroundColor Red
@@ -41,6 +42,7 @@ Write-Host "  Output: $output" -ForegroundColor Cyan
 & $emxx.Source `
   -std=c++17 -O2 -flto `
   "-I$eigenInc" `
+  "-I$vfDir" `
   -s MODULARIZE=1 `
   -s EXPORT_NAME="VectorFieldSolver" `
   -s ALLOW_MEMORY_GROWTH=1 `
