@@ -13,4 +13,7 @@
 	url = https://github.com/nmwsharp/polyscope.git
 [submodule "origami-simulator"]
 	path = origami-simulator
-	url = https://github.com/amandaghassaei/OrigamiSimulator.git
+	url = https://github.com/lixiongguo/OrigamiSimulator.git
+[submodule "cpp/ddg-exercises"]
+	path = cpp/ddg-exercises
+	url = https://github.com/GeometryCollective/ddg-exercises.git
