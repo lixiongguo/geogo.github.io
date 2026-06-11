@@ -1,9 +1,3 @@
----
-layout: post
-title: "曲面展开-BFF边界优先展开"
-categories: [Parameterization, "Parameterization-ConformalMapping"]
----
-
 ## 2.5边界自动调整方法 BFF (Boundary First Flattening)
 
 
