@@ -15,9 +15,9 @@
 
 #include "Mesh.h"
 #include "MeshIO.h"
-#include "uv_unwrap_field/QuadCover.h"
-#include "uv_unwrap_field/MIQQuad.h"
-#include "uv_unwrap_field/HolomorphicOneForm.h"
+#include "QuadCover.h"
+#include "MIQQuad.h"
+#include "HolomorphicOneForm.h"
 
 namespace {
 
@@ -31,7 +31,7 @@ public:
     using QuadCover::smoothCrossField;
     using QuadCover::computeMatching;
     using QuadCover::computeLayerShift;
-    using QuadCover::faceDirs;
+    using QuadCover::getCrossField;
     using QuadCover::matching;
     using QuadCover::edgeList;
 };
@@ -127,12 +127,13 @@ bool ensureQuadCoverInit()
 void snapshotFaceDirsFromQC()
 {
     if (!g_qc) return;
-    const int nF = static_cast<int>(g_qc->faceDirs.rows());
+    const auto& dirs = g_qc->getCrossField();
+    const int nF = static_cast<int>(dirs.rows());
     g_face_dirs.resize(static_cast<size_t>(nF) * 3);
     for (int fi = 0; fi < nF; ++fi) {
-        g_face_dirs[static_cast<size_t>(fi) * 3] = g_qc->faceDirs(fi, 0);
-        g_face_dirs[static_cast<size_t>(fi) * 3 + 1] = g_qc->faceDirs(fi, 1);
-        g_face_dirs[static_cast<size_t>(fi) * 3 + 2] = g_qc->faceDirs(fi, 2);
+        g_face_dirs[static_cast<size_t>(fi) * 3] = dirs(fi, 0);
+        g_face_dirs[static_cast<size_t>(fi) * 3 + 1] = dirs(fi, 1);
+        g_face_dirs[static_cast<size_t>(fi) * 3 + 2] = dirs(fi, 2);
     }
 }
 

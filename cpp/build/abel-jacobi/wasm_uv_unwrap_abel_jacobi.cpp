@@ -16,7 +16,7 @@
 
 #include "Mesh.h"
 #include "MeshIO.h"
-#include "Abel_Jacoi/AbelJacobiParameterization.h"
+#include "AbelJacobiParameterization.h"
 
 namespace {
 

@@ -7,7 +7,8 @@ $outDir = Join-Path $repoRoot "assets\wasm"
 
 $emsdkPath = Join-Path $cppRoot "emsdk"
 $eigenInc = Join-Path $cppRoot "deps\eigen-3.4.0"
-$vfDir   = Join-Path $cppRoot "VectorFileds"
+$vfDir   = Join-Path $cppRoot "conformal-parameterization\VectorFileds"
+$srcRoot = Join-Path $cppRoot "conformal-parameterization"
 $srcFile = Join-Path $vfDir "vector_field_unified_wasm.cpp"
 
 if (!(Test-Path (Join-Path $emsdkPath "emsdk_env.ps1"))) {
@@ -35,13 +36,27 @@ if (!$emxx) {
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 $output = Join-Path $outDir "vector_field_solver.js"
 
+$sources = @(
+    $srcFile,
+    (Join-Path $vfDir "NRosyVectorFields.cpp"),
+    (Join-Path $srcRoot "BaseMesh\Mesh.cpp"),
+    (Join-Path $srcRoot "BaseMesh\MeshIO.cpp"),
+    (Join-Path $srcRoot "BaseMesh\Vertex.cpp"),
+    (Join-Path $srcRoot "BaseMesh\Edge.cpp"),
+    (Join-Path $srcRoot "BaseMesh\Face.cpp"),
+    (Join-Path $srcRoot "BaseMesh\HalfEdge.cpp"),
+    (Join-Path $vfDir "PrincipalCurvatureField.cpp")
+)
+
 Write-Host "Building vector_field_solver wasm..." -ForegroundColor Cyan
-Write-Host "  Source: $srcFile" -ForegroundColor Cyan
+Write-Host "  Sources: $($sources.Count) files" -ForegroundColor Cyan
 Write-Host "  Output: $output" -ForegroundColor Cyan
 
 & $emxx.Source `
   -std=c++17 -O2 -flto `
   "-I$eigenInc" `
+  "-I$srcRoot" `
+  "-I$(Join-Path $srcRoot 'BaseMesh')" `
   "-I$vfDir" `
   -s MODULARIZE=1 `
   -s EXPORT_NAME="VectorFieldSolver" `
@@ -52,7 +67,7 @@ Write-Host "  Output: $output" -ForegroundColor Cyan
   -s FORCE_FILESYSTEM=0 `
   -s ENVIRONMENT=web `
   "-s" "EXPORTED_FUNCTIONS=['_malloc','_free','_compute_trivial_nrosy_field','_compute_4rosy_field','_get_nrosy_theta','_get_nrosy_theta_size','_get_nrosy_last_time_ms','_get_nrosy_last_algorithm']" `
-  $srcFile `
+  $sources `
   -o $output
 
 if ($LASTEXITCODE -ne 0) {

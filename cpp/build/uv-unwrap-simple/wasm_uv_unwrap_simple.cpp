@@ -22,7 +22,7 @@
 #include "Cetm.h"
 #include "RicciFlow.h"
 #include "ARAP.h"
-#include "geometry/QcError.h"
+#include "QcError.h"
 
 static Mesh* g_mesh = nullptr;
 static double g_lastTimeMs = 0.0;

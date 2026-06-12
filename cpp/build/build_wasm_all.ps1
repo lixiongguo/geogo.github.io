@@ -64,8 +64,27 @@ function Build-Target($name, $sources, $exportName, $funcs, $output, [string[]]$
     $efile = Write-Efile $name $funcs
     $includeFlags = @(
         "-I$srcRoot",
-        "-I$(Join-Path $srcRoot "uv_unwrap_simple")",
-        "-I$(Join-Path $srcRoot "Mosek")",
+        "-I$(Join-Path $srcRoot "BaseMesh")",
+        "-I$(Join-Path $srcRoot "CutSeamMesh")",
+        "-I$(Join-Path $srcRoot "Parameterization")",
+        "-I$(Join-Path $srcRoot "Parameterization\SimpleParam")",
+        "-I$(Join-Path $srcRoot "Parameterization\SimpleParam\LSCM")",
+        "-I$(Join-Path $srcRoot "Parameterization\SimpleParam\ABF")",
+        "-I$(Join-Path $srcRoot "Parameterization\SimpleParam\ARAP")",
+        "-I$(Join-Path $srcRoot "Parameterization\SimpleParam\Bounded")",
+        "-I$(Join-Path $srcRoot "Parameterization\ConeParam")",
+        "-I$(Join-Path $srcRoot "Parameterization\ConeParam\Conformal")",
+        "-I$(Join-Path $srcRoot "Parameterization\ConeParam\RicciFlow")",
+        "-I$(Join-Path $srcRoot "Parameterization\ConeParam\IncrementalFlattenning")",
+        "-I$(Join-Path $srcRoot "Parameterization\CutSeamParam")",
+        "-I$(Join-Path $srcRoot "Parameterization\CutSeamParam\BFF")",
+        "-I$(Join-Path $srcRoot "Parameterization\CutSeamParam\HoloOneForm")",
+        "-I$(Join-Path $srcRoot "Parameterization\CutSeamParam\Abel_Jacoi")",
+        "-I$(Join-Path $srcRoot "Parameterization\GlobalFieldsParam")",
+        "-I$(Join-Path $srcRoot "Solvers")",
+        "-I$(Join-Path $srcRoot "Solvers\Mosek")",
+        "-I$(Join-Path $srcRoot "VectorFileds")",
+        "-I$(Join-Path $srcRoot "Topology")",
         "-I$eigenInc",
         "-I$glmInc"
     ) + $ExtraIncludes
@@ -86,7 +105,7 @@ function Build-Target($name, $sources, $exportName, $funcs, $output, [string[]]$
         "-s", "EXPORTED_FUNCTIONS=$efile"
     ) + $sources + @("-o", $output)
 
-    & $emxx.Source @args
+    & $emxx.Source @args 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "Build failed: $name"
     }
@@ -94,58 +113,63 @@ function Build-Target($name, $sources, $exportName, $funcs, $output, [string[]]$
 }
 
 $meshSrcs = @(
-    "Mesh.cpp",
-    "MeshIO.cpp",
-    "Solver.cpp",
-    "Parameterization.cpp",
-    "Vertex.cpp",
-    "Edge.cpp",
-    "Face.cpp",
-    "HalfEdge.cpp"
+    "BaseMesh\Mesh.cpp",
+    "BaseMesh\MeshIO.cpp",
+    "Solvers\Solver.cpp",
+    "Parameterization\Parameterization.cpp",
+    "BaseMesh\Vertex.cpp",
+    "BaseMesh\Edge.cpp",
+    "BaseMesh\Face.cpp",
+    "BaseMesh\HalfEdge.cpp",
+    "CutSeamMesh\CutSeamMesh.cpp"
 ) | ForEach-Object { Join-Path $srcRoot $_ }
 
 $uvSimpleSources = @(
     (Join-Path $buildRoot "uv-unwrap-simple\wasm_uv_unwrap_simple.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_simple\Lscm.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_simple\Tutte.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_simple\Scp.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_simple\CirclePatterns.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_simple\AugmentedLagrangian.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_simple\Cetm.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_simple\RicciFlow.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_simple\LinAbf.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_simple\AbfPlusPlus.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_simple\ARAP.cpp"),
-    (Join-Path $srcRoot "geometry\QcError.cpp")
+    (Join-Path $srcRoot "Parameterization\SimpleParam\LSCM\Lscm.cpp"),
+    (Join-Path $srcRoot "Parameterization\SimpleParam\ARAP\Tutte.cpp"),
+    (Join-Path $srcRoot "Parameterization\SimpleParam\LSCM\Scp.cpp"),
+    (Join-Path $srcRoot "Parameterization\ConeParam\ConeParameterization.cpp"),
+    (Join-Path $srcRoot "Parameterization\ConeParam\Conformal\CirclePatterns.cpp"),
+    (Join-Path $srcRoot "Parameterization\SimpleParam\ABF\AugmentedLagrangian.cpp"),
+    (Join-Path $srcRoot "Parameterization\ConeParam\Conformal\Cetm.cpp"),
+    (Join-Path $srcRoot "Parameterization\ConeParam\RicciFlow\RicciFlow.cpp"),
+    (Join-Path $srcRoot "Parameterization\SimpleParam\ABF\LinAbf.cpp"),
+    (Join-Path $srcRoot "Parameterization\SimpleParam\ABF\AbfPlusPlus.cpp"),
+    (Join-Path $srcRoot "Parameterization\SimpleParam\ARAP\ARAP.cpp"),
+    (Join-Path $srcRoot "BaseMesh\QcError.cpp")
 ) + $meshSrcs
 
 $dgpBasicSources = @(
     (Join-Path $buildRoot "dgp-basic\wasm_dgp_basic.cpp"),
-    (Join-Path $srcRoot "geometry\GaussianCurvature.cpp"),
-    (Join-Path $srcRoot "geometry\PrincipalCurvatureField.cpp")
+    (Join-Path $srcRoot "BaseMesh\GaussianCurvature.cpp"),
+    (Join-Path $srcRoot "VectorFileds\NRosyVectorFields.cpp"),
+    (Join-Path $srcRoot "VectorFileds\PrincipalCurvatureField.cpp")
 ) + $meshSrcs
 
 $uvFieldSources = @(
     (Join-Path $buildRoot "uv-unwrap-field\wasm_uv_unwrap_field.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_field\QuadCover.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_field\CrossFieldIntegerProgram.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_field\MIQQuad.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_field\HolomorphicOneForm.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_simple\Lscm.cpp"),
-    (Join-Path $srcRoot "geometry\PrincipalCurvatureField.cpp"),
-    (Join-Path $srcRoot "geometry\QcError.cpp")
+    (Join-Path $srcRoot "Parameterization\GlobalFieldsParam\GlobalFieldsParameterization.cpp"),
+    (Join-Path $srcRoot "Parameterization\GlobalFieldsParam\QuadCover.cpp"),
+    (Join-Path $srcRoot "Solvers\CrossFieldIntegerProgram.cpp"),
+    (Join-Path $srcRoot "Parameterization\GlobalFieldsParam\MIQQuad.cpp"),
+    (Join-Path $srcRoot "Parameterization\CutSeamParam\HoloOneForm\HolomorphicOneForm.cpp"),
+    (Join-Path $srcRoot "Parameterization\SimpleParam\LSCM\Lscm.cpp"),
+    (Join-Path $srcRoot "VectorFileds\NRosyVectorFields.cpp"),
+    (Join-Path $srcRoot "VectorFileds\PrincipalCurvatureField.cpp"),
+    (Join-Path $srcRoot "BaseMesh\QcError.cpp")
 ) + $meshSrcs
 
 $abelJacobiSources = @(
     (Join-Path $buildRoot "abel-jacobi\wasm_uv_unwrap_abel_jacobi.cpp"),
-    (Join-Path $srcRoot "Abel_Jacoi\AbelJacobi.cpp"),
-    (Join-Path $srcRoot "Abel_Jacoi\AbelJacobiParameterization.cpp"),
-    (Join-Path $srcRoot "uv_unwrap_simple\Lscm.cpp"),
-    (Join-Path $srcRoot "QcError.cpp")
+    (Join-Path $srcRoot "Parameterization\CutSeamParam\Abel_Jacoi\AbelJacobi.cpp"),
+    (Join-Path $srcRoot "Parameterization\CutSeamParam\Abel_Jacoi\AbelJacobiParameterization.cpp"),
+    (Join-Path $srcRoot "Parameterization\SimpleParam\LSCM\Lscm.cpp"),
+    (Join-Path $srcRoot "BaseMesh\QcError.cpp")
 ) + $meshSrcs
 
 $abelJacobiIncludes = @(
-    "-I$(Join-Path $srcRoot "Abel_Jacoi")"
+    "-I$(Join-Path $srcRoot "Parameterization\Others\Abel_Jacoi")"
 )
 
 $targetSet = @{}
@@ -263,7 +287,7 @@ if ($buildAll -or $targetSet.ContainsKey("omt")) {
 
 Write-Host ""
 Write-Host "Output files in ${outDir}:" -ForegroundColor Yellow
-@("uv_unwrap_simple.*", "uv_unwrap_field.*", "uv_unwrap_abel_jacobi.*") | ForEach-Object {
+@("uv_unwrap_simple.*", "dgp_basic.*", "uv_unwrap_field.*", "uv_unwrap_abel_jacobi.*") | ForEach-Object {
     Get-ChildItem -Path $outDir -Filter $_ -ErrorAction SilentlyContinue | ForEach-Object {
         $size = "{0,8:N1} KB" -f ($_.Length / 1024)
         Write-Host "  $size  $($_.Name)" -ForegroundColor White

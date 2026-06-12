@@ -11,10 +11,13 @@ $ErrorActionPreference = "Stop"
 $buildRoot = Split-Path -Parent $PSScriptRoot
 $cppRoot   = Split-Path -Parent $buildRoot
 $repoRoot  = Split-Path -Parent $cppRoot
-$vfRoot    = Join-Path $cppRoot "VectorFileds"
 $srcRoot   = Join-Path $cppRoot "conformal-parameterization"
-$simpleDir = Join-Path $srcRoot "uv_unwrap_simple"
-$eigenInc  = Join-Path $cppRoot "deps\eigen-3.3.9"
+$vfRoot    = Join-Path $srcRoot "VectorFileds"
+$baseMeshDir = Join-Path $srcRoot "BaseMesh"
+$solverDir = Join-Path $srcRoot "Solvers"
+$paramDir  = Join-Path $srcRoot "Parameterization"
+$lscmDir   = Join-Path $paramDir "LSCM"
+$eigenInc  = Join-Path $cppRoot "deps\eigen-3.4.0"
 $outBinDir = Join-Path $PSScriptRoot "bin"
 $exe       = Join-Path $outBinDir "nrosy_trivial_connection.exe"
 
@@ -41,21 +44,25 @@ New-Item -ItemType Directory -Path $outBinDir -Force | Out-Null
 
 $sources = @(
     (Join-Path $vfRoot "nrosy_trivial_connection.cpp"),
-    (Join-Path $srcRoot "Mesh.cpp"),
-    (Join-Path $srcRoot "MeshIO.cpp"),
-    (Join-Path $srcRoot "Parameterization.cpp"),
-    (Join-Path $srcRoot "geometry\QcError.cpp"),
-    (Join-Path $srcRoot "Vertex.cpp"),
-    (Join-Path $srcRoot "Edge.cpp"),
-    (Join-Path $srcRoot "Face.cpp"),
-    (Join-Path $srcRoot "HalfEdge.cpp"),
-    (Join-Path $simpleDir "Lscm.cpp")
+    (Join-Path $baseMeshDir "Mesh.cpp"),
+    (Join-Path $baseMeshDir "MeshIO.cpp"),
+    (Join-Path $paramDir "Parameterization.cpp"),
+    (Join-Path $baseMeshDir "QcError.cpp"),
+    (Join-Path $baseMeshDir "Vertex.cpp"),
+    (Join-Path $baseMeshDir "Edge.cpp"),
+    (Join-Path $baseMeshDir "Face.cpp"),
+    (Join-Path $baseMeshDir "HalfEdge.cpp"),
+    (Join-Path $lscmDir "Lscm.cpp")
 )
 
 $includes = @(
     "/I`"$srcRoot`"",
-    "/I`"$simpleDir`"",
+    "/I`"$baseMeshDir`"",
+    "/I`"$paramDir`"",
+    "/I`"$lscmDir`"",
+    "/I`"$solverDir`"",
     "/I`"$vfRoot`"",
+    "/I`"$(Join-Path $srcRoot 'Topology')`"",
     "/I`"$eigenInc`""
 )
 

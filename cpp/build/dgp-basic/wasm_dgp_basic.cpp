@@ -24,8 +24,8 @@
 #include "Mesh.h"
 #include "MeshIO.h"
 
-#include "geometry/GaussianCurvature.h"
-#include "geometry/PrincipalCurvatureField.h"
+#include "GaussianCurvature.h"
+#include "PrincipalCurvatureField.h"
 
 static Mesh* g_mesh = nullptr;
 static std::vector<double> g_gc;

@@ -1,19 +1,67 @@
 # WASM 编译与测试指南
 
-当前只打包 `uv_unwrap_simple`，对应页面 `uv-unwrap.html`，包含 **Tutte / LSCM / SCP** 和 QC 扭曲计算。
+当前已打包多个 WASM 目标，包括 **uv_unwrap_simple**、**dgp_basic**、**uv_unwrap_field**、**abel_jacobi** 和 **omt**，对应多个页面。
 
 ## 目录结构
 
 ```
 cpp/
 ├── build/                                      # WASM 打包入口
-│   ├── build_wasm_all.ps1                      # Windows 构建脚本，目前只构建 uv_unwrap_simple
-│   └── uv-unwrap-simple/
-│       ├── wasm_uv_unwrap_simple.cpp           # WASM C 接口
-│       └── build_wasm_uv_unwrap_simple.ps1     # 只构建 simple 包
-├── conformal-parameterization/                 # 参数化算法源码
-│   ├── Mesh.cpp / Mesh.h 等公共 half-edge 网格代码
-│   └── uv_unwrap_simple/                       # LSCM / Tutte / SCP 算法实现
+│   ├── build_wasm_all.ps1                      # Windows 统一构建脚本（支持 5 个目标）
+│   ├── build_wasm_vector_field.ps1             # 向量场求解器单独构建脚本
+│   ├── build_wasm_power_diagram.ps1            # Power Diagram 单独构建脚本
+│   ├── Makefile                                # Linux/Mac Makefile
+│   ├── WASM_BUILD_GUIDE.md                     # 本文档
+│   ├── uv-unwrap-simple/
+│   │   └── wasm_uv_unwrap_simple.cpp           # WASM C 接口 (uv_unwrap_simple)
+│   ├── dgp-basic/
+│   │   └── wasm_dgp_basic.cpp                  # WASM C 接口 (dgp_basic)
+│   ├── uv-unwrap-field/
+│   │   └── wasm_uv_unwrap_field.cpp            # WASM C 接口 (uv_unwrap_field)
+│   ├── abel-jacobi/
+│   │   └── wasm_uv_unwrap_abel_jacobi.cpp      # WASM C 接口 (abel_jacobi)
+│   └── omt/
+│       └── wasm_omt.cpp                        # WASM C 接口 (omt)
+├── conformal-parameterization/                 # 参数化算法源码（新目录结构）
+│   ├── BaseMesh/                               # 网格基础数据结构
+│   │   ├── Mesh.cpp / Mesh.h
+│   │   ├── Vertex.cpp / Vertex.h
+│   │   ├── Edge.cpp / Edge.h
+│   │   ├── Face.cpp / Face.h
+│   │   ├── HalfEdge.cpp / HalfEdge.h
+│   │   ├── MeshIO.cpp / MeshIO.h
+│   │   ├── QcError.cpp / QcError.h
+│   │   ├── GaussianCurvature.cpp / GaussianCurvature.h
+│   │   └── Types.h
+│   ├── CutSeamMesh/                            # 基于 BaseMesh 的 seam cut 网格扩展
+│   │   └── CutSeamMesh.cpp / CutSeamMesh.h
+│   ├── Parameterization/                       # 参数化算法
+│   │   ├── Parameterization.cpp / .h           # 基类
+│   │   ├── LSCM/                               # LSCM, SCP
+│   │   ├── ABF/                                # ABF++, LinABF, AugmentedLagrangian
+│   │   ├── ARAP/                               # ARAP, Tutte
+│   │   ├── BFF/                                # Boundary First Flattening
+│   │   ├── Bounded/                            # Bounded LSCM
+│   │   ├── Conformal/                          # CETM, CirclePatterns
+│   │   ├── HoloOneForm/                        # Holomorphic One-Form
+│   │   ├── IncrementalFlattenning/             # Incremental Flattening
+│   │   ├── QuadCover/                          # QuadCover
+│   │   ├── RicciFlow/                          # Ricci Flow
+│   │   ├── uv_unwrap_field/                    # MIQQuad, PGP
+│   │   └── Abel_Jacoi/                         # Abel-Jacobi 全局参数化
+│   ├── Solvers/                                # 求解器
+│   │   ├── Solver.cpp / Solver.h
+│   │   ├── CrossFieldIntegerProgram.cpp / .h
+│   │   ├── QPSolver.h
+│   │   └── Mosek/
+│   ├── Topology/                               # 拓扑工具
+│   │   └── TreeCotreeBasis.h
+│   └── VectorFileds/                           # 向量场
+│       ├── PrincipalCurvatureField.cpp / .h
+│       ├── ComplexPolyField.cpp / .h
+│       ├── trivial_connection.cpp
+│       ├── nrosy_trivial_connection.cpp
+│       └── vector_field_unified_wasm.cpp
 ├── deps/
 │   ├── eigen-3.4.0/
 │   └── glm/
@@ -22,14 +70,19 @@ cpp/
 
 ## WASM 模块
 
-| Target | 输出文件（js/wasm） | 入口源文件 | 算法依赖 |
-|--------|---------------------|-----------|---------|
-| `uv_unwrap_simple` | `uv_unwrap_simple.js/wasm` | `cpp/build/uv-unwrap-simple/wasm_uv_unwrap_simple.cpp` | `uv_unwrap_simple/Lscm.cpp`、`Tutte.cpp`、`Scp.cpp`、`QcError.cpp`、公共 Mesh |
+| Target | 别名 | 输出文件（js/wasm） | 入口源文件 | 算法依赖 |
+|--------|------|---------------------|-----------|---------|
+| `uv_unwrap_simple` | `simple` | `uv_unwrap_simple.js/wasm` | `cpp/build/uv-unwrap-simple/wasm_uv_unwrap_simple.cpp` | LSCM, Tutte, SCP, LinABF, ABF++, ARAP, CirclePatterns, CETM, RicciFlow, QcError |
+| `dgp_basic` | `dgp` | `dgp_basic.js/wasm` | `cpp/build/dgp-basic/wasm_dgp_basic.cpp` | GaussianCurvature, PrincipalCurvatureField |
+| `uv_unwrap_field` | `field` | `uv_unwrap_field.js/wasm` | `cpp/build/uv-unwrap-field/wasm_uv_unwrap_field.cpp` | QuadCover, MIQQuad, HolomorphicOneForm, LSCM, QcError |
+| `abel_jacobi` | `global_cross_fields` | `uv_unwrap_abel_jacobi.js/wasm` | `cpp/build/abel-jacobi/wasm_uv_unwrap_abel_jacobi.cpp` | AbelJacobi, AbelJacobiParameterization, LSCM, QcError |
+| `omt` | — | `omt_solver.js/wasm` | `cpp/build/omt/wasm_omt.cpp` | OMT Image Interpolation |
 
 ### 公共依赖
 
-- `MESH_SRCS`：`Mesh.cpp MeshIO.cpp Parameterization.cpp Vertex.cpp Edge.cpp Face.cpp HalfEdge.cpp`
-- `SOLVER_SRCS`：`Solver.cpp QcError.cpp`
+- `MESH_SRCS`：`BaseMesh/Mesh.cpp MeshIO.cpp Vertex.cpp Edge.cpp Face.cpp HalfEdge.cpp` 和 `CutSeamMesh/CutSeamMesh.cpp`
+- `SOLVER_SRCS`：`Solvers/Solver.cpp`
+- `PARAMETERIZATION_SRCS`：`Parameterization/Parameterization.cpp`
 - 所有目标均引用 `<Eigen/Core>`（路径：`../deps/eigen-3.4.0`）
 
 ## 编译命令
@@ -40,11 +93,25 @@ cpp/
 # 进入构建目录
 cd cpp\build
 
-# 只编译 Tutte / LSCM / SCP
-.\uv-unwrap-simple\build_wasm_uv_unwrap_simple.ps1
+# 编译所有目标
+.\build_wasm_all.ps1 -Targets all
 
-# 或直接调用
+# 只编译 uv_unwrap_simple
 .\build_wasm_all.ps1 -Targets uv_unwrap_simple
+
+# 编译多个目标
+.\build_wasm_all.ps1 -Targets uv_unwrap_simple,dgp_basic,uv_unwrap_field
+
+# 编译向量场求解器
+.\build_wasm_vector_field.ps1
+```
+
+### Linux/Mac (Makefile)
+
+```bash
+cd cpp/build
+make uv_unwrap_simple
+make clean
 ```
 
 ### 编译参数说明
@@ -177,6 +244,7 @@ sequenceDiagram
 
 | 日期 | 变更 |
 |------|------|
+| 2026-06-12 | 更新所有构建脚本以适配新的 `conformal-parameterization` 目录结构（BaseMesh/Parameterization/Solvers/VectorFileds/Topology）；修复所有源码中的旧路径 include；更新文档 |
 | 2026-05-26 | 按新文件结构改为只打包 `uv_unwrap_simple`（Tutte / LSCM / SCP） |
 | 2026-05-11 | 整理依赖到 `cpp/deps/`，统一 Mac Makefile 和 Windows PowerShell 构建脚本 |
 | 2026-05-11 | 修复 `EXPORTED_FUNCTIONS` 中函数名缺 `_` 前缀的编译错误 |
