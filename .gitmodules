@@ -2,15 +2,9 @@
 	path = cpp/conformal-parameterization
 	url = https://github.com/lixiongguo/conformal-parameterization.git
 	branch = wasm_dev
-[submodule "cpp/emsdk"]
-	path = cpp/emsdk
-	url = https://github.com/emscripten-core/emsdk.git
 [submodule "cpp/Libigl-Discrete-Geometry"]
 	path = cpp/Libigl-Discrete-Geometry
 	url = https://github.com/lixiongguo/Libigl-Discrete-Geometry.git
-[submodule "cpp/deps/polyscope-v2.6.1"]
-	path = cpp/deps/polyscope-v2.6.1
-	url = https://github.com/nmwsharp/polyscope.git
 [submodule "origami-simulator"]
 	path = origami-simulator
 	url = https://github.com/lixiongguo/OrigamiSimulator.git

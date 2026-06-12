@@ -10,6 +10,10 @@ wechat/
 node_modules/
 cpp/Libigl-Discrete-Geometry
 
+# 第三方库：只下载不修改，不作为 submodule 管理
+cpp/emsdk/
+cpp/deps/polyscope-v2.6.1/
+
 # OSS 凭证说明文档（含敏感信息，禁止提交）
 scripts/oss_credentials.md
 
