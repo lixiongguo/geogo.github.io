@@ -151,7 +151,7 @@ $uvFieldSources = @(
     (Join-Path $buildRoot "uv-unwrap-field\wasm_uv_unwrap_field.cpp"),
     (Join-Path $srcRoot "Parameterization\GlobalFieldsParam\GlobalFieldsParameterization.cpp"),
     (Join-Path $srcRoot "Parameterization\GlobalFieldsParam\QuadCover.cpp"),
-    (Join-Path $srcRoot "Solvers\CrossFieldIntegerProgram.cpp"),
+    (Join-Path $srcRoot "Solvers\MixedIntegerProgram.cpp"),
     (Join-Path $srcRoot "Parameterization\GlobalFieldsParam\MIQQuad.cpp"),
     (Join-Path $srcRoot "Parameterization\CutSeamParam\HoloOneForm\HolomorphicOneForm.cpp"),
     (Join-Path $srcRoot "Parameterization\SimpleParam\LSCM\Lscm.cpp"),
