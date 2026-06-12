@@ -35,6 +35,56 @@ TreeMaker 实际有三类优化器：
 2. `tmEdgeOptimizer`：在 scale 固定时，最大化选中边的共同 strain，用于放大/拉长选中的 flap。
 3. `tmStrainOptimizer`：在 scale 固定时，最小化加权平方 strain，用于在额外全局条件下尽量小地扭曲边长。
 
+从圆填充的角度看，TreeMaker 并不是单纯把若干圆塞进正方形，而是把目标模型先抽象成带边长的树。叶节点对应 flap 的尖端和纸面圆心，树上内部边对应连接 flap 的 river 区域；任意两叶节点之间的树路径长度，转化为纸面上这两个顶点必须保持的最小距离。也就是说，圆填充只是 TreeMaker 优化问题的几何直觉，源码中真正求解的是更一般的 tree embedding / circle-river packing 问题。
+
+## 圆填充与 TreeMaker 约束的关系
+
+`2022-05-03-圆填充与折纸.md` 中提到的 circle packing，可以看成 TreeMaker 核心路径约束的一个特例。
+
+若目标树为 `T=(V,E)`，边长为 `l(e)`，两个叶节点 `i,j` 之间的树路径距离为：
+
+```text
+d_T(i,j) = sum l(e), for e on the tree path from i to j
+```
+
+TreeMaker 的基本距离约束是：
+
+```text
+||p_i - p_j|| >= s * d_T(i,j)
+```
+
+当树是 star tree，或者每个 flap 简化成一个以叶节点为圆心的圆时，`d_T(i,j)` 就退化成两个圆半径之和：
+
+```text
+||p_i - p_j|| >= s * (r_i + r_j)
+```
+
+这就是普通圆不相交约束。更一般的树含有内部边，此时 `d_T(i,j)` 还包含中间 river 的长度贡献：
+
+```text
+d_T(i,j) = r_i + r_j + sum internal river lengths
+```
+
+因此 TreeMaker 的路径约束同时表达了三件事：
+
+- flap 圆不能重叠；
+- 中间 river 需要足够宽/长的纸带空间；
+- 纸面中圆和 river 的相邻关系应与目标树结构一致。
+
+需要注意的是，数学笔记中常把约束平方化写成：
+
+```text
+||p_i - p_j||^2 - s^2 * d_T(i,j)^2 >= 0
+```
+
+这是等价的理论写法，可以避免根号。但 TreeMaker 5 源码中的 `PathFn1` 实际使用的是未平方形式：
+
+```text
+s * d_T(i,j) - ||p_i - p_j|| <= 0
+```
+
+这两种写法表达同一个可行域；差别只在数值实现和梯度形式。
+
 ## “有多少约束条件”的口径
 
 这个问题需要区分三种口径。
@@ -266,6 +316,34 @@ subject to:
 
 这是一个非线性约束优化问题。非线性主要来自欧氏距离、共线、纸边/角点多项式、角度量化、以及 strain 路径长度等约束。
 
+## Active Constraints 到 Crease Pattern
+
+优化输出并不直接等于完整折痕图。Scale optimization 的直接输出主要是：
+
+```text
+leaf node positions p_i
+scale s
+active paths
+```
+
+当某个叶路径满足：
+
+```text
+||p_i - p_j|| = s * d_T(i,j)
+```
+
+它就是 active constraint；在 TreeMaker 的折纸解释中，这条 leaf path 也叫 active path。几何上，它表示两个叶节点之间的纸面距离刚好被树路径长度“用满”：对应的 flap 圆和中间 river 处在相切或紧接状态。
+
+这些 active paths 的重要性不只是数值优化意义上的“约束取等号”。它们会成为后续 crease pattern 构造中的轴向骨架，即 axial paths / axial creases。TreeMaker 后续还要根据这些骨架：
+
+- 构造 active polygons；
+- 在多边形区域中填入 crease molecules；
+- 生成 axial、ridge、hinge、gusset、pseudohinge 等结构性折痕；
+- 计算 facet ordering；
+- 给出 mountain / valley / unfolded 折痕赋值。
+
+所以，圆填充优化解决的是“纸张资源和关键顶点放在哪里”；完整折痕图还依赖后续的几何构造、层序计算和局部平坦可折条件。Kawasaki 定理和 Maekawa 定理属于这些局部可折约束/检验的一部分，但它们不是 `tmScaleOptimizer` 中直接求解的 NLCO 约束。
+
 ## 求解器
 
 抽象接口在 `tmModel/tmNLCO/tmNLCO.h`：
@@ -285,6 +363,27 @@ subject to:
 ```
 
 即 `tmNLCO_alm`，Augmented Lagrangian Multiplier 增广拉格朗日方法。源码也保留 CFSQP、RFSQP、wnlib 等适配层，但默认没有启用。
+
+这里可以补充一个历史时间线：
+
+- 早期 TreeMaker 使用 Lang 自己实现的 ALM，速度较慢，但能处理基本非线性约束优化。
+- TreeMaker 4.0 使用 André Tits 等人的 FSQP/CFSQP，速度大幅提升，也更强调可行迭代，对 circle/river packing 的几何解释更稳定。
+- TreeMaker 5 又回到自写 ALM，主要是因为硬件速度提升后 ALM 已经足够快，同时自写代码便于开源发布。
+
+因此，TreeMaker 5 当前源码默认 ALM，并不表示 ALM 在理论上总优于 FSQP；这是速度、许可证、可发布性和维护成本共同作用的工程选择。
+
+## 复杂性补充
+
+圆填充笔记中提到的复杂性也能解释为什么 TreeMaker 通常只承诺局部最优，而不是全局最优。
+
+Demaine、Fekete、Lang 在 *Circle Packing for Origami Design Is Hard* 中证明，三角形、矩形和正方形纸张上的 circle/river origami design 是 NP-hard。直观原因是：这个问题不仅要放置几何对象，还要同时满足尺度比例、非重叠约束和树拓扑相邻关系。
+
+TreeMaker 的实际流程可分成两步：
+
+1. 优化步骤：求叶节点顶点位置和最大 scale。
+2. 构造步骤：根据 active paths / active polygons 构造 crease pattern，并计算山谷赋值和层序。
+
+困难主要集中在第一步的 packing / nonlinear optimization。第二步在 tree method 给出的额外结构下可以用专门的几何算法处理。由于第一步是非凸问题，不同初始节点布局可能得到不同的局部最优；这也解释了 TreeMaker 文档中建议用户拖动节点、改变初始构型后重新优化的原因。
 
 ## 资料依据
 
@@ -307,4 +406,6 @@ subject to:
 - Robert J. Lang, TreeMaker 4 documentation / theory chapter: https://langorigami.com/wp-content/uploads/2015/09/TreeMkr40.pdf
 - Robert J. Lang, Origami Design Secrets algorithms chapter: https://langorigami.com/wp-content/uploads/2015/09/ODS1e_Algorithms.pdf
 - Erik D. Demaine, Martin L. Demaine, Robert J. Lang, "Facet Ordering and Crease Assignment in Uniaxial Bases": https://erikdemaine.org/papers/TreeMaker_OSME2006/paper.pdf
+- Erik D. Demaine, Sandor P. Fekete, Robert J. Lang, "Circle Packing for Origami Design Is Hard": https://ar5iv.labs.arxiv.org/html/1008.1224
+- 本地笔记：`2022-05-03-圆填充与折纸.md`
 
