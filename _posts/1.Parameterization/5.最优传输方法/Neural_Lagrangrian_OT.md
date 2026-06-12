@@ -1,0 +1,736 @@
+Neural Lagrangian OT 方法总结
+
+> 这篇已并入整合稿：`10.静态MA、动态流体与Neural Lagrangian统一视角.md`。本页保留 Neural Lagrangian 细节展开。
+
+Neural Lagrangian Optimal Transport（下文简称 NLOT）可以理解为：
+
+> 用神经网络表示一个随时间变化的速度场或势函数，然后追踪粒子轨迹，使一批源分布样本在最小动能路径下流动到目标分布。
+
+它的关键词有三个：
+
+- **Optimal Transport**：目标仍然是求低运输代价的分布映射；
+- **Lagrangian**：不在固定网格上解密度 PDE，而是追踪粒子轨迹；
+- **Neural**：速度场、势函数或轨迹映射由神经网络表示。
+
+因此 NLOT 介于传统动态 OT 与神经生成模型之间：它保留 Benamou-Brenier 的物理解释，又避免在高维空间显式离散整个密度场。
+
+---
+
+## 1. 从静态 OT 到动态 OT
+
+经典二次代价最优传输通常写成静态形式：
+
+$$
+\min_{T_\#\rho_0=\rho_1}
+\int \frac12\|T(x)-x\|^2\rho_0(x)\,dx.
+$$
+
+这里 $T_\#\rho_0=\rho_1$ 表示映射 $T$ 把源分布 $\rho_0$ 推到目标分布 $\rho_1$。如果 $x\sim\rho_0$，那么 $T(x)\sim\rho_1$。
+
+Brenier 定理告诉我们，在二次代价和适当条件下，最优映射可写成某个凸函数的梯度：
+
+$$
+T(x)=\nabla \phi(x).
+$$
+
+这就是 Monge-Ampère 方程路线的基础。
+
+另一条路线是 Benamou-Brenier 动态形式。它不直接找一次性映射 $T$，而是找一段时间 $t\in[0,1]$ 内的密度流 $\rho_t$ 和速度场 $v_t$：
+
+$$
+\min_{\rho_t,v_t}
+\int_0^1\int \frac12\|v_t(x)\|^2\rho_t(x)\,dx\,dt
+$$
+
+约束是连续性方程：
+
+$$
+\partial_t\rho_t+\nabla\cdot(\rho_t v_t)=0,
+$$
+
+以及边界条件：
+
+$$
+\rho_{t=0}=\rho_0,\qquad \rho_{t=1}=\rho_1.
+$$
+
+动态 OT 的含义非常直观：把分布看成一团流体，找一条从初始形状流到目标形状的最小动能路径。
+
+---
+
+## 2. 欧拉视角与拉格朗日视角
+
+连续性方程是 **欧拉视角**：在固定空间位置 $x$ 上观察密度 $\rho_t(x)$ 如何变化。
+
+而 NLOT 采用 **拉格朗日视角**：直接跟踪每个粒子的位置。
+
+设初始粒子：
+
+$$
+x_0\sim \rho_0.
+$$
+
+它沿速度场运动：
+
+$$
+\frac{dx_t}{dt}=v_\theta(x_t,t),\qquad t\in[0,1].
+$$
+
+这个 ODE 的解定义了一个流映射：
+
+$$
+X_t^\theta:x_0\mapsto x_t.
+$$
+
+于是中间分布自然就是：
+
+$$
+\rho_t=(X_t^\theta)_\#\rho_0.
+$$
+
+只要所有粒子按同一个速度场运动，质量守恒自动成立；也就是说，拉格朗日粒子系统隐式满足欧拉连续性方程。
+
+这就是 NLOT 的核心优势：
+
+> 不显式存储 $\rho_t(x)$，只采样一批粒子并追踪它们的轨迹。
+
+在高维空间中，这比构造网格上的密度场更可行。
+
+---
+
+## 3. Neural Lagrangian OT 的基本模型
+
+NLOT 用神经网络表示速度场：
+
+$$
+v_\theta(x,t).
+$$
+
+对一批源样本 $\{x_0^i\}_{i=1}^B$，用数值积分推进：
+
+$$
+x_{k+1}^i=x_k^i+\Delta t\, v_\theta(x_k^i,t_k).
+$$
+
+更一般地，可以使用 Runge-Kutta 或自适应 ODE solver：
+
+$$
+x_1^i=\operatorname{ODESolve}(x_0^i,v_\theta,0,1).
+$$
+
+训练目标希望终点粒子分布接近目标分布：
+
+$$
+\{x_1^i\}\sim \rho_1.
+$$
+
+同时，为了对应二次代价最优传输，需要最小化路径动能：
+
+$$
+\mathcal{E}(\theta)
+=
+\mathbb{E}_{x_0\sim\rho_0}
+\int_0^1
+\frac12\|v_\theta(x_t,t)\|^2\,dt.
+$$
+
+离散时间下：
+
+$$
+\mathcal{E}(\theta)
+\approx
+\frac{1}{B}
+\sum_{i=1}^B
+\sum_{k=0}^{K-1}
+\frac12\|v_\theta(x_k^i,t_k)\|^2\Delta t.
+$$
+
+所以 NLOT 的训练目标可以写成：
+
+$$
+\min_\theta
+\mathcal{E}(\theta)
++\lambda\,\mathcal{D}\left((X_1^\theta)_\#\rho_0,\rho_1\right)
++\mathcal{R}(\theta).
+$$
+
+其中：
+
+- $\mathcal{E}$：动能项，对应 OT 的二次代价；
+- $\mathcal{D}$：终点分布匹配项；
+- $\mathcal{R}$：正则项，用来约束轨迹、速度场或映射。
+
+---
+
+## 4. 速度场如何参数化
+
+### 4.1 直接速度场
+
+最直接的做法是用网络输出速度：
+
+$$
+v_\theta(x,t)=\operatorname{MLP}_\theta(x,t).
+$$
+
+优点是实现简单，适合高维数据。
+
+缺点是它不自动满足最优传输里常见的“无旋/梯度场”结构。训练出来的速度场可能有旋转成分，动能不一定最小。
+
+### 4.2 势函数参数化
+
+更贴近 OT 理论的做法是让网络输出一个标量势函数：
+
+$$
+\Phi_\theta(x,t)\in\mathbb{R},
+$$
+
+然后令速度场为：
+
+$$
+v_\theta(x,t)=\nabla_x\Phi_\theta(x,t).
+$$
+
+这样速度场天然是梯度场。
+
+这与 Benamou-Brenier 的最优性条件一致：在二次动能下，最优速度场通常可写成势函数梯度。
+
+优点：
+
+- 更符合 OT 几何结构；
+- 有助于抑制旋转流；
+- 与静态 Brenier 势函数路线更容易对应。
+
+缺点：
+
+- 每次前向都要对输入 $x$ 求梯度；
+- 训练中涉及二阶导时开销更高；
+- 在高维空间中，势函数网络的优化可能更难。
+
+### 4.3 轨迹网络
+
+还有一种做法不是输出速度，而是直接输出时间相关映射：
+
+$$
+X_\theta(x_0,t).
+$$
+
+此时速度可由时间导数得到：
+
+$$
+v_\theta(X_\theta(x_0,t),t)
+=
+\partial_t X_\theta(x_0,t).
+$$
+
+这种方式更像神经形变场/神经参数化。它避免显式 ODE 求解，但要额外约束：
+
+$$
+X_\theta(x,0)\approx x.
+$$
+
+否则初始状态不一定保持为源分布。
+
+---
+
+## 5. 终点分布匹配项
+
+NLOT 最大的工程问题是：如何衡量一批终点粒子 $\{x_1^i\}$ 是否服从目标分布 $\rho_1$。
+
+常见选择如下。
+
+### 5.1 Sinkhorn 距离
+
+若目标也能采样出一批点 $\{y^j\}_{j=1}^B$，可以用熵正则 OT：
+
+$$
+\mathcal{D}_{\mathrm{sinkhorn}}
+=
+\operatorname{Sinkhorn}(\{x_1^i\},\{y^j\}).
+$$
+
+优点：
+
+- 可微；
+- 与 OT 目标一致；
+- 小批量训练稳定性较好。
+
+缺点：
+
+- 计算代价约为 $O(B^2)$；
+- 熵正则参数影响明显；
+- batch 之间会有采样噪声。
+
+### 5.2 MMD
+
+MMD 用核函数比较两批样本：
+
+$$
+\mathrm{MMD}^2(P,Q)
+=
+\mathbb{E}_{x,x'\sim P}k(x,x')
++\mathbb{E}_{y,y'\sim Q}k(y,y')
+-2\mathbb{E}_{x\sim P,y\sim Q}k(x,y).
+$$
+
+优点是实现简单、稳定，缺点是核带宽选择敏感，高维时可能区分能力不足。
+
+### 5.3 对抗损失
+
+也可以训练一个判别器 $D_\eta$：
+
+$$
+\min_\theta\max_\eta
+\mathbb{E}_{y\sim\rho_1}\log D_\eta(y)
++
+\mathbb{E}_{x_0\sim\rho_0}\log(1-D_\eta(X_1^\theta(x_0))).
+$$
+
+优点是可扩展到复杂数据，缺点是训练不稳定，且动能项和 GAN 损失之间需要仔细平衡。
+
+### 5.4 已知目标密度时的负对数似然
+
+如果目标密度 $\rho_1(y)$ 有显式表达，可以使用：
+
+$$
+\mathcal{D}_{\mathrm{nll}}
+=
+-
+\mathbb{E}_{x_0\sim\rho_0}
+\log\rho_1(X_1^\theta(x_0)).
+$$
+
+这会鼓励终点落在高密度区域，但它本身不保证整体质量完全匹配，因为粒子可能全部挤到某些高密度峰值附近。因此通常还要配合排斥项、Jacobian 正则或样本级 OT 损失。
+
+---
+
+## 6. 正则项：防止不稳定流动
+
+仅靠“动能 + 终点匹配”通常不够，尤其在神经网络参数化下，容易出现轨迹扭曲、局部折叠、速度震荡等问题。
+
+常见正则包括：
+
+### 6.1 时间平滑
+
+惩罚速度随时间变化过快：
+
+$$
+\mathcal{R}_{t}
+=
+\int_0^1
+\|\partial_t v_\theta(x_t,t)\|^2dt.
+$$
+
+离散实现可以用：
+
+$$
+\sum_k
+\|v_\theta(x_k,t_{k+1})-v_\theta(x_k,t_k)\|^2.
+$$
+
+### 6.2 加速度惩罚
+
+沿轨迹惩罚：
+
+$$
+\frac{d}{dt}v_\theta(x_t,t).
+$$
+
+离散形式：
+
+$$
+\sum_k
+\left\|
+\frac{x_{k+1}-2x_k+x_{k-1}}{\Delta t^2}
+\right\|^2.
+$$
+
+这会让粒子轨迹更接近直线，有助于逼近低动能路径。
+
+### 6.3 Jacobian / 折叠惩罚
+
+如果任务要求映射接近双射，例如图像配准或几何参数化，需要监控映射 Jacobian：
+
+$$
+J_T(x)=\frac{\partial X_1^\theta(x)}{\partial x}.
+$$
+
+常用惩罚：
+
+$$
+\mathcal{R}_{\mathrm{flip}}
+=
+\mathbb{E}_{x\sim\rho_0}
+\operatorname{ReLU}(\epsilon-\det J_T(x))^2.
+$$
+
+当 $\det J_T(x)\le 0$ 时，局部发生翻转或折叠。
+
+在高维中直接算 determinant 很贵，可以改用谱范数、Jacobian Frobenius 范数、局部距离保持项等近似。
+
+### 6.4 速度场散度正则
+
+散度控制局部体积变化：
+
+$$
+\nabla\cdot v_\theta.
+$$
+
+如果希望避免过强压缩/膨胀，可以惩罚：
+
+$$
+\|\nabla\cdot v_\theta\|^2.
+$$
+
+但注意 OT 本身允许体积变化，因为源/目标密度不同；所以散度正则不能过强，否则会妨碍正确质量匹配。
+
+---
+
+## 7. 训练算法流程
+
+一个典型 NLOT 训练循环如下：
+
+```text
+输入:
+  source sampler: x0 ~ rho0
+  target sampler: y  ~ rho1
+  neural velocity v_theta(x,t)
+
+for iter = 1,...:
+    1. sample source batch {x0_i}
+    2. sample target batch {y_j}
+    3. solve ODE:
+         dx/dt = v_theta(x,t)
+       得到轨迹 {x_k_i} 和终点 {x1_i}
+    4. 计算动能:
+         E = sum_i sum_k 0.5 ||v_theta(x_k_i,t_k)||^2 dt
+    5. 计算终点分布匹配:
+         D = Sinkhorn({x1_i},{y_j}) 或 MMD/GAN loss
+    6. 计算正则:
+         R = 时间平滑 + Jacobian/折叠 + 加速度等
+    7. loss = E + lambda D + gamma R
+    8. backprop 更新 theta
+```
+
+对应连续数学形式：
+
+$$
+\min_\theta
+\mathbb{E}_{x_0\sim\rho_0}
+\int_0^1 \frac12\|v_\theta(x_t,t)\|^2dt
++
+\lambda\mathcal{D}\left((X_1^\theta)_\#\rho_0,\rho_1\right)
++
+\gamma\mathcal{R}.
+$$
+
+---
+
+## 8. 与连续性方程的关系
+
+虽然训练常在粒子轨迹上进行，但它隐式对应欧拉质量守恒：
+
+$$
+\partial_t \rho_t+\nabla\cdot(\rho_t v_\theta)=0.
+$$
+
+若 $v_\theta$ 足够光滑，ODE 流 $X_t^\theta$ 会把 $\rho_0$ 推送为 $\rho_t$：
+
+$$
+\rho_t=(X_t^\theta)_\#\rho_0.
+$$
+
+所以 NLOT 可以理解为 Benamou-Brenier 动态 OT 的采样化实现：
+
+| Benamou-Brenier 动态 OT | Neural Lagrangian OT |
+|---|---|
+| 优化 $\rho_t,v_t$ | 优化神经速度场 $v_\theta$ |
+| 在欧拉网格上解连续性方程 | 追踪粒子 ODE |
+| 密度场显式存储 | 密度由粒子分布隐式表示 |
+| 网格维度高时困难 | 更适合高维采样数据 |
+| 可得到凸优化结构 | 神经优化通常非凸 |
+
+---
+
+## 9. 和静态 Monge-Ampère / 半离散 OT 的关系
+
+### 9.1 和 Monge-Ampère 路线
+
+Monge-Ampère 路线直接寻找一个凸势：
+
+$$
+T(x)=\nabla\phi(x),
+$$
+
+并满足：
+
+$$
+\rho_0(x)=\rho_1(\nabla\phi(x))\det(D^2\phi(x)).
+$$
+
+它是静态的、终点式的。
+
+NLOT 则寻找一条时间路径：
+
+$$
+x_0\to x_t\to x_1.
+$$
+
+如果训练完全达到最优，则终点映射 $X_1^\theta$ 应该接近 Brenier 映射。但实际中，神经网络容量、损失权重和训练优化都会带来偏差。
+
+### 9.2 和 Benamou/AHT 动态流体方法
+
+Benamou-Brenier 或 AHT 方法通常在网格上表示速度场/密度场，强调 PDE 和数值迭代。
+
+NLOT 的区别是：
+
+- 不在全域网格上表示 $\rho_t$；
+- 只对样本粒子积分 ODE；
+- 用神经网络表示连续速度场；
+- 可以自然扩展到隐空间、高维特征空间。
+
+### 9.3 和半离散 OT
+
+半离散 OT 的目标通常是：
+
+$$
+\rho_0 \longrightarrow \sum_i m_i\delta_{y_i}.
+$$
+
+它通过 Laguerre/Power 图把源区域切成若干 cell，每个 cell 送到一个目标点。
+
+NLOT 更一般：目标可以是连续分布、样本分布或隐空间分布。它不一定生成显式 Power 图，而是学习一个连续时间流。
+
+---
+
+## 10. 为什么叫 “Lagrangian”
+
+“Lagrangian” 不是指拉格朗日乘子，而是指流体力学中的拉格朗日描述。
+
+欧拉描述：
+
+> 固定在空间点 $x$，看这里的密度和速度如何变化。
+
+拉格朗日描述：
+
+> 跟着一个粒子走，看这个粒子从哪里来、到哪里去。
+
+NLOT 的训练对象是粒子轨迹：
+
+$$
+x_0^i,\ x_1^i,\ \dots,\ x_K^i.
+$$
+
+因此它是拉格朗日式的。
+
+这和图像 morphing、点云配准、连续 normalizing flow 都有相似结构：都是通过一个可微的连续变形把一批样本送到另一批样本。
+
+---
+
+## 11. 实现细节：ODE、反传与时间离散
+
+### 11.1 显式 Euler
+
+最简单的离散为：
+
+$$
+x_{k+1}=x_k+\Delta t\,v_\theta(x_k,t_k).
+$$
+
+优点是实现简单、速度快。
+
+缺点是时间步太大时轨迹不稳定，可能出现折叠或终点偏差。
+
+### 11.2 Runge-Kutta
+
+RK4 更稳定：
+
+$$
+x_{k+1}=x_k+\frac{\Delta t}{6}(k_1+2k_2+2k_3+k_4).
+$$
+
+其中：
+
+$$
+k_1=v(x_k,t_k),
+$$
+
+$$
+k_2=v(x_k+\frac{\Delta t}{2}k_1,t_k+\frac{\Delta t}{2}),
+$$
+
+类似定义 $k_3,k_4$。
+
+代价是每一步要多次调用网络。
+
+### 11.3 Neural ODE adjoint
+
+如果使用自适应 ODE solver，可以用 adjoint method 节省内存。但在实践中，adjoint 可能导致梯度误差和训练不稳定。
+
+对于几何/图像任务，固定时间步 + 直接反传往往更容易调试。
+
+---
+
+## 12. 一个二维 toy 实验配置
+
+最小可落地实验：
+
+- 源分布 $\rho_0$：二维高斯、圆环、棋盘格采样；
+- 目标分布 $\rho_1$：另一个高斯混合或图像密度采样；
+- 网络：MLP 输入 $(x,y,t)$，输出速度 $(v_x,v_y)$；
+- 时间步：$K=20$ 到 $50$；
+- batch size：$512$ 到 $4096$；
+- 终点损失：Sinkhorn 或 MMD；
+- 正则：动能 + 时间平滑 + Jacobian/折叠惩罚。
+
+伪代码：
+
+```python
+for it in range(num_iters):
+    x0 = sample_source(batch)
+    y  = sample_target(batch)
+
+    x = x0
+    kinetic = 0
+    for k in range(K):
+        t = k / K
+        v = net(torch.cat([x, t], dim=-1))
+        kinetic = kinetic + 0.5 * (v * v).sum(dim=-1).mean() / K
+        x = x + v / K
+
+    match = sinkhorn_loss(x, y)
+    loss = kinetic + lambda_match * match
+    loss.backward()
+    optimizer.step()
+```
+
+如果使用势函数参数化：
+
+```python
+phi = net_phi(x, t).sum()
+v = torch.autograd.grad(phi, x, create_graph=True)[0]
+```
+
+这会增加计算开销，但更贴近 OT 的梯度流结构。
+
+---
+
+## 13. 评价指标
+
+训练 NLOT 时，仅看 loss 不够，还应观察：
+
+- 终点分布误差：Sinkhorn/MMD/直方图距离；
+- 平均动能：
+  $$
+  \mathbb{E}\int_0^1 \frac12\|v_t\|^2dt;
+  $$
+- 轨迹长度：
+  $$
+  \int_0^1\|\dot x_t\|dt;
+  $$
+- 局部折叠：二维中检查 $\det J_T$；
+- 速度场平滑性：检查 $\|\partial_t v\|$ 和 $\|\nabla_x v\|$；
+- 反向一致性：如果训练了反向流，检查 $T^{-1}(T(x))\approx x$。
+
+对于二维实验，最直观的可视化是：
+
+- 画粒子轨迹；
+- 画中间时刻样本云；
+- 画速度场箭头；
+- 画 Jacobian determinant heatmap；
+- 画源/目标/终点直方图。
+
+---
+
+## 14. 优势与局限
+
+优势：
+
+- **高维友好**：避免全域网格离散；
+- **可扩展**：可直接用于神经生成模型、隐空间、特征空间；
+- **路径可解释**：得到从源到目标的连续时间形变过程；
+- **可与深度学习融合**：可把 OT 作为生成模型、配准模型或参数化模型的一部分；
+- **可处理样本分布**：不要求显式密度函数。
+
+局限：
+
+- **训练成本高**：ODE 反传、Sinkhorn、Jacobian 正则都可能很贵；
+- **非凸优化**：不能保证达到全局 OT 最优；
+- **损失权重敏感**：动能项和终点匹配项需要平衡；
+- **时间离散敏感**：步数太少会偏离真实流，步数太多训练变慢；
+- **分布匹配有 batch 噪声**：mini-batch OT 可能不等价于全局分布 OT；
+- **可逆性不自动保证**：需要额外约束才能避免折叠。
+
+---
+
+## 15. 在参数化/配准中的使用建议
+
+针对几何参数化、图像配准、形状 morphing，推荐：
+
+1. 优先在低维或隐空间中训练，避免直接在超高维像素空间上求流；
+2. 使用势函数参数化或加入旋度惩罚，减少不必要的旋转流；
+3. 加入局部翻转惩罚，监控 $\det J_T$；
+4. 使用 coarse-to-fine 时间离散，先少步粗训，再增加时间步；
+5. 对终点分布匹配使用 Sinkhorn 或 sliced-Wasserstein，比单纯 MMD 更贴近 OT；
+6. 如果已有传统 OT 解，可用它监督或 warm-start；
+7. 对双向配准任务，可同时训练 forward/backward flow，并加入 cycle consistency。
+
+如果目标是：
+
+> 面积分布可控 + 连续变形路径可解释 + 输入数据维度较高，
+
+那么 NLOT 通常比单步回归映射更合适。
+
+如果目标是二维规则网格上的高精度密度映射，传统 `gridOT_solver` 或 AHT/Benamou 方法通常更直接、更稳定。
+
+---
+
+## 16. 与仓库中其他 OT 方法的关系
+
+当前 `cpp/OptimalTransports` 中的几个实现可以这样理解：
+
+| 方法 | 输入/输出 | 表示方式 | 优点 | 局限 |
+|---|---|---|---|---|
+| `gridOT_solver` | 栅格密度到均匀目标 | cell 势 $\psi$ + 变形网格 | 快、适合二维网格 | 主要限二维规则域 |
+| `SemiOT_solver` | 连续/栅格源到离散点 | Laguerre/Power 图 | 几何结构清晰 | 目标是离散点 |
+| `BenamouOT_solver` | 栅格到栅格 | 稠密映射场/流 | 图像变形直观 | 高维网格代价高 |
+| NLOT | 样本分布到样本分布 | 神经速度场 + 粒子轨迹 | 高维灵活 | 训练非凸且敏感 |
+
+可以把它们放在一条谱系上：
+
+```text
+静态势函数 / Monge-Ampere
+        |
+        | 直接求终点映射
+        v
+半离散 OT / gridOT
+
+动态流体 / Benamou-Brenier
+        |
+        | 用时间路径连接分布
+        v
+AHT / Neural Lagrangian OT
+```
+
+NLOT 是动态 OT 的神经化、采样化版本。它更适合高维或数据驱动场景；传统 PDE/几何 OT 更适合低维、规则结构、需要高精度数值解的场景。
+
+---
+
+## 17. 一句话总结
+
+Neural Lagrangian OT 的核心思想是：
+
+> 不在网格上求整个密度演化，而是用神经网络定义速度场，追踪样本粒子，使它们以尽量小的动能从源分布流到目标分布。
+
+它把 Benamou-Brenier 的“最小动能流”变成了可训练的神经 ODE / 粒子流模型。
+
+---
+
+## 参考文献
+
+- Villani, C. (2009). *Optimal Transport: Old and New*. Springer.
+- Peyre, G., & Cuturi, M. (2019). *Computational Optimal Transport*. Foundations and Trends in Machine Learning.
+- Brenier, Y. (1991). *Polar factorization and monotone rearrangement of vector-valued functions*.
+- Benamou, J.-D., & Brenier, Y. (2000). *A computational fluid mechanics solution to the Monge-Kantorovich mass transfer problem*.
+- Chen, R. T. Q., Rubanova, Y., Bettencourt, J., & Duvenaud, D. (2018). *Neural Ordinary Differential Equations*.
+- Cuturi, M. (2013). *Sinkhorn distances: Lightspeed computation of optimal transport*.
+- Grathwohl, W., Chen, R. T. Q., Bettencourt, J., Sutskever, I., & Duvenaud, D. (2019). *FFJORD: Free-form Continuous Dynamics for Scalable Reversible Generative Models*.
