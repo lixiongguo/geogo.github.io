@@ -37,6 +37,7 @@ from packpdf.deps import check_deps, format_deps_report, format_deps_summary
 from packpdf.math_check import MathCheckResult, check_paths
 from packpdf.math_fix import MathFixResult, fix_files
 from packpdf.oss import OssScanResult, scan_pack_chapters, upload_and_replace
+from packpdf.post_check import PostCheckResult, check_directory as check_post_directory
 from packpdf.paths import (
     document_title_for_chapters,
     list_markdown_subdirs,
@@ -166,6 +167,17 @@ class _WordCountWorker(QThread):
 
     def run(self) -> None:
         self.done_signal.emit(count_paths(self._paths))
+
+
+class _PostCheckWorker(QThread):
+    done_signal = pyqtSignal(object)
+
+    def __init__(self, root: str) -> None:
+        super().__init__()
+        self._root = root
+
+    def run(self) -> None:
+        self.done_signal.emit(check_post_directory(self._root))
 
 
 class _DepsWorker(QThread):
@@ -311,6 +323,12 @@ class DocToolsApp(QMainWindow):
         self._btn_word_count = QPushButton('字数统计')
         self._btn_word_count.clicked.connect(self._start_word_count)
         check_layout.addWidget(self._btn_word_count)
+
+        check_layout.addSpacing(16)
+
+        self._btn_posts_check = QPushButton('引用检查')
+        self._btn_posts_check.clicked.connect(self._start_post_check)
+        check_layout.addWidget(self._btn_posts_check)
 
         check_layout.addSpacing(16)
 
@@ -746,6 +764,43 @@ class DocToolsApp(QMainWindow):
             show_check_report(self, r, base)
 
         w = _MathWorker(paths)
+        self._start_worker(w, on_done)
+
+    # ── post_url 引用检查 ──
+
+    def _log_post_check_result(self, result: PostCheckResult, base: str) -> None:
+        self._log.info(f'共扫描 {result.total_files} 个文件')
+        if result.total_broken == 0:
+            self._log.info('全部通过，未发现断裂引用')
+            return
+        self._log.warn(f'发现 {result.files_with_issues} 个文件有断裂引用，共 {result.total_broken} 处')
+        for fr in result.files:
+            if fr.ok:
+                continue
+            self._log.error(f'文档: {fr.path}（{len(fr.broken)} 处）')
+            for i, br in enumerate(fr.broken, 1):
+                ref = br.ref
+                self._log.warn(f'  [{i}] 第{ref.line}行: post_url "{ref.slug}"')
+                if br.suggestion:
+                    self._log.info(f'       建议 → {br.suggestion}')
+        self._log.info('—— 引用检查结束 ——')
+
+    def _start_post_check(self) -> None:
+        selected = self._chapter_list.get_selected()
+        if not selected:
+            QMessageBox.warning(self, '提示', '请至少勾选一个章节')
+            return
+        base = str(self._project_path())
+        self._log.info(f'—— 检查 post_url 引用: {", ".join(selected)} ——')
+        # 检查所有选中的章节路径
+        paths = [str(p) for p in self._selected_chapter_paths()]
+
+        def on_done(r: PostCheckResult | None) -> None:
+            if not r:
+                return
+            self._log_post_check_result(r, base)
+
+        w = _PostCheckWorker(base)
         self._start_worker(w, on_done)
 
     def _log_math_fix_result(self, result: MathFixResult, base: str) -> None:
