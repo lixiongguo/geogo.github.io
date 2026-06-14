@@ -1,8 +1,3 @@
-
-## Dong的Morse复形
-
-
-
 ## Tong06
 
 Tong06 希望通过两个 0-form \(u,v\) 的等值线生成四边形网格。直观地说，\((u,v)\) 是参数域坐标，\(u=\text{const}\) 与 \(v=\text{const}\) 两组等值线相交后形成 quad layout。
