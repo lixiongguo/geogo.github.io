@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BDHM 变形 — Bounded Distortion Harmonic Map</title>
+<script src="assets/wasm/bdhm.js"></script>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{overflow:hidden;background:#0b1220;color:#d8def7;font-family:"Segoe UI",Arial,sans-serif}
+.app{display:flex;flex-direction:column;height:100vh}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 18px;background:rgba(9,15,28,.96);border-bottom:1px solid rgba(106,132,255,.18)}
+.toolbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+select,button{border:1px solid rgba(106,132,255,.25);background:#121b31;color:#eef2ff;border-radius:10px;padding:9px 14px;font-size:14px}
+button{cursor:pointer;transition:background .2s ease}
+button:hover{background:#1b2b52}
+.btn-go{padding:9px 22px;background:linear-gradient(135deg,#6c3cff,#4a90d9);color:#fff;border:none;font-weight:700;letter-spacing:1px}
+.btn-go:disabled{opacity:.4;cursor:not-allowed}
+.status{color:#8cc4ff;font-size:13px;min-width:200px;text-align:right}
+.main{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:2px;background:#11192b;min-height:0}
+.panel{display:flex;flex-direction:column;min-width:0;min-height:0;background:#0b1220}
+.panel-header{padding:10px 16px;border-bottom:1px solid rgba(106,132,255,.16);color:#c6d1f4;font-size:14px}
+.canvas-wrap{position:relative;flex:1;min-height:0}
+canvas{display:block;width:100%;height:100%}
+.footer-note{padding:8px 16px;border-top:1px solid rgba(106,132,255,.16);color:#7e8db5;font-size:11px}
+.stats{display:flex;gap:20px;flex-wrap:wrap;padding:8px 16px;background:rgba(16,30,61,.5);border-bottom:1px solid rgba(106,132,255,.12);font-size:12px}
+.stat{color:#8b9dc4}.stat span{color:#ffd700;font-weight:700}
+@media(max-width:900px){.main{grid-template-columns:1fr;grid-template-rows:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="toolbar">
+    <div class="toolbar-right">
+      <select id="model-select"></select>
+      <button class="btn-go" id="go-btn">变形!</button>
+      <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;color:#d4a0f0">
+        <input type="checkbox" id="show-samples" checked> 采样点
+      </label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;color:#a0d0f0">
+        <input type="checkbox" id="show-constraints" checked> 约束
+      </label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;color:#88bbff">
+        <input type="checkbox" id="show-cauchy"> Cauchy 重心坐标
+      </label>
+    </div>
+    <div class="status" id="status-text">BD-HM 加载中...</div>
+  </div>
+
+  <div class="stats" id="stats-bar" style="display:none">
+    <div class="stat">失真 Kmax=<span id="s-kmax">-</span></div>
+    <div class="stat">Jmin=<span id="s-jmin">-</span></div>
+    <div class="stat">Cone=<span id="s-cone">-</span></div>
+    <div class="stat">Energy=<span id="s-energy">-</span></div>
+    <div class="stat">Iter=<span id="s-iter">-</span></div>
+  </div>
+
+  <div class="main">
+    <section class="panel">
+      <div class="panel-header">源图片 (参考图 + 约束)</div>
+      <div class="canvas-wrap"><canvas id="src-canvas"></canvas></div>
+      <div class="footer-note">参考图 = 原始2D图片，蓝框 = 边界，紫线 = 约束对应</div>
+    </section>
+    <section class="panel">
+      <div class="panel-header">目标变形</div>
+      <div class="canvas-wrap"><canvas id="dst-canvas"></canvas></div>
+      <div class="footer-note">橙色=BDHM边界，蓝色=Cauchy，青色=映射采样点→2D图片变形</div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  const MODELS = [
+    {name:'Archery',label:'Archery (弓箭)'},
+    {name:'annulus',label:'Annulus (圆环)'},
+    {name:'colorbar',label:'Color Bar'},
+    {name:'deer',label:'Deer (鹿)'},
+    {name:'dragon',label:'Dragon (龙)'},
+    {name:'elephant',label:'Elephant (象)'},
+    {name:'frog',label:'Frog (蛙)'},
+    {name:'giraffe',label:'Giraffe (长颈鹿)'},
+    {name:'horse',label:'Horse (马)'},
+    {name:'monkey',label:'Monkey (猴)'},
+    {name:'racoon',label:'Racoon (浣熊)'},
+    {name:'raptor',label:'Raptor (猛禽)'},
+    {name:'rex',label:'Rex (霸王龙)'},
+  ];
+
+  const modelSel=document.getElementById('model-select');
+  const goBtn=document.getElementById('go-btn');
+  const statusText=document.getElementById('status-text');
+  const showSamples=document.getElementById('show-samples');
+  const showConstraints=document.getElementById('show-constraints');
+  const showCauchy=document.getElementById('show-cauchy');
+
+  // Canvas setup
+  const srcC=document.getElementById('src-canvas'),dstC=document.getElementById('dst-canvas');
+  const srcCtx=srcC.getContext('2d'),dstCtx=dstC.getContext('2d');
+  let srcData=null,dstData=null,cauchySamples=null,bdhmInst=null,bdhmReady=false,currentJson=null;
+  let refImage=null,refImgLoaded=false;
+
+  function resize(){const w=srcC.parentElement.clientWidth,h=srcC.parentElement.clientHeight;srcC.width=dstC.width=w;srcC.height=dstC.height=h;renderBoth()}
+  window.addEventListener('resize',resize);
+
+  // Init
+  MODELS.forEach((m,i)=>{const o=document.createElement('option');o.value=i;o.textContent=m.label;modelSel.appendChild(o)});
+  if(MODELS.length)modelSel.value=0;
+
+  async function initBDHM(){
+    if(bdhmReady)return true;
+    try{
+      if(typeof BDHMModule==='undefined')throw new Error('BDHMModule 未加载');
+      bdhmInst=await BDHMModule({locateFile:p=>'assets/wasm/'+p});
+      bdhmReady=true;
+      setStatus('就绪 — 选择模型后点击变形','#89f0b6');
+      return true;
+    }catch(e){console.error(e);setStatus('BD-HM 引擎加载失败','#ff9d9d');return false}
+  }
+
+  async function loadJSON(name){
+    const r=await fetch('assets/bdhm_models/'+name+'/data.json');
+    if(!r.ok)throw new Error('无法加载 '+name+'/data.json');
+    return r.json();
+  }
+
+  function setStatus(msg,color){statusText.textContent=msg;if(color)statusText.style.color=color}
+
+  // Draw helper
+  function drawPoly(ctx,poly,color,lineWidth,fill){
+    if(poly.length<2)return;
+    ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=lineWidth||1.5;
+    ctx.moveTo(poly[0][0],poly[0][1]);
+    for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i][0],poly[i][1]);
+    ctx.closePath();ctx.stroke();
+    if(fill){ctx.fillStyle=fill;ctx.fill()}
+  }
+
+  function drawPoints(ctx,pts,color,size){
+    ctx.fillStyle=color;
+    for(const p of pts){ctx.beginPath();ctx.arc(p[0],p[1],size||2,0,Math.PI*2);ctx.fill()}
+  }
+
+  function drawLines(ctx,pairs,color){
+    ctx.strokeStyle=color;ctx.lineWidth=1;ctx.globalAlpha=.6;
+    ctx.beginPath();
+    for(const pair of pairs){ctx.moveTo(pair[0][0],pair[0][1]);ctx.lineTo(pair[1][0],pair[1][1])}
+    ctx.stroke();ctx.globalAlpha=1;
+  }
+
+  function transform(points,cx,cy,s){
+    return points.map(p=>[cx+p[0]*s,cy-p[1]*s]);
+  }
+
+  function computeView(points){
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    for(const p of points){if(p[0]<minX)minX=p[0];if(p[0]>maxX)maxX=p[0];if(p[1]<minY)minY=p[1];if(p[1]>maxY)maxY=p[1]}
+    const midX=(minX+maxX)/2,midY=(minY+maxY)/2;
+    const dw=maxX-minX||1,dh=maxY-minY||1;
+    const size=Math.min(srcC.width,srcC.height);
+    const s=size*0.38/Math.max(dw,dh);
+    const cx=srcC.width/2-midX*s;
+    const cy=srcC.height/2+midY*s;
+    return [cx,cy,s];
+  }
+
+  function renderBoth(){
+    const scw=srcC.width,sch=srcC.height,dcw=dstC.width,dch=dstC.height;
+    srcCtx.clearRect(0,0,scw,sch);dstCtx.clearRect(0,0,dcw,dch);
+
+    if(!srcData)return;
+
+    // Source
+    const [scx,scy,ss]=srcData.view;
+    const sBoundary=transform(srcData.boundary,scx,scy,ss);
+    // 绘制参考图片 (裁剪到单位正方形边界)
+    if(refImgLoaded && refImage){
+      srcCtx.save();
+      srcCtx.beginPath();
+      srcCtx.moveTo(sBoundary[0][0],sBoundary[0][1]);
+      for(let i=1;i<sBoundary.length;i++)srcCtx.lineTo(sBoundary[i][0],sBoundary[i][1]);
+      srcCtx.closePath();srcCtx.clip();
+      // 图片填充边界框 (clip 限制形状)
+      const xs=sBoundary.map(p=>p[0]), ys=sBoundary.map(p=>p[1]);
+      const x0=Math.min(...xs), x1=Math.max(...xs);
+      const y0=Math.min(...ys), y1=Math.max(...ys);
+      srcCtx.drawImage(refImage, x0, y0, x1-x0, y1-y0);
+      srcCtx.restore();
+    }
+    const sSamples=transform(srcData.samples,scx,scy,ss);
+    const sCsrc=transform(srcData.csrc,scx,scy,ss);
+    const sCdst=transform(srcData.cdst,scx,scy,ss);
+    drawPoly(srcCtx,sBoundary,'#4a6baa',2);
+    if(showSamples.checked)drawPoints(srcCtx,sSamples,'#22ccdd',2.5);
+    if(showConstraints.checked){
+      drawPoints(srcCtx,sCsrc,'#c040ff',4);
+      drawPoints(srcCtx,sCdst,'#ff6040',4);
+      const pairs=sCsrc.map((p,i)=>[p,sCdst[i]]);
+      drawLines(srcCtx,pairs,'#c060d0');
+    }
+
+    // Destination (if computed)
+    if(dstData){
+      const [dcx,dcy,ds]=dstData.view;
+      const dBoundary=transform(dstData.boundary,dcx,dcy,ds);
+      const dSamples=transform(dstData.samples,dcx,dcy,ds);
+      drawPoly(dstCtx,dBoundary,'#ff8c42',2.5);
+      // Cauchy 重心坐标 (蓝色)
+      if(showCauchy.checked && cauchySamples){
+        const dCauchy=transform(cauchySamples,dcx,dcy,ds);
+        drawPoints(dstCtx,dCauchy,'#4488ff',3.5);
+      }
+      if(showSamples.checked)drawPoints(dstCtx,dSamples,'#22ccdd',2.5);
+      if(showConstraints.checked){
+        const dCsrc=transform(dstData.cdst,dcx,dcy,ds);
+        drawPoints(dstCtx,dCsrc,'#ff6040',4);
+      }
+    }
+  }
+
+  // View model
+  async function loadPreview(){
+    try{
+      const m=MODELS[parseInt(modelSel.value)];
+      setStatus('加载 '+m.label+' ...');
+      currentJson=await loadJSON(m.name);
+      const P2Pdst=currentJson.P2Pdst;
+      const P2Psets=currentJson.P2Psets;
+
+      // Source boundary: unit square [0,0]->[1,0]->[1,1]->[0,1]
+      const boundary=[[0,0],[1,0],[1,0.5],[1,1],[0.5,1],[0,1]];
+      const ns=9; // sample grid
+      const samples=[];
+      for(let y=1;y<=ns;y++)for(let x=1;x<=ns;x++)samples.push([x/(ns+1),y/(ns+1)]);
+
+      // Constraints from P2Psets
+      let csrc=[],cdst=[];
+      if(P2Psets&&P2Psets.length>0){
+        csrc=P2Psets[0].src;cdst=P2Psets[0].dst;
+      }
+
+      srcData={boundary,samples,csrc,cdst,view:computeView(boundary)};
+      dstData=null;cauchySamples=null;
+      // 加载参考图
+      refImgLoaded=false;
+      refImage=new Image();
+      refImage.onload=()=>{refImgLoaded=true;renderBoth()};
+      refImage.src='assets/bdhm_models/'+m.name+'/image.png';
+      document.getElementById('stats-bar').style.display='none';
+      renderBoth();
+      setStatus(m.label+' — 点击变形','#89f0b6');
+    }catch(e){console.error(e);setStatus('加载失败: '+e.message,'#ff9d9d')}
+  }
+
+  // Solve
+  async function doDeform(){
+    if(!bdhmReady||!currentJson)return;
+    goBtn.disabled=true;
+    const m=MODELS[parseInt(modelSel.value)];
+    setStatus(m.label+' 变形计算中...');
+    try{
+      const P2Pdst=currentJson.P2Pdst;
+      const P2Psets=currentJson.P2Psets;
+
+      // Build boundary (target shape from P2Pdst)
+      const bdry=[];
+      for(const p of P2Pdst)bdry.push(p[0],p[1]);
+
+      // Build energy samples
+      const ns=9,sampleFlat=[];
+      for(let y=1;y<=ns;y++)for(let x=1;x<=ns;x++)sampleFlat.push(x/(ns+1),y/(ns+1));
+
+      // Build constraints
+      let csrcFlat=[],cdstFlat=[],cweight=[];
+      if(P2Psets&&P2Psets.length>0){
+        for(const p of P2Psets[0].src){csrcFlat.push(p[0],p[1])}
+        for(const p of P2Psets[0].dst){cdstFlat.push(p[0],p[1])}
+        for(let i=0;i<P2Psets[0].src.length;i++)cweight.push(1.0);
+      }
+
+      const t0=performance.now();
+      const result=bdhmInst.solve(
+        bdry,sampleFlat,csrcFlat,cdstFlat,cweight,
+        2.0,    // distortion_bound
+        1e-8,   // min_jacobian
+        100.0,  // distortion_penalty
+        100.0,  // jacobian_penalty
+        1e4,    // position_weight
+        1e-3,   // anti_holomorphic_weight
+        1e-4,   // phi_reference_weight
+        1e-2,   // initial_step
+        1000    // max_iterations
+      );
+      const ms=performance.now()-t0;
+
+      // Parse result
+      const nB=bdry.length/2,nS=sampleFlat.length/2;
+      const rBoundary=[],rSamples=[];
+      for(let i=0;i<nB;i++)rBoundary.push([result.mapped_boundary[i*2],result.mapped_boundary[i*2+1]]);
+      for(let i=0;i<nS;i++)rSamples.push([result.mapped_samples[i*2],result.mapped_samples[i*2+1]]);
+
+      dstData={boundary:rBoundary,samples:rSamples,cdst:csrcFlat.length?P2Psets[0].dst:[],view:computeView(rBoundary)};
+
+      // Cauchy 重心坐标 (直接调和映射，不做优化)
+      try{
+        const srcBoundary=[0,0,1,0,1,0.5,1,1,0.5,1,0,1]; // 单位正方形(6顶点)
+        const cauchyResult=bdhmInst.evaluateCauchy(srcBoundary,bdry,sampleFlat);
+        cauchySamples=[];
+        for(let i=0;i<nS;i++)cauchySamples.push([cauchyResult.mapped_samples[i*2],cauchyResult.mapped_samples[i*2+1]]);
+      }catch(e){cauchySamples=null;console.warn('Cauchy eval failed:',e);}
+
+      // Stats
+      document.getElementById('stats-bar').style.display='flex';
+      document.getElementById('s-kmax').textContent=result.max_distortion.toFixed(3);
+      document.getElementById('s-jmin').textContent=result.min_jacobian.toExponential(2);
+      document.getElementById('s-cone').textContent=result.max_cone_violation.toExponential(2);
+      document.getElementById('s-energy').textContent=result.final_energy.toExponential(2);
+      document.getElementById('s-iter').textContent=result.iterations;
+
+      renderBoth();
+      setStatus(m.label+' 完成 ('+ms.toFixed(0)+'ms)','#89f0b6');
+    }catch(e){console.error(e);setStatus('失败: '+e.message,'#ff9d9d')}
+    finally{goBtn.disabled=false}
+  }
+
+  modelSel.addEventListener('change',loadPreview);
+  goBtn.addEventListener('click',doDeform);
+  showSamples.addEventListener('change',renderBoth);
+  showConstraints.addEventListener('change',renderBoth);
+  showCauchy.addEventListener('change',renderBoth);
+  window.addEventListener('resize',resize);
+
+  initBDHM().then(()=>{loadPreview()});
+  resize();
+})();
+</script>
+</body>
+</html>
