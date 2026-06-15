@@ -11,3 +11,6 @@
 [submodule "origami-simulator"]
 	path = origami-simulator
 	url = https://github.com/lixiongguo/OrigamiSimulator.git
+[submodule "treemaker"]
+	path = treemaker
+	url = https://github.com/lixiongguo/treemaker.git
