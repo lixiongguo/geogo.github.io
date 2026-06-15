@@ -257,7 +257,11 @@ SolveResult solve(
     solver.initialStep = options.initial_step;
     solver.useInitialGuess = true;
     solver.verbose = false;
-    solver.gradientDescent();
+    if (options.solver_method == SolverMethod::LBFGS) {
+        solver.lbfgs(options.lbfgs_history);
+    } else {
+        solver.gradientDescent();
+    }
 
     state = vectorToState(solver.x);
     const double final_energy = solver.obj.empty() ? std::numeric_limits<double>::infinity() : solver.obj.back();

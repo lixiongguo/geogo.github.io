@@ -4,6 +4,7 @@
 #else
 #include "Mosek/MosekStub.h"
 #endif
+#include <algorithm>
 #include <deque>
 #include <cmath>
 #include <iostream>
@@ -235,7 +236,9 @@ void Solver::lbfgs(int m)
 {
     int k = 0;
     double f = 0.0;
-    x = Eigen::VectorXd::Zero(n);
+    if (!useInitialGuess || x.size() != n) {
+        x = Eigen::VectorXd::Zero(n);
+    }
     handle->computeEnergy(f, x);
     obj.clear(); obj.push_back(f);
     Eigen::VectorXd g(n);
@@ -245,32 +248,47 @@ void Solver::lbfgs(int m)
     
     const double alpha = 1e-4;
     while (true) {
+        if (gradientTolerance > 0.0 && g.norm() < gradientTolerance) break;
+
         // compute update direction
         int l = std::min(k, m);
         Eigen::VectorXd q = -g;
         
         Eigen::VectorXd a(l);
         for (int i = l-1; i >= 0; i--) {
-            a(i) = s[i].dot(q) / y[i].dot(s[i]);
+            const double ys = y[i].dot(s[i]);
+            if (std::abs(ys) <= 1e-20) {
+                a(i) = 0.0;
+                continue;
+            }
+            a(i) = s[i].dot(q) / ys;
             q -= a(i)*y[i];
         }
         
         Eigen::VectorXd p = q;
-        if (l > 0) p *= y[l-1].dot(s[l-1]) / y[l-1].dot(y[l-1]);
+        if (l > 0) {
+            const double yy = y[l-1].dot(y[l-1]);
+            if (yy > 1e-20) {
+                p *= y[l-1].dot(s[l-1]) / yy;
+            }
+        }
         
         for (int i = 0; i < l; i++) {
-            double b = y[i].dot(p) / y[i].dot(s[i]);
+            const double ys = y[i].dot(s[i]);
+            if (std::abs(ys) <= 1e-20) continue;
+            double b = y[i].dot(p) / ys;
             p += (a(i) - b)*s[i];
         }
         
         // compute step size
-        double t = 1.0;
+        double t = initialStep;
         double fp = f;
         handle->computeEnergy(f, x + t*p);
-        while (f > fp + alpha*t*g.dot(p)) {
+        while (t > 1e-20 && f > fp + alpha*t*g.dot(p)) {
             t = beta*t;
             handle->computeEnergy(f, x + t*p);
         }
+        if (t <= 1e-20) break;
         
         // update
         Eigen::VectorXd xp = x;
@@ -289,8 +307,8 @@ void Solver::lbfgs(int m)
         y.push_back(g - gp);
         
         // check termination condition
-        if (fabs(f - fp) < EPSILON || k > MAX_ITERS) break;
+        if (fabs(f - fp) < energyTolerance || k > maxIterations) break;
     }
     
-    std::cout << "Iterations: " << k << std::endl;
+    if (verbose) std::cout << "Iterations: " << k << std::endl;
 }

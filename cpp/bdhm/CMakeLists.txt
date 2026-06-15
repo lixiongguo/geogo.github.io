@@ -12,6 +12,7 @@ add_subdirectory(
 add_library(bdhm STATIC
     BoundedDistortionHarmonicMap.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../Solvers/Solver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Solvers/Lbfgs.cpp
 )
 
 target_include_directories(bdhm

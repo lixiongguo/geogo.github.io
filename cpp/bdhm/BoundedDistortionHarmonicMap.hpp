@@ -14,6 +14,11 @@ using Complex = std::complex<double>;
 using VecC = Eigen::VectorXcd;
 using MatC = Eigen::MatrixXcd;
 
+enum class SolverMethod {
+    GradientDescent,
+    LBFGS
+};
+
 struct PointConstraint {
     Complex source = Complex(0.0, 0.0);
     Complex target = Complex(0.0, 0.0);
@@ -31,6 +36,8 @@ struct Options {
     double initial_step = 1e-2;
     int max_iterations = 1000;
     double gradient_tolerance = 1e-10;
+    SolverMethod solver_method = SolverMethod::GradientDescent;
+    int lbfgs_history = 10;
 };
 
 struct Stats {
