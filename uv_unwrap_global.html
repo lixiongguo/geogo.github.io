@@ -11,6 +11,7 @@
   <script src="/assets/wasm/uv_unwrap_field.js"></script>
   <script src="/assets/wasm/uv_unwrap_simple.js"></script>
   <script src="/assets/wasm/uv_unwrap_abel_jacobi.js"></script>
+  <script src="/assets/wasm/bd_lscm.js"></script>
 <style>
   *{box-sizing:border-box}html,body{margin:0;height:100%}
   body{overflow:hidden;background:#070b14;color:#d8def7;font-family:"Segoe UI",Arial,sans-serif}
@@ -75,6 +76,7 @@
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="pgp"> PGP (周期全局参数化)</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="abel_jacobi"> Abel–Jacobi (闭合 g≥1)</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="hof"> 全纯1-形式 (HOF)</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="bd_lscm"> BD-LSCM (有界失真)</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover" checked> QuadCover</label>
         </div>
       </fieldset>
@@ -169,6 +171,8 @@
   let currentMeshData=null,currentUnwrapUv=null;
   let textureEnabled=false,currentTexturedMesh=null,checkerTexture=null,dotTexture=null,currentTextureMode="checkerboard";
   let distortionEnabled=false,currentDistortionMesh=null,taInst=null,taReady=false,taFailed=false;
+  let bdInst=null,bdReady=false,bdFailed=false,bdPromise=null;
+  let currentRawObjText=null;
   let homologyEdges=[];
   let tcDisplayGroup=null;
   const upVec=new THREE.Vector3(0,1,0);
@@ -821,6 +825,48 @@
     }finally{ajInst._free(pp);ajInst._free(fpt)}
   }
 
+  // ============ BD-LSCM WASM（LSCM + 有界失真优化）============
+  async function initBDLscmSolver(){
+    if(bdReady)return true;if(bdFailed)return false;
+    try{
+      if(typeof BD_LSCMModule!=='function')throw new Error('BD_LSCMModule 未加载');
+      if(!bdPromise)bdPromise=BD_LSCMModule({locateFile:(p)=>"/assets/wasm/"+p});
+      bdInst=await bdPromise;
+      bdReady=true;return true;
+    }catch(e){bdFailed=true;console.error(e);return false;}
+  }
+
+  async function solveBDLscm(meshData,rawObjText){
+    const ok=await initBDLscmSolver();if(!ok)throw new Error("BD-LSCM WASM 初始化失败");
+    if(!rawObjText)throw new Error("缺少 OBJ 原始文本");
+    // 写 OBJ 到虚拟文件系统
+    bdInst.FS.writeFile('/mesh.obj',rawObjText);
+    // 加载网格
+    const mesh=new bdInst.Mesh();
+    if(!mesh.read('/mesh.obj'))throw new Error("Mesh 加载失败");
+    // LSCM 初始参数化
+    const lscm=new bdInst.Lscm(mesh);
+    lscm.parameterize();
+    const qcErr=lscm.computeQcError();
+    // 选两个最远顶点作为锚点
+    const anchors=chooseAnchorPair(meshData.positions);
+    const anchorVerts=[anchors[0],anchors[1]];
+    const initUv=mesh.getVertexUvs();
+    const anchorTargets=[initUv[anchors[0]*2],initUv[anchors[0]*2+1],initUv[anchors[1]*2],initUv[anchors[1]*2+1]];
+    // 运行 BD-LSCM 优化
+    const t0=performance.now();
+    const result=bdInst.runBDLscmOnMesh(mesh,anchorVerts,anchorTargets,2.0);
+    const ms=performance.now()-t0;
+    // 读取 UV
+    const uvFlat=mesh.getVertexUvs();
+    const n=meshData.positions.length,uv=new Array(n);
+    for(let i=0;i<n;i++)uv[i]=[uvFlat[i*2],uvFlat[i*2+1]];
+    // 清理
+    try{bdInst.FS.unlink('/mesh.obj')}catch(e){}
+    return{uv,timeMs:ms,method:'bd_lscm',
+      details:'Kmax='+result.max_distortion.toFixed(3)+' Jmin='+result.min_jacobian.toFixed(4)+' LSCM-QC='+qcErr.toFixed(4)+' iter='+result.iterations};
+  }
+
   // ============ uv_unwrap_field WASM（分步流程）============
   let fieldInst=null,fieldReady=false,fieldFailed=false,fieldPromise=null;
   async function initFieldSolver(){
@@ -850,6 +896,12 @@
     if(m==='abel_jacobi'){
       if(ajFailed){reloadBtn.textContent='Abel引擎失败';reloadBtn.disabled=true}
       else if(!ajReady){reloadBtn.textContent='Abel引擎加载中...';reloadBtn.disabled=true}
+      else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
+      return;
+    }
+    if(m==='bd_lscm'){
+      if(bdFailed){reloadBtn.textContent='BD-LSCM引擎失败';reloadBtn.disabled=true}
+      else if(!bdReady){reloadBtn.textContent='BD-LSCM引擎加载中...';reloadBtn.disabled=true}
       else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
       return;
     }
@@ -949,6 +1001,7 @@
       for(const u of urls){try{root=await loadOBJ(u);rawText=await fetchObjText(u);break}catch(e){}}
       if(!root)throw new Error("模型加载失败");
       normalizeObject(root);
+      currentRawObjText=rawText;
       if(currentModelGroup){modelScene.remove(currentModelGroup)}if(currentUvLines){uvScene.remove(currentUvLines)}if(currentUvPins){uvScene.remove(currentUvPins)}
       resetTextureRadios();
       clearPickMesh();
@@ -967,7 +1020,7 @@
 
   async function doUnwrap(){
     if(busy||!currentMeshData)return;
-    const method=getMethod(),mNames={miq:'MIQ 向量场引导',pgp:'PGP 周期全局参数化',abel_jacobi:'Abel–Jacobi',hof:'全纯1-形式 (HOF)',quadcover:'QuadCover'};
+    const method=getMethod(),mNames={miq:'MIQ 向量场引导',pgp:'PGP 周期全局参数化',abel_jacobi:'Abel–Jacobi',hof:'全纯1-形式 (HOF)',bd_lscm:'BD-LSCM 有界失真',quadcover:'QuadCover'};
     const label=mNames[method]||method;
     setBusy(true);setStatus(label+" 求解中...");
     const t0=performance.now();
@@ -984,6 +1037,9 @@
       }else if(method==='hof'){
         setStatus("全纯1-形式: 离散1-形式 + Hodge星 + 积分 ...");
         r=await solveHOF(currentMeshData);
+      }else if(method==='bd_lscm'){
+        setStatus("BD-LSCM: LSCM 共形初始化 → 有界失真优化 ...");
+        r=await solveBDLscm(currentMeshData,currentRawObjText);
       }else{
         setStatus("QuadCover: step1主曲率 -> step2平滑/匹配 -> step3参数化 ...");
         r=await solveQuadCover(currentMeshData);
@@ -1042,7 +1098,7 @@
   updateButtonState();
 
   // 预加载 WASM
-  Promise.all([initFieldSolver(),initAbelJacobiSolver()]).then(()=>{updateButtonState();loadModel()});
+  Promise.all([initFieldSolver(),initAbelJacobiSolver(),initBDLscmSolver()]).then(()=>{updateButtonState();loadModel()});
   animate();
 })();
 </script>

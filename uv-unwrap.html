@@ -10,6 +10,7 @@
   
   <script src="assets/wasm/uv_unwrap_simple.js"></script>
   <script src="assets/wasm/dgp_basic.js"></script>
+  <script src="assets/wasm/bd_lscm.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; }
@@ -416,6 +417,7 @@
           <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte" checked> Tutte</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="lscm"> LSCM</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="LSCM + 有界失真优化"><input type="radio" name="method" value="bd_lscm"> BD-LSCM</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Spectral Conformal Parameterization (Mullen et al.)"><input type="radio" name="method" value="scp"> SCP</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Angle Based Flattening++ (iterative refinement)"><input type="radio" name="method" value="abf"> ABF</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="As-Rigid-As-Possible flattening"><input type="radio" name="method" value="arap"> ARAP</label>
@@ -1366,7 +1368,7 @@
 
       function shouldShowPinPoints() {
         const m = getCurrentMethod();
-        return m === 'lscm';
+        return m === 'lscm' || m === 'bd_lscm';
       }
 
       function supportsConeSelection(method) {
@@ -1622,6 +1624,87 @@
         if (onProgress) onProgress(faces.length, faces.length);
 
         return { uv: uv, anchors: anchors, flippedFaceCount: countFlippedFaces(uv, faces), timeMs: result.time_ms || 0, method: 'lscm', pinInfo: anchors[0] + " & " + anchors[1] };
+      }
+
+      // ==================== BD-LSCM (LSCM + 有界失真优化) ====================
+      let bdLscmInst = null, bdLscmReady = false, bdLscmFailed = false;
+      let bdLscmPromise = null;
+
+      async function initBDLscm() {
+        if (bdLscmReady) return true;
+        if (bdLscmFailed) return false;
+        try {
+          if (typeof BD_LSCMModule === 'undefined') throw new Error('BD_LSCMModule 未加载');
+          if (!bdLscmPromise) bdLscmPromise = BD_LSCMModule({ locateFile: function(p) { return "assets/wasm/" + p; } });
+          bdLscmInst = await bdLscmPromise;
+          bdLscmReady = true;
+          console.log('WASM BD-LSCM 加载成功');
+          return true;
+        } catch (err) {
+          bdLscmFailed = true; console.error('BD-LSCM WASM 加载失败:', err);
+          return false;
+        }
+      }
+
+      async function solveBDLscmAsync(meshData, onProgress) {
+        // Step 1: LSCM 初始参数化
+        const lscmResult = await solveLSCMAsync(meshData, onProgress);
+        if (onProgress) onProgress(0.5, 1);
+
+        // Step 2: 提取数据
+        const v = meshData.positions, f = meshData.faces;
+        const pos2D = [], facesFlat = [], uvFlat = [];
+        const nV = v.length;
+        for (let i = 0; i < nV; i++) {
+          pos2D.push(v[i][0], v[i][1]);
+          uvFlat.push(lscmResult.uv[i][0], lscmResult.uv[i][1]);
+        }
+        for (let i = 0; i < f.length; i++) {
+          facesFlat.push(f[i][0], f[i][1], f[i][2]);
+        }
+
+        // 锚点
+        const anchors = lscmResult.anchors;
+        const anchorVerts = [anchors[0], anchors[1]];
+        const anchorTargets = [
+          uvFlat[anchors[0]*2], uvFlat[anchors[0]*2+1],
+          uvFlat[anchors[1]*2], uvFlat[anchors[1]*2+1]
+        ];
+
+        // Step 3: BD 优化
+        const t0 = performance.now();
+        const initResult = await initBDLscm();
+        if (!initResult) throw new Error('BD-LSCM 引擎未就绪');
+
+        const result = bdLscmInst.solveBDLscmFull(
+          pos2D, facesFlat, uvFlat, anchorVerts, anchorTargets,
+          2.0,   // distortion_bound
+          8,     // outer_iterations
+          400,   // inner_iterations
+          1.0,   // lscm_weight
+          5000.0,// distortion_penalty
+          5000.0,// positivity_penalty
+          1e-2   // initial_step
+        );
+        const ms = performance.now() - t0;
+
+        if (onProgress) onProgress(1, 1);
+
+        // 提取 UV
+        const uv = new Array(nV);
+        for (let i = 0; i < nV; i++)
+          uv[i] = [result.uv_flat[i*2], result.uv_flat[i*2+1]];
+
+        return {
+          uv, anchors,
+          flippedFaceCount: countFlippedFaces(uv, f),
+          timeMs: ms,
+          method: 'bd_lscm',
+          pinInfo: anchors[0] + ' & ' + anchors[1],
+          details: 'Kmax=' + result.max_distortion.toFixed(3) +
+                   ' Jmin=' + result.min_jacobian.toFixed(4) +
+                   ' iter=' + result.iterations
+        };
       }
 
       // ==================== WASM 驱动的 Tutte 求解（uniform 权重使用 WASM，cot 权重使用 JS 调和） ====================
@@ -3437,6 +3520,7 @@
 
         let methodLabel;
         if (method === 'lscm') methodLabel = 'LSCM';
+        else if (method === 'bd_lscm') methodLabel = 'BD-LSCM (有界失真)';
         else if (method === 'tutte') {
           methodLabel = 'Tutte (' + getTutteWeightLabel() + ', ' + (getTutteBoundary() === 'circle' ? '圆' : '方') + ')';
         }
@@ -3464,6 +3548,10 @@
           let unwrapResult;
           if (method === 'lscm') {
             unwrapResult = await solveLSCMAsync(currentMeshData, function(progress, total) {
+              updateTimingProgress(progress, total);
+            });
+          } else if (method === 'bd_lscm') {
+            unwrapResult = await solveBDLscmAsync(currentMeshData, function(progress, total) {
               updateTimingProgress(progress, total);
             });
           } else if (method === 'tutte') {
@@ -3874,9 +3962,9 @@
       
       // 页面启动时预加载 uv_unwrap_simple WASM
       updateStartButtonState();
-      initSimpleSolver().then((ok) => {
+      Promise.all([initSimpleSolver(), initBDLscm()]).then(([simpleOk, bdOk]) => {
         updateStartButtonState();
-        if (!ok) {
+        if (!simpleOk && !bdOk) {
           setStatus("WASM 引擎加载失败", "#ff9d9d");
         }
       });
