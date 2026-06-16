@@ -21,6 +21,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent.parent  # .../lixiongguo.github.io/
 PROJECTS_DIR = PROJECT_ROOT / "cpp" / "ddg-exercises" / "projects"
 HISTORY_FILE = SCRIPT_DIR / "history.json"
+EIGEN_PATH = PROJECT_ROOT / "cpp" / "deps" / "eigen-3.4.0"
 
 # ── 项目元数据 ────────────────────────────────────────────
 PROJECTS_META = {
@@ -454,8 +455,13 @@ class DDGExerciseManager(QMainWindow):
         bin_path = self._find_binary(self._current_project)
         if bin_path:
             self._add_history()
-            subprocess.Popen([bin_path], cwd=str(self._projects_dir / self._current_project))
-            self._status.setText(f"正在运行: {bin_path}")
+            # 从 build/ 目录启动 (不是 build/bin/)：
+            # 二进制在 build/bin/main，但 ../../../input/ 需要从 build/ 解析
+            bin_abs = Path(bin_path).resolve()
+            build_dir = bin_abs.parent.parent  # build/bin/ → build/
+            rel_bin = "./bin/" + bin_abs.name
+            subprocess.Popen([rel_bin], cwd=str(build_dir))
+            self._status.setText(f"正在运行: {bin_abs.name}  (cwd={build_dir})")
         else:
             QMessageBox.information(
                 self, "未找到可执行文件",
@@ -530,11 +536,28 @@ class DDGExerciseManager(QMainWindow):
         self._build_proc.readyReadStandardError.connect(self._on_build_stderr)
         self._build_proc.finished.connect(self._on_build_finished)
 
-        # 执行 cmake ..
+        # 执行 cmake .. (使用本地 Eigen, 跳过 geometry-central 版本检查)
         self._build_step = 0
         self._build_ok = True
-        self._build_output.append("$ cmake ..\n")
-        self._build_proc.start("cmake", [".."])
+
+        # 生成 hook 脚本: 预先创建 Eigen3::Eigen target, geometry-central 检测到后跳过 EigenChecker
+        hook_path = SCRIPT_DIR / "eigen_hook_active.cmake"
+        hook_path.write_text(
+            f"if(NOT TARGET Eigen3::Eigen)\n"
+            f"  add_library(Eigen3::Eigen INTERFACE IMPORTED)\n"
+            f"  set_target_properties(Eigen3::Eigen PROPERTIES\n"
+            f"    INTERFACE_INCLUDE_DIRECTORIES \"{EIGEN_PATH}\"\n"
+            f"  )\n"
+            f"endif()\n"
+        )
+
+        cmake_args = ["..",
+            f"-DCMAKE_PROJECT_INCLUDE={hook_path}",
+            "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",  # polyscope 兼容 CMake 4.x
+            f"-DCMAKE_CXX_FLAGS=-I{EIGEN_PATH}",    # 本地 Eigen 优先于 /usr/local/include
+        ]
+        self._build_output.append(f"$ cmake .. -DCMAKE_PROJECT_INCLUDE={hook_path}\n")
+        self._build_proc.start("cmake", cmake_args)
 
     def _on_build_stdout(self):
         data = self._build_proc.readAllStandardOutput().data().decode("utf-8", errors="replace")
