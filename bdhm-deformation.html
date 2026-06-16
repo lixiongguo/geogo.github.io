@@ -107,11 +107,12 @@ canvas.dragging{cursor:grabbing}
     </div>
     <div class="title-tag">
       <b>有界失真平面变形</b><br>网格路线 (Lipman 2012) · penalty SOCP<br>
-      对应 <b>cpp/bounded_distortion_mapping</b>
+      对应 <b>cpp/bounded_distortion_mapping</b> · WASM
     </div>
   </div>
 </div>
 
+<script src="assets/js/wasm-loader.js"></script>
 <script>
 (function(){
 "use strict";
@@ -240,6 +241,92 @@ let frameAng=[];      // 每面帧角
 let faceArea=[];      // 每面面积
 let lastIters=0;
 
+let wasmInst=null, wasmReady=false, wasmFailed=false, wasmMeshReady=false;
+let wasmInitPromise=null;
+
+async function initWasm(){
+  if(wasmReady) return true;
+  if(wasmFailed) return false;
+  if(!wasmInitPromise){
+    wasmInitPromise=WasmLoader.loadWasmModule('bd_deformation','BdDeformationSolver').then(function(inst){
+      wasmInst=inst; wasmReady=true; pushOptionsToWasm(); return true;
+    }).catch(function(err){
+      console.error(err); wasmFailed=true; setStatusMsg('WASM 求解器加载失败'); return false;
+    });
+  }
+  return wasmInitPromise;
+}
+
+function pushOptionsToWasm(){
+  if(!wasmInst) return;
+  wasmInst.ccall('set_options','void',
+    ['number','number','number','number','number','number','number','number','number'],
+    [opt.distortion_bound, opt.min_alpha_real, opt.lscm_weight,
+     opt.distortion_penalty, opt.positivity_penalty,
+     opt.reference_weight, opt.smoothness_weight, opt.initial_step,
+     opt.bound_on ? 1 : 0]);
+}
+
+function wasmUploadMesh(){
+  if(!wasmInst || !rest || !nV) return Promise.resolve(false);
+  const flat=new Float64Array(2*nV);
+  for(let i=0;i<nV;i++){ flat[2*i]=rest[2*i]; flat[2*i+1]=rest[2*i+1]; }
+  const ff=new Int32Array(3*nF);
+  for(let f=0;f<nF;f++){ ff[3*f]=mesh.F[f][0]; ff[3*f+1]=mesh.F[f][1]; ff[3*f+2]=mesh.F[f][2]; }
+  const pp=wasmInst._malloc(flat.length*8), fp=wasmInst._malloc(ff.length*4);
+  for(let i=0;i<flat.length;i++) wasmInst.setValue(pp+i*8, flat[i], 'double');
+  for(let i=0;i<ff.length;i++) wasmInst.setValue(fp+i*4, ff[i], 'i32');
+  const rc=wasmInst.ccall('setup_mesh','number',['number','number','number','number'],[pp,flat.length,fp,ff.length]);
+  wasmInst._free(pp); wasmInst._free(fp);
+  if(rc!==0){ wasmMeshReady=false; return Promise.reject(new Error('setup_mesh 错误: '+rc)); }
+  wasmMeshReady=true;
+  return wasmReadUvFromWasm();
+}
+
+function wasmReadUvFromWasm(){
+  const cnt=wasmInst.ccall('get_vertex_count','number',[],[]);
+  if(cnt!==nV) return Promise.reject(new Error('WASM 顶点数不匹配'));
+  const uvPtr=wasmInst.ccall('get_uv_ptr','number',[],[]);
+  for(let i=0;i<2*nV;i++) uv[i]=wasmInst.getValue(uvPtr+i*8,'double');
+  return Promise.resolve(true);
+}
+
+async function ensureWasmMesh(){
+  const ok=await initWasm();
+  if(!ok) return false;
+  try{ await wasmUploadMesh(); return true; }
+  catch(e){ console.error(e); setStatusMsg(String(e.message||e)); return false; }
+}
+
+function wasmOptimizeStep(maxSteps){
+  if(!wasmInst || !wasmMeshReady) return 0;
+  const anchorList=handles.slice();
+  const nA=anchorList.length;
+  if(nA===0) return 0;
+  const idxPtr=wasmInst._malloc(nA*4), tgtPtr=wasmInst._malloc(nA*2*8);
+  for(let i=0;i<nA;i++){
+    wasmInst.setValue(idxPtr+i*4, anchorList[i], 'i32');
+    const t=targets[anchorList[i]];
+    wasmInst.setValue(tgtPtr+i*16, t[0], 'double');
+    wasmInst.setValue(tgtPtr+i*16+8, t[1], 'double');
+  }
+  const rc=wasmInst.ccall('optimize_step','number',['number','number','number','number'],[maxSteps, idxPtr, nA, tgtPtr]);
+  wasmInst._free(idxPtr); wasmInst._free(tgtPtr);
+  if(rc!==0) throw new Error('optimize_step 错误: '+rc);
+  const uvPtr=wasmInst.ccall('get_uv_ptr','number',[],[]);
+  for(let i=0;i<2*nV;i++) uv[i]=wasmInst.getValue(uvPtr+i*8,'double');
+  return wasmInst.ccall('get_last_iterations','number',[],[]);
+}
+
+function wasmComputeStats(){
+  if(!wasmInst || !wasmMeshReady) return computeStatsJs();
+  return {
+    kmax: wasmInst.ccall('get_max_distortion','number',[],[]),
+    jmin: wasmInst.ccall('get_min_jacobian','number',[],[]),
+    flip: wasmInst.ccall('get_flip_count','number',[],[])
+  };
+}
+
 let texImage=null;    // 当前模型纹理 (Image)
 let texReady=false;   // 纹理是否加载完成
 let texUV=null;       // 每顶点纹理坐标 (像素) Float64Array 2*nV
@@ -290,6 +377,8 @@ function setupMesh(m){
     maps.push(idMaps[f]);
   }
   fitView();
+  wasmMeshReady=false;
+  ensureWasmMesh();
 }
 
 // 把若干世界坐标的目标点映射到最近的网格顶点（用作操控点）
@@ -402,7 +491,7 @@ function applyMap(map,lu){
   return y;
 }
 
-/* ============ 帧对齐：旋转局部帧使 α 落在正实轴 (§2.2) ============ */
+/* ============ 帧对齐（仅用于渲染失真着色） ============ */
 function alignFrames(){
   for(let f=0;f<nF;f++){
     const y=applyMap(idMaps[f],localUV(f,uv));     // 单位帧下 α
@@ -412,89 +501,8 @@ function alignFrames(){
   }
 }
 
-/* ============ 能量与梯度 (penalty SOCP, 忠实移植 C++) ============ */
-function energyGrad(U,grad){
-  const k=kappa(), eps=1e-12;
-  let E=0;
-  if(grad) grad.fill(0);
-  const dp=opt.bound_on?opt.distortion_penalty:0;
-  const pp=opt.bound_on?opt.positivity_penalty:0;
-  for(let f=0;f<nF;f++){
-    const map=maps[f], lu=localUV(f,U), y=applyMap(map,lu);
-    const aRe=y[0], bRe=y[2], bIm=y[3], bN=Math.hypot(bRe,bIm);
-    const dy=[0,0,0,0];
-    if(opt.lscm_weight>0){
-      const w=opt.lscm_weight*faceArea[f];
-      E+=w*(bRe*bRe+bIm*bIm); dy[2]+=2*w*bRe; dy[3]+=2*w*bIm;
-    }
-    const cone=bN-k*aRe;
-    if(dp>0 && cone>0){
-      E+=dp*cone*cone; dy[0]+=dp*(-2*k*cone);
-      if(bN>eps){dy[2]+=dp*(2*cone*bRe/bN); dy[3]+=dp*(2*cone*bIm/bN);}
-    }
-    const pos=opt.min_alpha_real-aRe;
-    if(pp>0 && pos>0){E+=pp*pos*pos; dy[0]+=pp*(-2*pos);}
-    if(grad){
-      // local_grad = map^T * dy
-      const fa=mesh.F[f];
-      for(let l=0;l<3;l++){
-        let gx=0,gy=0;
-        for(let r=0;r<4;r++){gx+=map[r*6+2*l]*dy[r]; gy+=map[r*6+2*l+1]*dy[r];}
-        grad[2*fa[l]]+=gx; grad[2*fa[l]+1]+=gy;
-      }
-    }
-  }
-  // 参考形状正则
-  if(opt.reference_weight>0){
-    const w=opt.reference_weight;
-    for(let i=0;i<2*nV;i++){const d=U[i]-rest[i]; E+=w*d*d; if(grad)grad[i]+=2*w*d;}
-  }
-  // 边向量保持 (ARAP 类光滑项)
-  if(opt.smoothness_weight>0){
-    const w=opt.smoothness_weight;
-    for(const [a,b] of edges){
-      const dx=(U[2*a]-U[2*b])-(rest[2*a]-rest[2*b]);
-      const dyv=(U[2*a+1]-U[2*b+1])-(rest[2*a+1]-rest[2*b+1]);
-      E+=w*(dx*dx+dyv*dyv);
-      if(grad){grad[2*a]+=2*w*dx; grad[2*b]-=2*w*dx; grad[2*a+1]+=2*w*dyv; grad[2*b+1]-=2*w*dyv;}
-    }
-  }
-  return E;
-}
-function energyOnly(U){return energyGrad(U,null);}
-
-function applyAnchors(U){
-  for(const h of handles){const t=targets[h]; U[2*h]=t[0]; U[2*h+1]=t[1];}
-}
-
-/* ============ 一帧优化：对齐帧 + 多步带回溯线搜索的梯度下降 ============ */
-const grad=()=>{};
-let gbuf=null, cand=null;
-function optimizeStep(maxSteps){
-  if(!gbuf||gbuf.length!==2*nV){gbuf=new Float64Array(2*nV); cand=new Float64Array(2*nV);}
-  applyAnchors(uv);
-  alignFrames();
-  let steps=0;
-  for(let s=0;s<maxSteps;s++){
-    const E=energyGrad(uv,gbuf);
-    for(const h of handles){gbuf[2*h]=0; gbuf[2*h+1]=0;} // 锚点梯度置零
-    let gn=0;for(let i=0;i<gbuf.length;i++)gn+=gbuf[i]*gbuf[i];
-    if(gn<1e-16) break;
-    let step=opt.initial_step, ok=false;
-    for(let t=0;t<24;t++){
-      for(let i=0;i<2*nV;i++)cand[i]=uv[i]-step*gbuf[i];
-      applyAnchors(cand);
-      if(energyOnly(cand)<=E || t===23){uv.set(cand); ok=true; break;}
-      step*=0.5;
-    }
-    steps++;
-    if(!ok) break;
-  }
-  return steps;
-}
-
-/* ============ 统计 (帧无关：|α|,|β| 不随帧旋转改变) ============ */
-function computeStats(){
+/* ============ 统计（WASM 为主，JS 仅作渲染回退） ============ */
+function computeStatsJs(){
   const k=kappa(); let kmax=1,jmin=1e9,flip=0;
   for(let f=0;f<nF;f++){
     const y=applyMap(idMaps[f],localUV(f,uv));
@@ -504,6 +512,12 @@ function computeStats(){
     if(K>kmax)kmax=K; if(J<jmin)jmin=J; if(J<=0)flip++;
   }
   return {kmax,jmin,flip};
+}
+function computeStats(){ return wasmComputeStats(); }
+
+function optimizeStep(maxSteps){
+  try{ return wasmOptimizeStep(maxSteps); }
+  catch(e){ console.error(e); return 0; }
 }
 
 /* ============ 视图与渲染 ============ */
@@ -659,6 +673,7 @@ cv.addEventListener('touchstart',down,{passive:false});window.addEventListener('
 function setEnergy(mode){
   if(mode==='conformal'){opt.lscm_weight=1.0; opt.smoothness_weight=0.05; opt.reference_weight=1e-4;}
   else{opt.lscm_weight=0.0; opt.smoothness_weight=0.35; opt.reference_weight=2e-4;}
+  pushOptionsToWasm();
 }
 function selectShape(val){
   demoActive=false;
@@ -671,12 +686,17 @@ document.getElementById('bound-range').addEventListener('input',e=>{
   opt.distortion_bound=parseFloat(e.target.value);
   document.getElementById('bound-val').textContent=opt.distortion_bound.toFixed(2);
   document.getElementById('leg-c').textContent='≥ '+opt.distortion_bound.toFixed(1);
+  pushOptionsToWasm();
 });
-document.getElementById('bound-on').addEventListener('change',e=>{opt.bound_on=e.target.checked;});
+document.getElementById('bound-on').addEventListener('change',e=>{opt.bound_on=e.target.checked; pushOptionsToWasm();});
 document.getElementById('demo-btn').addEventListener('click',startDemo);
 document.getElementById('reset-btn').addEventListener('click',()=>{
   demoActive=false;
   uv=rest.slice(); targets={}; for(const h of handles)targets[h]=[rest[2*h],rest[2*h+1]];
+  if(wasmInst && wasmMeshReady){
+    wasmInst.ccall('reset_uv','void',[],[]);
+    wasmReadUvFromWasm().catch(console.error);
+  }
 });
 
 function resize(){cv.width=cv.clientWidth;cv.height=cv.clientHeight;fitView();}
@@ -685,6 +705,7 @@ window.addEventListener('resize',resize);
 /* ============ 启动 ============ */
 setEnergy('shape');
 resize();
+initWasm();
 selectShape(document.getElementById('shape-select').value);
 requestAnimationFrame(loop);
 

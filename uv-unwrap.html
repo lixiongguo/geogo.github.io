@@ -8,9 +8,9 @@
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
   
+  <script src="assets/js/wasm-loader.js"></script>
   <script src="assets/wasm/uv_unwrap_simple.js"></script>
   <script src="assets/wasm/dgp_basic.js"></script>
-  <script src="assets/wasm/bd_lscm.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; }
@@ -1634,8 +1634,9 @@
         if (bdLscmReady) return true;
         if (bdLscmFailed) return false;
         try {
-          if (typeof BD_LSCMModule === 'undefined') throw new Error('BD_LSCMModule 未加载');
-          if (!bdLscmPromise) bdLscmPromise = BD_LSCMModule({ locateFile: function(p) { return "assets/wasm/" + p; } });
+          if (!bdLscmPromise) {
+            bdLscmPromise = WasmLoader.loadWasmModule('bd_lscm', 'BD_LSCMModule');
+          }
           bdLscmInst = await bdLscmPromise;
           bdLscmReady = true;
           console.log('WASM BD-LSCM 加载成功');
@@ -2305,7 +2306,6 @@
       async function solveCirclePatternAsync(meshData, onProgress) {
         const result = await solveSimpleWasmMethod(meshData, "solve_cp", "cp", onProgress, getOptScheme(), coneVertices);
         result.cones = coneVertices.length;
-        result.cpFallbackToCetm = simpleInstance.ccall("get_cp_fallback_to_cetm", "number", [], []) !== 0;
         return result;
       }
 
@@ -3612,13 +3612,8 @@
           // 更新 UV 面板标签
           const methodNames = { lscm:'LSCM', tutte:'Tutte', scp:'SCP', linabf:'ABF', abfpp:'ABF', abf:'ABF', arap:'ARAP', cp:'Circle Pattern', cetm:'CETM', ricci:'Ricci 流' };
           const uvPanelLabelEl = document.getElementById('uv-panel-label');
-          if (unwrapResult.cpFallbackToCetm) {
-            uvPanelLabelEl.textContent = 'Circle Pattern（已回退 CETM）UV 网格';
-            uvPanelLabelEl.style.color = '#ffd38a';
-          } else {
-            uvPanelLabelEl.textContent = (methodNames[unwrapResult.method] || unwrapResult.method) + ' UV 网格';
-            uvPanelLabelEl.style.color = '';
-          }
+          uvPanelLabelEl.textContent = (methodNames[unwrapResult.method] || unwrapResult.method) + ' UV 网格';
+          uvPanelLabelEl.style.color = '';
 
           clearGroup(uvScene, currentUvLines);
           clearGroup(uvScene, currentUvPins);
@@ -3645,19 +3640,11 @@
           if (unwrapResult.boundary) details += " / " + unwrapResult.boundary;
           if (unwrapResult.weight) details += " / " + unwrapResult.weight;
           if (typeof unwrapResult.cones === 'number') details += " / 锥奇异点 " + unwrapResult.cones + " 个";
-          if (unwrapResult.cpFallbackToCetm) {
-            methodLabel = '⚠ Circle Pattern（已回退 CETM）';
-            details += " / ⚠ CP优化失败，已自动回退CETM求解";
-          }
           showTiming(elapsedMs, details, unwrapResult.flippedFaceCount);
 
-          const fallbackColor = "#ff9f43";
-          const color = unwrapResult.flippedFaceCount === 0
-            ? (unwrapResult.cpFallbackToCetm ? fallbackColor : "#89f0b6")
-            : "#ffd38a";
+          const color = unwrapResult.flippedFaceCount === 0 ? "#89f0b6" : "#ffd38a";
           setStatus(
-            methodLabel + " 展开完成，翻转面 " + unwrapResult.flippedFaceCount + " 个" +
-              (unwrapResult.cpFallbackToCetm ? "（CP已回退CETM）" : ""),
+            methodLabel + " 展开完成，翻转面 " + unwrapResult.flippedFaceCount + " 个",
             color
           );
         } catch (error) {

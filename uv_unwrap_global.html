@@ -8,10 +8,9 @@
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
 
-  <script src="/assets/wasm/uv_unwrap_field.js"></script>
-  <script src="/assets/wasm/uv_unwrap_simple.js"></script>
-  <script src="/assets/wasm/uv_unwrap_abel_jacobi.js"></script>
-  <script src="/assets/wasm/bd_lscm.js"></script>
+  <script src="assets/js/wasm-loader.js"></script>
+  <script src="assets/wasm/uv_unwrap_field.js"></script>
+  <script src="assets/wasm/uv_unwrap_simple.js"></script>
 <style>
   *{box-sizing:border-box}html,body{margin:0;height:100%}
   body{overflow:hidden;background:#070b14;color:#d8def7;font-family:"Segoe UI",Arial,sans-serif}
@@ -615,7 +614,7 @@
     if(taReady)return true;if(taFailed)return false;
     try{
       if(typeof UvUnwrapSimpleSolver!=='function')throw new Error('UvUnwrapSimpleSolver 未加载');
-      taInst=await UvUnwrapSimpleSolver({locateFile:(p)=>"/assets/wasm/"+p});
+      taInst=await UvUnwrapSimpleSolver({locateFile:(p)=>WasmLoader.BASE+p});
       taReady=true;return true
     }
     catch(e){taFailed=true;console.error(e);return false}
@@ -785,8 +784,7 @@
   async function initAbelJacobiSolver(){
     if(ajReady)return true;if(ajFailed)return false;
     try{
-      if(typeof UvUnwrapAbelJacobiSolver!=='function')throw new Error('UvUnwrapAbelJacobiSolver 未加载');
-      if(!ajPromise)ajPromise=UvUnwrapAbelJacobiSolver({locateFile:(p)=>"/assets/wasm/"+p});
+      if(!ajPromise)ajPromise=WasmLoader.loadWasmModule('uv_unwrap_abel_jacobi','UvUnwrapAbelJacobiSolver');
       ajInst=await ajPromise;
       ajReady=true;return true;
     }catch(e){ajFailed=true;console.error(e);return false;}
@@ -809,15 +807,12 @@
       const t=ajInst.ccall('get_last_time_ms','number',[],[]);
       const genus=ajInst.ccall('get_genus','number',[],[]);
       const built=ajInst.ccall('get_built','number',[],[]);
-      const fallback=ajInst.ccall('get_used_fallback','number',[],[]);
       const poincare=ajInst.ccall('get_poincare_ok','number',[],[]);
       const abelOk=ajInst.ccall('get_abel_ok','number',[],[]);
       const latRes=ajInst.ccall('get_lattice_residual','number',[],[]);
       ajInst.ccall('dispose','void',[],[]);
       const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
-      let details='genus='+genus;
-      if(fallback)details+=' / LSCM fallback';
-      else details+=' / Abel–Jacobi';
+      let details='genus='+genus+' / Abel-Jacobi';
       if(built)details+=' / lattice res='+latRes.toExponential(2);
       if(!poincare)details+=' / Poincare-Hopf WARN';
       if(!abelOk)details+=' / Abel WARN';
@@ -829,8 +824,7 @@
   async function initBDLscmSolver(){
     if(bdReady)return true;if(bdFailed)return false;
     try{
-      if(typeof BD_LSCMModule!=='function')throw new Error('BD_LSCMModule 未加载');
-      if(!bdPromise)bdPromise=BD_LSCMModule({locateFile:(p)=>"/assets/wasm/"+p});
+      if(!bdPromise)bdPromise=WasmLoader.loadWasmModule('bd_lscm','BD_LSCMModule');
       bdInst=await bdPromise;
       bdReady=true;return true;
     }catch(e){bdFailed=true;console.error(e);return false;}
@@ -873,7 +867,7 @@
     if(fieldReady)return true;if(fieldFailed)return false;
     try{
       if(typeof UvUnwrapFieldSolver!=='function')throw new Error('UvUnwrapFieldSolver 未加载');
-      if(!fieldPromise)fieldPromise=UvUnwrapFieldSolver({locateFile:(p)=>"/assets/wasm/"+p});
+      if(!fieldPromise)fieldPromise=UvUnwrapFieldSolver({locateFile:(p)=>WasmLoader.BASE+p});
       fieldInst=await fieldPromise;
       fieldReady=true;return true;
     }catch(e){fieldFailed=true;console.error(e);return false;}

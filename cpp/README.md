@@ -1,5 +1,10 @@
 # 编译
+# 若当前在仓库根目录：cd cpp/emsdk
+# 若当前已在 cpp 目录：cd emsdk
+.\emsdk install latest
 .\emsdk activate latest
+.\emsdk_env.ps1
+cd ..
 em++ lscm_solver.cpp -o ../assets/wasm/lscm_solver.js -O3 -std=c++17 "-ID:/third_party/eigen-3.4.0" --bind -s MODULARIZE=1 -s EXPORT_NAME="LCMSolver" -s ALLOW_MEMORY_GROWTH=1 -s TOTAL_MEMORY=256MB -s WASM=1
 
 
@@ -17,20 +22,22 @@ Emscripten 是一个 LLVM 到 WebAssembly 的编译器工具链。
 
 **Windows 安装步骤：**
 
-1. 下载并安装 Emscripten SDK：
+1. 下载并安装 Emscripten SDK（本仓库已包含 submodule）：
    ```powershell
-   # 下载 emsdk
-   git clone https://github.com/emscripten-core/emsdk.git
-   cd emsdk
-   
-   # 安装最新版本
-   emsdk install latest
-   
-   # 激活
-   emsdk activate latest
-   
-   # 设置环境变量 (当前会话)
-   emsdk env
+   # 从仓库根目录
+   cd cpp/emsdk
+   # 若已在 cpp 目录，则用：cd emsdk
+
+   .\emsdk install latest
+   .\emsdk activate latest
+   .\emsdk_env.ps1
+   ```
+
+   若 `install` 下载 wasm-binaries 时 SSL 中断，可手动用 curl 下载后重试：
+   ```powershell
+   curl.exe -L --retry 5 -o downloads/1724b50443d92e23ef2a56abf0dc501206839cef-wasm-binaries.zip `
+     https://storage.googleapis.com/webassembly/emscripten-releases-builds/win/1724b50443d92e23ef2a56abf0dc501206839cef/wasm-binaries.zip
+   .\emsdk install latest
    ```
 
 2. 验证安装：

@@ -1,0 +1,215 @@
+# WASM package manifest — single source for Makefile targets and WASM Build Manager GUI
+output_dir: assets/wasm
+wasm_dir: conformal-parameterization/wasm
+
+source_groups:
+  basemesh:
+    - ../BaseMesh/Mesh.cpp
+    - ../BaseMesh/MeshIO.cpp
+    - ../BaseMesh/Vertex.cpp
+    - ../BaseMesh/Edge.cpp
+    - ../BaseMesh/Face.cpp
+    - ../BaseMesh/HalfEdge.cpp
+    - ../BaseMesh/GaussianCurvature.cpp
+    - ../BaseMesh/QcError.cpp
+    - ../Parameterization/Parameterization.cpp
+  cutseam:
+    - ../CutSeamMesh/CutSeamMesh.cpp
+  solver:
+    - ../Solvers/Solver.cpp
+    - ../Solvers/AugmentedLagrangian.cpp
+    - ../Solvers/MixedIntegerProgram.cpp
+  simple_param:
+    - ../Parameterization/SimpleParam/LSCM/Lscm.cpp
+    - ../Parameterization/SimpleParam/LSCM/Scp.cpp
+    - ../Parameterization/SimpleParam/ABF/AbfPlusPlus.cpp
+    - ../Parameterization/SimpleParam/ABF/LinAbf.cpp
+    - ../Parameterization/SimpleParam/ARAP/ARAP.cpp
+    - ../Parameterization/SimpleParam/ARAP/Tutte.cpp
+  cone_param:
+    - ../Parameterization/ConeParam/ConeParameterization.cpp
+    - ../Parameterization/ConeParam/Conformal/CirclePatterns.cpp
+    - ../Parameterization/ConeParam/Conformal/Cetm.cpp
+    - ../Parameterization/ConeParam/RicciFlow/RicciFlow.cpp
+  global_fields:
+    - ../Parameterization/GlobalFieldsParam/GlobalFieldsParameterization.cpp
+    - ../Parameterization/GlobalFieldsParam/QuadCover.cpp
+    - ../Parameterization/GlobalFieldsParam/MIQQuad.cpp
+    - ../Parameterization/CutSeamParam/HoloOneForm/HolomorphicOneForm.cpp
+  vector_fields:
+    - ../VectorFileds/NRosyVectorFields.cpp
+    - ../VectorFileds/PrincipalCurvatureFields/PrincipalCurvatureField.cpp
+  cutseam_param:
+    - ../Parameterization/CutSeamParam/CutSeamParameterization.cpp
+  abel_jacobi:
+    - ../Parameterization/CutSeamParam/Abel_Jacoi/AbelJacobi.cpp
+    - ../Parameterization/CutSeamParam/Abel_Jacoi/AbelJacobiParameterization.cpp
+
+pages:
+  uv-unwrap.html:
+    packages:
+      - name: uv_unwrap_simple
+        load: eager
+      - name: dgp_basic
+        load: eager
+      - name: bd_lscm
+        load: lazy
+  uv_unwrap_global.html:
+    packages:
+      - name: uv_unwrap_field
+        load: eager
+      - name: uv_unwrap_simple
+        load: eager
+      - name: uv_unwrap_abel_jacobi
+        load: lazy
+      - name: bd_lscm
+        load: lazy
+  bdhm-deformation.html:
+    packages:
+      - name: bd_deformation
+        load: lazy
+
+packages:
+  uv_unwrap_simple:
+    kind: compat
+    make_target: build-simple-compat
+    export_name: UvUnwrapSimpleSolver
+    methods: [tutte, lscm, scp, abf, arap, cp, cetm, ricci, qc_error]
+    sources:
+      - group: basemesh
+      - group: solver
+      - group: simple_param
+      - group: cone_param
+      - bindings_uv_unwrap_simple_compat.cpp
+    exports:
+      - solve_lscm
+      - solve_tutte_circle
+      - solve_tutte_square
+      - solve_scp
+      - solve_linabf
+      - solve_abfpp
+      - solve_arap
+      - solve_cp
+      - solve_cetm
+      - solve_ricci
+      - load_mesh_with_uv
+      - compute_qc_error
+      - get_uv_result
+      - get_qc_errors
+      - dispose
+
+  dgp_basic:
+    kind: compat
+    make_target: build-dgp-compat
+    export_name: DgpBasicSolver
+    methods: [gauss_curvature]
+    sources:
+      - group: basemesh
+      - bindings_dgp_basic_compat.cpp
+    exports:
+      - load_mesh
+      - compute_gauss_curvature_per_area
+      - get_gc_result
+      - dispose
+
+  uv_unwrap_field:
+    kind: compat
+    make_target: build-field-compat
+    export_name: UvUnwrapFieldSolver
+    methods: [quadcover, miq, hof]
+    sources:
+      - group: basemesh
+      - group: cutseam
+      - group: solver
+      - group: global_fields
+      - group: cutseam_param
+      - group: vector_fields
+      - ../Parameterization/SimpleParam/LSCM/Lscm.cpp
+      - bindings_uv_unwrap_field_compat.cpp
+    exports:
+      - load_mesh
+      - step1_compute_principal_field
+      - step2_smooth_and_matching
+      - step3_solve_quadcover
+      - solve_miq
+      - solve_hof
+      - get_uv_result
+      - dispose
+
+  uv_unwrap_abel_jacobi:
+    kind: compat
+    make_target: build-abel-compat
+    export_name: UvUnwrapAbelJacobiSolver
+    methods: [abel_jacobi]
+    sources:
+      - group: basemesh
+      - group: cutseam
+      - group: cutseam_param
+      - group: abel_jacobi
+      - ../Parameterization/SimpleParam/LSCM/Lscm.cpp
+      - bindings_uv_unwrap_abel_jacobi_compat.cpp
+    exports:
+      - load_mesh
+      - build_abel_jacobi
+      - solve_abel_jacobi
+      - get_uv_result
+      - dispose
+
+  bd_deformation:
+    kind: compat
+    export_name: BdDeformationSolver
+    methods: [bd_deformation]
+    sources:
+      - ../Bounded/bounded_distortion_mapping/BoundedDistortionMapping.cpp
+      - bindings_bd_deformation_compat.cpp
+
+  bd_lscm:
+    kind: embind
+    make_target: build-bd-lscm
+    export_name: BD_LSCMModule
+    methods: [bd_lscm]
+    sources:
+      - group: basemesh
+      - ../Parameterization/SimpleParam/LSCM/Lscm.cpp
+      - ../Bounded/bounded_distortion_mapping/BoundedDistortionMapping.cpp
+      - bindings_bd_lscm.cpp
+
+  base_mesh:
+    kind: embind
+    make_target: build-base-mesh
+    export_name: BaseMeshModule
+    sources:
+      - group: basemesh
+      - bindings_base_mesh.cpp
+
+  lscm:
+    kind: embind
+    make_target: build-lscm
+    export_name: LSCMModule
+    sources:
+      - group: basemesh
+      - ../Parameterization/SimpleParam/LSCM/Lscm.cpp
+      - ../Parameterization/SimpleParam/LSCM/Scp.cpp
+      - bindings_lscm.cpp
+
+  abf:
+    kind: embind
+    make_target: build-abf
+    export_name: ABFModule
+    sources:
+      - group: basemesh
+      - group: solver
+      - ../Parameterization/SimpleParam/ABF/AbfPlusPlus.cpp
+      - ../Parameterization/SimpleParam/ABF/LinAbf.cpp
+      - bindings_abf.cpp
+
+  arap:
+    kind: embind
+    make_target: build-arap
+    export_name: ARAPModule
+    sources:
+      - group: basemesh
+      - group: solver
+      - ../Parameterization/SimpleParam/ARAP/ARAP.cpp
+      - ../Parameterization/SimpleParam/ARAP/Tutte.cpp
+      - bindings_arap.cpp
