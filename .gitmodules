@@ -2,12 +2,3 @@
 	path = cpp/conformal-parameterization
 	url = https://github.com/lixiongguo/conformal-parameterization.git
 	branch = wasm_dev
-[submodule "cpp/Libigl-Discrete-Geometry"]
-	path = cpp/Libigl-Discrete-Geometry
-	url = https://github.com/lixiongguo/Libigl-Discrete-Geometry.git
-[submodule "cpp/ddg-exercises"]
-	path = cpp/ddg-exercises
-	url = https://github.com/lixiongguo/ddg-exercises.git
-[submodule "origami-simulator"]
-	path = origami-simulator
-	url = https://github.com/lixiongguo/OrigamiSimulator.git
