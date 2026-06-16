@@ -113,7 +113,9 @@ class WasmBuildManager(QMainWindow):
         self._check_emsdk()
 
     def _check_emsdk(self) -> None:
-        emsdk = REPO_ROOT / "cpp" / "emsdk" / "upstream" / "emscripten" / "em++.bat"
+        import platform
+        ext = ".bat" if platform.system() == "Windows" else ""
+        emsdk = REPO_ROOT / "cpp" / "emsdk" / "upstream" / "emscripten" / f"em++{ext}"
         if emsdk.exists():
             self.status_label.setText("emsdk: OK")
             self.status_label.setStyleSheet("color: #52d681")

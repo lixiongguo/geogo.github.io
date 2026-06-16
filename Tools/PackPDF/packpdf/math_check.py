@@ -74,6 +74,14 @@ CHECK_RULES: tuple[CheckRule, ...] = (
         correct='$$ x=1 $$',
         reason='未配对的 `$$` 会使后续全部公式识别错位。',
     ),
+    CheckRule(
+        id='norm_pipe',
+        title='规则 8：\\| 范数符号会被 Liquid 截断',
+        description='Jekyll Liquid 引擎将 `\\|` 解析为管道过滤器，导致 HTML 输出公式断裂。应改为 `\\lVert` / `\\rVert`。',
+        wrong='\\|v\\|^2  /  \\frac{x \\times g}{\\|x \\times g\\|}',
+        correct='\\lVert v\\rVert^2  /  \\frac{x \\times g}{\\lVert x \\times g\\rVert}',
+        reason='Liquid 模板引擎在预处理阶段处理 `|` 字符，即使位于 `$$` 或 `$` 块内也会被捕获，`\\lVert`/`\\rVert` 不会被误解析。',
+    ),
 )
 
 _RULE_BY_ID = {r.id: r for r in CHECK_RULES}
@@ -86,6 +94,7 @@ AUTO_FIXABLE_RULE_IDS = frozenset({
     'display_blank',
     'sub_cmd',
     'double_wrap',
+    'norm_pipe',
 })
 
 
@@ -247,6 +256,10 @@ def check_file(filepath: str | Path) -> list[CheckIssue]:
             in_block = not in_block
     if in_block:
         issues.append(_issue('dollar_pair', None, '$$ 未配对（文件末尾仍有未闭合块）'))
+
+    for m in re.finditer(r'\\\|', text):
+        ln = text[: m.start()].count('\n') + 1
+        issues.append(_issue('norm_pipe', ln, '\\| 应改为 \\lVert / \\rVert 以避免 Liquid 管道符截断'))
 
     return issues
 

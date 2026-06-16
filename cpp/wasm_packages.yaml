@@ -1,4 +1,4 @@
-# WASM package manifest — single source for Makefile targets and WASM Build Manager GUI
+# WASM package manifest — 精简版 (5 模块)
 output_dir: assets/wasm
 wasm_dir: conformal-parameterization/wasm
 
@@ -26,15 +26,9 @@ source_groups:
     - ../Parameterization/SimpleParam/ABF/LinAbf.cpp
     - ../Parameterization/SimpleParam/ARAP/ARAP.cpp
     - ../Parameterization/SimpleParam/ARAP/Tutte.cpp
-  cone_param:
-    - ../Parameterization/ConeParam/ConeParameterization.cpp
-    - ../Parameterization/ConeParam/Conformal/CirclePatterns.cpp
-    - ../Parameterization/ConeParam/Conformal/Cetm.cpp
-    - ../Parameterization/ConeParam/RicciFlow/RicciFlow.cpp
   global_fields:
     - ../Parameterization/GlobalFieldsParam/GlobalFieldsParameterization.cpp
     - ../Parameterization/GlobalFieldsParam/QuadCover.cpp
-    - ../Parameterization/GlobalFieldsParam/MIQQuad.cpp
     - ../Parameterization/CutSeamParam/HoloOneForm/HolomorphicOneForm.cpp
   vector_fields:
     - ../VectorFileds/NRosyVectorFields.cpp
@@ -49,8 +43,6 @@ pages:
   uv-unwrap.html:
     packages:
       - name: uv_unwrap_simple
-        load: eager
-      - name: dgp_basic
         load: eager
       - name: bd_lscm
         load: lazy
@@ -74,12 +66,11 @@ packages:
     kind: compat
     make_target: build-simple-compat
     export_name: UvUnwrapSimpleSolver
-    methods: [tutte, lscm, scp, abf, arap, cp, cetm, ricci, qc_error]
+    methods: [tutte, lscm, scp, abf, arap, cp, cetm, ricci, qc_error, gauss_curvature]
     sources:
       - group: basemesh
       - group: solver
       - group: simple_param
-      - group: cone_param
       - bindings_uv_unwrap_simple_compat.cpp
     exports:
       - solve_lscm
@@ -96,27 +87,17 @@ packages:
       - compute_qc_error
       - get_uv_result
       - get_qc_errors
-      - dispose
-
-  dgp_basic:
-    kind: compat
-    make_target: build-dgp-compat
-    export_name: DgpBasicSolver
-    methods: [gauss_curvature]
-    sources:
-      - group: basemesh
-      - bindings_dgp_basic_compat.cpp
-    exports:
-      - load_mesh
-      - compute_gauss_curvature_per_area
-      - get_gc_result
+      - dgp_load_mesh
+      - dgp_compute_gauss_curvature_per_area
+      - dgp_get_gc_result_size
+      - dgp_get_gc_result
       - dispose
 
   uv_unwrap_field:
     kind: compat
     make_target: build-field-compat
     export_name: UvUnwrapFieldSolver
-    methods: [quadcover, miq, hof]
+    methods: [quadcover, hof]
     sources:
       - group: basemesh
       - group: cutseam
@@ -131,7 +112,6 @@ packages:
       - step1_compute_principal_field
       - step2_smooth_and_matching
       - step3_solve_quadcover
-      - solve_miq
       - solve_hof
       - get_uv_result
       - dispose
@@ -157,11 +137,22 @@ packages:
 
   bd_deformation:
     kind: compat
+    make_target: build-bd-deform-compat
     export_name: BdDeformationSolver
     methods: [bd_deformation]
     sources:
       - ../Bounded/bounded_distortion_mapping/BoundedDistortionMapping.cpp
       - bindings_bd_deformation_compat.cpp
+    exports:
+      - set_options
+      - setup_mesh
+      - get_vertex_count
+      - get_uv_ptr
+      - optimize_step
+      - get_last_iterations
+      - get_max_distortion
+      - get_min_jacobian
+      - get_flip_count
 
   bd_lscm:
     kind: embind
@@ -173,43 +164,3 @@ packages:
       - ../Parameterization/SimpleParam/LSCM/Lscm.cpp
       - ../Bounded/bounded_distortion_mapping/BoundedDistortionMapping.cpp
       - bindings_bd_lscm.cpp
-
-  base_mesh:
-    kind: embind
-    make_target: build-base-mesh
-    export_name: BaseMeshModule
-    sources:
-      - group: basemesh
-      - bindings_base_mesh.cpp
-
-  lscm:
-    kind: embind
-    make_target: build-lscm
-    export_name: LSCMModule
-    sources:
-      - group: basemesh
-      - ../Parameterization/SimpleParam/LSCM/Lscm.cpp
-      - ../Parameterization/SimpleParam/LSCM/Scp.cpp
-      - bindings_lscm.cpp
-
-  abf:
-    kind: embind
-    make_target: build-abf
-    export_name: ABFModule
-    sources:
-      - group: basemesh
-      - group: solver
-      - ../Parameterization/SimpleParam/ABF/AbfPlusPlus.cpp
-      - ../Parameterization/SimpleParam/ABF/LinAbf.cpp
-      - bindings_abf.cpp
-
-  arap:
-    kind: embind
-    make_target: build-arap
-    export_name: ARAPModule
-    sources:
-      - group: basemesh
-      - group: solver
-      - ../Parameterization/SimpleParam/ARAP/ARAP.cpp
-      - ../Parameterization/SimpleParam/ARAP/Tutte.cpp
-      - bindings_arap.cpp

@@ -10,7 +10,6 @@
   
   <script src="assets/js/wasm-loader.js"></script>
   <script src="assets/wasm/uv_unwrap_simple.js"></script>
-  <script src="assets/wasm/dgp_basic.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; }
@@ -1048,8 +1047,8 @@
 
       async function runDgpBasicOnCurrentMesh() {
         if (!currentMeshData) throw new Error("请先加载模型");
-        const ok = await initDgpBasic();
-        if (!ok) throw new Error("dgp_basic WASM 初始化失败");
+        const ok = await initSimpleSolver();
+        if (!ok) throw new Error("WASM 求解器初始化失败");
 
         const flatPositions = new Float64Array(currentMeshData.positions.length * 3);
         for (let i = 0; i < currentMeshData.positions.length; i++) {
@@ -1064,17 +1063,17 @@
           flatFaces[i * 3 + 2] = currentMeshData.faces[i][2];
         }
 
-        const posPtr = dgpInstance._malloc(flatPositions.length * 8);
-        for (let i = 0; i < flatPositions.length; i++) dgpInstance.setValue(posPtr + i * 8, flatPositions[i], 'double');
-        const facePtr = dgpInstance._malloc(flatFaces.length * 4);
-        for (let i = 0; i < flatFaces.length; i++) dgpInstance.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+        const posPtr = simpleInstance._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) simpleInstance.setValue(posPtr + i * 8, flatPositions[i], 'double');
+        const facePtr = simpleInstance._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) simpleInstance.setValue(facePtr + i * 4, flatFaces[i], 'i32');
 
         try {
-          const ret = dgpInstance.ccall("load_mesh", "number", ["number", "number", "number", "number"], [posPtr, flatPositions.length, facePtr, flatFaces.length]);
-          if (ret !== 0) throw new Error("load_mesh 失败");
+          const ret = simpleInstance.ccall("dgp_load_mesh", "number", ["number", "number", "number", "number"], [posPtr, flatPositions.length, facePtr, flatFaces.length]);
+          if (ret !== 0) throw new Error("dgp_load_mesh 失败");
         } finally {
-          dgpInstance._free(posPtr);
-          dgpInstance._free(facePtr);
+          simpleInstance._free(posPtr);
+          simpleInstance._free(facePtr);
         }
       }
 
@@ -1310,33 +1309,6 @@
       let simpleInstance = null;
       let wasmReady = false;
       let wasmLoadFailed = false;
-
-      let dgpInstance = null;
-      let dgpReady = false;
-      let dgpLoadFailed = false;
-
-      async function initDgpBasic() {
-        if (dgpReady) return true;
-        if (dgpLoadFailed) return false;
-        try {
-          if (typeof DgpBasicSolver === 'undefined') {
-            throw new Error('WASM 胶水代码未加载，请确保 assets/wasm/dgp_basic.js 已部署');
-          }
-          // Ensure wasm file is located correctly (GitHub Pages / Jekyll base paths).
-          dgpInstance = await DgpBasicSolver({
-            locateFile: function (path) {
-              return "assets/wasm/" + path;
-            }
-          });
-          dgpReady = true;
-          console.log('WASM dgp_basic (gauss curvature) 加载成功');
-          return true;
-        } catch (err) {
-          console.error('dgp_basic WASM 加载失败:', err && (err.stack || err));
-          dgpLoadFailed = true;
-          return false;
-        }
-      }
 
       async function initSimpleSolver() {
         if (wasmReady) return true;
@@ -3890,13 +3862,13 @@
           clearOtherOverlays();
           await runDgpBasicOnCurrentMesh();
 
-          const ret = dgpInstance.ccall("compute_gauss_curvature_per_area", "number", [], []);
+          const ret = simpleInstance.ccall("dgp_compute_gauss_curvature_per_area", "number", [], []);
           if (ret !== 0) throw new Error("compute_gauss_curvature_per_area 失败");
-          const n = dgpInstance.ccall("get_gc_result_size", "number", [], []);
-          const ptr = dgpInstance.ccall("get_gc_result", "number", [], []);
+          const n = simpleInstance.ccall("dgp_get_gc_result_size", "number", [], []);
+          const ptr = simpleInstance.ccall("dgp_get_gc_result", "number", [], []);
           if (!ptr || n !== currentMeshData.positions.length) throw new Error("Gauss 曲率结果长度异常: " + n);
           const K = new Array(n);
-          for (let i = 0; i < n; i++) K[i] = dgpInstance.getValue(ptr + i * 8, "double");
+          for (let i = 0; i < n; i++) K[i] = simpleInstance.getValue(ptr + i * 8, "double");
 
           const overlay = buildGaussianCurvatureOverlay(currentMeshData, K);
           if (!overlay) throw new Error("Gauss 曲率可视化构建失败");
@@ -3913,7 +3885,7 @@
           console.error(e);
           setStatus("Gauss 曲率失败: " + e.message, "#ff9d9d");
         } finally {
-          try { if (dgpInstance) dgpInstance.ccall("dispose", "void", [], []); } catch (_) {}
+          try { if (simpleInstance) simpleInstance.ccall("dispose", "void", [], []); } catch (_) {}
           setBusy(false);
         }
       });

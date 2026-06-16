@@ -20,13 +20,6 @@ exclude:
   - docs/cpp/
 plugins:
   - jekyll-feed
-  - jekyll-paginate-v2
-
-pagination:
-  enabled: true
-  per_page: 15
-  permalink: "/page/:num/"
-  sort_reverse: false
 github_username: David Lee
 
 # 解决中文文件名编码问题

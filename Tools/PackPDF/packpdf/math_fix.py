@@ -18,6 +18,29 @@ class MathFixResult:
     error: str = ''
 
 
+def _replace_norm_pipes(text: str) -> tuple[str, bool]:
+    """将 \\|...\\| 范数替换为 \\lVert...\\rVert，平衡配对。"""
+    result: list[str] = []
+    i = 0
+    expect_open = True
+    changed = False
+    while i < len(text):
+        if text[i:i+2] == '\\|':
+            # 仅在非转义（前非 \\l、\\r 等）时才视为范数
+            if expect_open:
+                result.append('\\lVert ')
+                expect_open = False
+            else:
+                result.append('\\rVert ')
+                expect_open = True
+            changed = True
+            i += 2
+        else:
+            result.append(text[i])
+            i += 1
+    return ''.join(result), changed
+
+
 def fix_text(text: str) -> tuple[str, list[str]]:
     """返回 (修复后文本, 变更说明列表)。"""
     changes: list[str] = []
@@ -26,6 +49,11 @@ def fix_text(text: str) -> tuple[str, list[str]]:
     if double_fixed != text:
         changes.append('移除 \\(\\) 与 $ 双重包裹')
         text = double_fixed
+
+    norm_fixed, norm_changed = _replace_norm_pipes(text)
+    if norm_changed:
+        changes.append('\\| 范数改为 \\lVert / \\rVert')
+        text = norm_fixed
 
     segments = re.split(r'(\$\$.+?\$\$)', text, flags=re.DOTALL)
 

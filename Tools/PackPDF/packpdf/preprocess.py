@@ -157,6 +157,26 @@ def preprocess_content(content: str, url_map: dict[str, str | None] | None = Non
     content = re.sub(r'\\\(\$([^$]+?)\$\\\)', r'\\(\1\\)', content)
     content = re.sub(r'\$\\\(([^)]+?)\\\)\$', r'\\(\1\\)', content)
 
+    # 将 \\| 范数替换为 \\lVert / \\rVert（避免 Liquid 管道符截断）
+    def _replace_norm_pipes(text: str) -> str:
+        result: list[str] = []
+        i = 0
+        expect_open = True
+        while i < len(text):
+            if text[i:i+2] == '\\|':
+                if expect_open:
+                    result.append('\\lVert ')
+                    expect_open = False
+                else:
+                    result.append('\\rVert ')
+                    expect_open = True
+                i += 2
+            else:
+                result.append(text[i])
+                i += 1
+        return ''.join(result)
+    content = _replace_norm_pipes(content)
+
     def _strip_inner(m: re.Match[str]) -> str:
         return '$' + m.group(1).strip() + '$'
 
