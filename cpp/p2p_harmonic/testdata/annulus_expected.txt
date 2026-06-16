@@ -1,5 +1,0 @@
-numVirtualVertices 79
-energySamples 1050
-C 152 79
-D 152 79
-XP2PDeformNorm 97.7487

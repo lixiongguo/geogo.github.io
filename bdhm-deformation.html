@@ -3,335 +3,691 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BDHM 变形 — Bounded Distortion Harmonic Map</title>
-<script src="assets/wasm/bdhm.js"></script>
+<title>有界失真平面变形 — Bounded Distortion Deformation</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;height:100%}
 body{overflow:hidden;background:#0b1220;color:#d8def7;font-family:"Segoe UI",Arial,sans-serif}
 .app{display:flex;flex-direction:column;height:100vh}
-.toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 18px;background:rgba(9,15,28,.96);border-bottom:1px solid rgba(106,132,255,.18)}
-.toolbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-select,button{border:1px solid rgba(106,132,255,.25);background:#121b31;color:#eef2ff;border-radius:10px;padding:9px 14px;font-size:14px}
+.toolbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:12px 18px;background:rgba(9,15,28,.96);border-bottom:1px solid rgba(106,132,255,.18)}
+.group{display:flex;align-items:center;gap:8px}
+.group label{font-size:13px;color:#aebbe6}
+select,button{border:1px solid rgba(106,132,255,.25);background:#121b31;color:#eef2ff;border-radius:9px;padding:7px 12px;font-size:13px}
 button{cursor:pointer;transition:background .2s ease}
 button:hover{background:#1b2b52}
-.btn-go{padding:9px 22px;background:linear-gradient(135deg,#6c3cff,#4a90d9);color:#fff;border:none;font-weight:700;letter-spacing:1px}
-.btn-go:disabled{opacity:.4;cursor:not-allowed}
-.status{color:#8cc4ff;font-size:13px;min-width:200px;text-align:right}
-.main{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:2px;background:#11192b;min-height:0}
-.panel{display:flex;flex-direction:column;min-width:0;min-height:0;background:#0b1220}
-.panel-header{padding:10px 16px;border-bottom:1px solid rgba(106,132,255,.16);color:#c6d1f4;font-size:14px}
-.canvas-wrap{position:relative;flex:1;min-height:0}
-canvas{display:block;width:100%;height:100%}
-.footer-note{padding:8px 16px;border-top:1px solid rgba(106,132,255,.16);color:#7e8db5;font-size:11px}
-.stats{display:flex;gap:20px;flex-wrap:wrap;padding:8px 16px;background:rgba(16,30,61,.5);border-bottom:1px solid rgba(106,132,255,.12);font-size:12px}
-.stat{color:#8b9dc4}.stat span{color:#ffd700;font-weight:700}
-@media(max-width:900px){.main{grid-template-columns:1fr;grid-template-rows:1fr 1fr}}
+.btn-reset{background:linear-gradient(135deg,#6c3cff,#4a90d9);color:#fff;border:none;font-weight:700}
+input[type=range]{width:130px;accent-color:#6c8cff}
+.chk{display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;color:#c8d3f5}
+.val{color:#ffd700;font-weight:700;min-width:34px;display:inline-block;text-align:right}
+.main{flex:1;position:relative;min-height:0}
+canvas{display:block;width:100%;height:100%;cursor:grab}
+canvas.dragging{cursor:grabbing}
+.stats{position:absolute;top:14px;left:14px;background:rgba(11,18,34,.82);border:1px solid rgba(106,132,255,.2);border-radius:12px;padding:12px 16px;font-size:13px;line-height:1.9;backdrop-filter:blur(6px)}
+.stats .row span{color:#ffd700;font-weight:700}
+.stats .ok{color:#7ef0a8}.stats .bad{color:#ff7b7b}
+.legend{position:absolute;bottom:16px;left:14px;background:rgba(11,18,34,.82);border:1px solid rgba(106,132,255,.2);border-radius:12px;padding:10px 14px;font-size:12px}
+.legend .bar{height:10px;width:180px;border-radius:5px;margin:6px 0;background:linear-gradient(90deg,#2bd66f,#ffd23f,#ff5a3c)}
+.legend .lr{display:flex;justify-content:space-between;color:#9fb0d8}
+.hint{position:absolute;bottom:16px;right:16px;max-width:340px;background:rgba(11,18,34,.82);border:1px solid rgba(106,132,255,.2);border-radius:12px;padding:10px 14px;font-size:12px;color:#9fb0d8;line-height:1.6}
+.hint b{color:#bcd0ff}
+.title-tag{position:absolute;top:14px;right:16px;font-size:12px;color:#6f80ad;text-align:right;line-height:1.6}
+.title-tag b{color:#9db4ff}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="toolbar">
-    <div class="toolbar-right">
-      <select id="model-select"></select>
-      <button class="btn-go" id="go-btn">变形!</button>
-      <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;color:#d4a0f0">
-        <input type="checkbox" id="show-samples" checked> 采样点
-      </label>
-      <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;color:#a0d0f0">
-        <input type="checkbox" id="show-constraints" checked> 约束
-      </label>
-      <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;color:#88bbff">
-        <input type="checkbox" id="show-cauchy"> Cauchy 重心坐标
-      </label>
+    <div class="group">
+      <label>模型</label>
+      <select id="shape-select">
+        <optgroup label="真实模型 (assets/bdhm_models)">
+          <option value="model:annulus">圆环 Annulus (含洞)</option>
+          <option value="model:horse">马 Horse</option>
+          <option value="model:giraffe">长颈鹿 Giraffe</option>
+          <option value="model:deer">鹿 Deer</option>
+          <option value="model:elephant">大象 Elephant</option>
+          <option value="model:frog">青蛙 Frog</option>
+          <option value="model:rex">霸王龙 Rex (含洞)</option>
+          <option value="model:raptor">迅猛龙 Raptor</option>
+          <option value="model:dragon">龙 Dragon</option>
+          <option value="model:monkey">猴 Monkey</option>
+          <option value="model:racoon">浣熊 Racoon</option>
+          <option value="model:Archery">弓箭手 Archery (含洞)</option>
+        </optgroup>
+        <optgroup label="合成形状">
+          <option value="bar">长条 Bar</option>
+          <option value="square">方块 Square</option>
+          <option value="cross">十字 Cross</option>
+        </optgroup>
+      </select>
     </div>
-    <div class="status" id="status-text">BD-HM 加载中...</div>
-  </div>
-
-  <div class="stats" id="stats-bar" style="display:none">
-    <div class="stat">失真 Kmax=<span id="s-kmax">-</span></div>
-    <div class="stat">Jmin=<span id="s-jmin">-</span></div>
-    <div class="stat">Cone=<span id="s-cone">-</span></div>
-    <div class="stat">Energy=<span id="s-energy">-</span></div>
-    <div class="stat">Iter=<span id="s-iter">-</span></div>
+    <div class="group">
+      <label>失真上界 C</label>
+      <input type="range" id="bound-range" min="1.05" max="6" step="0.05" value="2">
+      <span class="val" id="bound-val">2.00</span>
+    </div>
+    <div class="group">
+      <label>能量</label>
+      <select id="energy-select">
+        <option value="shape">保形 (ARAP 类)</option>
+        <option value="conformal">共形 (LSCM 类)</option>
+      </select>
+    </div>
+    <div class="group">
+      <label class="chk"><input type="checkbox" id="bound-on" checked> 启用有界失真</label>
+    </div>
+    <div class="group">
+      <label class="chk"><input type="checkbox" id="show-tex" checked> 纹理</label>
+    </div>
+    <div class="group">
+      <label class="chk"><input type="checkbox" id="show-color"> 失真着色</label>
+    </div>
+    <div class="group">
+      <button id="demo-btn">演示形变</button>
+      <button class="btn-reset" id="reset-btn">复位</button>
+    </div>
   </div>
 
   <div class="main">
-    <section class="panel">
-      <div class="panel-header">源图片 (参考图 + 约束)</div>
-      <div class="canvas-wrap"><canvas id="src-canvas"></canvas></div>
-      <div class="footer-note">参考图 = 原始2D图片，蓝框 = 边界，紫线 = 约束对应</div>
-    </section>
-    <section class="panel">
-      <div class="panel-header">目标变形</div>
-      <div class="canvas-wrap"><canvas id="dst-canvas"></canvas></div>
-      <div class="footer-note">橙色=BDHM边界，蓝色=Cauchy，青色=映射采样点→2D图片变形</div>
-    </section>
+    <canvas id="cv"></canvas>
+    <div id="status-msg" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(11,18,34,.9);border:1px solid rgba(106,132,255,.3);border-radius:12px;padding:14px 22px;font-size:15px;color:#bcd0ff;display:none"></div>
+    <div class="stats" id="stats">
+      <div class="row">最大失真 K<sub>max</sub> = <span id="s-kmax">-</span></div>
+      <div class="row">最小 Jacobian = <span id="s-jmin">-</span></div>
+      <div class="row">翻转面数 = <span id="s-flip">-</span></div>
+      <div class="row">迭代/帧 = <span id="s-iter">-</span></div>
+    </div>
+    <div class="legend">
+      <div>三角面共形扭曲 K = σ₁/σ₂</div>
+      <div class="bar"></div>
+      <div class="lr"><span>1 (无扭曲)</span><span id="leg-c">≥ C</span><span style="color:#ff5a3c">翻转</span></div>
+    </div>
+    <div class="hint">
+      选择真实模型（来自 <b>assets/bdhm_models</b>）后<b>拖动</b>黄色操控点变形，或点「<b>演示形变</b>」播放录制位姿。
+      开启「有界失真」后每个三角形的共形扭曲被约束 <b>K ≤ C</b> 且 <b>无翻转</b>（J&gt;0）；关闭后对比自由变形的过度拉伸与翻转（红色）。
+    </div>
+    <div class="title-tag">
+      <b>有界失真平面变形</b><br>网格路线 (Lipman 2012) · penalty SOCP<br>
+      对应 <b>cpp/bounded_distortion_mapping</b>
+    </div>
   </div>
 </div>
 
 <script>
 (function(){
-  const MODELS = [
-    {name:'Archery',label:'Archery (弓箭)'},
-    {name:'annulus',label:'Annulus (圆环)'},
-    {name:'colorbar',label:'Color Bar'},
-    {name:'deer',label:'Deer (鹿)'},
-    {name:'dragon',label:'Dragon (龙)'},
-    {name:'elephant',label:'Elephant (象)'},
-    {name:'frog',label:'Frog (蛙)'},
-    {name:'giraffe',label:'Giraffe (长颈鹿)'},
-    {name:'horse',label:'Horse (马)'},
-    {name:'monkey',label:'Monkey (猴)'},
-    {name:'racoon',label:'Racoon (浣熊)'},
-    {name:'raptor',label:'Raptor (猛禽)'},
-    {name:'rex',label:'Rex (霸王龙)'},
+"use strict";
+
+/* ============ 复数工具 ============ */
+function cmul(a,b){return {re:a.re*b.re-a.im*b.im, im:a.re*b.im+a.im*b.re};}
+function cadd(a,b){return {re:a.re+b.re, im:a.im+b.im};}
+function csub(a,b){return {re:a.re-b.re, im:a.im-b.im};}
+function cconj(a){return {re:a.re, im:-a.im};}
+function cscale(a,s){return {re:a.re*s, im:a.im*s};}
+function cinv(a){const d=a.re*a.re+a.im*a.im; return {re:a.re/d, im:-a.im/d};}
+function cdet2(a,b,c,d){return csub(cmul(a,d),cmul(b,c));}
+// 3x3 复矩阵求逆 (伴随矩阵 / 行列式)
+function cmat3inv(M){
+  const minor=(r0,r1,c0,c1)=>cdet2(M[r0][c0],M[r0][c1],M[r1][c0],M[r1][c1]);
+  const cof=[[0,0,0],[0,0,0],[0,0,0]];
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++){
+    const rs=[0,1,2].filter(r=>r!==i), cs=[0,1,2].filter(c=>c!==j);
+    let m=minor(rs[0],rs[1],cs[0],cs[1]);
+    if((i+j)&1)m=cscale(m,-1);
+    cof[i][j]=m;
+  }
+  let det={re:0,im:0};
+  for(let j=0;j<3;j++)det=cadd(det,cmul(M[0][j],cof[0][j]));
+  const id=cinv(det), inv=[[0,0,0],[0,0,0],[0,0,0]];
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++)inv[i][j]=cmul(cof[j][i],id); // 转置即伴随
+  return inv;
+}
+
+/* ============ 网格生成 ============ */
+function makeGrid(nx,ny,w,h){
+  const V=[],idx=(i,j)=>j*nx+i;
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++)
+    V.push([(i/(nx-1)-0.5)*w,(j/(ny-1)-0.5)*h]);
+  const F=[];
+  for(let j=0;j<ny-1;j++)for(let i=0;i<nx-1;i++){
+    const a=idx(i,j),b=idx(i+1,j),c=idx(i,j+1),d=idx(i+1,j+1);
+    F.push([a,b,d]); F.push([a,d,c]);
+  }
+  return {V,F,nx,ny,idx};
+}
+// 去掉网格中部分单元构造十字形 (保留十字带上的面)
+function makeCross(n,w,h){
+  const g=makeGrid(n,n,w,h),keep=[],remap=new Array(g.V.length).fill(-1);
+  const lo=Math.floor(n/3),hi=n-1-lo;
+  const inArm=(i,j)=>(i>=lo&&i<=hi)||(j>=lo&&j<=hi);
+  const F=[];
+  for(const f of g.F){
+    const ci=f.map(v=>[v%n,Math.floor(v/n)]);
+    const cx=ci.reduce((s,p)=>s+p[0],0)/3, cy=ci.reduce((s,p)=>s+p[1],0)/3;
+    if(inArm(Math.round(cx),Math.round(cy))) F.push(f);
+  }
+  // 收集被引用顶点并重映射
+  const used=new Set(); F.forEach(f=>f.forEach(v=>used.add(v)));
+  const V=[]; let k=0;
+  for(let v=0;v<g.V.length;v++) if(used.has(v)){remap[v]=k++; V.push(g.V[v]);}
+  const F2=F.map(f=>f.map(v=>remap[v]));
+  return {V,F:F2};
+}
+
+/* ============ 多边形（带洞）内部网格化 ============ */
+function pointInPoly(x,y,poly){
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i][0],yi=poly[i][1],xj=poly[j][0],yj=poly[j][1];
+    if(((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+// 在 outer 内、所有 hole 外的区域上铺网格（grid sampling）
+function makePolyMesh(outer,holes,maxAcross){
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  for(const p of outer){minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);}
+  const w=maxX-minX,h=maxY-minY;
+  const cell=Math.max(w,h)/maxAcross;
+  const nx=Math.max(2,Math.round(w/cell)+1), ny=Math.max(2,Math.round(h/cell)+1);
+  const X=i=>minX+(i/(nx-1))*w, Y=j=>minY+(j/(ny-1))*h;
+  const idx=(i,j)=>j*nx+i;
+  const region=(x,y)=>{ if(!pointInPoly(x,y,outer))return false; for(const hl of holes) if(pointInPoly(x,y,hl))return false; return true; };
+  const Vall=[]; for(let j=0;j<ny;j++)for(let i=0;i<nx;i++)Vall.push([X(i),Y(j)]);
+  const Fall=[];
+  for(let j=0;j<ny-1;j++)for(let i=0;i<nx-1;i++){
+    const a=idx(i,j),b=idx(i+1,j),c=idx(i,j+1),d=idx(i+1,j+1);
+    for(const tri of [[a,b,d],[a,d,c]]){
+      const cx=(Vall[tri[0]][0]+Vall[tri[1]][0]+Vall[tri[2]][0])/3;
+      const cy=(Vall[tri[0]][1]+Vall[tri[1]][1]+Vall[tri[2]][1])/3;
+      if(region(cx,cy)) Fall.push(tri);
+    }
+  }
+  const used=new Set(); Fall.forEach(f=>f.forEach(v=>used.add(v)));
+  const remap=new Array(Vall.length).fill(-1); const V=[]; let k=0;
+  for(let v=0;v<Vall.length;v++) if(used.has(v)){remap[v]=k++; V.push(Vall[v]);}
+  const F=Fall.map(f=>f.map(v=>remap[v]));
+  return {V,F,bbox:[minX,minY,maxX,maxY]};
+}
+
+// 选取边界包围盒上的角点+边中点作为操控点
+function pickHandles(V){
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  for(const p of V){minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);}
+  const targets=[
+    [minX,minY],[maxX,minY],[maxX,maxY],[minX,maxY],
+    [(minX+maxX)/2,minY],[maxX,(minY+maxY)/2],[(minX+maxX)/2,maxY],[minX,(minY+maxY)/2]
   ];
+  const handles=[];
+  for(const t of targets){
+    let best=-1,bd=1e9;
+    for(let v=0;v<V.length;v++){const d=(V[v][0]-t[0])**2+(V[v][1]-t[1])**2; if(d<bd){bd=d;best=v;}}
+    if(handles.indexOf(best)<0) handles.push(best);
+  }
+  return handles;
+}
 
-  const modelSel=document.getElementById('model-select');
-  const goBtn=document.getElementById('go-btn');
-  const statusText=document.getElementById('status-text');
-  const showSamples=document.getElementById('show-samples');
-  const showConstraints=document.getElementById('show-constraints');
-  const showCauchy=document.getElementById('show-cauchy');
+/* ============ 全局状态 ============ */
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+let mesh=null, nV=0, nF=0;
+let rest=null;        // 静止顶点 (Float64Array 2*nV)
+let uv=null;          // 当前 UV
+let targets={};       // 锚点目标 {vert: [x,y]}
+let handles=[];       // 操控点顶点索引
+let edges=[];         // 唯一边
+let baseZ=[];         // 每面相对局部坐标 (复数) [face][3]
+let idMaps=[];        // 单位帧 (theta=0) 4x6 线性映射
+let maps=[];          // 当前对齐帧的 4x6 映射
+let frameAng=[];      // 每面帧角
+let faceArea=[];      // 每面面积
+let lastIters=0;
 
-  // Canvas setup
-  const srcC=document.getElementById('src-canvas'),dstC=document.getElementById('dst-canvas');
-  const srcCtx=srcC.getContext('2d'),dstCtx=dstC.getContext('2d');
-  let srcData=null,dstData=null,cauchySamples=null,bdhmInst=null,bdhmReady=false,currentJson=null;
-  let refImage=null,refImgLoaded=false;
+let texImage=null;    // 当前模型纹理 (Image)
+let texReady=false;   // 纹理是否加载完成
+let texUV=null;       // 每顶点纹理坐标 (像素) Float64Array 2*nV
+let demoTargets={};   // 录制的目标位姿 {vert: [x,y]} (来自 P2Pdst)
+let modelName='';     // 当前模型名 ('' = 合成形状)
+let loadToken=0;      // 防止异步加载竞态
 
-  function resize(){const w=srcC.parentElement.clientWidth,h=srcC.parentElement.clientHeight;srcC.width=dstC.width=w;srcC.height=dstC.height=h;renderBoth()}
-  window.addEventListener('resize',resize);
+const opt={
+  distortion_bound:2.0,
+  min_alpha_real:1e-4,
+  lscm_weight:0.0,
+  distortion_penalty:1.5e3,
+  positivity_penalty:1.5e3,
+  reference_weight:2e-4,
+  smoothness_weight:0.35,
+  initial_step:6e-2,
+  bound_on:true
+};
 
-  // Init
-  MODELS.forEach((m,i)=>{const o=document.createElement('option');o.value=i;o.textContent=m.label;modelSel.appendChild(o)});
-  if(MODELS.length)modelSel.value=0;
+function kappa(){return (opt.distortion_bound-1)/(opt.distortion_bound+1);}
 
-  async function initBDHM(){
-    if(bdhmReady)return true;
-    try{
-      if(typeof BDHMModule==='undefined')throw new Error('BDHMModule 未加载');
-      bdhmInst=await BDHMModule({locateFile:p=>'assets/wasm/'+p});
-      bdhmReady=true;
-      setStatus('就绪 — 选择模型后点击变形','#89f0b6');
-      return true;
-    }catch(e){console.error(e);setStatus('BD-HM 引擎加载失败','#ff9d9d');return false}
+/* ============ 由 {V,F} 装配求解所需的全部几何 ============ */
+function setupMesh(m){
+  mesh=m; nV=m.V.length; nF=m.F.length;
+  rest=new Float64Array(2*nV);
+  for(let i=0;i<nV;i++){rest[2*i]=m.V[i][0]; rest[2*i+1]=m.V[i][1];}
+  uv=rest.slice();
+
+  // 边
+  const es=new Set();
+  for(const f of m.F)for(let e=0;e<3;e++){
+    let a=f[e],b=f[(e+1)%3]; if(a>b){const t=a;a=b;b=t;}
+    es.add(a*nV+b);
+  }
+  edges=[...es].map(k=>[Math.floor(k/nV),k%nV]);
+
+  // 每面局部复坐标、面积、单位帧映射
+  baseZ=[];faceArea=[];idMaps=[];maps=[];frameAng=new Array(nF).fill(0);
+  for(let f=0;f<nF;f++){
+    const [a,b,c]=m.F[f];
+    const p0={re:rest[2*a],im:rest[2*a+1]};
+    const z=[{re:0,im:0},
+             {re:rest[2*b]-p0.re,im:rest[2*b+1]-p0.im},
+             {re:rest[2*c]-p0.re,im:rest[2*c+1]-p0.im}];
+    baseZ.push(z);
+    faceArea.push(0.5*Math.abs(z[1].re*z[2].im-z[1].im*z[2].re));
+    idMaps.push(faceLinearMap(f,0));
+    maps.push(idMaps[f]);
+  }
+  fitView();
+}
+
+// 把若干世界坐标的目标点映射到最近的网格顶点（用作操控点）
+function nearestVerts(pts){
+  const res=[];
+  for(const t of pts){
+    let best=-1,bd=1e18;
+    for(let v=0;v<nV;v++){const d=(rest[2*v]-t[0])**2+(rest[2*v+1]-t[1])**2; if(d<bd){bd=d;best=v;}}
+    if(best>=0 && res.indexOf(best)<0) res.push(best);
+    else res.push(best); // 允许重复时用最近的；下方去重
+  }
+  return res;
+}
+
+/* ============ 构建合成形状 ============ */
+function buildMesh(kind){
+  loadToken++; modelName=''; texReady=false; texImage=null; texUV=null; demoTargets={};
+  let m;
+  if(kind==='bar') m=makeGrid(15,5,3.2,1.0);
+  else if(kind==='square') m=makeGrid(9,9,2.0,2.0);
+  else m=makeCross(9,2.0,2.0);
+  setupMesh(m);
+  handles=pickHandles(m.V);
+  targets={};
+  for(const h of handles) targets[h]=[rest[2*h],rest[2*h+1]];
+}
+
+/* ============ 加载真实模型 (assets/bdhm_models/<name>/) ============ */
+async function loadModel(name){
+  const token=++loadToken;
+  modelName=name; texReady=false; texImage=null; texUV=null;
+  setStatusMsg('正在加载 '+name+' …');
+  let data;
+  try{
+    const resp=await fetch('assets/bdhm_models/'+name+'/data.json');
+    data=await resp.json();
+  }catch(err){ setStatusMsg('加载失败: '+name); return; }
+  if(token!==loadToken) return; // 已切换到别的模型
+
+  const cages=data.allcages||data.v||[];
+  if(!cages.length){ setStatusMsg('模型无边界数据: '+name); return; }
+  const outer=cages[0];
+  const nHoles=(data.holes&&data.holes.length)||(cages.length-1);
+  const holes=cages.slice(1,1+nHoles);
+
+  // 自适应分辨率：限制三角形数量以保证交互流畅
+  const m=makePolyMesh(outer,holes,38);
+  if(token!==loadToken) return;
+  if(m.F.length<2){ setStatusMsg('网格化失败: '+name); return; }
+  setupMesh(m);
+
+  // 纹理坐标：rest 包围盒 → 图像像素 (y 翻转)
+  const [bx0,by0,bx1,by1]=m.bbox, bw=bx1-bx0||1, bh=by1-by0||1;
+  const iw=data.img_w||1024, ih=data.img_h||1024;
+  texUV=new Float64Array(2*nV);
+  for(let v=0;v<nV;v++){
+    texUV[2*v]   = ((rest[2*v]-bx0)/bw)*iw;
+    texUV[2*v+1] = (1-(rest[2*v+1]-by0)/bh)*ih;
   }
 
-  async function loadJSON(name){
-    const r=await fetch('assets/bdhm_models/'+name+'/data.json');
-    if(!r.ok)throw new Error('无法加载 '+name+'/data.json');
-    return r.json();
+  // 操控点：P2Psrc → 最近顶点；目标默认在 src（静止），演示目标取 P2Pdst
+  const src=data.P2Psrc||[], dst=data.P2Pdst||[];
+  const hv=nearestVerts(src);
+  handles=[]; targets={}; demoTargets={};
+  for(let i=0;i<hv.length;i++){
+    const v=hv[i]; if(v<0||handles.indexOf(v)>=0) continue;
+    handles.push(v);
+    targets[v]=[rest[2*v],rest[2*v+1]];
+    if(dst[i]) demoTargets[v]=[dst[i][0],dst[i][1]];
   }
 
-  function setStatus(msg,color){statusText.textContent=msg;if(color)statusText.style.color=color}
+  // 加载纹理图片
+  const img=new Image();
+  img.onload=()=>{ if(token===loadToken){texImage=img; texReady=true;} };
+  img.onerror=()=>{ /* 无纹理时退化为失真着色 */ };
+  img.src='assets/bdhm_models/'+name+'/image.png';
 
-  // Draw helper
-  function drawPoly(ctx,poly,color,lineWidth,fill){
-    if(poly.length<2)return;
-    ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=lineWidth||1.5;
-    ctx.moveTo(poly[0][0],poly[0][1]);
-    for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i][0],poly[i][1]);
-    ctx.closePath();ctx.stroke();
-    if(fill){ctx.fillStyle=fill;ctx.fill()}
+  setStatusMsg('');
+}
+
+// 面 f 在帧角 theta 下的 4x6 实线性映射 (uv局部6实数 -> [Reα,Imα,Reβ,Imβ])
+function faceLinearMap(f,theta){
+  const rot={re:Math.cos(theta),im:Math.sin(theta)};
+  const z=baseZ[f];
+  const M=[[0,0,0],[0,0,0],[0,0,0]];
+  for(let l=0;l<3;l++){
+    const zz=cmul(rot,z[l]);
+    M[l][0]=zz; M[l][1]=cconj(zz); M[l][2]={re:1,im:0};
   }
-
-  function drawPoints(ctx,pts,color,size){
-    ctx.fillStyle=color;
-    for(const p of pts){ctx.beginPath();ctx.arc(p[0],p[1],size||2,0,Math.PI*2);ctx.fill()}
+  const inv=cmat3inv(M);
+  const map=new Float64Array(24);
+  for(let l=0;l<3;l++){
+    const ca=inv[0][l], cb=inv[1][l], xc=2*l, yc=2*l+1;
+    map[0*6+xc]=ca.re;  map[0*6+yc]=-ca.im;
+    map[1*6+xc]=ca.im;  map[1*6+yc]=ca.re;
+    map[2*6+xc]=cb.re;  map[2*6+yc]=-cb.im;
+    map[3*6+xc]=cb.im;  map[3*6+yc]=cb.re;
   }
+  return map;
+}
 
-  function drawLines(ctx,pairs,color){
-    ctx.strokeStyle=color;ctx.lineWidth=1;ctx.globalAlpha=.6;
+function localUV(f,U){
+  const fa=mesh.F[f], lu=new Float64Array(6);
+  for(let l=0;l<3;l++){lu[2*l]=U[2*fa[l]]; lu[2*l+1]=U[2*fa[l]+1];}
+  return lu;
+}
+function applyMap(map,lu){
+  const y=[0,0,0,0];
+  for(let r=0;r<4;r++){let s=0;for(let k=0;k<6;k++)s+=map[r*6+k]*lu[k]; y[r]=s;}
+  return y;
+}
+
+/* ============ 帧对齐：旋转局部帧使 α 落在正实轴 (§2.2) ============ */
+function alignFrames(){
+  for(let f=0;f<nF;f++){
+    const y=applyMap(idMaps[f],localUV(f,uv));     // 单位帧下 α
+    const ang=Math.atan2(y[1],y[0]);                // arg(α)
+    frameAng[f]=ang;
+    maps[f]=faceLinearMap(f,ang);
+  }
+}
+
+/* ============ 能量与梯度 (penalty SOCP, 忠实移植 C++) ============ */
+function energyGrad(U,grad){
+  const k=kappa(), eps=1e-12;
+  let E=0;
+  if(grad) grad.fill(0);
+  const dp=opt.bound_on?opt.distortion_penalty:0;
+  const pp=opt.bound_on?opt.positivity_penalty:0;
+  for(let f=0;f<nF;f++){
+    const map=maps[f], lu=localUV(f,U), y=applyMap(map,lu);
+    const aRe=y[0], bRe=y[2], bIm=y[3], bN=Math.hypot(bRe,bIm);
+    const dy=[0,0,0,0];
+    if(opt.lscm_weight>0){
+      const w=opt.lscm_weight*faceArea[f];
+      E+=w*(bRe*bRe+bIm*bIm); dy[2]+=2*w*bRe; dy[3]+=2*w*bIm;
+    }
+    const cone=bN-k*aRe;
+    if(dp>0 && cone>0){
+      E+=dp*cone*cone; dy[0]+=dp*(-2*k*cone);
+      if(bN>eps){dy[2]+=dp*(2*cone*bRe/bN); dy[3]+=dp*(2*cone*bIm/bN);}
+    }
+    const pos=opt.min_alpha_real-aRe;
+    if(pp>0 && pos>0){E+=pp*pos*pos; dy[0]+=pp*(-2*pos);}
+    if(grad){
+      // local_grad = map^T * dy
+      const fa=mesh.F[f];
+      for(let l=0;l<3;l++){
+        let gx=0,gy=0;
+        for(let r=0;r<4;r++){gx+=map[r*6+2*l]*dy[r]; gy+=map[r*6+2*l+1]*dy[r];}
+        grad[2*fa[l]]+=gx; grad[2*fa[l]+1]+=gy;
+      }
+    }
+  }
+  // 参考形状正则
+  if(opt.reference_weight>0){
+    const w=opt.reference_weight;
+    for(let i=0;i<2*nV;i++){const d=U[i]-rest[i]; E+=w*d*d; if(grad)grad[i]+=2*w*d;}
+  }
+  // 边向量保持 (ARAP 类光滑项)
+  if(opt.smoothness_weight>0){
+    const w=opt.smoothness_weight;
+    for(const [a,b] of edges){
+      const dx=(U[2*a]-U[2*b])-(rest[2*a]-rest[2*b]);
+      const dyv=(U[2*a+1]-U[2*b+1])-(rest[2*a+1]-rest[2*b+1]);
+      E+=w*(dx*dx+dyv*dyv);
+      if(grad){grad[2*a]+=2*w*dx; grad[2*b]-=2*w*dx; grad[2*a+1]+=2*w*dyv; grad[2*b+1]-=2*w*dyv;}
+    }
+  }
+  return E;
+}
+function energyOnly(U){return energyGrad(U,null);}
+
+function applyAnchors(U){
+  for(const h of handles){const t=targets[h]; U[2*h]=t[0]; U[2*h+1]=t[1];}
+}
+
+/* ============ 一帧优化：对齐帧 + 多步带回溯线搜索的梯度下降 ============ */
+const grad=()=>{};
+let gbuf=null, cand=null;
+function optimizeStep(maxSteps){
+  if(!gbuf||gbuf.length!==2*nV){gbuf=new Float64Array(2*nV); cand=new Float64Array(2*nV);}
+  applyAnchors(uv);
+  alignFrames();
+  let steps=0;
+  for(let s=0;s<maxSteps;s++){
+    const E=energyGrad(uv,gbuf);
+    for(const h of handles){gbuf[2*h]=0; gbuf[2*h+1]=0;} // 锚点梯度置零
+    let gn=0;for(let i=0;i<gbuf.length;i++)gn+=gbuf[i]*gbuf[i];
+    if(gn<1e-16) break;
+    let step=opt.initial_step, ok=false;
+    for(let t=0;t<24;t++){
+      for(let i=0;i<2*nV;i++)cand[i]=uv[i]-step*gbuf[i];
+      applyAnchors(cand);
+      if(energyOnly(cand)<=E || t===23){uv.set(cand); ok=true; break;}
+      step*=0.5;
+    }
+    steps++;
+    if(!ok) break;
+  }
+  return steps;
+}
+
+/* ============ 统计 (帧无关：|α|,|β| 不随帧旋转改变) ============ */
+function computeStats(){
+  const k=kappa(); let kmax=1,jmin=1e9,flip=0;
+  for(let f=0;f<nF;f++){
+    const y=applyMap(idMaps[f],localUV(f,uv));
+    const aA=Math.hypot(y[0],y[1]), bA=Math.hypot(y[2],y[3]);
+    const smax=aA+bA, smin=aA-bA, J=aA*aA-bA*bA;
+    const K=smin>1e-9?smax/smin:Infinity;
+    if(K>kmax)kmax=K; if(J<jmin)jmin=J; if(J<=0)flip++;
+  }
+  return {kmax,jmin,flip};
+}
+
+/* ============ 视图与渲染 ============ */
+let view={cx:0,cy:0,s:1};
+function fitView(){
+  if(!rest||!nV) return;
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  for(let i=0;i<nV;i++){minX=Math.min(minX,rest[2*i]);maxX=Math.max(maxX,rest[2*i]);
+    minY=Math.min(minY,rest[2*i+1]);maxY=Math.max(maxY,rest[2*i+1]);}
+  const w=maxX-minX||1,h=maxY-minY||1;
+  const size=Math.min(cv.width,cv.height);
+  view.s=size*0.62/Math.max(w,h);
+  view.cx=cv.width/2-(minX+maxX)/2*view.s;
+  view.cy=cv.height/2+(minY+maxY)/2*view.s;
+}
+function toScreen(x,y){return [view.cx+x*view.s, view.cy-y*view.s];}
+function toModel(px,py){return [(px-view.cx)/view.s, -(py-view.cy)/view.s];}
+
+function distColor(K){
+  const C=opt.distortion_bound;
+  const t=Math.min(1,Math.max(0,(K-1)/(C-1+1e-6)));
+  let r,g,b;
+  if(t<0.5){const u=t/0.5; r=Math.round(43+u*(255-43)); g=Math.round(214+u*(210-214)); b=Math.round(111+u*(63-111));}
+  else{const u=(t-0.5)/0.5; r=255; g=Math.round(210+u*(90-210)); b=Math.round(63+u*(60-63));}
+  return `rgb(${r},${g},${b})`;
+}
+
+function setStatusMsg(msg){
+  const el=document.getElementById('status-msg');
+  if(!el) return;
+  if(msg){el.textContent=msg; el.style.display='block';}
+  else el.style.display='none';
+}
+
+// 把纹理三角形 (像素坐标 tp) 仿射映射到屏幕三角形 (sp)
+function drawTexTri(sp,tp){
+  const [[x0,y0],[x1,y1],[x2,y2]]=sp, [[u0,v0],[u1,v1],[u2,v2]]=tp;
+  const den=u0*(v1-v2)-u1*(v0-v2)+u2*(v0-v1);
+  if(Math.abs(den)<1e-9) return;
+  const a=(x0*(v1-v2)-x1*(v0-v2)+x2*(v0-v1))/den;
+  const b=-(x0*(u1-u2)-x1*(u0-u2)+x2*(u0-u1))/den;
+  const c=(y0*(v1-v2)-y1*(v0-v2)+y2*(v0-v1))/den;
+  const d=-(y0*(u1-u2)-y1*(u0-u2)+y2*(u0-u1))/den;
+  const e=x0-a*u0-b*v0, f=y0-c*u0-d*v0;
+  ctx.save();
+  ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.lineTo(x2,y2);ctx.closePath();ctx.clip();
+  ctx.setTransform(a,c,b,d,e,f);
+  ctx.drawImage(texImage,0,0);
+  ctx.restore();
+}
+
+function render(){
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const showColor=document.getElementById('show-color').checked;
+  const useTex=texReady && texImage && texUV && document.getElementById('show-tex').checked;
+  const k=kappa();
+
+  // 静止形状 (幽灵轮廓)
+  ctx.strokeStyle='rgba(120,140,200,.16)';ctx.lineWidth=1;
+  for(const f of mesh.F){
     ctx.beginPath();
-    for(const pair of pairs){ctx.moveTo(pair[0][0],pair[0][1]);ctx.lineTo(pair[1][0],pair[1][1])}
-    ctx.stroke();ctx.globalAlpha=1;
+    for(let l=0;l<3;l++){const p=toScreen(rest[2*f[l]],rest[2*f[l]+1]); l?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);}
+    ctx.closePath();ctx.stroke();
   }
 
-  function transform(points,cx,cy,s){
-    return points.map(p=>[cx+p[0]*s,cy-p[1]*s]);
-  }
-
-  function computeView(points){
-    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
-    for(const p of points){if(p[0]<minX)minX=p[0];if(p[0]>maxX)maxX=p[0];if(p[1]<minY)minY=p[1];if(p[1]>maxY)maxY=p[1]}
-    const midX=(minX+maxX)/2,midY=(minY+maxY)/2;
-    const dw=maxX-minX||1,dh=maxY-minY||1;
-    const size=Math.min(srcC.width,srcC.height);
-    const s=size*0.38/Math.max(dw,dh);
-    const cx=srcC.width/2-midX*s;
-    const cy=srcC.height/2+midY*s;
-    return [cx,cy,s];
-  }
-
-  function renderBoth(){
-    const scw=srcC.width,sch=srcC.height,dcw=dstC.width,dch=dstC.height;
-    srcCtx.clearRect(0,0,scw,sch);dstCtx.clearRect(0,0,dcw,dch);
-
-    if(!srcData)return;
-
-    // Source
-    const [scx,scy,ss]=srcData.view;
-    const sBoundary=transform(srcData.boundary,scx,scy,ss);
-    // 绘制参考图片 (裁剪到单位正方形边界)
-    if(refImgLoaded && refImage){
-      srcCtx.save();
-      srcCtx.beginPath();
-      srcCtx.moveTo(sBoundary[0][0],sBoundary[0][1]);
-      for(let i=1;i<sBoundary.length;i++)srcCtx.lineTo(sBoundary[i][0],sBoundary[i][1]);
-      srcCtx.closePath();srcCtx.clip();
-      // 图片填充边界框 (clip 限制形状)
-      const xs=sBoundary.map(p=>p[0]), ys=sBoundary.map(p=>p[1]);
-      const x0=Math.min(...xs), x1=Math.max(...xs);
-      const y0=Math.min(...ys), y1=Math.max(...ys);
-      srcCtx.drawImage(refImage, x0, y0, x1-x0, y1-y0);
-      srcCtx.restore();
+  // 变形网格 (纹理 / 失真着色)
+  for(let f=0;f<nF;f++){
+    const fa=mesh.F[f];
+    const y=applyMap(idMaps[f],localUV(f,uv));
+    const aA=Math.hypot(y[0],y[1]), bA=Math.hypot(y[2],y[3]);
+    const smin=aA-bA, J=aA*aA-bA*bA;
+    const K=smin>1e-9?(aA+bA)/smin:Infinity;
+    const pts=fa.map(v=>toScreen(uv[2*v],uv[2*v+1]));
+    if(useTex){
+      const tp=fa.map(v=>[texUV[2*v],texUV[2*v+1]]);
+      drawTexTri(pts,tp);
+      if(J<=0){ // 翻转面叠加半透明红色警示
+        ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);ctx.lineTo(pts[1][0],pts[1][1]);ctx.lineTo(pts[2][0],pts[2][1]);ctx.closePath();
+        ctx.fillStyle='rgba(255,50,50,.55)';ctx.fill();
+      }else if(showColor){
+        ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);ctx.lineTo(pts[1][0],pts[1][1]);ctx.lineTo(pts[2][0],pts[2][1]);ctx.closePath();
+        ctx.fillStyle=distColor(K);ctx.globalAlpha=.45;ctx.fill();ctx.globalAlpha=1;
+      }
+      continue;
     }
-    const sSamples=transform(srcData.samples,scx,scy,ss);
-    const sCsrc=transform(srcData.csrc,scx,scy,ss);
-    const sCdst=transform(srcData.cdst,scx,scy,ss);
-    drawPoly(srcCtx,sBoundary,'#4a6baa',2);
-    if(showSamples.checked)drawPoints(srcCtx,sSamples,'#22ccdd',2.5);
-    if(showConstraints.checked){
-      drawPoints(srcCtx,sCsrc,'#c040ff',4);
-      drawPoints(srcCtx,sCdst,'#ff6040',4);
-      const pairs=sCsrc.map((p,i)=>[p,sCdst[i]]);
-      drawLines(srcCtx,pairs,'#c060d0');
-    }
-
-    // Destination (if computed)
-    if(dstData){
-      const [dcx,dcy,ds]=dstData.view;
-      const dBoundary=transform(dstData.boundary,dcx,dcy,ds);
-      const dSamples=transform(dstData.samples,dcx,dcy,ds);
-      drawPoly(dstCtx,dBoundary,'#ff8c42',2.5);
-      // Cauchy 重心坐标 (蓝色)
-      if(showCauchy.checked && cauchySamples){
-        const dCauchy=transform(cauchySamples,dcx,dcy,ds);
-        drawPoints(dstCtx,dCauchy,'#4488ff',3.5);
-      }
-      if(showSamples.checked)drawPoints(dstCtx,dSamples,'#22ccdd',2.5);
-      if(showConstraints.checked){
-        const dCsrc=transform(dstData.cdst,dcx,dcy,ds);
-        drawPoints(dstCtx,dCsrc,'#ff6040',4);
-      }
-    }
+    ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);ctx.lineTo(pts[1][0],pts[1][1]);ctx.lineTo(pts[2][0],pts[2][1]);ctx.closePath();
+    if(J<=0){ctx.fillStyle='rgba(255,50,50,.85)';}
+    else if(showColor){ctx.fillStyle=distColor(K); ctx.globalAlpha=.78;}
+    else{ctx.fillStyle='rgba(80,120,210,.32)';}
+    ctx.fill();ctx.globalAlpha=1;
+    ctx.strokeStyle='rgba(18,30,60,.55)';ctx.lineWidth=1;ctx.stroke();
   }
 
-  // View model
-  async function loadPreview(){
-    try{
-      const m=MODELS[parseInt(modelSel.value)];
-      setStatus('加载 '+m.label+' ...');
-      currentJson=await loadJSON(m.name);
-      const P2Pdst=currentJson.P2Pdst;
-      const P2Psets=currentJson.P2Psets;
-
-      // Source boundary: unit square [0,0]->[1,0]->[1,1]->[0,1]
-      const boundary=[[0,0],[1,0],[1,0.5],[1,1],[0.5,1],[0,1]];
-      const ns=9; // sample grid
-      const samples=[];
-      for(let y=1;y<=ns;y++)for(let x=1;x<=ns;x++)samples.push([x/(ns+1),y/(ns+1)]);
-
-      // Constraints from P2Psets
-      let csrc=[],cdst=[];
-      if(P2Psets&&P2Psets.length>0){
-        csrc=P2Psets[0].src;cdst=P2Psets[0].dst;
-      }
-
-      srcData={boundary,samples,csrc,cdst,view:computeView(boundary)};
-      dstData=null;cauchySamples=null;
-      // 加载参考图
-      refImgLoaded=false;
-      refImage=new Image();
-      refImage.onload=()=>{refImgLoaded=true;renderBoth()};
-      refImage.src='assets/bdhm_models/'+m.name+'/image.png';
-      document.getElementById('stats-bar').style.display='none';
-      renderBoth();
-      setStatus(m.label+' — 点击变形','#89f0b6');
-    }catch(e){console.error(e);setStatus('加载失败: '+e.message,'#ff9d9d')}
+  // 操控点
+  for(const h of handles){
+    const p=toScreen(uv[2*h],uv[2*h+1]);
+    ctx.beginPath();ctx.arc(p[0],p[1],7,0,Math.PI*2);
+    ctx.fillStyle=(h===dragVert)?'#fff':'#ffd23f';ctx.fill();
+    ctx.lineWidth=2;ctx.strokeStyle='#7a5a00';ctx.stroke();
   }
 
-  // Solve
-  async function doDeform(){
-    if(!bdhmReady||!currentJson)return;
-    goBtn.disabled=true;
-    const m=MODELS[parseInt(modelSel.value)];
-    setStatus(m.label+' 变形计算中...');
-    try{
-      const P2Pdst=currentJson.P2Pdst;
-      const P2Psets=currentJson.P2Psets;
+  const st=computeStats();
+  document.getElementById('s-kmax').textContent=isFinite(st.kmax)?st.kmax.toFixed(3):'∞';
+  document.getElementById('s-jmin').textContent=st.jmin.toFixed(3);
+  const flipEl=document.getElementById('s-flip');
+  flipEl.textContent=st.flip; flipEl.className=st.flip?'bad':'ok';
+  document.getElementById('s-iter').textContent=lastIters;
+}
 
-      // Build boundary (target shape from P2Pdst)
-      const bdry=[];
-      for(const p of P2Pdst)bdry.push(p[0],p[1]);
-
-      // Build energy samples
-      const ns=9,sampleFlat=[];
-      for(let y=1;y<=ns;y++)for(let x=1;x<=ns;x++)sampleFlat.push(x/(ns+1),y/(ns+1));
-
-      // Build constraints
-      let csrcFlat=[],cdstFlat=[],cweight=[];
-      if(P2Psets&&P2Psets.length>0){
-        for(const p of P2Psets[0].src){csrcFlat.push(p[0],p[1])}
-        for(const p of P2Psets[0].dst){cdstFlat.push(p[0],p[1])}
-        for(let i=0;i<P2Psets[0].src.length;i++)cweight.push(1.0);
-      }
-
-      const t0=performance.now();
-      const result=bdhmInst.solve(
-        bdry,sampleFlat,csrcFlat,cdstFlat,cweight,
-        2.0,    // distortion_bound
-        1e-8,   // min_jacobian
-        100.0,  // distortion_penalty
-        100.0,  // jacobian_penalty
-        1e4,    // position_weight
-        1e-3,   // anti_holomorphic_weight
-        1e-4,   // phi_reference_weight
-        1e-2,   // initial_step
-        1000    // max_iterations
-      );
-      const ms=performance.now()-t0;
-
-      // Parse result
-      const nB=bdry.length/2,nS=sampleFlat.length/2;
-      const rBoundary=[],rSamples=[];
-      for(let i=0;i<nB;i++)rBoundary.push([result.mapped_boundary[i*2],result.mapped_boundary[i*2+1]]);
-      for(let i=0;i<nS;i++)rSamples.push([result.mapped_samples[i*2],result.mapped_samples[i*2+1]]);
-
-      dstData={boundary:rBoundary,samples:rSamples,cdst:csrcFlat.length?P2Psets[0].dst:[],view:computeView(rBoundary)};
-
-      // Cauchy 重心坐标 (直接调和映射，不做优化)
-      try{
-        const srcBoundary=[0,0,1,0,1,0.5,1,1,0.5,1,0,1]; // 单位正方形(6顶点)
-        const cauchyResult=bdhmInst.evaluateCauchy(srcBoundary,bdry,sampleFlat);
-        cauchySamples=[];
-        for(let i=0;i<nS;i++)cauchySamples.push([cauchyResult.mapped_samples[i*2],cauchyResult.mapped_samples[i*2+1]]);
-      }catch(e){cauchySamples=null;console.warn('Cauchy eval failed:',e);}
-
-      // Stats
-      document.getElementById('stats-bar').style.display='flex';
-      document.getElementById('s-kmax').textContent=result.max_distortion.toFixed(3);
-      document.getElementById('s-jmin').textContent=result.min_jacobian.toExponential(2);
-      document.getElementById('s-cone').textContent=result.max_cone_violation.toExponential(2);
-      document.getElementById('s-energy').textContent=result.final_energy.toExponential(2);
-      document.getElementById('s-iter').textContent=result.iterations;
-
-      renderBoth();
-      setStatus(m.label+' 完成 ('+ms.toFixed(0)+'ms)','#89f0b6');
-    }catch(e){console.error(e);setStatus('失败: '+e.message,'#ff9d9d')}
-    finally{goBtn.disabled=false}
+/* ============ 演示形变（平滑过渡到录制的 P2Pdst） ============ */
+let demoActive=false, demoT=0;
+function startDemo(){
+  if(Object.keys(demoTargets).length){demoActive=true; demoT=0;}
+}
+function stepDemo(){
+  if(!demoActive) return;
+  demoT=Math.min(1,demoT+0.012);
+  const s=demoT*demoT*(3-2*demoT); // smoothstep
+  for(const h of handles){
+    const d=demoTargets[h]; if(!d) continue;
+    targets[h]=[rest[2*h]+(d[0]-rest[2*h])*s, rest[2*h+1]+(d[1]-rest[2*h+1])*s];
   }
+  if(demoT>=1) demoActive=false;
+}
 
-  modelSel.addEventListener('change',loadPreview);
-  goBtn.addEventListener('click',doDeform);
-  showSamples.addEventListener('change',renderBoth);
-  showConstraints.addEventListener('change',renderBoth);
-  showCauchy.addEventListener('change',renderBoth);
-  window.addEventListener('resize',resize);
+/* ============ 主循环 ============ */
+function loop(){
+  if(mesh){
+    stepDemo();
+    const big=nF>700, active=(dragVert>=0||demoActive);
+    lastIters=optimizeStep(active?(big?9:14):(big?4:8));
+    render();
+  }
+  requestAnimationFrame(loop);
+}
 
-  initBDHM().then(()=>{loadPreview()});
-  resize();
+/* ============ 交互 ============ */
+let dragVert=-1;
+function pickHandle(px,py){
+  let best=-1,bd=18*18;
+  for(const h of handles){const p=toScreen(uv[2*h],uv[2*h+1]); const d=(p[0]-px)**2+(p[1]-py)**2; if(d<bd){bd=d;best=h;}}
+  return best;
+}
+function evtPos(e){const r=cv.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return [t.clientX-r.left,t.clientY-r.top];}
+function down(e){const [px,py]=evtPos(e); dragVert=pickHandle(px,py); if(dragVert>=0){demoActive=false; cv.classList.add('dragging');e.preventDefault();}}
+function move(e){if(dragVert<0)return; const [px,py]=evtPos(e); const m=toModel(px,py); targets[dragVert]=[m[0],m[1]]; e.preventDefault();}
+function up(){dragVert=-1;cv.classList.remove('dragging');}
+cv.addEventListener('mousedown',down);window.addEventListener('mousemove',move);window.addEventListener('mouseup',up);
+cv.addEventListener('touchstart',down,{passive:false});window.addEventListener('touchmove',move,{passive:false});window.addEventListener('touchend',up);
+
+/* ============ UI ============ */
+function setEnergy(mode){
+  if(mode==='conformal'){opt.lscm_weight=1.0; opt.smoothness_weight=0.05; opt.reference_weight=1e-4;}
+  else{opt.lscm_weight=0.0; opt.smoothness_weight=0.35; opt.reference_weight=2e-4;}
+}
+function selectShape(val){
+  demoActive=false;
+  if(val.indexOf('model:')===0) loadModel(val.slice(6));
+  else buildMesh(val);
+}
+document.getElementById('shape-select').addEventListener('change',e=>selectShape(e.target.value));
+document.getElementById('energy-select').addEventListener('change',e=>setEnergy(e.target.value));
+document.getElementById('bound-range').addEventListener('input',e=>{
+  opt.distortion_bound=parseFloat(e.target.value);
+  document.getElementById('bound-val').textContent=opt.distortion_bound.toFixed(2);
+  document.getElementById('leg-c').textContent='≥ '+opt.distortion_bound.toFixed(1);
+});
+document.getElementById('bound-on').addEventListener('change',e=>{opt.bound_on=e.target.checked;});
+document.getElementById('demo-btn').addEventListener('click',startDemo);
+document.getElementById('reset-btn').addEventListener('click',()=>{
+  demoActive=false;
+  uv=rest.slice(); targets={}; for(const h of handles)targets[h]=[rest[2*h],rest[2*h+1]];
+});
+
+function resize(){cv.width=cv.clientWidth;cv.height=cv.clientHeight;fitView();}
+window.addEventListener('resize',resize);
+
+/* ============ 启动 ============ */
+setEnergy('shape');
+resize();
+selectShape(document.getElementById('shape-select').value);
+requestAnimationFrame(loop);
+
 })();
 </script>
 </body>
