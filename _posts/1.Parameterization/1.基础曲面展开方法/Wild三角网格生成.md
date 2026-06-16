@@ -2,7 +2,7 @@
 
 传统网格生成方法（如 TetGen）要求输入是"干净"的——水密、流形、无自交。然而在实际应用中，从三维扫描、CAD 导出、网络下载等渠道获取的网格往往是**"野生"的（in the wild）**：可能包含非流形边、自相交面片、孔洞、重复面片等各种缺陷。NYU 的 Daniele Panozzo 团队（Yixin Hu, Teseo Schneider 等）提出了一系列突破性的工作，实现了**对任意输入网格的无条件鲁棒网格生成**。
 
-![In the Wild 网格生成流水线](./../../../imgs/wild_meshing_pipeline.svg)
+![In the Wild 网格生成流水线](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/wild_meshing_pipeline.svg)
 
 ##### TetWild：无条件鲁棒的四面体网格生成
 

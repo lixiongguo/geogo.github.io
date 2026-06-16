@@ -29,7 +29,7 @@ if not AK or not SK:
     print("请设置环境变量 OSS_ACCESS_KEY_ID 和 OSS_ACCESS_KEY_SECRET")
     sys.exit(1)
 OSS_BASE = "https://lgximgs.oss-cn-beijing.aliyuncs.com/images/"
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 POSTS_DIR = ROOT / "_posts"
 IMGS_DIR = ROOT / "imgs"
 
