@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import csv
 import os
+from pathlib import Path
 
 from PyQt5.QtWidgets import (
     QCheckBox,
@@ -12,19 +14,40 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
 from packpdf.config import AppConfig, save_config
 
+# AccessKey.csv 路径（与 oss_upload.sh 一致）
+_CSV_PATH = Path(__file__).resolve().parent.parent.parent / 'docs' / 'AccessKey.csv'
+
+
+def _read_oss_keys_from_csv() -> tuple[str, str]:
+    """从 docs/AccessKey.csv 读取 OSS 密钥。返回 (ak, sk) 或 ('', '')。"""
+    if not _CSV_PATH.exists():
+        return '', ''
+    try:
+        with open(_CSV_PATH, newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+            if len(rows) >= 2 and len(rows[1]) >= 2:
+                return rows[1][0].strip(), rows[1][1].strip()
+    except Exception:
+        pass
+    return '', ''
+
 
 class OssSettingsDialog(QDialog):
     def __init__(self, parent: QWidget | None, cfg: AppConfig) -> None:
         super().__init__(parent)
         self.setWindowTitle('图床设置')
-        self.setMinimumWidth(480)
+        self.setMinimumWidth(520)
         self._cfg = cfg
+
+        csv_ak, csv_sk = _read_oss_keys_from_csv()
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
@@ -33,6 +56,23 @@ class OssSettingsDialog(QDialog):
         layout.addWidget(
             QLabel('阿里云 OSS AccessKey，用于上传 imgs/ 图片并替换 Markdown 中的本地路径。')
         )
+
+        if csv_ak and csv_sk:
+            self._csv_label = QLabel(
+                f'✅ 已从 docs/AccessKey.csv 检测到密钥，可直接使用。'
+            )
+            self._csv_label.setStyleSheet('color: #4caf50;')
+            layout.addWidget(self._csv_label)
+
+            csv_row = QHBoxLayout()
+            self._btn_load_csv = QPushButton('从 CSV 填入')
+            self._btn_load_csv.clicked.connect(lambda: self._fill_from_csv(csv_ak, csv_sk))
+            csv_row.addWidget(self._btn_load_csv)
+            csv_row.addStretch()
+            layout.addLayout(csv_row)
+        else:
+            self._csv_label = QLabel('')
+            layout.addWidget(self._csv_label)
 
         form = QFormLayout()
         self._ent_ak = QLineEdit(
@@ -59,6 +99,10 @@ class OssSettingsDialog(QDialog):
         row.addWidget(buttons)
         layout.addLayout(row)
 
+    def _fill_from_csv(self, ak: str, sk: str) -> None:
+        self._ent_ak.setText(ak)
+        self._ent_sk.setText(sk)
+
     def _on_accept(self) -> None:
         self._cfg.remember_oss_keys = self._cb_remember.isChecked()
         self._cfg.oss_access_key_id = self._ent_ak.text().strip()
@@ -73,7 +117,9 @@ def show_oss_settings(parent: QWidget | None, cfg: AppConfig) -> bool:
 
 
 def oss_credentials(cfg: AppConfig) -> tuple[str, str]:
-    """从配置或环境变量读取 OSS 密钥。"""
+    """从配置 → 环境变量 → docs/AccessKey.csv 依次读取 OSS 密钥。"""
     ak = (cfg.oss_access_key_id or os.environ.get('OSS_ACCESS_KEY_ID', '')).strip()
     sk = (cfg.oss_access_key_secret or os.environ.get('OSS_ACCESS_KEY_SECRET', '')).strip()
+    if not ak or not sk:
+        ak, sk = _read_oss_keys_from_csv()
     return ak, sk
