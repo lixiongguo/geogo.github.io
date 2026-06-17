@@ -3565,6 +3565,8 @@
 
           const elapsedMs = unwrapResult.timeMs > 0 ? unwrapResult.timeMs : (performance.now() - startTime);
           currentUnwrapUv = unwrapResult.uv;
+          // WASM 返回的 UV 坐标可能超出 [0,1] 范围，归一化以保证 2D 面板完整显示
+          _normalizeUvBox(currentUnwrapUv);
           pdfBtn.disabled = false;
 
           // 清除旧的扭曲显示（UV 变了）
