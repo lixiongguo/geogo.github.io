@@ -420,6 +420,7 @@
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Spectral Conformal Parameterization (Mullen et al.)"><input type="radio" name="method" value="scp"> SCP</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Angle Based Flattening++ (iterative refinement)"><input type="radio" name="method" value="abf"> ABF</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="As-Rigid-As-Possible flattening"><input type="radio" name="method" value="arap"> ARAP</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="FastHGP-style symmetric Dirichlet refinement, ported from the MATLAB scripts"><input type="radio" name="method" value="fasthgp"> FastHGP</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Circle Pattern (cone singularities)"><input type="radio" name="method" value="cp"> Circle Pattern</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="CETM (cone singularities)"><input type="radio" name="method" value="cetm"> CETM</label>
             <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Ricci flow (cone singularities)"><input type="radio" name="method" value="ricci"> Ricci 流</label>
@@ -1320,7 +1321,7 @@
           }
           simpleInstance = await UvUnwrapSimpleSolver();
           wasmReady = true;
-          console.log('WASM uv_unwrap_simple (LSCM/Tutte/SCP/ABF/ARAP/HOF/CP/CETM/Ricci) 加载成功');
+          console.log('WASM uv_unwrap_simple (LSCM/Tutte/SCP/ABF/ARAP/FastHGP/HOF/CP/CETM/Ricci) 加载成功');
           return true;
         } catch (err) {
           console.error('uv_unwrap_simple WASM 加载失败:', err);
@@ -1386,13 +1387,13 @@
         const m = getCurrentMethod();
         const panel = document.getElementById('param-panel');
         // 显隐参数面板
-        const hasParams = (m === 'tutte' || m === 'abf' || m === 'arap' || supportsConeSelection(m));
+        const hasParams = (m === 'tutte' || m === 'abf' || m === 'arap' || m === 'fasthgp' || supportsConeSelection(m));
         document.getElementById('param-none').style.display = hasParams ? 'none' : '';
 
         document.getElementById('param-tutte-boundary').style.display = (m === 'tutte') ? '' : 'none';
         document.getElementById('param-tutte-weight').style.display = (m === 'tutte') ? '' : 'none';
         document.getElementById('param-abf-type').style.display = (m === 'abf') ? '' : 'none';
-        document.getElementById('param-arap-iters').style.display = (m === 'arap') ? '' : 'none';
+        document.getElementById('param-arap-iters').style.display = (m === 'arap' || m === 'fasthgp') ? '' : 'none';
         document.getElementById('param-opt-scheme').style.display = supportsConeSelection(m) ? '' : 'none';
         document.getElementById('param-cone-controls').style.display = supportsConeSelection(m) ? '' : 'none';
         document.getElementById('param-lscm-pin').style.display = (m === 'lscm') ? '' : 'none';
@@ -2273,6 +2274,10 @@
       /** ARAP (As-Rigid-As-Possible) — C++ WASM implementation, default 30 iters */
       async function solveARAPAsync(meshData, maxIter, onProgress) {
         return solveSimpleWasmMethod(meshData, "solve_arap", "arap", onProgress, maxIter || 30);
+      }
+
+      async function solveFastHGPAsync(meshData, maxIter, onProgress) {
+        return solveSimpleWasmMethod(meshData, "solve_fasthgp", "fasthgp", onProgress, maxIter || 80);
       }
 
       async function solveCirclePatternAsync(meshData, onProgress) {
@@ -3501,6 +3506,7 @@
         else if (method === 'abfpp') methodLabel = 'ABF (ABF++)';
         else if (method === 'abf') methodLabel = 'ABF (' + (getABFType() === 'abfpp' ? 'ABF++' : 'linABF') + ')';
         else if (method === 'arap') methodLabel = 'ARAP (' + getARAPIterations() + ' iters)';
+        else if (method === 'fasthgp') methodLabel = 'FastHGP (' + getARAPIterations() + ' iters)';
         else if (method === 'cp') methodLabel = 'Circle Pattern';
         else if (method === 'cetm') methodLabel = 'CETM';
         else if (method === 'ricci') methodLabel = 'Ricci 流';
@@ -3543,6 +3549,11 @@
           } else if (method === 'arap') {
             const arapIters = getARAPIterations();
             unwrapResult = await solveARAPAsync(currentMeshData, arapIters, function(p, t) {
+              updateTimingProgress(p, t);
+            });
+          } else if (method === 'fasthgp') {
+            const fastHgpIters = getARAPIterations();
+            unwrapResult = await solveFastHGPAsync(currentMeshData, fastHgpIters, function(p, t) {
               updateTimingProgress(p, t);
             });
           } else if (method === 'cp') {
