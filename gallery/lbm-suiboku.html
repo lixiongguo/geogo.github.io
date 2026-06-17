@@ -1,0 +1,372 @@
+---
+layout: gallery_item
+slug: lbm-suiboku
+title: LBM 水墨动画
+---
+<style>
+  .lb-wrap { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; background: #f5f0e6; }
+  .lb-canvas-wrap { flex: 1; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+  canvas { cursor: crosshair; display: block; border-radius: 6px; box-shadow: 0 2px 16px rgba(0,0,0,0.12); }
+  .lb-bar {
+    display: flex; align-items: center; gap: 12px; padding: 8px 14px;
+    background: rgba(255,255,255,0.92); border-bottom: 1px solid #e0d8c8;
+    flex-shrink: 0; flex-wrap: wrap;
+  }
+  .lb-bar label { font-size: 12px; color: #666; display: flex; align-items: center; gap: 4px; }
+  .lb-bar input[type=range] { width: 60px; accent-color: #333; }
+  .lb-bar button {
+    padding: 5px 12px; border: 1px solid #ccc; border-radius: 4px;
+    background: #fff; cursor: pointer; font-size: 12px; transition: all 0.15s;
+  }
+  .lb-bar button:hover { background: #eee; border-color: #aaa; }
+  .lb-bar button.active { background: #333; color: #fff; border-color: #333; }
+  .lb-bar .sep { width: 1px; height: 18px; background: #ddd; }
+  .lb-hint {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    font-size: 18px; color: rgba(0,0,0,0.15); pointer-events: none; z-index: 2;
+    font-family: 'KaiTi','STKaiti','楷体',serif;
+  }
+</style>
+
+<div class="lb-wrap">
+  <div class="lb-bar">
+    <label>粘度 <input type="range" id="visc" min="1" max="20" value="5"></label>
+    <label>扩散 <input type="range" id="diff" min="1" max="20" value="4"></label>
+    <label>笔触 <input type="range" id="inkAmt" min="3" max="30" value="12"></label>
+    <div class="sep"></div>
+    <button id="btn-clear">清空</button>
+    <button id="btn-pause">暂停</button>
+    <button id="btn-preset1">涟漪</button>
+    <button id="btn-preset2">漩涡</button>
+  </div>
+  <div class="lb-canvas-wrap" id="canvas-wrap">
+    <canvas id="cv"></canvas>
+    <div class="lb-hint">提笔入墨</div>
+  </div>
+</div>
+
+<script>
+const wrap = document.getElementById('canvas-wrap');
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d', { alpha: true, willReadFrequently: true });
+const hint = document.querySelector('.lb-hint');
+
+// ── Resize ──
+function resize() {
+  const w = Math.min(wrap.clientWidth - 16, 800);
+  const h = Math.min(wrap.clientHeight - 16, 600);
+  cv.width = w; cv.height = h;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const W = () => cv.width;
+const H = () => cv.height;
+
+// ── D2Q9 LBM ──
+const NX = 200, NY = 150;  // lattice resolution (fixed for performance)
+const e = [
+  [0,0],[1,0],[0,1],[-1,0],[0,-1],[1,1],[-1,1],[-1,-1],[1,-1]
+];
+const w = [4/9, 1/9,1/9,1/9,1/9, 1/36,1/36,1/36,1/36];
+const opp = [0, 3, 4, 1, 2, 7, 8, 5, 6];
+
+// State
+let f = new Float32Array(NX * NY * 9);    // fluid
+let fTemp = new Float32Array(NX * NY * 9);
+let g = new Float32Array(NX * NY * 9);    // dye
+let gTemp = new Float32Array(NX * NY * 9);
+let rho = new Float32Array(NX * NY);
+let ux = new Float32Array(NX * NY);
+let uy = new Float32Array(NX * NY);
+
+let tau = 0.55;      // relaxation time (viscosity: 0.5=min, >0.5)
+let omega = 1.0 / tau;
+let dyeTau = 0.53;   // dye diffusion relaxation
+let dyeOmega = 1.0 / dyeTau;
+let inkStrength = 0.4;
+let paused = false;
+
+function idx(x, y) { return y * NX + x; }
+
+function initLBM() {
+  f.fill(0); g.fill(0);
+  for (let y = 0; y < NY; y++) {
+    for (let x = 0; x < NX; x++) {
+      const k = idx(x, y);
+      rho[k] = 1.0; ux[k] = 0; uy[k] = 0;
+      for (let i = 0; i < 9; i++) {
+        f[k * 9 + i] = w[i] * 1.0;
+        g[k * 9 + i] = w[i] * 0.0;
+      }
+    }
+  }
+}
+
+function stream(field, out) {
+  out.fill(0);  // CRITICAL: zero output before writing
+  for (let y = 0; y < NY; y++) {
+    for (let x = 0; x < NX; x++) {
+      for (let i = 0; i < 9; i++) {
+        const nx = x + e[i][0];
+        const ny = y + e[i][1];
+        if (nx >= 0 && nx < NX && ny >= 0 && ny < NY) {
+          out[idx(nx, ny) * 9 + i] = field[idx(x, y) * 9 + i];
+        } else {
+          out[idx(x, y) * 9 + opp[i]] = field[idx(x, y) * 9 + i];
+        }
+      }
+    }
+  }
+}
+
+// Inject dye at lattice coords
+function inject(x, y, strength) {
+  const lx = Math.floor(x / W() * NX);
+  const ly = Math.floor(y / H() * NY);
+  const r = 2 + Math.max(0, Math.min(5, Math.floor(strength * 8)));
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      const nx = lx + dx, ny = ly + dy;
+      if (nx < 2 || nx >= NX - 2 || ny < 2 || ny >= NY - 2) continue;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > r) continue;
+      const k = idx(nx, ny);
+      const falloff = Math.pow(1.0 - dist / r, 2);
+      const amt = strength * falloff * 1.8;  // amplify for visibility
+      for (let i = 0; i < 9; i++) {
+        g[k * 9 + i] += amt * w[i];
+      }
+      // Also push fluid away for vortex effect
+      if (dist < r * 0.6) {
+        const pushX = dx / (r + 0.01) * strength * 0.15;
+        const pushY = dy / (r + 0.01) * strength * 0.15;
+        ux[k] += pushX * 2.5;
+        uy[k] += pushY * 2.5;
+      }
+    }
+  }
+}
+
+// ── Rendering ──
+function render() {
+  const w = W(), h = H();
+  const imgData = ctx.createImageData(w, h);
+  const data = imgData.data;
+  const maxDye = 0.5;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const lx = Math.floor(x / w * NX);
+      const ly = Math.floor(y / h * NY);
+      const k = idx(lx, ly);
+      let dye = 0;
+      for (let i = 0; i < 9; i++) dye += g[k * 9 + i];
+      const t = Math.min(1.0, dye / maxDye);
+      const c = Math.round(255 - t * 220);
+      const pixel = (y * w + x) * 4;
+      data[pixel] = c;
+      data[pixel + 1] = c;
+      data[pixel + 2] = c;
+      data[pixel + 3] = 255;
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+// Fluid collision + stream
+function stepFluid(omg) {
+  fTemp.fill(0);
+  for (let y = 1; y < NY - 1; y++) {
+    for (let x = 1; x < NX - 1; x++) {
+      const k = idx(x, y);
+      let sum = 0, sumx = 0, sumy = 0;
+      for (let i = 0; i < 9; i++) {
+        const v = f[k * 9 + i];
+        sum += v; sumx += v * e[i][0]; sumy += v * e[i][1];
+      }
+      const ux0 = sumx / sum, uy0 = sumy / sum;
+      const u2 = ux0 * ux0 + uy0 * uy0;
+      for (let i = 0; i < 9; i++) {
+        const cu = 3.0 * (e[i][0] * ux0 + e[i][1] * uy0);
+        const feq = w[i] * sum * (1.0 + cu + 0.5 * cu * cu - 1.5 * u2);
+        fTemp[k * 9 + i] = f[k * 9 + i] + omg * (feq - f[k * 9 + i]);
+      }
+      rho[k] = sum; ux[k] = ux0; uy[k] = uy0;
+    }
+  }
+  stream(fTemp, f);
+}
+
+// Dye collision (uses fluid velocity for advection) + stream
+function stepDye(omg) {
+  gTemp.fill(0);
+  for (let y = 1; y < NY - 1; y++) {
+    for (let x = 1; x < NX - 1; x++) {
+      const k = idx(x, y);
+      let sum = 0;
+      for (let i = 0; i < 9; i++) sum += g[k * 9 + i];
+      if (sum < 1e-6) continue;
+      const ux0 = ux[k], uy0 = uy[k];
+      const u2 = ux0 * ux0 + uy0 * uy0;
+      for (let i = 0; i < 9; i++) {
+        const cu = 3.0 * (e[i][0] * ux0 + e[i][1] * uy0);
+        const geq = w[i] * sum * (1.0 + cu + 0.5 * cu * cu - 1.5 * u2);
+        gTemp[k * 9 + i] = g[k * 9 + i] + omg * (geq - g[k * 9 + i]);
+      }
+    }
+  }
+  stream(gTemp, g);
+}
+
+// ── Simulation Step ──
+function step() {
+  omega = 1.0 / tau;
+  dyeOmega = 1.0 / dyeTau;
+  stepFluid(omega);
+  stepDye(dyeOmega);
+}
+
+// ── Main Loop ──
+function loop() {
+  if (!paused && drawing) {
+    for (let s = 0; s < 5; s++) step();
+    render();
+  }
+  requestAnimationFrame(loop);
+}
+
+// ── Mouse / Touch ──
+let drawing = false;
+let lastX = 0, lastY = 0;
+
+function getPos(e) {
+  const rect = cv.getBoundingClientRect();
+  return [
+    (e.touches ? e.touches[0].clientX : e.clientX) - rect.left,
+    (e.touches ? e.touches[0].clientY : e.clientY) - rect.top,
+  ];
+}
+
+cv.addEventListener('mousedown', e => {
+  drawing = true;
+  [lastX, lastY] = getPos(e);
+  inject(lastX, lastY, inkStrength);
+  hint.style.display = 'none';
+});
+
+cv.addEventListener('mousemove', e => {
+  if (!drawing) return;
+  const [cx, cy] = getPos(e);
+  const steps = Math.max(1, Math.floor(Math.hypot(cx - lastX, cy - lastY) / 6));
+  for (let i = 0; i <= steps; i++) {
+    const t = steps > 0 ? i / steps : 1;
+    inject(lastX + (cx - lastX) * t, lastY + (cy - lastY) * t, inkStrength * 0.7);
+  }
+  lastX = cx; lastY = cy;
+});
+
+cv.addEventListener('mouseup', () => drawing = false);
+cv.addEventListener('mouseleave', () => drawing = false);
+
+cv.addEventListener('touchstart', e => {
+  e.preventDefault();
+  drawing = true;
+  [lastX, lastY] = getPos(e);
+  inject(lastX, lastY, inkStrength);
+  hint.style.display = 'none';
+}, { passive: false });
+
+cv.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!drawing) return;
+  const [cx, cy] = getPos(e);
+  const steps = Math.max(1, Math.floor(Math.hypot(cx - lastX, cy - lastY) / 10));
+  for (let i = 0; i <= steps; i++) {
+    const t = steps > 0 ? i / steps : 1;
+    inject(lastX + (cx - lastX) * t, lastY + (cy - lastY) * t, inkStrength * 0.6);
+  }
+  lastX = cx; lastY = cy;
+}, { passive: false });
+
+cv.addEventListener('touchend', () => drawing = false);
+
+// ── UI Controls ──
+document.getElementById('visc').addEventListener('input', function() {
+  tau = 0.5 + this.value / 20;
+});
+
+document.getElementById('diff').addEventListener('input', function() {
+  dyeTau = 0.5 + this.value / 20;
+});
+
+document.getElementById('inkAmt').addEventListener('input', function() {
+  inkStrength = this.value / 30;
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  initLBM();
+  ctx.fillStyle = '#fcfaf5';
+  ctx.fillRect(0, 0, W(), H());
+  setTimeout(() => render(), 50);
+  hint.style.display = '';
+});
+
+document.getElementById('btn-pause').addEventListener('click', function() {
+  paused = !paused;
+  this.textContent = paused ? '继续' : '暂停';
+  this.classList.toggle('active', paused);
+});
+
+// Preset: ripple
+document.getElementById('btn-preset1').addEventListener('click', () => {
+  initLBM();
+  const cx = NX / 2, cy = NY / 2;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const r = 8 + i * 3;
+    const ix = cx + Math.cos(a) * r;
+    const iy = cy + Math.sin(a) * r;
+    if (ix > 1 && ix < NX - 1 && iy > 1 && iy < NY - 1) {
+      inject(ix / NX * W(), iy / NY * H(), 0.35);
+    }
+  }
+  // Center
+  inject(cx / NX * W(), cy / NY * H(), 0.5);
+  render();
+  hint.style.display = 'none';
+});
+
+// Preset: vortex
+document.getElementById('btn-preset2').addEventListener('click', () => {
+  initLBM();
+  const cx = NX / 2, cy = NY / 2;
+  for (let by = -1; by <= 1; by++) {
+    for (let bx = -1; bx <= 1; bx++) {
+      const ix = cx + bx * 30, iy = cy + by * 25;
+      inject(ix / NX * W(), iy / NY * H(), 0.4);
+    }
+  }
+  // Add tangential velocity
+  for (let y = cy - 20; y < cy + 20; y++) {
+    for (let x = cx - 20; x < cx + 20; x++) {
+      if (x < 1 || x >= NX - 1 || y < 1 || y >= NY - 1) continue;
+      const dx = x - cx, dy = y - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 18 && dist > 2) {
+        const k = idx(x, y);
+        ux[k] += -dy / (dist + 0.01) * 0.2;
+        uy[k] += dx / (dist + 0.01) * 0.2;
+      }
+    }
+  }
+  render();
+  hint.style.display = 'none';
+});
+
+// ── Init ──
+initLBM();
+ctx.fillStyle = '#fcfaf5';
+ctx.fillRect(0, 0, W(), H());
+render();
+loop();
+</script>

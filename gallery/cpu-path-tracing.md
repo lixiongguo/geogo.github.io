@@ -1,9 +1,3 @@
----
-layout: post
-title: "计算几何-光线追踪"
-categories: [Computational_Geometry, TechSharing]
----
-
 光线追踪（Ray Tracing）是计算机图形学中模拟光照的核心方法。本文从经典的 Whitted 递归光线追踪出发，逐步演进到基于物理的蒙特卡洛路径追踪，并讨论其加速策略。
 
 <!--more-->

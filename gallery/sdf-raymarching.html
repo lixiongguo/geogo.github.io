@@ -1,0 +1,494 @@
+---
+layout: gallery_item
+slug: sdf-raymarching
+title: SDF Ray Marching
+head_extra: |
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/"
+    }
+  }
+  </script>
+---
+<style>
+  .sdf-overlay {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; z-index: 10; flex-wrap: wrap; justify-content: center;
+  }
+  .sdf-btn {
+    padding: 7px 16px; border: 1px solid rgba(168, 216, 255, 0.3);
+    background: rgba(20, 30, 50, 0.85); color: #bcd; border-radius: 20px;
+    font-size: 13px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(8px);
+  }
+  .sdf-btn:hover { background: rgba(40, 60, 100, 0.85); border-color: rgba(168, 216, 255, 0.6); }
+  .sdf-btn.active { background: rgba(60, 100, 180, 0.75); border-color: #7eb8ff; color: #fff; }
+
+  .sdf-panel {
+    position: absolute; top: 16px; right: 16px; z-index: 10;
+    background: rgba(12, 16, 28, 0.88); backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+    padding: 14px 16px; width: 200px; color: #bcd; font-size: 12px;
+  }
+  .sdf-panel label { display: block; margin: 8px 0 3px; color: #889; font-size: 11px; }
+  .sdf-panel input[type=range] { width: 100%; accent-color: #7eb8ff; margin: 0; }
+  .sdf-panel .row { display: flex; justify-content: space-between; align-items: center; margin: 4px 0; }
+  .sdf-panel .row span { color: #7eb8ff; font-weight: 600; font-size: 13px; }
+  .sdf-toggle { display: flex; gap: 6px; margin-top: 8px; }
+  .sdf-toggle button {
+    flex: 1; padding: 5px 0; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04); color: #778; font-size: 11px; cursor: pointer; transition: all 0.2s;
+  }
+  .sdf-toggle button.on { background: rgba(126,184,255,0.25); border-color: rgba(126,184,255,0.5); color: #fff; }
+  .sdf-perf { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 11px; color: #667; }
+  .sdf-hint {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    font-size: 12px; color: rgba(255,255,255,0.35); z-index: 5; pointer-events: none;
+  }
+</style>
+
+<div class="sdf-hint">🖱 拖拽旋转 · 滚轮缩放 · 右键平移 · 底部按钮切换模式</div>
+
+<div class="sdf-panel" id="sdf-panel">
+  <label>混合平滑度</label>
+  <input type="range" id="blend" min="1" max="20" value="8">
+
+  <label>MetaBall 数量</label>
+  <input type="range" id="metaCount" min="2" max="9" value="5">
+
+  <label>动画速度</label>
+  <input type="range" id="speed" min="1" max="20" value="7">
+
+  <div class="sdf-toggle">
+    <button id="toggle-ao" class="on">AO</button>
+    <button id="toggle-shadow" class="on">阴影</button>
+    <button id="toggle-fog">雾</button>
+    <button id="toggle-mouse">鼠标</button>
+  </div>
+  <div class="sdf-perf" id="perf">FPS — · 步数 —</div>
+</div>
+
+<div class="sdf-overlay" id="sdf-btns">
+  <button class="sdf-btn active" data-mode="0">MetaBall 融合</button>
+  <button class="sdf-btn" data-mode="1">光滑混合</button>
+  <button class="sdf-btn" data-mode="2">CSG: 交集</button>
+  <button class="sdf-btn" data-mode="3">CSG: 差集</button>
+  <button class="sdf-btn" data-mode="4">CSG: 并集</button>
+  <button class="sdf-btn" data-mode="5">重复 + 镜像</button>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container = document.getElementById('canvas-panel');
+const W = () => container.clientWidth;
+const H = () => container.clientHeight;
+
+// ==================== Three.js Setup ====================
+const mainScene = new THREE.Scene();
+const pcam = new THREE.PerspectiveCamera(50, W() / H(), 0.1, 100);
+pcam.position.set(4.5, 3.2, 7.5);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(W(), H());
+renderer.autoClear = true;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(pcam, renderer.domElement);
+controls.target.set(0, 0.8, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 3;
+controls.maxDistance = 18;
+controls.maxPolarAngle = Math.PI * 0.75;
+controls.update();
+
+// ── Ortho camera + scene for full‑screen quad ──
+const quadScene = new THREE.Scene();
+const qcam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+// ==================== Full-screen Quad Shader ====================
+const uniforms = {
+  uTime: { value: 0 },
+  uResolution: { value: new THREE.Vector2(W(), H()) },
+  uCameraPos: { value: new THREE.Vector3() },
+  uCameraWorld: { value: new THREE.Matrix4() },
+  uMode: { value: 0 },
+  uBlend: { value: 0.8 },
+  uMetaCount: { value: 5 },
+  uSpeed: { value: 0.7 },
+  uShowAO: { value: 1 },
+  uShowShadow: { value: 1 },
+  uShowFog: { value: 0 },
+  uMouse: { value: 0 },
+  uMousePos: { value: new THREE.Vector2(-999, -999) },
+};
+
+const vertexShader = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vWorldPos;
+  void main() {
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vWorldPos = worldPos.xyz;
+    vUv = position.xy * 0.5 + 0.5;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const fragmentShader = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vWorldPos;
+  uniform float uTime;
+  uniform vec2 uResolution;
+  uniform vec3 uCameraPos;
+  uniform mat4 uCameraWorld;
+  uniform int uMode;
+  uniform float uBlend;
+  uniform int uMetaCount;
+  uniform float uSpeed;
+  uniform int uShowAO;
+  uniform int uShowShadow;
+  uniform int uShowFog;
+  uniform int uMouse;
+  uniform vec2 uMousePos;
+
+  #define FAR 40.0
+  #define EPS 0.001
+  #define MAX_STEPS 100
+  #define PI 3.14159265
+
+  // ── SDF Primitives ──
+  float sdSphere(vec3 p, float r) { return length(p) - r; }
+  float sdBox(vec3 p, vec3 b) {
+    vec3 q = abs(p) - b;
+    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+  }
+  float sdTorus(vec3 p, vec2 t) {
+    vec2 q = vec2(length(p.xz) - t.x, p.y);
+    return length(q) - t.y;
+  }
+  float sdPlane(vec3 p, vec3 n, float h) { return dot(p, n) + h; }
+
+  // ── SDF Operations ──
+  float opUnion(float a, float b) { return min(a, b); }
+  float opIntersect(float a, float b) { return max(a, b); }
+  float opSubtract(float a, float b) { return max(-a, b); }
+  float opSmoothUnion(float a, float b, float k) {
+    float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+    return mix(b, a, h) - k * h * (1.0 - h);
+  }
+  float opSmoothSubtract(float a, float b, float k) {
+    float h = clamp(0.5 - 0.5 * (b + a) / k, 0.0, 1.0);
+    return mix(b, -a, h) + k * h * (1.0 - h);
+  }
+  float opRepeat(vec3 p, vec3 c) {
+    return sdBox(mod(p + 0.5 * c, c) - 0.5 * c, vec3(0.25, 0.3, 0.25));
+  }
+
+  // ── Scene SDFs ──
+  float sceneMetaBall(vec3 p) {
+    float t = uTime * uSpeed;
+    int cnt = uMetaCount;
+    float d = 0.0;
+    float total = 0.0;
+    for (int i = 0; i < 9; i++) {
+      if (i >= cnt) break;
+      float fi = float(i);
+      float angle = t * (0.7 + 0.15 * fi) + fi * 1.256;
+      float r = 1.4 + 0.25 * sin(t * 0.6 + fi);
+      float y = 0.4 * sin(t * 0.5 + fi * 1.7);
+      vec3 center = vec3(r * cos(angle), y, r * sin(angle));
+      float dist = length(p - center);
+      d += 0.55 / (dist * dist + 0.01);
+      total += 1.0;
+    }
+    // Mouse attractor
+    if (uMouse == 1 && uMousePos.x > -900.0) {
+      vec3 mp = vec3(uMousePos.x * 2.5, uMousePos.y * 2.0 + 1.2, 0.0);
+      float md = length(p - mp);
+      d += 0.7 / (md * md + 0.015);
+      total += 1.5;
+    }
+    return 0.58 / sqrt(d) - 0.35;
+  }
+
+  float sceneSmoothBlend(vec3 p) {
+    float t = uTime * uSpeed * 0.3;
+    vec3 ps = p - vec3(sin(t) * 0.3, 1.0, 0.0);
+    float sphere = sdSphere(ps, 1.1);
+    float box = sdBox(p - vec3(1.1, 0.65, 0.0), vec3(0.7));
+    float torus = sdTorus(p - vec3(-1.1, 0.65, 0.0), vec2(0.7, 0.3));
+    float d = opSmoothUnion(sphere, box, uBlend);
+    return opSmoothUnion(d, torus, uBlend);
+  }
+
+  float sceneCSGIntersect(vec3 p) {
+    float t = uTime * uSpeed * 0.2;
+    float sphere = sdSphere(p - vec3(sin(t) * 0.5, 1.0 + cos(t * 0.7) * 0.3, 0.0), 1.4);
+    float box = sdBox(p - vec3(0.0, 0.8, 0.0), vec3(1.0, 0.8, 1.0));
+    return opIntersect(sphere, box);
+  }
+
+  float sceneCSGUnion(vec3 p) {
+    float t = uTime * uSpeed * 0.2;
+    float sphere = sdSphere(p - vec3(0.0, 1.6 + sin(t) * 0.3, 0.0), 0.65);
+    float box = sdBox(p - vec3(1.0, 0.55, 0.0), vec3(0.55));
+    float torus = sdTorus(p - vec3(-1.0, 0.9, 0.0), vec2(0.55, 0.25));
+    return opUnion(opUnion(sphere, box), torus);
+  }
+
+  float sceneCSGSubtract(vec3 p) {
+    float box = sdBox(p - vec3(0.0, 1.0, 0.0), vec3(1.1, 1.0, 1.1));
+    float sphere = sdSphere(p - vec3(0.4, 1.1, 0.4), 0.6);
+    float d = opSubtract(box, sphere);
+    d = opSubtract(d, sdSphere(p - vec3(-0.4, 1.1, 0.4), 0.5));
+    return opSubtract(d, sdSphere(p - vec3(0.0, 1.6, -0.3), 0.45));
+  }
+
+  float sceneRepeatMirror(vec3 p) {
+    vec3 q = abs(p - vec3(0.0, 0.9, 0.0));
+    return opRepeat(q, vec3(1.6, 1.2, 1.6));
+  }
+
+  float map(vec3 p) {
+    float ground = sdPlane(p, vec3(0.0, 1.0, 0.0), 0.85);
+    float d = ground;
+
+    if (uMode == 0) d = opUnion(ground, sceneMetaBall(p));
+    else if (uMode == 1) d = opUnion(ground, sceneSmoothBlend(p));
+    else if (uMode == 2) d = opUnion(ground, sceneCSGIntersect(p));
+    else if (uMode == 3) d = opUnion(ground, sceneCSGSubtract(p));
+    else if (uMode == 4) d = opUnion(ground, sceneCSGUnion(p));
+    else if (uMode == 5) d = opUnion(ground, sceneRepeatMirror(p));
+
+    return d;
+  }
+
+  // ── Ray Marching ──
+  float rayMarch(vec3 ro, vec3 rd) {
+    float t = 0.0;
+    for (int i = 0; i < MAX_STEPS; i++) {
+      vec3 p = ro + rd * t;
+      float d = map(p);
+      if (d < EPS) return t;
+      t += d;
+      if (t > FAR) break;
+    }
+    return -1.0;
+  }
+
+  // ── Normal from Gradient ──
+  vec3 calcNormal(vec3 p) {
+    float h = 0.001;
+    return normalize(vec3(
+      map(p + vec3(h, 0.0, 0.0)) - map(p - vec3(h, 0.0, 0.0)),
+      map(p + vec3(0.0, h, 0.0)) - map(p - vec3(0.0, h, 0.0)),
+      map(p + vec3(0.0, 0.0, h)) - map(p - vec3(0.0, 0.0, h))
+    ));
+  }
+
+  // ── Soft AO ──
+  float softAO(vec3 p, vec3 n) {
+    float ao = 0.0, s = 1.0;
+    for (int i = 0; i < 5; i++) {
+      float d = 0.08 + 0.12 * float(i);
+      float dist = map(p + n * d);
+      ao += (d - dist) * s;
+      s *= 0.5;
+    }
+    return 1.0 - 0.8 * clamp(ao, 0.0, 1.0);
+  }
+
+  // ── Soft Shadow ──
+  float softShadow(vec3 ro, vec3 rd, float k) {
+    float res = 1.0;
+    float t = 0.05;
+    for (int i = 0; i < 30; i++) {
+      float d = map(ro + rd * t);
+      if (d < EPS) return 0.0;
+      res = min(res, k * d / t);
+      t += d;
+      if (t > 6.0) break;
+    }
+    return clamp(res, 0.0, 1.0);
+  }
+
+  // ── Lighting ──
+  vec3 lighting(vec3 p, vec3 n, vec3 rd, float mat) {
+    vec3 lightPos = vec3(4.0, 6.0, 5.0);
+    vec3 lightCol = vec3(1.0, 0.95, 0.85) * 1.8;
+    vec3 l = normalize(lightPos - p);
+    vec3 h = normalize(l - rd);
+
+    // Ambient
+    vec3 ambient = vec3(0.08, 0.1, 0.15);
+
+    // Diffuse
+    float diff = max(0.0, dot(n, l));
+    float shadow = uShowShadow == 1 ? softShadow(p + n * 0.02, l, 12.0) : 1.0;
+    vec3 diffuse = lightCol * diff * shadow;
+
+    // Specular
+    float spec = pow(max(0.0, dot(n, h)), 64.0);
+    vec3 specular = lightCol * spec * 0.35 * shadow;
+
+    // AO
+    float ao = uShowAO == 1 ? softAO(p, n) : 1.0;
+    float fresnel = pow(1.0 - abs(dot(n, -rd)), 3.0);
+
+    // Material color based on position for variety
+    vec3 baseColor;
+    if (mat < 0.2) baseColor = vec3(0.92, 0.45, 0.35);       // red-orange
+    else if (mat < 0.4) baseColor = vec3(0.35, 0.65, 0.92);   // blue
+    else if (mat < 0.6) baseColor = vec3(0.88, 0.78, 0.35);   // gold
+    else if (mat < 0.8) baseColor = vec3(0.55, 0.82, 0.55);   // green
+    else baseColor = vec3(0.78, 0.58, 0.88);                   // purple
+
+    vec3 col = baseColor * (ambient + diffuse * 0.85) * ao;
+    col += specular * 0.45;
+    col += fresnel * vec3(0.15, 0.2, 0.3);
+
+    return col;
+  }
+
+  // ── Background ──
+  vec3 background(vec3 rd) {
+    float t = 0.5 * (rd.y + 1.0);
+    return mix(vec3(0.04, 0.06, 0.12), vec3(0.12, 0.18, 0.35), t);
+  }
+
+  void main() {
+    vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution) / min(uResolution.x, uResolution.y);
+
+    // Reconstruct camera ray from world-space camera matrix
+    vec3 ro = uCameraPos;
+    // Three.js matrixWorld: col0=right, col1=up, col2=-forward, col3=pos
+    vec3 forward = -normalize(uCameraWorld[2].xyz);
+    vec3 right   =  normalize(uCameraWorld[0].xyz);
+    vec3 up      =  normalize(uCameraWorld[1].xyz);
+    float focal = 1.0 / tan(25.0 * PI / 180.0); // FOV=50 → half-angle=25°
+    vec3 rd = normalize(forward * focal + right * uv.x + up * uv.y);
+
+    float t = rayMarch(ro, rd);
+
+    vec3 col;
+    if (t < 0.0) {
+      col = background(rd);
+    } else {
+      vec3 p = ro + rd * t;
+      vec3 n = calcNormal(p);
+      col = lighting(p, n, rd, t * 0.15);
+      // Fog
+      float fog = uShowFog == 1 ? 1.0 - exp(-t * 0.04) : 0.0;
+      col = mix(col, background(rd), fog);
+    }
+
+    // Tone mapping
+    col = col / (1.0 + col);
+    col = pow(col, vec3(1.0 / 2.2));
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+const geo = new THREE.PlaneGeometry(2, 2);
+const mat = new THREE.ShaderMaterial({
+  uniforms,
+  vertexShader,
+  fragmentShader,
+  depthTest: false,
+  depthWrite: false,
+});
+const quad = new THREE.Mesh(geo, mat);
+quadScene.add(quad);
+
+// ==================== UI: Mode Buttons ====================
+document.querySelectorAll('.sdf-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sdf-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    uniforms.uMode.value = parseInt(btn.dataset.mode);
+  });
+});
+
+// ==================== UI: Panel Sliders ====================
+document.getElementById('blend').addEventListener('input', function() {
+  uniforms.uBlend.value = this.value / 10.0;
+});
+document.getElementById('metaCount').addEventListener('input', function() {
+  uniforms.uMetaCount.value = parseInt(this.value);
+});
+document.getElementById('speed').addEventListener('input', function() {
+  uniforms.uSpeed.value = this.value / 10.0;
+});
+
+// ==================== UI: Toggle Buttons ====================
+const toggles = {
+  'toggle-ao':    { uniform: 'uShowAO',    val: true },
+  'toggle-shadow':{ uniform: 'uShowShadow',val: true },
+  'toggle-fog':   { uniform: 'uShowFog',   val: false },
+  'toggle-mouse': { uniform: 'uMouse',     val: false },
+};
+for (const [id, cfg] of Object.entries(toggles)) {
+  const btn = document.getElementById(id);
+  btn.addEventListener('click', () => {
+    cfg.val = !cfg.val;
+    btn.classList.toggle('on', cfg.val);
+    uniforms[cfg.uniform].value = cfg.val ? 1 : 0;
+  });
+  if (cfg.val) btn.classList.add('on');
+}
+
+// ==================== Mouse Tracking ====================
+const mouseNDC = new THREE.Vector2();
+document.getElementById('canvas-panel').addEventListener('mousemove', (e) => {
+  const rect = container.getBoundingClientRect();
+  mouseNDC.x = ((e.clientX - rect.left) / rect.width) * 2.0 - 1.0;
+  mouseNDC.y = -((e.clientY - rect.top) / rect.height) * 2.0 + 1.0;
+  uniforms.uMousePos.value.set(mouseNDC.x, mouseNDC.y);
+});
+
+// ==================== FPS Counter ====================
+let frameCount = 0, lastFpsTime = performance.now(), lastFps = 0;
+const perfEl = document.getElementById('perf');
+
+// ==================== Resize ====================
+window.addEventListener('resize', () => {
+  renderer.setSize(W(), H());
+  uniforms.uResolution.value.set(W(), H());
+  pcam.aspect = W() / H();
+  pcam.updateProjectionMatrix();
+});
+
+// ==================== Render Loop ====================
+function animate(t) {
+  requestAnimationFrame(animate);
+  controls.update();
+
+  uniforms.uTime.value = t * 0.001;
+  uniforms.uCameraPos.value.copy(pcam.position);
+  uniforms.uCameraWorld.value.copy(pcam.matrixWorld);
+  uniforms.uResolution.value.set(W(), H());
+
+  renderer.setRenderTarget(null);
+  renderer.clear();
+  renderer.render(mainScene, pcam);
+  renderer.autoClear = false;
+  renderer.render(quadScene, qcam);
+  renderer.autoClear = true;
+
+  // FPS
+  frameCount++;
+  if (t - lastFpsTime > 1000) {
+    lastFps = Math.round(frameCount / ((t - lastFpsTime) * 0.001));
+    frameCount = 0;
+    lastFpsTime = t;
+  }
+  perfEl.textContent = `FPS ${lastFps} · 步数 100`;
+}
+
+requestAnimationFrame(animate);
+</script>

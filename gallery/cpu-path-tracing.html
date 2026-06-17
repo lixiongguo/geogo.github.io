@@ -1,104 +1,94 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CPU 路径追踪 — 与 cpp/CPUPathTracing 同构演示</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; }
-    body {
-      font-family: "Segoe UI", system-ui, sans-serif;
-      background: #0a0c12;
-      color: #d5daf0;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    header {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 12px 20px;
-      padding: 10px 16px;
-      background: rgba(18, 22, 38, 0.95);
-      border-bottom: 1px solid rgba(120, 140, 255, 0.2);
-    }
-    header h1 {
-      font-size: 16px;
-      font-weight: 600;
-      background: linear-gradient(90deg, #8b9cff, #c4b5fd);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
-    label { font-size: 12px; color: #8a92b8; }
-    button, select {
-      background: #1a2035;
-      color: #e8ecff;
-      border: 1px solid rgba(120, 140, 255, 0.35);
-      border-radius: 8px;
-      padding: 7px 12px;
-      font-size: 13px;
-      cursor: pointer;
-    }
-    button:hover { background: #242a48; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    #status { font-size: 12px; color: #9aa3c9; margin-left: auto; }
-    main {
-      flex: 1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 12px;
-      min-height: 0;
-    }
-    #wrap {
-      position: relative;
-      max-width: 100%;
-      max-height: calc(100vh - 120px);
-      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.45);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    canvas { display: block; max-width: 100%; height: auto; }
-    #note {
-      padding: 12px 16px 20px;
-      font-size: 12px;
-      line-height: 1.65;
-      color: #7a83a8;
-      max-width: 960px;
-      margin: 0 auto;
-    }
-    #note a { color: #9eb4ff; }
-  </style>
-</head>
-<body>
-  <header>
+---
+layout: gallery_item
+slug: cpu-path-tracing
+title: CPU Path Tracing
+---
+<style>
+  .pt-wrapper { display: flex; flex-direction: column; height: 100%; }
+  .pt-header {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 12px 20px; padding: 10px 16px;
+    background: rgba(18, 22, 38, 0.95);
+    border-bottom: 1px solid rgba(120, 140, 255, 0.2);
+  }
+  .pt-header h1 {
+    font-size: 16px; font-weight: 600; margin: 0;
+    background: linear-gradient(90deg, #8b9cff, #c4b5fd);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    width: fit-content;
+  }
+  .pt-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+  .pt-label { font-size: 12px; color: #8a92b8; }
+  .pt-btn, .pt-sel {
+    background: #1a2035;
+    color: #e8ecff;
+    border: 1px solid rgba(120, 140, 255, 0.35);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .pt-btn:hover { background: #242a48; }
+  .pt-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .pt-status { font-size: 12px; color: #9aa3c9; margin-left: auto; }
+  .pt-main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 12px;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .pt-wrap {
+    position: relative;
+    max-width: 100%;
+    max-height: calc(100vh - 120px);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.45);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .pt-wrap canvas { display: block; max-width: 100%; height: auto; }
+  .pt-note {
+    padding: 8px 16px 12px;
+    font-size: 11px;
+    line-height: 1.55;
+    color: #7a83a8;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  .pt-note a { color: #9eb4ff; }
+  .pt-note code { color: #9eb4ff; font-size: 11px; }
+</style>
+
+<div class="pt-wrapper">
+  <div class="pt-header">
     <h1>CPU Path Tracing</h1>
-    <div class="row">
-      <label>场景 <select id="sceneSel"></select></label>
-      <label>分辨率 <select id="res">
+    <div class="pt-row">
+      <label class="pt-label">场景 <select id="sceneSel" class="pt-sel"></select></label>
+      <label class="pt-label">分辨率 <select id="res" class="pt-sel">
         <option value="480">480×270</option>
         <option value="640" selected>640×360</option>
         <option value="800">800×450</option>
       </select></label>
-      <label>每帧步数 <select id="sppFrame">
+      <label class="pt-label">每帧步数 <select id="sppFrame" class="pt-sel">
         <option value="1">1</option>
         <option value="2" selected>2</option>
         <option value="4">4</option>
       </select></label>
-      <button type="button" id="btn-reset">重置累积</button>
-      <button type="button" id="btn-pause">暂停</button>
+      <button type="button" id="btn-reset" class="pt-btn">重置累积</button>
+      <button type="button" id="btn-pause" class="pt-btn">暂停</button>
     </div>
-    <span id="status">累积 0 spp · …</span>
-  </header>
-  <main>
-    <div id="wrap">
+    <span id="status" class="pt-status">累积 0 spp · …</span>
+  </div>
+  <div class="pt-main">
+    <div class="pt-wrap">
       <canvas id="cv" width="640" height="360"></canvas>
     </div>
-  </main>
-  <p id="note">
+  </div>
+  <p class="pt-note">
     本页为浏览器内 <strong>渐进式路径追踪</strong>，场景布局与材质角色对齐仓库
     <code>cpp/CPUPathTracing/src/main.cpp</code>：四尊「主体」+ 镜面小球 + 无限地面 + 环境光（此处用程序化天空近似 EXR 无限光源）。
     场景现在由 <code>assets/renderer/Scenes/*.json</code> 描述（可包含相机、天空、地面、球体、OBJ 网格与材质），
@@ -106,7 +96,9 @@
     因静态站无 <code>buddha.obj</code> / HDRI 资源，主体用<strong>大球体</strong>代替三角网格 Buddha；BSDF 含余弦漫反射、理想镜面、Schlick 电介质、粗糙金属（GGX）。
     完整 BVH / MIS / 与 C++ 逐位一致需在本地编译 <code>CPUPathTracing</code> 输出 EXR。
   </p>
-  <script>
+</div>
+
+<script>
 (function () {
   'use strict';
 
@@ -537,7 +529,6 @@
     }
   }
 
-  /** Cosine-weighted hemisphere around unit normal (nx,ny,nz) */
   function sampleCosineWorld(nx, ny, nz, rng) {
     const u = rng(), v = rng();
     const r = Math.sqrt(u);
@@ -782,6 +773,4 @@
     requestAnimationFrame(renderFrame);
   });
 })();
-  </script>
-</body>
-</html>
+</script>

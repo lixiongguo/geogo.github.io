@@ -1,0 +1,506 @@
+---
+layout: gallery_item
+slug: simple-binpack
+title: 3D 装箱问题
+head_extra: |
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/"
+    }
+  }
+  </script>
+---
+<style>
+  .bp-wrapper { display: flex; flex-direction: column; height: 100%; }
+  .bp-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 20px;
+    background: rgba(10, 10, 30, 0.95);
+    border-bottom: 1px solid rgba(100, 140, 255, 0.15); flex-shrink: 0;
+  }
+  .bp-header h1 { font-size: 16px; font-weight: 600; background: linear-gradient(90deg, #6366f1, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0; background-clip: text; width: fit-content; }
+  .bp-actions { display: flex; gap: 8px; }
+  .bp-btn {
+    padding: 6px 16px; border: 1px solid rgba(99, 102, 241, 0.4);
+    background: rgba(99, 102, 241, 0.12); color: #b4b4ff; border-radius: 6px;
+    font-size: 12px; cursor: pointer; transition: all 0.2s ease;
+  }
+  .bp-btn:hover { background: rgba(99, 102, 241, 0.25); border-color: #6366f1; }
+  .bp-btn-primary { background: rgba(99, 102, 241, 0.3); border-color: #6366f1; }
+  .bp-btn-primary:hover { background: rgba(99, 102, 241, 0.45); }
+
+  .bp-main { display: flex; flex: 1; overflow: hidden; }
+  .bp-canvas { flex: 1; position: relative; }
+  #canvas-container { width: 100%; height: 100%; }
+  canvas { display: block; }
+
+  .bp-side {
+    width: 300px; background: rgba(12, 12, 32, 0.95);
+    border-left: 1px solid rgba(100, 140, 255, 0.12);
+    overflow-y: auto; flex-shrink: 0; padding: 14px;
+  }
+  .bp-section { margin-bottom: 16px; }
+  .bp-title { font-size: 13px; font-weight: 600; color: #8888cc; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .bp-stats .bp-title { font-size: 14px; color: #a5b4fc; margin-bottom: 12px; }
+  .bp-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .bp-stat-card { background: rgba(99, 102, 241, 0.08); border-radius: 6px; padding: 10px 8px; text-align: center; }
+  .bp-stat-val { font-size: 22px; font-weight: 700; color: #a5b4fc; }
+  .bp-stat-lbl { font-size: 11px; color: #6b6b8a; margin-top: 2px; }
+  .bp-progress-wrap { margin-top: 10px; }
+  .bp-progress-bg { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+  .bp-progress-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #a78bfa); border-radius: 3px; transition: width 0.4s ease; width: 0%; }
+  .bp-progress-text { font-size: 11px; color: #6b6b8a; margin-top: 4px; text-align: center; }
+  .bp-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .bp-row label { font-size: 12px; color: #8888cc; width: 40px; flex-shrink: 0; }
+  .bp-row input[type=range] { flex: 1; accent-color: #6366f1; }
+  .bp-row input[type=number] {
+    width: 50px; background: rgba(255,255,255,0.06); border: 1px solid rgba(100,140,255,0.15);
+    color: #b4b4ff; border-radius: 4px; padding: 2px 6px; font-size: 12px; text-align: center;
+  }
+  .bp-hint { font-size: 11px; color: #5a5a7a; margin: 4px 0 0; }
+  .bp-info { font-size: 12px; color: #7a7aaa; line-height: 1.6; }
+  .bp-info span { color: #a5b4fc; }
+  .bp-legend { list-style: none; padding: 0; margin: 0; font-size: 12px; }
+  .bp-legend li { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .bp-legend-color { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+  .bp-legend li input { width: 40px; background: rgba(255,255,255,0.06); border: 1px solid rgba(100,140,255,0.15); color: #b4b4ff; border-radius: 4px; padding: 1px 4px; font-size: 11px; text-align: center; margin: 0 3px; }
+  #loading { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); font-size: 14px; color: #a5b4fc; z-index: 5; display: none; }
+</style>
+
+<div class="bp-wrapper">
+  <div class="bp-header">
+    <h1>📦 三维装箱问题 (3D Bin Packing)</h1>
+    <div class="bp-actions">
+      <button class="bp-btn" id="btn-reset">重置</button>
+      <button class="bp-btn bp-btn-primary" id="btn-pack">贪心装箱</button>
+      <button class="bp-btn" id="btn-backtrack">回溯装箱</button>
+      <button class="bp-btn" id="btn-view">切换视角</button>
+    </div>
+  </div>
+
+  <div class="bp-main">
+    <div class="bp-canvas">
+      <div id="canvas-container"></div>
+      <div id="loading">装箱中...</div>
+    </div>
+
+    <div class="bp-side">
+      <div class="bp-section bp-stats">
+        <div class="bp-title">装箱统计</div>
+        <div class="bp-stat-grid">
+          <div class="bp-stat-card"><div class="bp-stat-val" id="stat-total">0</div><div class="bp-stat-lbl">装箱数量</div></div>
+          <div class="bp-stat-card"><div class="bp-stat-val" id="stat-util">0%</div><div class="bp-stat-lbl">相对上限</div></div>
+          <div class="bp-stat-card"><div class="bp-stat-val" id="stat-volume">0</div><div class="bp-stat-lbl">已用体积</div></div>
+          <div class="bp-stat-card"><div class="bp-stat-val" id="stat-types">3</div><div class="bp-stat-lbl">小箱种类</div></div>
+        </div>
+        <div class="bp-progress-wrap">
+          <div class="bp-progress-bg"><div class="bp-progress-fill" id="progress-fill"></div></div>
+          <div class="bp-progress-text" id="progress-text">等待开始...</div>
+        </div>
+      </div>
+
+      <div class="bp-section">
+        <div class="bp-title">小箱设置</div>
+        <div class="bp-row">
+          <label for="box-count">数量</label>
+          <input type="range" id="box-count" min="1" max="200" value="3">
+          <input type="number" id="box-count-num" min="1" max="200" value="3">
+        </div>
+        <p class="bp-hint">红 / 蓝 / 黄循环着色，调节后自动重新放置</p>
+        <div class="bp-row" style="margin-top:8px">
+          <label for="volume-limit">用量上限</label>
+          <input type="range" id="volume-limit" min="10" max="100" value="100">
+          <input type="number" id="volume-limit-num" min="10" max="100" value="100">
+        </div>
+        <p class="bp-hint">已用体积不超过集装箱容量的百分比</p>
+      </div>
+
+      <div class="bp-section">
+        <div class="bp-title">集装箱与坐标系</div>
+        <div class="bp-info">
+          <p>长 × 宽 × 高 = <span>10 × 8 × 8</span>，总体积 <span>640</span></p>
+          <p>原点 <span>O</span>：左下角最内侧 (0, 0, 0)</p>
+          <p><span>X</span> 向右 · <span>Y</span> 向上 · <span>Z</span> 由里向外</p>
+        </div>
+      </div>
+
+      <div class="bp-section">
+        <div class="bp-title">箱子类型与尺寸</div>
+        <ul class="bp-legend" id="box-legend"></ul>
+        <p class="bp-hint">X 宽 · Y 高 · Z 深，回车或失焦后自动贪心装箱</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const CONTAINER = { w: 10, d: 8, h: 8 };
+const CONTAINER_VOL = CONTAINER.w * CONTAINER.d * CONTAINER.h;
+
+const DEFAULT_BOX_TYPES = [
+  { name: '红色小箱', w: 2.2, d: 1.6, h: 1.5, color: 0xef4444, hex: '#ef4444' },
+  { name: '蓝色小箱', w: 1.8, d: 1.8, h: 1.4, color: 0x3b82f6, hex: '#3b82f6' },
+  { name: '黄色小箱', w: 1.6, d: 2.0, h: 1.6, color: 0xeab308, hex: '#eab308' },
+];
+const SMALL_BOX_TYPES = DEFAULT_BOX_TYPES.map(t => ({ ...t }));
+
+const EPS = 1e-6;
+
+// ==================== Three.js Setup ====================
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x08081a);
+
+const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.5, 100);
+camera.position.set(20, 13, 18);
+camera.lookAt(5, 4, 4);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.shadowMap.enabled = true;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(5, 4, 4);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.update();
+
+// ==================== Lights ====================
+const ambient = new THREE.AmbientLight(0x404060, 2.5);
+scene.add(ambient);
+const dir = new THREE.DirectionalLight(0xffffff, 2);
+dir.position.set(15, 20, 10);
+scene.add(dir);
+
+// ==================== Container ====================
+const containerGeo = new THREE.BoxGeometry(CONTAINER.w, CONTAINER.h, CONTAINER.d);
+const containerMat = new THREE.MeshPhysicalMaterial({
+  color: 0xc084fc, opacity: 0.12, transparent: true,
+  roughness: 0.5, metalness: 0.1, side: THREE.DoubleSide
+});
+const containerMesh = new THREE.Mesh(containerGeo, containerMat);
+containerMesh.position.set(CONTAINER.w / 2, CONTAINER.h / 2, CONTAINER.d / 2);
+scene.add(containerMesh);
+
+// Wireframe
+const edges = new THREE.EdgesGeometry(containerGeo);
+const lineMat = new THREE.LineBasicMaterial({ color: 0x6366f1, opacity: 0.35, transparent: true });
+const wireframe = new THREE.LineSegments(edges, lineMat);
+wireframe.position.copy(containerMesh.position);
+scene.add(wireframe);
+
+// Grid
+const grid = new THREE.GridHelper(12, 12, 0x444466, 0x222244);
+grid.position.set(5, 0, 4);
+scene.add(grid);
+
+// Axes
+function axis(dirVec, color, origin) {
+  const len = 2;
+  const end = origin.clone().add(dirVec.clone().multiplyScalar(len));
+  const pts = [origin, end];
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  return new THREE.Line(geo, new THREE.LineBasicMaterial({ color }));
+}
+const O = new THREE.Vector3(0, 0, 0);
+scene.add(axis(new THREE.Vector3(1, 0, 0), 0xff4444, O));
+scene.add(axis(new THREE.Vector3(0, 1, 0), 0x44ff44, O));
+scene.add(axis(new THREE.Vector3(0, 0, 1), 0x4488ff, O));
+
+// ==================== Box Management ====================
+let placedBoxes = [];
+
+function createBoxMesh(w, d, h, color) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const mat = new THREE.MeshLambertMaterial({ color });
+  const mesh = new THREE.Mesh(geo, mat);
+  const edge = new THREE.EdgesGeometry(geo);
+  const line = new THREE.LineSegments(edge, new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 1 }));
+  mesh.add(line);
+  return mesh;
+}
+
+function clearAllBoxes() {
+  placedBoxes.forEach(b => scene.remove(b.mesh));
+  placedBoxes = [];
+}
+
+function addBox(cx, cy, cz, w, d, h, color) {
+  const mesh = createBoxMesh(w, d, h, color);
+  mesh.position.set(cx + w / 2, cy + h / 2, cz + d / 2);
+  scene.add(mesh);
+  placedBoxes.push({ cx, cy, cz, w, d, h, mesh });
+}
+
+function overlaps(a, b) {
+  return (
+    a.cx < b.cx + b.w + EPS && a.cx + a.w > b.cx - EPS &&
+    a.cy < b.cy + b.h + EPS && a.cy + a.h > b.cy - EPS &&
+    a.cz < b.cz + b.d + EPS && a.cz + a.d > b.cz - EPS
+  );
+}
+
+function fits(box) {
+  return box.cx >= -EPS && box.cy >= -EPS && box.cz >= -EPS &&
+         box.cx + box.w <= CONTAINER.w + EPS &&
+         box.cy + box.h <= CONTAINER.h + EPS &&
+         box.cz + box.d <= CONTAINER.d + EPS;
+}
+
+// ==================== Rotation ====================
+function rotateDims(w, d, h) {
+  const perms = [];
+  const seen = new Set();
+  for (const [a, b, c] of [[w, d, h], [w, h, d], [d, w, h], [d, h, w], [h, w, d], [h, d, w]]) {
+    const key = `${a.toFixed(3)},${b.toFixed(3)},${c.toFixed(3)}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      perms.push({ w: a, d: b, h: c });
+    }
+  }
+  return perms;
+}
+
+// ==================== Greedy ====================
+function greedyPack(boxTypes) {
+  clearAllBoxes();
+  const items = [];
+  boxTypes.forEach((bt, idx) => {
+    for (let i = 0; i < bt.count; i++) {
+      items.push({ ...bt, idx });
+    }
+  });
+  items.sort((a, b) => b.w * b.d * b.h - a.w * a.d * a.h);
+
+  let totalVol = 0;
+  const maxVol = CONTAINER_VOL * (volLimit / 100);
+
+  for (const item of items) {
+    if (totalVol + item.w * item.d * item.h > maxVol + EPS) continue;
+    let placed = false;
+    const rots = rotateDims(item.w, item.d, item.h);
+    rots.sort((a, b) => b.w * b.d * b.h - a.w * a.d * a.h);
+
+    for (const rot of rots) {
+      for (let cz = 0; cz <= CONTAINER.d - rot.d; cz += 0.25) {
+        for (let cx = 0; cx <= CONTAINER.w - rot.w; cx += 0.25) {
+          let y = 0;
+          for (const b of placedBoxes) {
+            if (b.cx < cx + rot.w && b.cx + b.w > cx &&
+                b.cz < cz + rot.d && b.cz + b.d > cz) {
+              y = Math.max(y, b.cy + b.h);
+            }
+          }
+          if (y + rot.h <= CONTAINER.h + EPS) {
+            addBox(cx, y, cz, rot.w, rot.d, rot.h, item.color);
+            totalVol += rot.w * rot.d * rot.h;
+            placed = true;
+            break;
+          }
+        }
+        if (placed) break;
+      }
+      if (placed) break;
+    }
+  }
+  return { count: placedBoxes.length, vol: totalVol, maxVol };
+}
+
+// ==================== Backtrack ====================
+function backtrackPack(boxTypes) {
+  clearAllBoxes();
+  const items = [];
+  boxTypes.forEach((bt, idx) => {
+    for (let i = 0; i < bt.count; i++) items.push({ ...bt, idx });
+  });
+  const maxVol = CONTAINER_VOL * (volLimit / 100);
+
+  function dfs(index, placed, usedVol) {
+    if (index >= items.length) return true;
+    const item = items[index];
+    const rots = rotateDims(item.w, item.d, item.h);
+    rots.sort((a, b) => b.w * b.d * b.h - a.w * a.d * a.h);
+
+    for (const rot of rots) {
+      if (usedVol + rot.w * rot.d * rot.h > maxVol + EPS) continue;
+      for (let cz = 0; cz <= CONTAINER.d - rot.d; cz += 0.25) {
+        for (let cx = 0; cx <= CONTAINER.w - rot.w; cx += 0.25) {
+          let y = 0;
+          for (const b of placed) {
+            if (b.cx < cx + rot.w && b.cx + b.w > cx &&
+                b.cz < cz + rot.d && b.cz + b.d > cz) {
+              y = Math.max(y, b.cy + b.h);
+            }
+          }
+          if (y + rot.h <= CONTAINER.h + EPS) {
+            const box = { cx, cy: y, cz, w: rot.w, d: rot.d, h: rot.h, color: item.color };
+            placed.push(box);
+            if (dfs(index + 1, placed, usedVol + rot.w * rot.d * rot.h)) return true;
+            placed.pop();
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  const placed = [];
+  if (dfs(0, placed, 0)) {
+    placed.forEach(b => addBox(b.cx, b.cy, b.cz, b.w, b.d, b.h, b.color));
+  }
+  return { count: placedBoxes.length, vol: placed.reduce((s, b) => s + b.w * b.d * b.h, 0), maxVol };
+}
+
+// ==================== UI & Animation ====================
+let boxTypes = SMALL_BOX_TYPES.map(t => ({ ...t, count: 1 }));
+let volLimit = 100;
+
+function updateStats(result) {
+  document.getElementById('stat-total').textContent = result.count;
+  document.getElementById('stat-util').textContent = Math.round(result.vol / CONTAINER_VOL * 100) + '%';
+  document.getElementById('stat-volume').textContent = result.vol.toFixed(1);
+  document.getElementById('stat-types').textContent = boxTypes.length;
+  const pct = Math.min(100, Math.round(result.vol / result.maxVol * 100));
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = `已用 ${result.vol.toFixed(0)} / 上限 ${result.maxVol.toFixed(0)} (${pct}%)`;
+}
+
+function updateLegend() {
+  const ul = document.getElementById('box-legend');
+  ul.innerHTML = boxTypes.map((bt, i) => {
+    const colors = ['#ef4444', '#3b82f6', '#eab308'];
+    return `<li>
+      <span class="bp-legend-color" style="background:${colors[i % 3]}"></span>
+      <span style="flex:1">${bt.name}</span>
+      <input type="number" value="${bt.w}" min="0.1" step="0.1"
+        onchange="updateBoxDim(${i},'w',this.value)" title="宽 X">
+      <input type="number" value="${bt.d}" min="0.1" step="0.1"
+        onchange="updateBoxDim(${i},'d',this.value)" title="深 Z">
+      <input type="number" value="${bt.h}" min="0.1" step="0.1"
+        onchange="updateBoxDim(${i},'h',this.value)" title="高 Y">
+    </li>`;
+  }).join('');
+}
+
+window.updateBoxDim = function(i, dim, val) {
+  const v = parseFloat(val);
+  if (isNaN(v) || v < 0.1) return;
+  boxTypes[i][dim] = Math.min(v, dim === 'h' ? CONTAINER.h : (dim === 'd' ? CONTAINER.d : CONTAINER.w));
+  updateLegend();
+  const result = greedyPack(boxTypes);
+  updateStats(result);
+};
+
+function doGreedy() {
+  boxTypes = SMALL_BOX_TYPES.map((t, i) => ({ ...t, count: boxTypes[i]?.count || 1 }));
+  const cnt = Math.min(200, Math.max(1, parseInt(document.getElementById('box-count-num').value) || 3));
+  const totalTypes = SMALL_BOX_TYPES.length;
+  boxTypes = SMALL_BOX_TYPES.map((t, i) => ({
+    ...t,
+    count: Math.floor(cnt / totalTypes) + (i < cnt % totalTypes ? 1 : 0)
+  }));
+  document.getElementById('box-count').value = cnt;
+  document.getElementById('box-count-num').value = cnt;
+  document.getElementById('stat-types').textContent = boxTypes.length;
+  updateLegend();
+  const loading = document.getElementById('loading');
+  loading.style.display = 'block';
+  setTimeout(() => {
+    const result = greedyPack(boxTypes);
+    updateStats(result);
+    loading.style.display = 'none';
+  }, 30);
+}
+
+function doBacktrack() {
+  const cnt = Math.min(20, Math.max(1, parseInt(document.getElementById('box-count-num').value) || 3));
+  const totalTypes = SMALL_BOX_TYPES.length;
+  boxTypes = SMALL_BOX_TYPES.map((t, i) => ({
+    ...t,
+    count: Math.floor(cnt / totalTypes) + (i < cnt % totalTypes ? 1 : 0)
+  }));
+  updateLegend();
+  document.getElementById('loading').style.display = 'block';
+  setTimeout(() => {
+    const result = backtrackPack(boxTypes);
+    updateStats(result);
+    document.getElementById('loading').style.display = 'none';
+  }, 30);
+}
+
+let viewPreset = 0;
+const views = [
+  { pos: [20, 13, 18], target: [5, 4, 4] },
+  { pos: [0, 20, 4], target: [5, 4, 4] },
+  { pos: [5, 4, -15], target: [5, 4, 4] },
+  { pos: [20, 20, 20], target: [5, 4, 4] },
+];
+
+function switchView() {
+  viewPreset = (viewPreset + 1) % views.length;
+  const v = views[viewPreset];
+  camera.position.set(...v.pos);
+  controls.target.set(...v.target);
+  controls.update();
+}
+
+// ==================== Event Bindings ====================
+document.getElementById('btn-pack').addEventListener('click', doGreedy);
+document.getElementById('btn-backtrack').addEventListener('click', doBacktrack);
+document.getElementById('btn-reset').addEventListener('click', () => {
+  clearAllBoxes();
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('progress-text').textContent = '已重置';
+  document.getElementById('stat-total').textContent = '0';
+  document.getElementById('stat-util').textContent = '0%';
+  document.getElementById('stat-volume').textContent = '0';
+});
+document.getElementById('btn-view').addEventListener('click', switchView);
+
+document.getElementById('box-count').addEventListener('input', function() {
+  document.getElementById('box-count-num').value = this.value;
+  doGreedy();
+});
+document.getElementById('box-count-num').addEventListener('change', function() {
+  document.getElementById('box-count').value = this.value;
+  doGreedy();
+});
+
+document.getElementById('volume-limit').addEventListener('input', function() {
+  volLimit = parseInt(this.value);
+  document.getElementById('volume-limit-num').value = volLimit;
+  doGreedy();
+});
+document.getElementById('volume-limit-num').addEventListener('change', function() {
+  volLimit = Math.min(100, Math.max(10, parseInt(this.value) || 100));
+  document.getElementById('volume-limit').value = volLimit;
+  doGreedy();
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = container.clientWidth / container.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(container.clientWidth, container.clientHeight);
+});
+
+// ==================== Render Loop ====================
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// ==================== Init ====================
+boxTypes = SMALL_BOX_TYPES.map(t => ({ ...t, count: 1 }));
+volLimit = 100;
+updateLegend();
+doGreedy();
+animate();
+</script>

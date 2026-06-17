@@ -10,3 +10,39 @@
   thumbnail: /assets/gallery/cpu_pathtracing.png
   detail_url: "/gallery/cpu-path-tracing.html"
 
+- slug: wfc
+  title: WFC 纹理合成
+  description: Wave Function Collapse 算法：从样本纹理中提取 tile 邻接约束，回溯合成大尺寸纹理。
+  thumbnail: /assets/WFC/circuit_9_9.png
+  detail_url: "/gallery/wfc.html"
+
+- slug: simple-binpack
+  title: 3D 装箱问题
+  description: 三维 Bin Packing：贪心装箱与回溯装箱的 Three.js 可视化，支持调节箱数、尺寸与容量。
+  thumbnail: /assets/gallery/simple_bin_pack.png
+  detail_url: "/gallery/simple-binpack.html"
+
+- slug: sdf-raymarching
+  title: SDF Ray Marching
+  description: 有符号距离场实时渲染：MetaBall 融合、光滑混合、CSG 组合、重复镜像 — 全部在片元着色器中完成。
+  thumbnail: /assets/gallery/sdf_raymarching.png
+  detail_url: "/gallery/sdf-raymarching.html"
+
+- slug: lbm-suiboku
+  title: LBM 水墨动画
+  description: 格子玻尔兹曼法 (D2Q9) 模拟墨水在水中的扩散与流动，鼠标拖拽落笔，实时渲染水墨晕染效果。
+  thumbnail: /assets/gallery/lbm-suiboku.png
+  detail_url: "/gallery/lbm-suiboku.html"
+
+- slug: boid
+  title: Boid 群体运动
+  description: 鸟群/鱼群的涌现行为模拟：分离、对齐、凝聚三规则驱动数百个箭头个体，鼠标引力实时交互。
+  thumbnail: /assets/gallery/boid.png
+  detail_url: "/gallery/boid.html"
+
+- slug: bezier-editor
+  title: Bézier 曲线编辑器
+  description: 类 PS 钢笔工具：拖拽创建三次 Bézier 曲线，Ctrl 移动锚点，Alt 断开平滑手柄，右键删除。
+  thumbnail: /assets/gallery/bezier-editor.png
+  detail_url: "/gallery/bezier-editor.html"
+

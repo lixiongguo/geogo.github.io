@@ -14,10 +14,13 @@ keep_files:
   - assets/wasm/*.js
   - gallery/
 
-# 排除不需要 Jekyll 处理的目录
+# 排除不需要 Jekyll 处理的目录和文件
+# gallery/*.md 是帮助面板的源文档，由流水线转为 _data/gallery_help.yml，
+# 不应被 Jekyll 单独渲染（否则会和同名 .html 冲突）
 exclude:
   - cpp/
   - docs/cpp/
+  - "gallery/*.md"
 plugins:
   - jekyll-feed
 github_username: David Lee

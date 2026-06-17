@@ -1,0 +1,248 @@
+---
+layout: gallery_item
+slug: boid
+title: Boid 群体运动
+---
+<style>
+  .bd-wrap { width:100%; height:100%; display:flex; flex-direction:column; background: #0d1117; }
+  .bd-bar {
+    display:flex; align-items:center; gap:14px; padding:8px 16px;
+    background:rgba(13,17,23,0.95); border-bottom:1px solid rgba(255,255,255,0.06);
+    flex-shrink:0; flex-wrap:wrap;
+  }
+  .bd-bar label { font-size:11px; color:#8b949e; display:flex; align-items:center; gap:4px; }
+  .bd-bar input[type=range] { width:56px; accent-color:#58a6ff; }
+  .bd-bar button {
+    padding:5px 12px; border:1px solid rgba(255,255,255,0.12); border-radius:4px;
+    background:rgba(255,255,255,0.04); color:#c9d1d9; font-size:12px; cursor:pointer; transition:all 0.15s;
+  }
+  .bd-bar button:hover { background:rgba(255,255,255,0.1); }
+  .bd-bar button.active { background:rgba(56,139,253,0.2); border-color:#58a6ff; color:#58a6ff; }
+  .bd-bar .sep { width:1px; height:16px; background:rgba(255,255,255,0.08); }
+  .bd-canvas-wrap { flex:1; overflow:hidden; position:relative; }
+  canvas { display:block; }
+  .bd-hint {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    color:rgba(255,255,255,0.12); font-size:16px; pointer-events:none;
+  }
+  .bd-count { font-size:11px; color:#58a6ff; margin-left:auto; }
+</style>
+
+<div class="bd-wrap">
+  <div class="bd-bar">
+    <label>数量 <input type="range" id="n" min="20" max="400" value="150"></label>
+    <label>分离 <input type="range" id="sep" min="0" max="30" value="15"></label>
+    <label>对齐 <input type="range" id="ali" min="0" max="20" value="8"></label>
+    <label>凝聚 <input type="range" id="coh" min="0" max="15" value="6"></label>
+    <label>速度 <input type="range" id="spd" min="5" max="40" value="20"></label>
+    <label>视野 <input type="range" id="rad" min="20" max="120" value="60"></label>
+    <div class="sep"></div>
+    <button id="btn-mouse" class="active">鼠标吸引</button>
+    <button id="btn-reset">重置</button>
+    <span class="bd-count" id="fps"></span>
+  </div>
+  <div class="bd-canvas-wrap" id="canvas-wrap">
+    <canvas id="cv"></canvas>
+  </div>
+</div>
+
+<script>
+const wrap = document.getElementById('canvas-wrap');
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = () => cv.width, H = () => cv.height;
+
+function resize() {
+  cv.width = wrap.clientWidth;
+  cv.height = wrap.clientHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ── Boid State ──
+let boids = [];
+let N = 150;
+let sepW = 1.5, aliW = 0.8, cohW = 0.6;
+let maxSpeed = 2.0, perception = 60;
+let mouseOn = true;
+let mouseX = -999, mouseY = -999;
+
+function randomBoid() {
+  return {
+    x: Math.random() * W(), y: Math.random() * H(),
+    vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2,
+  };
+}
+
+function initBoids() {
+  boids = [];
+  for (let i = 0; i < N; i++) boids.push(randomBoid());
+}
+initBoids();
+
+// ── Boid Rules ──
+function update() {
+  for (let i = 0; i < boids.length; i++) {
+    const b = boids[i];
+    let sx = 0, sy = 0, ax = 0, ay = 0, cx = 0, cy = 0;
+    let neigh = 0;
+
+    for (let j = 0; j < boids.length; j++) {
+      if (i === j) continue;
+      const o = boids[j];
+      const dx = b.x - o.x, dy = b.y - o.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 1 || dist > perception) continue;
+      neigh++;
+
+      // Separation
+      sx += dx / (dist * dist);
+      sy += dy / (dist * dist);
+
+      // Alignment
+      ax += o.vx;
+      ay += o.vy;
+
+      // Cohesion
+      cx += o.x;
+      cy += o.y;
+    }
+
+    if (neigh > 0) {
+      ax = ax / neigh - b.vx;
+      ay = ay / neigh - b.vy;
+      cx = (cx / neigh - b.x) * 0.01;
+      cy = (cy / neigh - b.y) * 0.01;
+    }
+
+    // Mouse interaction
+    let mx = 0, my = 0;
+    if (mouseOn && mouseX > 0) {
+      const dx = mouseX - b.x, dy = mouseY - b.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) + 0.01;
+      mx = dx / dist * 0.8;
+      my = dy / dist * 0.8;
+    }
+
+    b.vx += sx * sepW * 0.001 + ax * aliW * 0.01 + cx * cohW + mx;
+    b.vy += sy * sepW * 0.001 + ay * aliW * 0.01 + cy * cohW + my;
+
+    // Speed clamp
+    const spd = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+    if (spd > maxSpeed) { b.vx = b.vx / spd * maxSpeed; b.vy = b.vy / spd * maxSpeed; }
+    if (spd < maxSpeed * 0.3) { b.vx = b.vx / spd * maxSpeed * 0.3; b.vy = b.vy / spd * maxSpeed * 0.3; }
+    if (isNaN(b.vx)) { b.vx = 0; b.vy = 0; }
+
+    b.x += b.vx;
+    b.y += b.vy;
+
+    // Wrap
+    if (b.x < -10) b.x = W() + 10;
+    if (b.x > W() + 10) b.x = -10;
+    if (b.y < -10) b.y = H() + 10;
+    if (b.y > H() + 10) b.y = -10;
+  }
+}
+
+// ── Draw Arrow ──
+function drawArrow(x, y, angle, speed, hue) {
+  const a = angle;
+  const s = 8 + speed * 1.5;
+  const tipX = x + Math.cos(a) * s;
+  const tipY = y + Math.sin(a) * s;
+  const lx1 = x - Math.cos(a) * s * 0.6 + Math.cos(a + Math.PI / 2) * s * 0.35;
+  const ly1 = y - Math.sin(a) * s * 0.6 + Math.sin(a + Math.PI / 2) * s * 0.35;
+  const lx2 = x - Math.cos(a) * s * 0.6 - Math.cos(a + Math.PI / 2) * s * 0.35;
+  const ly2 = y - Math.sin(a) * s * 0.6 - Math.sin(a + Math.PI / 2) * s * 0.35;
+
+  ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+  ctx.strokeStyle = `hsl(${hue}, 80%, 35%)`;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(tipX, tipY);
+  ctx.lineTo(lx1, ly1);
+  ctx.lineTo(lx2, ly2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+
+// ── Render ──
+function render(dt) {
+  ctx.clearRect(0, 0, W(), H());
+  const bw = W(), bh = H();
+  for (let i = 0; i < boids.length; i++) {
+    const b = boids[i];
+    const angle = Math.atan2(b.vy, b.vx);
+    const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy) / maxSpeed;
+    const hue = (angle * 180 / Math.PI + 360) % 360;
+    drawArrow(b.x, b.y, angle, speed, hue);
+  }
+
+  // FPS
+  if (dt > 0) {
+    const fps = Math.round(1000 / dt);
+    document.getElementById('fps').textContent = `FPS ${fps}`;
+  }
+}
+
+// ── Loop ──
+let lastTime = performance.now();
+function loop(t) {
+  const dt = t - lastTime;
+  lastTime = t;
+  update();
+  render(dt);
+  requestAnimationFrame(loop);
+}
+
+// ── Controls ──
+document.getElementById('n').addEventListener('input', function() {
+  N = parseInt(this.value);
+  const diff = N - boids.length;
+  if (diff > 0) for (let i = 0; i < diff; i++) boids.push(randomBoid());
+  else boids.length = N;
+});
+
+document.getElementById('sep').addEventListener('input', function() {
+  sepW = this.value / 10;
+});
+
+document.getElementById('ali').addEventListener('input', function() {
+  aliW = this.value / 10;
+});
+
+document.getElementById('coh').addEventListener('input', function() {
+  cohW = this.value / 10;
+});
+
+document.getElementById('spd').addEventListener('input', function() {
+  maxSpeed = this.value / 10;
+});
+
+document.getElementById('rad').addEventListener('input', function() {
+  perception = parseInt(this.value);
+});
+
+document.getElementById('btn-mouse').addEventListener('click', function() {
+  mouseOn = !mouseOn;
+  this.classList.toggle('active', mouseOn);
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  initBoids();
+});
+
+cv.addEventListener('mousemove', (e) => {
+  const rect = cv.getBoundingClientRect();
+  mouseX = e.clientX - rect.left;
+  mouseY = e.clientY - rect.top;
+});
+
+cv.addEventListener('mouseleave', () => {
+  mouseX = -999;
+});
+
+// ── Start ──
+requestAnimationFrame(loop);
+</script>

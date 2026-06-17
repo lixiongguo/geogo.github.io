@@ -1,0 +1,319 @@
+---
+layout: gallery_item
+slug: wfc
+title: WFC 纹理合成
+---
+<style>
+  .wfc-container { display: flex; flex-direction: column; height: 100%; }
+  .wfc-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 14px; }
+  .wfc-controls label { font-size: 13px; color: #aaa; }
+  .wfc-controls select, .wfc-controls input, .wfc-controls button {
+    padding: 6px 10px; border-radius: 6px; border: 1px solid #444; background: #2a2a3e; color: #e0e0e0; font-size: 13px;
+  }
+  .wfc-controls button { background: #3a6fd8; border-color: #2a5fc8; cursor: pointer; font-weight: 600; }
+  .wfc-controls button:hover { background: #4a7fe8; }
+  .wfc-controls button:disabled { background: #333; color: #666; cursor: not-allowed; }
+  .wfc-tile-preview { padding: 6px 14px; display: flex; align-items: center; gap: 10px; }
+  .wfc-tile-preview-label { font-size: 12px; color: #777; white-space: nowrap; }
+  .wfc-tile-preview canvas { border: 1px solid #444; border-radius: 3px; image-rendering: pixelated; display: block; }
+  .wfc-canvas-wrap { flex: 1; display: flex; justify-content: center; align-items: center; padding: 8px; min-height: 0; overflow: hidden; }
+  .wfc-canvas-wrap canvas { border: 1px solid #333; border-radius: 4px; max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+  .wfc-info { font-size: 12px; color: #888; padding: 6px 14px 10px; }
+  .wfc-info b { color: #ccc; }
+</style>
+
+<div class="wfc-container">
+  <div class="wfc-controls">
+    <label>样本纹理</label>
+    <select id="tileSelect" onchange="previewTiles()">
+      <option value="circuit.png">电路 (circuit)</option>
+      <option value="pipes.png">管线 (pipes)</option>
+      <option value="trench.png">槽纹 (trench)</option>
+      <option value="groove.png">凹槽 (groove)</option>
+      <option value="urban.png">城市 (urban)</option>
+      <option value="flow3e.png">流动 (flow3e)</option>
+      <option value="walkway3e.png">步道 (walkway3e)</option>
+      <option value="celtic3e.png">凯尔特 (celtic3e)</option>
+      <option value="greek.png">希腊 (greek)</option>
+      <option value="brickwall.png">砖墙 (brickwall)</option>
+      <option value="routes.png">路线 (routes)</option>
+      <option value="road.png">道路 (road)</option>
+      <option value="brench.png">分支 (brench)</option>
+      <option value="lattice.png">格栅 (lattice)</option>
+      <option value="rail.png">铁轨 (rail)</option>
+    </select>
+
+    <label>Tile 切分 N</label>
+    <input type="number" id="tileN" value="4" min="2" max="12" style="width:52px;" oninput="previewTiles()">
+
+    <label>输出尺寸</label>
+    <input type="number" id="outRows" value="9" min="4" max="30" style="width:52px;">
+    <span style="color:#666;">×</span>
+    <input type="number" id="outCols" value="9" min="4" max="30" style="width:52px;">
+
+    <label>误差阈值</label>
+    <input type="number" id="errThresh" value="40" min="5" max="120" style="width:52px;">
+
+    <button id="btnGenerate" onclick="runWFC()">▶ 生成</button>
+  </div>
+
+  <div class="wfc-tile-preview" id="tilePreviewWrap" style="display:none;">
+    <span class="wfc-tile-preview-label">基础 Tile：</span>
+    <canvas id="tilePreviewCanvas"></canvas>
+  </div>
+
+  <div class="wfc-canvas-wrap">
+    <canvas id="outCanvas" width="512" height="512"></canvas>
+  </div>
+  <div class="wfc-info" id="infoText"></div>
+</div>
+
+<script>
+const TILE_BASE = '/assets/WFC/';
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Failed to load: ' + src));
+    img.src = TILE_BASE + src;
+  });
+}
+
+function splitTiles(img, N) {
+  const tiles = [];
+  const pixNum = Math.floor(img.width / N);
+  const canvas = document.createElement('canvas');
+  canvas.width = pixNum; canvas.height = pixNum;
+  const ctx = canvas.getContext('2d');
+
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      ctx.clearRect(0, 0, pixNum, pixNum);
+      ctx.drawImage(img, j * pixNum, i * pixNum, pixNum, pixNum, 0, 0, pixNum, pixNum);
+      const tileData = ctx.getImageData(0, 0, pixNum, pixNum);
+      tiles.push(tileData);
+    }
+  }
+  return { tiles, pixNum };
+}
+
+let previewTimer = null;
+let previewCache = { tiles: null, pixNum: 0, N: 0 };
+
+async function previewTiles() {
+  // 防抖：快速点击箭头时等 300ms 再执行
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(async () => {
+    const info = document.getElementById('infoText');
+    info.textContent = '加载样本...';
+    try {
+      const tileName = document.getElementById('tileSelect').value;
+      const N = parseInt(document.getElementById('tileN').value) || 4;
+      const img = await loadImage(tileName);
+      const { tiles, pixNum } = splitTiles(img, N);
+      previewCache = { tiles, pixNum, N };
+      renderTilePreview(tiles, pixNum, N);
+      info.innerHTML = `<b>切分预览</b> · ${N}×${N} = ${tiles.length} 个 tile · 每个 ${pixNum}×${pixNum} px · 点击"▶ 生成"进行合成`;
+    } catch (e) {
+      info.innerHTML = `<b style="color:#ff6b6b;">加载失败</b>: ${e.message}`;
+    }
+  }, 300);
+}
+
+function rmse(a, b) {
+  let sum = 0, n = a.length;
+  for (let i = 0; i < n; i++) {
+    const d = a[i] - b[i];
+    sum += d * d;
+  }
+  return Math.sqrt(sum / n);
+}
+
+function edgePixels(tileData, side) {
+  const { width: w, height: h, data } = tileData;
+  const result = [];
+  if (side === 'r') {
+    for (let y = 0; y < h; y++) {
+      const idx = (y * w + w - 1) * 4;
+      result.push(data[idx], data[idx+1], data[idx+2]);
+    }
+  } else if (side === 'l') {
+    for (let y = 0; y < h; y++) {
+      const idx = y * w * 4;
+      result.push(data[idx], data[idx+1], data[idx+2]);
+    }
+  } else if (side === 'u') {
+    for (let x = 0; x < w; x++) {
+      const idx = x * 4;
+      result.push(data[idx], data[idx+1], data[idx+2]);
+    }
+  } else if (side === 'd') {
+    for (let x = 0; x < w; x++) {
+      const idx = ((h - 1) * w + x) * 4;
+      result.push(data[idx], data[idx+1], data[idx+2]);
+    }
+  }
+  return result;
+}
+
+function buildAdjList(tiles, err) {
+  const n = tiles.length;
+  const adj = Array.from({ length: n }, () => ({ r: [], l: [], u: [], d: [] }));
+
+  const edges = { r: [], l: [], u: [], d: [] };
+  for (let i = 0; i < n; i++) {
+    for (const dir of ['r', 'l', 'u', 'd']) {
+      edges[dir].push(edgePixels(tiles[i], dir));
+    }
+  }
+
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      if (rmse(edges.r[i], edges.l[j]) < err) adj[i].r.push(j);
+      if (rmse(edges.l[i], edges.r[j]) < err) adj[i].l.push(j);
+      if (rmse(edges.u[i], edges.d[j]) < err) adj[i].u.push(j);
+      if (rmse(edges.d[i], edges.u[j]) < err) adj[i].d.push(j);
+    }
+  }
+  return adj;
+}
+
+function intersect(a, b) { return a.filter(x => b.includes(x)); }
+
+function fillCandidates(grid, adj, nTiles, i, j, rows, cols) {
+  let list = Array.from({ length: nTiles }, (_, k) => k);
+
+  const rIdx = (j + 1 < cols) ? grid[i][j + 1] : -1;
+  list = intersect(list, rIdx >= 0 ? adj[rIdx].l : list);
+
+  const lIdx = (j - 1 >= 0) ? grid[i][j - 1] : -1;
+  list = intersect(list, lIdx >= 0 ? adj[lIdx].r : list);
+
+  const uIdx = (i - 1 >= 0) ? grid[i - 1][j] : -1;
+  list = intersect(list, uIdx >= 0 ? adj[uIdx].d : list);
+
+  const dIdx = (i + 1 < rows) ? grid[i + 1][j] : -1;
+  list = intersect(list, dIdx >= 0 ? adj[dIdx].u : list);
+
+  return list;
+}
+
+function waveCollapse(adj, nTiles, rows, cols, maxBacktracks) {
+  const grid = Array.from({ length: rows }, () => new Array(cols).fill(-1));
+  let k = 0;
+  let stuckCount = 0;
+
+  while (k < rows * cols) {
+    const i = Math.floor(k / cols);
+    const j = k % cols;
+    const candidates = fillCandidates(grid, adj, nTiles, i, j, rows, cols);
+
+    if (candidates.length > 0) {
+      grid[i][j] = candidates[Math.floor(Math.random() * candidates.length)];
+      k++;
+      stuckCount = 0;
+    } else {
+      grid[i][j] = -1;
+      k--;
+      stuckCount++;
+      if (k < 0 || stuckCount > maxBacktracks) return null;
+    }
+  }
+  return grid;
+}
+
+function renderOutput(grid, tiles, pixNum, rows, cols) {
+  const canvas = document.getElementById('outCanvas');
+  const w = cols * pixNum;
+  const h = rows * pixNum;
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      const idx = grid[i][j];
+      const tile = tiles[idx];
+      const tmp = document.createElement('canvas');
+      tmp.width = pixNum; tmp.height = pixNum;
+      const tctx = tmp.getContext('2d');
+      tctx.putImageData(tile, 0, 0);
+      ctx.drawImage(tmp, j * pixNum, i * pixNum);
+    }
+  }
+}
+
+function renderTilePreview(tiles, pixNum, N) {
+  const wrap = document.getElementById('tilePreviewWrap');
+  const canvas = document.getElementById('tilePreviewCanvas');
+  const scale = Math.max(1, Math.min(3, Math.floor(64 / pixNum)));
+  const gap = 1;
+  const cw = N * (pixNum * scale + gap) - gap;
+  const ch = N * (pixNum * scale + gap) - gap;
+  canvas.width = cw;
+  canvas.height = ch;
+  canvas.style.maxHeight = Math.min(ch, 100) + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      const idx = i * N + j;
+      const tmp = document.createElement('canvas');
+      tmp.width = pixNum; tmp.height = pixNum;
+      const tctx = tmp.getContext('2d');
+      tctx.putImageData(tiles[idx], 0, 0);
+      ctx.drawImage(tmp, j * (pixNum * scale + gap), i * (pixNum * scale + gap), pixNum * scale, pixNum * scale);
+    }
+  }
+  wrap.style.display = 'flex';
+}
+
+async function runWFC() {
+  const btn = document.getElementById('btnGenerate');
+  const info = document.getElementById('infoText');
+  btn.disabled = true;
+  btn.textContent = '处理中...';
+  info.textContent = '';
+
+  try {
+    const tileName = document.getElementById('tileSelect').value;
+    const N = parseInt(document.getElementById('tileN').value) || 4;
+    const rows = parseInt(document.getElementById('outRows').value) || 9;
+    const cols = parseInt(document.getElementById('outCols').value) || 9;
+    const err = parseInt(document.getElementById('errThresh').value) || 40;
+
+    const img = await loadImage(tileName);
+    const { tiles, pixNum } = splitTiles(img, N);
+    renderTilePreview(tiles, pixNum, N);
+    const adj = buildAdjList(tiles, err);
+
+    const nTiles = tiles.length;
+    let grid = null;
+    let attempts = 0;
+    const maxAttempts = 20;
+    const maxBacktracks = rows * cols * 2;
+
+    while (!grid && attempts < maxAttempts) {
+      grid = waveCollapse(adj, nTiles, rows, cols, maxBacktracks);
+      attempts++;
+    }
+
+    if (grid) {
+      renderOutput(grid, tiles, pixNum, rows, cols);
+      info.innerHTML = `<b>生成成功</b> · ${tiles.length} 个 tile (${N}×${N}) · ${rows}×${cols} 输出 (${cols * pixNum}×${rows * pixNum} px) · 第 ${attempts} 次尝试 · 误差阈值 ${err}`;
+    } else {
+      info.innerHTML = `<b style="color:#ff6b6b;">生成失败</b> · 尝试调整误差阈值（增大）或减小输出尺寸重试`;
+    }
+  } catch (e) {
+    info.innerHTML = `<b style="color:#ff6b6b;">错误</b>: ${e.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ 生成';
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => runWFC());
+</script>

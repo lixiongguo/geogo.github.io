@@ -1,80 +1,26 @@
 ---
+layout: gallery_item
+slug: webgl-water
 title: WebGL Water
 ---
-<!DOCTYPE html>
-<!-- saved from url=(0035)https://madebyevan.com/webgl-water/ -->
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  
-  <title>WebGL Water</title>
-  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
-  <script src="./WebGL Water_files/OES_texture_float_linear-polyfill.js"></script>
-  <script src="./WebGL Water_files/lightgl.js"></script>
-  <script src="./WebGL Water_files/cubemap.js"></script>
-  <script src="./WebGL Water_files/renderer.js"></script>
-  <script src="./WebGL Water_files/water.js"></script>
-  <!-- <script src="./WebGL Water_files/fish.js"></script> -->
-  <script src="./WebGL Water_files/main.js"></script>
-  <style type="text/css">
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font: 13px/140% Arial, sans-serif; background: black; color: white; overflow: hidden; }
-    a { color: #7ec8e3; cursor: pointer; }
-    img.texture { display: none; }
-    .container { display: flex; height: 100vh; }
-    .canvas-panel { flex: 1; position: relative; overflow: hidden; }
-    .help-panel {
-      width: 380px;
-      background: rgba(0,0,0,0.92);
-      border-left: 1px solid rgba(255,255,255,0.12);
-      overflow-y: auto;
-      padding: 24px 20px;
-      color: #ccc;
-    }
-    .help-panel h2 { font: bold italic 20px/24px Georgia; color: #fff; margin: 20px 0 10px; }
-    .help-panel h2:first-child { margin-top: 0; }
-    .help-panel p { margin: 12px 0; line-height: 1.65; }
-    .help-panel img { max-width: 100%; display: block; margin: 12px 0; border-radius: 4px; }
-    .help-panel pre {
-      background: #111; padding: 12px 14px; border-radius: 4px;
-      overflow-x: auto; font-size: 12px; line-height: 1.5; margin: 12px 0;
-      border: 1px solid rgba(255,255,255,0.06);
-    }
-    .help-panel code { color: #7ec8e3; }
-    .help-panel small { color: #999; font-size: 11px; display: block; margin: 8px 0; }
-    #loading { position: absolute; left: 0; top: 50%; right: 0; text-align: center; margin-top: -8px; z-index: 10; }
-    @media (max-width: 768px) {
-      .container { flex-direction: column; }
-      .canvas-panel { flex: none; height: 55vh; }
-      .help-panel { width: 100%; flex: 1; }
-    }
-  </style>
-</head><body>
-  <div class="container">
-    <div class="canvas-panel" id="canvas-panel">
-      <div id="loading"></div>
-    </div>
-    <div class="help-panel" id="help">
-      <h2>光的舞蹈—焦散</h2>
-      <p>焦散（caustic）是光线经过表面的散射和折射作用后形成的现象。</p>
-      <p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250801140209582.png"></p>
-      <p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250724090825649.png"></p>
-      <p>水面由于有水波（wave）的存在，使其构成了多个凹面镜与凸面镜，最简单的焦散效果——透镜聚焦。</p>
-      <p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250724091317364.png"></p>
-      <p>实时渲染的模拟方案：直接用一个 triangle mesh 来作为光源波面。</p>
-      <p><img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250801134149935.png"></p>
-      <p><small><em>实时渲染管线 — (1) 将三角形网格作为光源波面；(2) 顶点经水面折射；(3) 与地平面求交得到焦散图案。</em></small></p>
-      <p>通过模拟光线的运动可以实现效果，但是需要消耗太多运算资源。不显式计算顶点位置，直接求原始三角形与折射后三角形的面积比：</p>
-      <pre><code>float oldArea = length(dFdx(oldPos)) * length(dFdy(oldPos));
-float newArea = length(dFdx(newPos)) * length(dFdy(newPos));
-gl_FragColor = vec4(oldArea / newArea, 0, 0.2);</code></pre>
-    </div>
-  </div>
+<style>
+  #loading { position: absolute; left: 0; top: 50%; right: 0; text-align: center; margin-top: -8px; z-index: 10; }
+</style>
 
-  <img class="texture" id="tiles" src="/assets/gallery/WebGL Water_files/tiles.jpg">
-  <img class="texture" id="sphereTex" src="/assets/gallery/WebGL Water_files/sphere.jpg">
-  <img class="texture" id="xneg" src="/assets/gallery/WebGL Water_files/xneg.jpg">
-  <img class="texture" id="xpos" src="/assets/gallery/WebGL Water_files/xpos.jpg">
-  <img class="texture" id="ypos" src="/assets/gallery/WebGL Water_files/ypos.jpg">
-  <img class="texture" id="zneg" src="/assets/gallery/WebGL Water_files/zneg.jpg">
-  <img class="texture" id="zpos" src="/assets/gallery/WebGL Water_files/zpos.jpg">
+<div id="loading"></div>
 
-</body></html>
+<img class="texture" id="tiles" src="/assets/gallery/WebGL Water_files/tiles.jpg">
+<img class="texture" id="sphereTex" src="/assets/gallery/WebGL Water_files/sphere.jpg">
+<img class="texture" id="xneg" src="/assets/gallery/WebGL Water_files/xneg.jpg">
+<img class="texture" id="xpos" src="/assets/gallery/WebGL Water_files/xpos.jpg">
+<img class="texture" id="ypos" src="/assets/gallery/WebGL Water_files/ypos.jpg">
+<img class="texture" id="zneg" src="/assets/gallery/WebGL Water_files/zneg.jpg">
+<img class="texture" id="zpos" src="/assets/gallery/WebGL Water_files/zpos.jpg">
+
+<script src="./WebGL Water_files/OES_texture_float_linear-polyfill.js"></script>
+<script src="./WebGL Water_files/lightgl.js"></script>
+<script src="./WebGL Water_files/cubemap.js"></script>
+<script src="./WebGL Water_files/renderer.js"></script>
+<script src="./WebGL Water_files/water.js"></script>
+<!-- <script src="./WebGL Water_files/fish.js"></script> -->
+<script src="./WebGL Water_files/main.js"></script>

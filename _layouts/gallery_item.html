@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>{{ page.title }}</title>
+  {% include gallery_styles.html %}
+  {{ page.head_extra }}
+  <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+</head>
+<body>
+  <div class="container" id="gallery-container">
+    <div class="canvas-panel" id="canvas-panel">
+      {{ content }}
+    </div>
+    <div class="resize-handle" id="resize-handle"></div>
+    <div class="help-panel" id="help-panel">
+      {% assign help = site.data.gallery_help[page.slug] %}
+      {% if help %}
+        {{ help }}
+      {% else %}
+        <p>暂无说明文档。</p>
+      {% endif %}
+    </div>
+  </div>
+  <script>
+    (function(){
+      const handle = document.getElementById('resize-handle');
+      const helpPanel = document.getElementById('help-panel');
+      const STORAGE_KEY = 'gallery-help-width';
+      const MIN_W = 240, MAX_W = 700, DEFAULT_W = 380;
+
+      // 恢复上次保存的宽度
+      const saved = localStorage.getItem(STORAGE_KEY);
+      let panelW = saved ? parseInt(saved, 10) : DEFAULT_W;
+      if (panelW < MIN_W) panelW = MIN_W;
+      if (panelW > MAX_W) panelW = MAX_W;
+      helpPanel.style.width = panelW + 'px';
+
+      let dragging = false, startX = 0, startW = 0;
+
+      handle.addEventListener('mousedown', function(e) {
+        dragging = true;
+        startX = e.clientX;
+        startW = helpPanel.offsetWidth;
+        handle.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+      });
+
+      document.addEventListener('mousemove', function(e) {
+        if (!dragging) return;
+        const dx = startX - e.clientX;
+        let w = startW + dx;
+        if (w < MIN_W) w = MIN_W;
+        if (w > MAX_W) w = MAX_W;
+        helpPanel.style.width = w + 'px';
+      });
+
+      document.addEventListener('mouseup', function() {
+        if (!dragging) return;
+        dragging = false;
+        handle.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        localStorage.setItem(STORAGE_KEY, helpPanel.offsetWidth);
+      });
+
+      // 触摸支持
+      handle.addEventListener('touchstart', function(e) {
+        dragging = true;
+        startX = e.touches[0].clientX;
+        startW = helpPanel.offsetWidth;
+        handle.classList.add('dragging');
+        e.preventDefault();
+      }, { passive: false });
+
+      document.addEventListener('touchmove', function(e) {
+        if (!dragging) return;
+        const dx = startX - e.touches[0].clientX;
+        let w = startW + dx;
+        if (w < MIN_W) w = MIN_W;
+        if (w > MAX_W) w = MAX_W;
+        helpPanel.style.width = w + 'px';
+      }, { passive: false });
+
+      document.addEventListener('touchend', function() {
+        if (!dragging) return;
+        dragging = false;
+        handle.classList.remove('dragging');
+        localStorage.setItem(STORAGE_KEY, helpPanel.offsetWidth);
+      });
+    })();
+  </script>
+</body>
+</html>
