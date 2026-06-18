@@ -1,0 +1,354 @@
+---
+layout: gallery_item
+slug: water-2d
+title: 2D 交互水面
+---
+<style>
+  .w2-wrap { width:100%; height:100%; display:flex; flex-direction:column; background:#0a1628; }
+  .w2-bar {
+    display:flex; align-items:center; gap:12px; padding:8px 14px; flex-shrink:0; flex-wrap:wrap;
+    background:rgba(10,22,40,0.96); border-bottom:1px solid rgba(100,180,255,0.15);
+    font-size:12px; color:#9ec5e8;
+  }
+  .w2-bar label { display:flex; align-items:center; gap:6px; }
+  .w2-bar input[type=range] { width:72px; accent-color:#4db8ff; }
+  .w2-bar button {
+    padding:5px 12px; border:1px solid rgba(100,180,255,0.25); border-radius:5px;
+    background:rgba(20,50,90,0.6); color:#d0ecff; cursor:pointer; font-size:12px;
+  }
+  .w2-bar button:hover { background:rgba(40,90,150,0.7); border-color:#4db8ff; }
+  .w2-bar button.active { background:#1a6fb5; border-color:#4db8ff; color:#fff; }
+  .w2-bar .sep { width:1px; height:18px; background:rgba(100,180,255,0.2); }
+  .w2-canvas { flex:1; position:relative; min-height:0; cursor:crosshair; }
+  .w2-canvas canvas { display:block; width:100%; height:100%; }
+  .w2-hint {
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    color:rgba(180,220,255,0.25); font-size:16px; pointer-events:none; text-align:center; line-height:1.6;
+  }
+</style>
+
+<div class="w2-wrap">
+  <div class="w2-bar">
+    <span>点击 / 拖拽制造涟漪</span>
+    <label>波速 <input type="range" id="w2-speed" min="1" max="20" value="12"></label>
+    <label>阻尼 <input type="range" id="w2-damp" min="1" max="20" value="8"></label>
+    <label>扰动 <input type="range" id="w2-force" min="1" max="20" value="12"></label>
+    <div class="sep"></div>
+    <button type="button" id="w2-rain">雨滴</button>
+    <button type="button" id="w2-reset">重置</button>
+    <button type="button" id="w2-pause">暂停</button>
+  </div>
+  <div class="w2-canvas" id="w2-wrap">
+    <canvas id="w2-cv"></canvas>
+    <div class="w2-hint" id="w2-hint">点击水面<br>试试拖拽与浮球</div>
+  </div>
+</div>
+
+<script>
+const wrap = document.getElementById('w2-wrap');
+const cv = document.getElementById('w2-cv');
+const ctx = cv.getContext('2d', { alpha: false });
+const hint = document.getElementById('w2-hint');
+
+const GW = 180, GH = 135;
+let cur = new Float32Array(GW * GH);
+let prev = new Float32Array(GW * GH);
+let gi = (x, y) => y * GW + x;
+
+let waveSpeed = 0.92;
+let damping = 0.985;
+let splashStr = 1.4;
+let paused = false;
+let raining = false;
+let rainTimer = 0;
+
+const balls = [
+  { x: 0.28, y: 0.38, vx: 0, vy: 0, r: 0.045, hue: 12 },
+  { x: 0.62, y: 0.55, vx: 0, vy: 0, r: 0.038, hue: 200 },
+  { x: 0.48, y: 0.72, vx: 0, vy: 0, r: 0.052, hue: 45 },
+];
+
+let W = 1, H = 1, DPR = 1;
+let pointer = { down: false, gx: 0, gy: 0, lx: 0, ly: 0 };
+
+function resize() {
+  DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  W = wrap.clientWidth;
+  H = wrap.clientHeight;
+  cv.width = Math.floor(W * DPR);
+  cv.height = Math.floor(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+
+function resetWater() {
+  cur.fill(0);
+  prev.fill(0);
+  balls[0].x = 0.28; balls[0].y = 0.38; balls[0].vx = balls[0].vy = 0;
+  balls[1].x = 0.62; balls[1].y = 0.55; balls[1].vx = balls[1].vy = 0;
+  balls[2].x = 0.48; balls[2].y = 0.72; balls[2].vx = balls[2].vy = 0;
+}
+
+function sampleH(fx, fy) {
+  fx = Math.max(1, Math.min(GW - 2, fx));
+  fy = Math.max(1, Math.min(GH - 2, fy));
+  const x0 = Math.floor(fx), y0 = Math.floor(fy);
+  const tx = fx - x0, ty = fy - y0;
+  const h00 = cur[gi(x0, y0)], h10 = cur[gi(x0 + 1, y0)];
+  const h01 = cur[gi(x0, y0 + 1)], h11 = cur[gi(x0 + 1, y0 + 1)];
+  const a = h00 * (1 - tx) + h10 * tx;
+  const b = h01 * (1 - tx) + h11 * tx;
+  return a * (1 - ty) + b * ty;
+}
+
+function sampleGrad(fx, fy) {
+  const eps = 0.8;
+  return {
+    dx: (sampleH(fx + eps, fy) - sampleH(fx - eps, fy)) / (2 * eps),
+    dy: (sampleH(fx, fy + eps) - sampleH(fx, fy - eps)) / (2 * eps),
+  };
+}
+
+function avgHInDisk(cx, cy, r) {
+  const r2 = r * r;
+  let sum = 0, n = 0;
+  const x0 = Math.max(1, Math.floor(cx - r - 1));
+  const x1 = Math.min(GW - 2, Math.ceil(cx + r + 1));
+  const y0 = Math.max(1, Math.floor(cy - r - 1));
+  const y1 = Math.min(GH - 2, Math.ceil(cy + r + 1));
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const dx = x - cx, dy = y - cy;
+      if (dx * dx + dy * dy <= r2) {
+        sum += cur[gi(x, y)];
+        n++;
+      }
+    }
+  }
+  return n ? sum / n : 0;
+}
+
+function addSplash(gx, gy, strength, radius) {
+  const r = radius || 4;
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      const x = Math.round(gx + dx);
+      const y = Math.round(gy + dy);
+      if (x < 1 || x >= GW - 1 || y < 1 || y >= GH - 1) continue;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > r * r) continue;
+      const f = Math.cos((Math.sqrt(d2) / r) * Math.PI * 0.5);
+      cur[gi(x, y)] += strength * f;
+    }
+  }
+}
+
+function screenToGrid(sx, sy) {
+  return { gx: (sx / W) * (GW - 2) + 1, gy: (sy / H) * (GH - 2) + 1 };
+}
+
+function stepWater() {
+  const spd = waveSpeed;
+  for (let y = 1; y < GH - 1; y++) {
+    for (let x = 1; x < GW - 1; x++) {
+      const i = gi(x, y);
+      const avg = (
+        prev[gi(x - 1, y)] + prev[gi(x + 1, y)] +
+        prev[gi(x, y - 1)] + prev[gi(x, y + 1)]
+      ) * 0.5;
+      cur[i] = (avg - cur[i]) * spd;
+    }
+  }
+  for (let i = 0; i < cur.length; i++) cur[i] *= damping;
+  const tmp = prev;
+  prev = cur;
+  cur = tmp;
+}
+
+function stepBalls() {
+  for (const b of balls) {
+    const gx = b.x * GW;
+    const gy = b.y * GH;
+    const gr = b.r * Math.min(GW, GH);
+    const h = avgHInDisk(gx, gy, gr * 0.85);
+    const g = sampleGrad(gx, gy);
+    const buoy = -h * 0.018;
+    b.vx += -g.dx * 0.35 - b.vx * 0.04;
+    b.vy += buoy - g.dy * 0.35 - b.vy * 0.04;
+    b.x += b.vx * 0.016;
+    b.y += b.vy * 0.016;
+    const m = b.r + 0.02;
+    if (b.x < m) { b.x = m; b.vx *= -0.45; }
+    if (b.x > 1 - m) { b.x = 1 - m; b.vx *= -0.45; }
+    if (b.y < m) { b.y = m; b.vy *= -0.45; }
+    if (b.y > 1 - m) { b.y = 1 - m; b.vy *= -0.45; }
+    addSplash(gx, gy, -h * 0.08 * gr, Math.max(2, gr * 0.5));
+  }
+}
+
+function render() {
+  const img = ctx.createImageData(W, H);
+  const data = img.data;
+  const lx = 0.35, ly = -0.55, lz = 0.76;
+  const llen = Math.hypot(lx, ly, lz);
+
+  for (let py = 0; py < H; py++) {
+    const gy = (py / H) * (GH - 2) + 1;
+    const y0 = Math.floor(gy);
+    const ty = gy - y0;
+    for (let px = 0; px < W; px++) {
+      const gx = (px / W) * (GW - 2) + 1;
+      const x0 = Math.floor(gx);
+      const tx = gx - x0;
+      const h00 = prev[gi(x0, y0)];
+      const h10 = prev[gi(x0 + 1, y0)];
+      const h01 = prev[gi(x0, y0 + 1)];
+      const h11 = prev[gi(x0 + 1, y0 + 1)];
+      const h = (h00 * (1 - tx) + h10 * tx) * (1 - ty) + (h01 * (1 - tx) + h11 * tx) * ty;
+      const dhdx = ((h10 - h00) * (1 - ty) + (h11 - h01) * ty) * GW / W * 8;
+      const dhdy = ((h01 - h00) * (1 - tx) + (h11 - h10) * tx) * GH / H * 8;
+      let nx = -dhdx, ny = -dhdy, nz = 1;
+      const nlen = Math.hypot(nx, ny, nz);
+      nx /= nlen; ny /= nlen; nz /= nlen;
+      const ndotl = Math.max(0, (nx * lx + ny * ly + nz * lz) / llen);
+      const spec = Math.pow(Math.max(0, ndotl), 48) * 0.85;
+      const depth = 0.55 + h * 0.04;
+      const r = Math.min(255, (18 + depth * 40 + ndotl * 55 + spec * 200) | 0);
+      const g = Math.min(255, (55 + depth * 90 + ndotl * 80 + spec * 210) | 0);
+      const b = Math.min(255, (95 + depth * 130 + ndotl * 100 + spec * 255) | 0);
+      const p = (py * W + px) * 4;
+      data[p] = r;
+      data[p + 1] = g;
+      data[p + 2] = b;
+      data[p + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  for (const ball of balls) {
+    const sx = ball.x * W;
+    const sy = ball.y * H;
+    const gx = ball.x * GW;
+    const gy = ball.y * GH;
+    const h = sampleH(gx, gy);
+    const bob = h * 2.2;
+    const pr = ball.r * Math.min(W, H) * (1 + h * 0.015);
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(sx + 4, sy + 6 - bob * 0.3, pr * 0.9, pr * 0.45, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const grad = ctx.createRadialGradient(sx - pr * 0.3, sy - bob - pr * 0.35, pr * 0.1, sx, sy - bob, pr);
+    grad.addColorStop(0, `hsl(${ball.hue},85%,72%)`);
+    grad.addColorStop(0.55, `hsl(${ball.hue},70%,52%)`);
+    grad.addColorStop(1, `hsl(${ball.hue},60%,28%)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(sx, sy - bob, pr, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(sx - pr * 0.25, sy - bob - pr * 0.28, pr * 0.22, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function loop(now) {
+  if (!paused) {
+    if (raining) {
+      rainTimer += 0.016;
+      if (rainTimer > 0.07) {
+        rainTimer = 0;
+        addSplash(2 + Math.random() * (GW - 4), 2 + Math.random() * (GH - 4), splashStr * (0.4 + Math.random() * 0.6), 2);
+      }
+    }
+    if (pointer.down) {
+      const dx = pointer.gx - pointer.lx;
+      const dy = pointer.gy - pointer.ly;
+      const dist = Math.hypot(dx, dy);
+      const steps = Math.max(1, Math.ceil(dist / 2));
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        addSplash(pointer.lx + dx * t, pointer.ly + dy * t, splashStr * 0.55, 3 + splashStr * 0.4);
+      }
+      pointer.lx = pointer.gx;
+      pointer.ly = pointer.gy;
+    }
+    stepWater();
+    stepBalls();
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+
+function onPointerDown(e) {
+  e.preventDefault();
+  pointer.down = true;
+  hint.style.display = 'none';
+  const rect = cv.getBoundingClientRect();
+  const sx = (e.clientX - rect.left) * (W / rect.width);
+  const sy = (e.clientY - rect.top) * (H / rect.height);
+  const g = screenToGrid(sx, sy);
+  pointer.gx = pointer.lx = g.gx;
+  pointer.gy = pointer.ly = g.gy;
+  addSplash(g.gx, g.gy, splashStr * 1.2, 4 + splashStr);
+  for (let i = balls.length - 1; i >= 0; i--) {
+    const b = balls[i];
+    const bx = b.x * W, by = b.y * H;
+    const pr = b.r * Math.min(W, H);
+    if ((sx - bx) ** 2 + (sy - by) ** 2 < pr * pr * 1.2) {
+      b.vx += (sx - bx) / W * 0.12;
+      b.vy += (sy - by) / H * 0.12;
+      addSplash(g.gx, g.gy, splashStr * 0.8, 3);
+    }
+  }
+}
+
+function onPointerMove(e) {
+  if (!pointer.down) return;
+  const rect = cv.getBoundingClientRect();
+  const sx = (e.clientX - rect.left) * (W / rect.width);
+  const sy = (e.clientY - rect.top) * (H / rect.height);
+  const g = screenToGrid(sx, sy);
+  pointer.gx = g.gx;
+  pointer.gy = g.gy;
+}
+
+function onPointerUp() { pointer.down = false; }
+
+cv.addEventListener('mousedown', onPointerDown);
+cv.addEventListener('mousemove', onPointerMove);
+window.addEventListener('mouseup', onPointerUp);
+cv.addEventListener('touchstart', (e) => onPointerDown(e.touches[0]), { passive: false });
+cv.addEventListener('touchmove', (e) => { e.preventDefault(); onPointerMove(e.touches[0]); }, { passive: false });
+cv.addEventListener('touchend', onPointerUp);
+
+document.getElementById('w2-speed').addEventListener('input', function () {
+  waveSpeed = 0.82 + this.value / 100;
+});
+document.getElementById('w2-damp').addEventListener('input', function () {
+  damping = 0.972 + this.value / 800;
+});
+document.getElementById('w2-force').addEventListener('input', function () {
+  splashStr = 0.5 + this.value / 10;
+});
+document.getElementById('w2-rain').addEventListener('click', function () {
+  raining = !raining;
+  this.classList.toggle('active', raining);
+});
+document.getElementById('w2-reset').addEventListener('click', () => {
+  resetWater();
+  hint.style.display = '';
+});
+document.getElementById('w2-pause').addEventListener('click', function () {
+  paused = !paused;
+  this.textContent = paused ? '继续' : '暂停';
+  this.classList.toggle('active', paused);
+});
+
+window.addEventListener('resize', resize);
+resize();
+resetWater();
+requestAnimationFrame(loop);
+</script>

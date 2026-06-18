@@ -1,0 +1,531 @@
+---
+layout: gallery_item
+slug: sph-water
+title: SPH / PBF 粒子水体
+---
+<style>
+  .sph-wrap { width:100%; height:100%; display:flex; flex-direction:column; background:#0a1018; }
+  .sph-bar {
+    display:flex; align-items:center; gap:12px; padding:8px 14px; flex-shrink:0; flex-wrap:wrap;
+    background:rgba(10,16,24,0.97); border-bottom:1px solid rgba(90,180,255,0.14);
+    font-size:12px; color:#9ec5e8;
+  }
+  .sph-bar label { display:flex; align-items:center; gap:6px; }
+  .sph-bar input[type=range] { width:68px; accent-color:#4db8ff; }
+  .sph-bar select {
+    border:1px solid rgba(90,180,255,0.24); background:#111c2e; color:#d8eeff;
+    border-radius:5px; padding:5px 8px; font-size:12px;
+  }
+  .sph-bar button {
+    padding:5px 11px; border:1px solid rgba(90,180,255,0.24); border-radius:5px;
+    background:rgba(20,50,85,0.55); color:#d8eeff; cursor:pointer; font-size:12px;
+  }
+  .sph-bar button:hover { background:rgba(40,90,145,0.65); }
+  .sph-bar button.active { background:#1a7ab8; border-color:#4db8ff; color:#fff; }
+  .sph-bar .sep { width:1px; height:18px; background:rgba(90,180,255,0.18); }
+  .sph-canvas { flex:1; position:relative; min-height:0; cursor:grab; }
+  .sph-canvas:active { cursor:grabbing; }
+  .sph-canvas canvas { display:block; width:100%; height:100%; }
+  .sph-hud {
+    position:absolute; left:12px; top:12px; padding:10px 12px; border-radius:10px;
+    background:rgba(8,14,24,0.75); border:1px solid rgba(90,180,255,0.15);
+    font-size:11px; color:#a8c8e8; line-height:1.65; pointer-events:none;
+  }
+  .sph-hud b { color:#ffd66b; }
+  .sph-hint {
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    color:rgba(180,220,255,0.2); font-size:15px; pointer-events:none; text-align:center; line-height:1.7;
+  }
+</style>
+
+<div class="sph-wrap">
+  <div class="sph-bar">
+    <label>求解器
+      <select id="sph-solver">
+        <option value="sph">SPH</option>
+        <option value="pbf">PBF</option>
+      </select>
+    </label>
+    <span>拖拽推动 · 点击注入</span>
+    <label id="lbl-visc">粘度 <input type="range" id="sph-visc" min="1" max="20" value="8"></label>
+    <label id="lbl-press">压力 <input type="range" id="sph-press" min="1" max="20" value="10"></label>
+    <label>重力 <input type="range" id="sph-grav" min="1" max="20" value="12"></label>
+    <div class="sep"></div>
+    <button type="button" id="sph-pour">注水</button>
+    <button type="button" id="sph-reset">重置</button>
+    <button type="button" id="sph-pause">暂停</button>
+  </div>
+  <div class="sph-canvas" id="sph-wrap">
+    <canvas id="sph-cv"></canvas>
+    <div class="sph-hud">
+      粒子 <b id="sph-n">0</b> · 平均密度 <b id="sph-rho">0</b><br>
+      Lagrangian · <b id="sph-method">SPH</b>
+    </div>
+    <div class="sph-hint" id="sph-hint">SPH / PBF 粒子水体<br>拖拽与点击交互</div>
+  </div>
+</div>
+
+<script>
+const wrap = document.getElementById('sph-wrap');
+const cv = document.getElementById('sph-cv');
+const ctx = cv.getContext('2d');
+const hint = document.getElementById('sph-hint');
+const nStat = document.getElementById('sph-n');
+const rhoStat = document.getElementById('sph-rho');
+const methodStat = document.getElementById('sph-method');
+const lblPress = document.getElementById('lbl-press');
+const solverSel = document.getElementById('sph-solver');
+
+let W = 800, H = 600, DPR = 1;
+let bounds = { l: 40, r: 760, t: 40, b: 560 };
+
+const H_R = 18;
+const H2 = H_R * H_R;
+const K_POLY = 4 / (Math.PI * H_R ** 8);
+const K_SPIKY = -45 / (Math.PI * H_R ** 6);
+const K_VISC = 45 / (Math.PI * H_R ** 6);
+const POLY0 = K_POLY * H2 * H2 * H2;
+const REST = 1000;
+const MASS = 1;
+const CELL = H_R;
+
+let solver = 'sph';
+let gasK = 1800;
+let pbfStiff = 1.0;
+let viscosity = 280;
+let xsphEps = 0.08;
+let gravity = 900;
+let paused = false;
+let pointer = { x: 0, y: 0, down: false, moved: false };
+
+let px, py, vx, vy, dens, prs, predX, predY, lambdaArr;
+let n = 0;
+const grid = new Map();
+
+function resize() {
+  DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  W = wrap.clientWidth;
+  H = wrap.clientHeight;
+  cv.width = Math.floor(W * DPR);
+  cv.height = Math.floor(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  bounds = { l: 36, r: W - 36, t: 36, b: H - 36 };
+}
+
+function ensureCap(extra) {
+  const need = n + extra;
+  if (px && px.length >= need) return;
+  const cap = Math.max(4096, need * 2);
+  const alloc = () => new Float32Array(cap);
+  const npx = alloc(), npy = alloc(), nvx = alloc(), nvy = alloc();
+  const nd = alloc(), np = alloc(), npx2 = alloc(), npy2 = alloc(), nlam = alloc();
+  if (px) {
+    npx.set(px); npy.set(py); nvx.set(vx); nvy.set(vy);
+    nd.set(dens); np.set(prs); npx2.set(predX); npy2.set(predY); nlam.set(lambdaArr);
+  }
+  px = npx; py = npy; vx = nvx; vy = nvy; dens = nd; prs = np;
+  predX = npx2; predY = npy2; lambdaArr = nlam;
+}
+
+function addParticle(x, y, ivx = 0, ivy = 0) {
+  ensureCap(1);
+  px[n] = x; py[n] = y; vx[n] = ivx; vy[n] = ivy;
+  n++;
+}
+
+function spawnBlock(x0, y0, x1, y1) {
+  const step = H_R * 0.52;
+  let added = 0;
+  for (let y = y0; y < y1; y += step) {
+    for (let x = x0; x < x1; x += step) {
+      if (n >= 3500) return added;
+      addParticle(x + (Math.random() - 0.5) * 1.5, y + (Math.random() - 0.5) * 1.5);
+      added++;
+    }
+  }
+  return added;
+}
+
+function resetFluid() {
+  n = 0;
+  const w = bounds.r - bounds.l;
+  spawnBlock(bounds.l + 20, bounds.b - w * 0.42, bounds.r - 20, bounds.b - 8);
+  nStat.textContent = String(n);
+  hint.style.display = '';
+}
+
+function gridKey(cx, cy) { return (cx << 16) ^ (cy & 0xffff); }
+
+function buildGrid(sx, sy) {
+  grid.clear();
+  for (let i = 0; i < n; i++) {
+    const cx = (sx[i] / CELL) | 0;
+    const cy = (sy[i] / CELL) | 0;
+    const k = gridKey(cx, cy);
+    let cell = grid.get(k);
+    if (!cell) { cell = []; grid.set(k, cell); }
+    cell.push(i);
+  }
+}
+
+function poly6(r2) {
+  if (r2 >= H2) return 0;
+  const t = H2 - r2;
+  return K_POLY * t * t * t;
+}
+
+function spikyGrad(r, dx, dy) {
+  if (r >= H_R || r < 1e-5) return { gx: 0, gy: 0 };
+  const t = H_R - r;
+  const c = K_SPIKY * t * t / r;
+  return { gx: c * dx, gy: c * dy };
+}
+
+function forNeighbors(sx, sy, i, fn) {
+  const cx = (sx[i] / CELL) | 0;
+  const cy = (sy[i] / CELL) | 0;
+  for (let oy = -1; oy <= 1; oy++) {
+    for (let ox = -1; ox <= 1; ox++) {
+      const cell = grid.get(gridKey(cx + ox, cy + oy));
+      if (!cell) continue;
+      for (let k = 0; k < cell.length; k++) {
+        const j = cell[k];
+        if (j === i) continue;
+        const dx = sx[j] - sx[i];
+        const dy = sy[j] - sy[i];
+        const r2 = dx * dx + dy * dy;
+        if (r2 >= H2 || r2 < 1e-8) continue;
+        fn(j, Math.sqrt(r2), dx, dy, r2);
+      }
+    }
+  }
+}
+
+function computeDensityAt(sx, sy, out) {
+  let rhoSum = 0;
+  for (let i = 0; i < n; i++) {
+    let d = MASS * poly6(0);
+    forNeighbors(sx, sy, i, (j, r, dx, dy, r2) => {
+      d += MASS * poly6(r2);
+    });
+    out[i] = Math.max(d, REST * 0.5);
+    rhoSum += out[i];
+  }
+  if (n > 0) rhoStat.textContent = (rhoSum / n).toFixed(0);
+}
+
+function computeDensityPressure() {
+  computeDensityAt(px, py, dens);
+  for (let i = 0; i < n; i++) prs[i] = gasK * (dens[i] - REST);
+}
+
+function computeForces(fx, fy) {
+  fx.fill(0); fy.fill(0);
+  for (let i = 0; i < n; i++) {
+    fy[i] += gravity;
+    forNeighbors(px, py, i, (j, r, dx, dy, r2) => {
+      const g = spikyGrad(r, dx, dy);
+      const pTerm = MASS * (prs[i] / (dens[i] * dens[i]) + prs[j] / (dens[j] * dens[j]));
+      fx[i] -= pTerm * g.gx;
+      fy[i] -= pTerm * g.gy;
+      const lap = K_VISC * (H_R - r);
+      const visc = viscosity * MASS * lap / dens[j];
+      fx[i] += visc * (vx[j] - vx[i]);
+      fy[i] += visc * (vy[j] - vy[i]);
+    });
+  }
+}
+
+function wallForces(fx, fy) {
+  const d = H_R * 0.6;
+  const k = solver === 'pbf' ? gasK * 0.5 : gasK;
+  for (let i = 0; i < n; i++) {
+    const x = px[i], y = py[i];
+    if (x < bounds.l + d) fx[i] += k * 0.35 * (1 - (x - bounds.l) / d);
+    if (x > bounds.r - d) fx[i] -= k * 0.35 * (1 - (bounds.r - x) / d);
+    if (y < bounds.t + d) fy[i] += k * 0.35 * (1 - (y - bounds.t) / d);
+    if (y > bounds.b - d) fy[i] -= k * 0.45 * (1 - (bounds.b - y) / d);
+  }
+}
+
+function interactForces(fx, fy) {
+  if (!pointer.down) return;
+  const R = 72, R2 = R * R;
+  const str = pointer.moved ? 5200 : 8200;
+  for (let i = 0; i < n; i++) {
+    const dx = px[i] - pointer.x;
+    const dy = py[i] - pointer.y;
+    const r2 = dx * dx + dy * dy;
+    if (r2 > R2 || r2 < 1) continue;
+    const r = Math.sqrt(r2);
+    const f = str * (1 - r / R);
+    fx[i] += (dx / r) * f;
+    fy[i] += (dy / r) * f;
+  }
+}
+
+function interactVelocity(dt) {
+  if (!pointer.down) return;
+  const R = 72, R2 = R * R;
+  const str = pointer.moved ? 1.8 : 2.8;
+  for (let i = 0; i < n; i++) {
+    const dx = px[i] - pointer.x;
+    const dy = py[i] - pointer.y;
+    const r2 = dx * dx + dy * dy;
+    if (r2 > R2 || r2 < 1) continue;
+    const r = Math.sqrt(r2);
+    const f = str * (1 - r / R);
+    vx[i] += (dx / r) * f * dt * 60;
+    vy[i] += (dy / r) * f * dt * 60;
+  }
+}
+
+function clampPos(sx, sy, i) {
+  if (sx[i] < bounds.l) { sx[i] = bounds.l; }
+  if (sx[i] > bounds.r) { sx[i] = bounds.r; }
+  if (sy[i] < bounds.t) { sy[i] = bounds.t; }
+  if (sy[i] > bounds.b) { sy[i] = bounds.b; }
+}
+
+function integrateSPH(dt) {
+  const fx = new Float32Array(n);
+  const fy = new Float32Array(n);
+  computeForces(fx, fy);
+  wallForces(fx, fy);
+  interactForces(fx, fy);
+  for (let i = 0; i < n; i++) {
+    vx[i] += fx[i] * dt;
+    vy[i] += fy[i] * dt;
+    let nx = px[i] + vx[i] * dt;
+    let ny = py[i] + vy[i] * dt;
+    let svx = vx[i], svy = vy[i];
+    forNeighbors(px, py, i, (j) => {
+      svx += xsphEps * (vx[j] - vx[i]);
+      svy += xsphEps * (vy[j] - vy[i]);
+    });
+    vx[i] = svx * 0.998;
+    vy[i] = svy * 0.998;
+    if (nx < bounds.l) { nx = bounds.l; vx[i] *= -0.25; }
+    if (nx > bounds.r) { nx = bounds.r; vx[i] *= -0.25; }
+    if (ny < bounds.t) { ny = bounds.t; vy[i] *= -0.25; }
+    if (ny > bounds.b) { ny = bounds.b; vy[i] *= -0.15; }
+    px[i] = nx;
+    py[i] = ny;
+  }
+}
+
+function pbfProject(iterCount) {
+  const eps = 1e-4;
+  const scorrK = -0.025 * H2;
+  const dpx = new Float32Array(n);
+  const dpy = new Float32Array(n);
+
+  for (let iter = 0; iter < iterCount; iter++) {
+    buildGrid(predX, predY);
+    computeDensityAt(predX, predY, dens);
+
+    for (let i = 0; i < n; i++) {
+      const Ci = dens[i] / REST - 1;
+      let sumGx = 0, sumGy = 0, grad2 = 0;
+      forNeighbors(predX, predY, i, (j, r, dx, dy, r2) => {
+        const g = spikyGrad(r, dx, dy);
+        sumGx += g.gx;
+        sumGy += g.gy;
+        grad2 += g.gx * g.gx + g.gy * g.gy;
+      });
+      grad2 += sumGx * sumGx + sumGy * sumGy;
+      lambdaArr[i] = -Ci * pbfStiff / (grad2 + eps);
+    }
+
+    dpx.fill(0); dpy.fill(0);
+    for (let i = 0; i < n; i++) {
+      forNeighbors(predX, predY, i, (j, r, dx, dy, r2) => {
+        const g = spikyGrad(r, dx, dy);
+        const w = poly6(r2);
+        const scorr = scorrK * (w / POLY0) ** 4;
+        const coeff = lambdaArr[i] + lambdaArr[j] + scorr;
+        dpx[i] += coeff * g.gx;
+        dpy[i] += coeff * g.gy;
+      });
+      predX[i] += dpx[i] / REST;
+      predY[i] += dpy[i] / REST;
+      clampPos(predX, predY, i);
+    }
+  }
+}
+
+function stepPBF() {
+  const dt = 0.003;
+  for (let i = 0; i < n; i++) {
+    vy[i] += gravity * dt;
+  }
+  interactVelocity(dt);
+  for (let i = 0; i < n; i++) {
+    predX[i] = px[i] + vx[i] * dt;
+    predY[i] = py[i] + vy[i] * dt;
+    clampPos(predX, predY, i);
+  }
+  pbfProject(5);
+
+  buildGrid(px, py);
+  for (let i = 0; i < n; i++) {
+    const invDt = 1 / dt;
+    let nvx = (predX[i] - px[i]) * invDt;
+    let nvy = (predY[i] - py[i]) * invDt;
+    forNeighbors(px, py, i, (j, r, dx, dy, r2) => {
+      const w = poly6(r2);
+      nvx += xsphEps * w * (vx[j] - vx[i]) / REST;
+      nvy += xsphEps * w * (vy[j] - vy[i]) / REST;
+    });
+    vx[i] = nvx * 0.995;
+    vy[i] = nvy * 0.995;
+    px[i] = predX[i];
+    py[i] = predY[i];
+  }
+}
+
+function stepSPH() {
+  buildGrid(px, py);
+  computeDensityPressure();
+  const dt = 0.00055;
+  for (let s = 0; s < 5; s++) integrateSPH(dt);
+}
+
+function step() {
+  if (solver === 'pbf') stepPBF();
+  else stepSPH();
+  buildGrid(px, py);
+  computeDensityAt(px, py, dens);
+}
+
+function render() {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#101820');
+  g.addColorStop(1, '#0a1420');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.strokeStyle = 'rgba(100,180,255,0.18)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(bounds.l, bounds.t, bounds.r - bounds.l, bounds.b - bounds.t);
+
+  const r = H_R * 0.42;
+  for (let i = 0; i < n; i++) {
+    const d = dens[i] / REST;
+    const spd = Math.hypot(vx[i], vy[i]);
+    const t = Math.min(1, (d - 0.85) * 2.5);
+    const a = 0.35 + t * 0.45;
+    const hue = solver === 'pbf' ? 198 - spd * 0.08 : 205 - spd * 0.08;
+    ctx.fillStyle = `hsla(${hue},75%,${48 + t * 18}%,${a})`;
+    ctx.beginPath();
+    ctx.arc(px[i], py[i], r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < n; i += 2) {
+    const g2 = ctx.createRadialGradient(px[i], py[i], 0, px[i], py[i], r * 2.2);
+    g2.addColorStop(0, 'rgba(100,200,255,0.12)');
+    g2.addColorStop(1, 'rgba(100,200,255,0)');
+    ctx.fillStyle = g2;
+    ctx.beginPath();
+    ctx.arc(px[i], py[i], r * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+
+  if (pointer.down) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.beginPath();
+    ctx.arc(pointer.x, pointer.y, 72, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+function loop() {
+  if (!paused && n > 0) step();
+  render();
+  requestAnimationFrame(loop);
+}
+
+function screenPos(e) {
+  const rect = cv.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * (W / rect.width),
+    y: (e.clientY - rect.top) * (H / rect.height),
+  };
+}
+
+function onDown(e) {
+  e.preventDefault();
+  pointer.down = true;
+  pointer.moved = false;
+  hint.style.display = 'none';
+  const p = screenPos(e.touches ? e.touches[0] : e);
+  pointer.x = p.x; pointer.y = p.y;
+  if (p.y < bounds.t + 80 && n < 3400) {
+    for (let k = 0; k < 6; k++) {
+      addParticle(p.x + (Math.random() - 0.5) * 14, p.y + (Math.random() - 0.5) * 14, (Math.random() - 0.5) * 40, Math.random() * 20);
+    }
+    nStat.textContent = String(n);
+  }
+}
+
+function onMove(e) {
+  if (!pointer.down) return;
+  pointer.moved = true;
+  const p = screenPos(e.touches ? e.touches[0] : e);
+  pointer.x = p.x; pointer.y = p.y;
+}
+
+function onUp() { pointer.down = false; pointer.moved = false; }
+
+function updateSolverUI() {
+  solver = solverSel.value;
+  methodStat.textContent = solver === 'pbf' ? 'PBF' : 'SPH';
+  lblPress.firstChild.textContent = solver === 'pbf' ? '刚度 ' : '压力 ';
+}
+
+cv.addEventListener('mousedown', onDown);
+cv.addEventListener('mousemove', onMove);
+window.addEventListener('mouseup', onUp);
+cv.addEventListener('touchstart', onDown, { passive: false });
+cv.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e); }, { passive: false });
+cv.addEventListener('touchend', onUp);
+
+solverSel.addEventListener('change', () => {
+  updateSolverUI();
+  resetFluid();
+});
+
+document.getElementById('sph-visc').addEventListener('input', function () {
+  viscosity = 80 + this.value * 35;
+  xsphEps = 0.03 + this.value * 0.006;
+});
+document.getElementById('sph-press').addEventListener('input', function () {
+  gasK = 800 + this.value * 180;
+  pbfStiff = 0.45 + this.value * 0.08;
+});
+document.getElementById('sph-grav').addEventListener('input', function () {
+  gravity = 400 + this.value * 90;
+});
+document.getElementById('sph-pour').addEventListener('click', () => {
+  hint.style.display = 'none';
+  const w = bounds.r - bounds.l;
+  const added = spawnBlock(bounds.l + w * 0.25, bounds.t + 20, bounds.r - w * 0.25, bounds.t + 90);
+  if (added) nStat.textContent = String(n);
+});
+document.getElementById('sph-reset').addEventListener('click', resetFluid);
+document.getElementById('sph-pause').addEventListener('click', function () {
+  paused = !paused;
+  this.textContent = paused ? '继续' : '暂停';
+  this.classList.toggle('active', paused);
+});
+
+window.addEventListener('resize', () => { resize(); });
+resize();
+ensureCap(3500);
+updateSolverUI();
+resetFluid();
+requestAnimationFrame(loop);
+</script>

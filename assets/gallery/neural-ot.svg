@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="240" viewBox="0 0 400 240">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#070b14"/>
+      <stop offset="50%" stop-color="#0b1430"/>
+      <stop offset="100%" stop-color="#07151a"/>
+    </linearGradient>
+    <radialGradient id="src" cx="30%" cy="72%" r="22%">
+      <stop offset="0%" stop-color="#42e6a4" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#42e6a4" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="tgt" cx="72%" cy="38%" r="26%">
+      <stop offset="0%" stop-color="#ff6f91" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#ff6f91" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="400" height="240" fill="url(#bg)"/>
+  <ellipse cx="115" cy="165" rx="55" ry="42" fill="url(#src)"/>
+  <ellipse cx="285" cy="95" rx="62" ry="48" fill="url(#tgt)"/>
+  <path d="M130,150 C180,120 220,110 270,100" fill="none" stroke="rgba(114,165,255,0.35)" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <circle cx="155" cy="138" r="2.2" fill="#72a5ff"/>
+  <circle cx="195" cy="122" r="2.2" fill="#72a5ff"/>
+  <circle cx="235" cy="112" r="2.2" fill="#72a5ff"/>
+  <circle cx="275" cy="102" r="2.2" fill="#72a5ff"/>
+  <line x1="210" y1="130" x2="228" y2="118" stroke="#ffd166" stroke-width="1.5" marker-end="url(#arr)"/>
+  <polygon points="228,118 222,120 224,114" fill="#ffd166"/>
+  <text x="200" y="220" text-anchor="middle" fill="#aec0eb" font-family="Segoe UI,sans-serif" font-size="13">Neural Lagrangian OT</text>
+</svg>

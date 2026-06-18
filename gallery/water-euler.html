@@ -1,0 +1,435 @@
+---
+layout: gallery_item
+slug: water-euler
+title: 欧拉网格流体
+---
+<style>
+  .eul-wrap { width:100%; height:100%; display:flex; flex-direction:column; background:#0a1018; }
+  .eul-bar {
+    display:flex; align-items:center; gap:12px; padding:8px 14px; flex-shrink:0; flex-wrap:wrap;
+    background:rgba(10,16,24,0.97); border-bottom:1px solid rgba(90,180,255,0.14);
+    font-size:12px; color:#9ec5e8;
+  }
+  .eul-bar label { display:flex; align-items:center; gap:6px; }
+  .eul-bar input[type=range] { width:68px; accent-color:#4db8ff; }
+  .eul-bar button {
+    padding:5px 11px; border:1px solid rgba(90,180,255,0.24); border-radius:5px;
+    background:rgba(20,50,85,0.55); color:#d8eeff; cursor:pointer; font-size:12px;
+  }
+  .eul-bar button:hover { background:rgba(40,90,145,0.65); }
+  .eul-bar button.active { background:#1a7ab8; border-color:#4db8ff; color:#fff; }
+  .eul-bar .sep { width:1px; height:18px; background:rgba(90,180,255,0.18); }
+  .eul-canvas { flex:1; position:relative; min-height:0; cursor:crosshair; }
+  .eul-canvas canvas { display:block; width:100%; height:100%; }
+  .eul-hud {
+    position:absolute; left:12px; top:12px; padding:10px 12px; border-radius:10px;
+    background:rgba(8,14,24,0.75); border:1px solid rgba(90,180,255,0.15);
+    font-size:11px; color:#a8c8e8; line-height:1.65; pointer-events:none;
+  }
+  .eul-hud b { color:#ffd66b; }
+  .eul-hint {
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    color:rgba(180,220,255,0.2); font-size:15px; pointer-events:none; text-align:center; line-height:1.7;
+  }
+</style>
+
+<div class="eul-wrap">
+  <div class="eul-bar">
+    <span>拖拽搅动 · 点击注水</span>
+    <label>粘度 <input type="range" id="eul-visc" min="1" max="20" value="6"></label>
+    <label>扩散 <input type="range" id="eul-diff" min="1" max="20" value="5"></label>
+    <label>力度 <input type="range" id="eul-force" min="1" max="20" value="10"></label>
+    <label class="eul-chk"><input id="eul-vel" type="checkbox"> 速度场</label>
+    <div class="sep"></div>
+    <button type="button" id="eul-pour">注水</button>
+    <button type="button" id="eul-reset">重置</button>
+    <button type="button" id="eul-pause">暂停</button>
+  </div>
+  <div class="eul-canvas" id="eul-wrap">
+    <canvas id="eul-cv"></canvas>
+    <div class="eul-hud">
+      网格 <b id="eul-grid">—</b> · 染料峰值 <b id="eul-max">0</b><br>
+      Eulerian · Stable Fluids
+    </div>
+    <div class="eul-hint" id="eul-hint">固定网格上的速度场与染料<br>半拉格朗日平流 + 压力投影</div>
+  </div>
+</div>
+
+<script>
+const wrap = document.getElementById('eul-wrap');
+const cv = document.getElementById('eul-cv');
+const ctx = cv.getContext('2d', { alpha: false });
+const hint = document.getElementById('eul-hint');
+const gridStat = document.getElementById('eul-grid');
+const maxStat = document.getElementById('eul-max');
+
+let NX = 128, NY = 96, SZ = NX * NY;
+let W = 1, H = 1, DPR = 1;
+let dt = 0.12;
+let visc = 0.00008;
+let diff = 0.00004;
+let force = 120;
+let paused = false;
+let showVel = false;
+let pointer = { x: 0, y: 0, down: false, lx: 0, ly: 0 };
+
+let u, v, u0, v0, dens, dens0, prs, div;
+
+function IX(i, j) { return i + j * NX; }
+
+function allocFields() {
+  SZ = NX * NY;
+  u = new Float32Array(SZ);
+  v = new Float32Array(SZ);
+  u0 = new Float32Array(SZ);
+  v0 = new Float32Array(SZ);
+  dens = new Float32Array(SZ);
+  dens0 = new Float32Array(SZ);
+  prs = new Float32Array(SZ);
+  div = new Float32Array(SZ);
+}
+
+function resize() {
+  DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  W = wrap.clientWidth;
+  H = wrap.clientHeight;
+  cv.width = Math.floor(W * DPR);
+  cv.height = Math.floor(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const nx = Math.max(80, Math.min(160, Math.round(W / 5)));
+  const ny = Math.max(60, Math.min(120, Math.round(H / 5)));
+  if (nx !== NX || ny !== NY) {
+    NX = nx; NY = ny;
+    allocFields();
+    gridStat.textContent = `${NX}×${NY}`;
+    initWater();
+  }
+}
+
+function setBnd(b, x) {
+  for (let i = 1; i < NX - 1; i++) {
+    x[IX(i, 0)] = b === 2 ? -x[IX(i, 1)] : x[IX(i, 1)];
+    x[IX(i, NY - 1)] = b === 2 ? -x[IX(i, NY - 2)] : x[IX(i, NY - 2)];
+  }
+  for (let j = 1; j < NY - 1; j++) {
+    x[IX(0, j)] = b === 1 ? -x[IX(1, j)] : x[IX(1, j)];
+    x[IX(NX - 1, j)] = b === 1 ? -x[IX(NX - 2, j)] : x[IX(NX - 2, j)];
+  }
+  x[IX(0, 0)] = 0.5 * (x[IX(1, 0)] + x[IX(0, 1)]);
+  x[IX(0, NY - 1)] = 0.5 * (x[IX(1, NY - 1)] + x[IX(0, NY - 2)]);
+  x[IX(NX - 1, 0)] = 0.5 * (x[IX(NX - 2, 0)] + x[IX(NX - 1, 1)]);
+  x[IX(NX - 1, NY - 1)] = 0.5 * (x[IX(NX - 2, NY - 1)] + x[IX(NX - 1, NY - 2)]);
+}
+
+function addSource(x, s) {
+  for (let i = 0; i < SZ; i++) x[i] += dt * s[i];
+}
+
+function linSolve(b, x, x0, a, c) {
+  const cRecip = 1 / c;
+  for (let k = 0; k < 12; k++) {
+    for (let j = 1; j < NY - 1; j++) {
+      for (let i = 1; i < NX - 1; i++) {
+        x[IX(i, j)] = (x0[IX(i, j)] + a * (
+          x[IX(i - 1, j)] + x[IX(i + 1, j)] +
+          x[IX(i, j - 1)] + x[IX(i, j + 1)]
+        )) * cRecip;
+      }
+    }
+    setBnd(b, x);
+  }
+}
+
+function diffuse(b, x, x0, diffK) {
+  const a = dt * diffK * (NX - 2) * (NY - 2);
+  linSolve(b, x, x0, a, 1 + 4 * a);
+}
+
+function project() {
+  const h = -0.5 / NX;
+  for (let j = 1; j < NY - 1; j++) {
+    for (let i = 1; i < NX - 1; i++) {
+      div[IX(i, j)] = h * (
+        u[IX(i + 1, j)] - u[IX(i - 1, j)] +
+        v[IX(i, j + 1)] - v[IX(i, j - 1)]
+      );
+      prs[IX(i, j)] = 0;
+    }
+  }
+  setBnd(0, div);
+  setBnd(0, prs);
+  linSolve(0, prs, div, 1, 4);
+  for (let j = 1; j < NY - 1; j++) {
+    for (let i = 1; i < NX - 1; i++) {
+      u[IX(i, j)] -= 0.5 * NX * (prs[IX(i + 1, j)] - prs[IX(i - 1, j)]);
+      v[IX(i, j)] -= 0.5 * NY * (prs[IX(i, j + 1)] - prs[IX(i, j - 1)]);
+    }
+  }
+  setBnd(1, u);
+  setBnd(2, v);
+}
+
+function sampleB(f, fx, fy) {
+  const i0 = Math.max(0, Math.min(NX - 2, Math.floor(fx)));
+  const j0 = Math.max(0, Math.min(NY - 2, Math.floor(fy)));
+  const tx = fx - i0, ty = fy - j0;
+  const i1 = i0 + 1, j1 = j0 + 1;
+  const a = f[IX(i0, j0)] * (1 - tx) + f[IX(i1, j0)] * tx;
+  const b = f[IX(i0, j1)] * (1 - tx) + f[IX(i1, j1)] * tx;
+  return a * (1 - ty) + b * ty;
+}
+
+function advect(b, d, d0, uu, vv) {
+  const dt0x = dt * (NX - 2);
+  const dt0y = dt * (NY - 2);
+  for (let j = 1; j < NY - 1; j++) {
+    for (let i = 1; i < NX - 1; i++) {
+      let x = i - dt0x * uu[IX(i, j)];
+      let y = j - dt0y * vv[IX(i, j)];
+      x = Math.max(0.5, Math.min(NX - 1.5, x));
+      y = Math.max(0.5, Math.min(NY - 1.5, y));
+      d[IX(i, j)] = sampleB(d0, x, y);
+    }
+  }
+  setBnd(b, d);
+}
+
+function velStep() {
+  addSource(u, u0);
+  addSource(v, v0);
+  [u, u0] = [u0, u];
+  diffuse(1, u, u0, visc);
+  [v, v0] = [v0, v];
+  diffuse(2, v, v0, visc);
+  project();
+  [u, u0] = [u0, u];
+  [v, v0] = [v0, v];
+  advect(1, u, u0, u0, v0);
+  advect(2, v, v0, u0, v0);
+  project();
+}
+
+function densStep() {
+  addSource(dens, dens0);
+  [dens, dens0] = [dens0, dens];
+  diffuse(0, dens, dens0, diff);
+  [dens, dens0] = [dens0, dens];
+  advect(0, dens, dens0, u, v);
+}
+
+function initWater() {
+  u.fill(0); v.fill(0); u0.fill(0); v0.fill(0);
+  dens.fill(0); dens0.fill(0);
+  const y0 = Math.floor(NY * 0.55);
+  for (let j = y0; j < NY - 2; j++) {
+    for (let i = 3; i < NX - 3; i++) {
+      dens[IX(i, j)] = 0.85 + Math.random() * 0.15;
+    }
+  }
+}
+
+function screenToGrid(sx, sy) {
+  return { gi: (sx / W) * (NX - 2) + 1, gj: (sy / H) * (NY - 2) + 1 };
+}
+
+function splat(gi, gj, str, rad) {
+  const r = rad || 4;
+  const ic = Math.round(gi);
+  const jc = Math.round(gj);
+  for (let j = jc - r; j <= jc + r; j++) {
+    for (let i = ic - r; i <= ic + r; i++) {
+      if (i < 1 || i >= NX - 1 || j < 1 || j >= NY - 1) continue;
+      const d2 = (i - gi) ** 2 + (j - gj) ** 2;
+      if (d2 > r * r) continue;
+      const f = Math.cos((Math.sqrt(d2) / r) * Math.PI * 0.5);
+      dens0[IX(i, j)] += str * f * 0.35;
+      u0[IX(i, j)] += (gi - ic) * str * f * 0.008;
+      v0[IX(i, j)] += (gj - jc) * str * f * 0.008;
+    }
+  }
+}
+
+function applyPointer() {
+  if (!pointer.down) return;
+  const g = screenToGrid(pointer.x, pointer.y);
+  const lg = screenToGrid(pointer.lx, pointer.ly);
+  const dx = g.gi - lg.gi;
+  const dy = g.gj - lg.gj;
+  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy)));
+  for (let s = 0; s <= steps; s++) {
+    const t = s / steps;
+    const gi = lg.gi + dx * t;
+    const gj = lg.gj + dy * t;
+    splat(gi, gj, force, 5);
+    for (let j = 1; j < NY - 1; j++) {
+      for (let i = 1; i < NX - 1; i++) {
+        const d2 = (i - gi) ** 2 + (j - gj) ** 2;
+        if (d2 > 36) continue;
+        const f = (1 - d2 / 36) * force * 0.012;
+        u0[IX(i, j)] += dx * f;
+        v0[IX(i, j)] += dy * f;
+      }
+    }
+  }
+  pointer.lx = pointer.x;
+  pointer.ly = pointer.y;
+}
+
+function pourWater() {
+  const y = Math.floor(NY * 0.12);
+  for (let j = y; j < y + 8; j++) {
+    for (let i = Math.floor(NX * 0.3); i < Math.floor(NX * 0.7); i++) {
+      dens0[IX(i, j)] += 1.2;
+      v0[IX(i, j)] += 8;
+    }
+  }
+}
+
+function step() {
+  u0.fill(0);
+  v0.fill(0);
+  dens0.fill(0);
+  for (let j = 1; j < NY - 1; j++) {
+    for (let i = 1; i < NX - 1; i++) {
+      v0[IX(i, j)] -= 0.4 * dt;
+    }
+  }
+  applyPointer();
+  velStep();
+  densStep();
+  for (let i = 0; i < SZ; i++) {
+    if (dens[i] < 0) dens[i] = 0;
+    if (dens[i] > 4) dens[i] = 4;
+  }
+}
+
+function render() {
+  const img = ctx.createImageData(W, H);
+  const data = img.data;
+  let dmax = 0;
+  for (let py = 0; py < H; py++) {
+    const gj = (py / H) * (NY - 2) + 1;
+    const j0 = Math.floor(gj);
+    const ty = gj - j0;
+    for (let px = 0; px < W; px++) {
+      const gi = (px / W) * (NX - 2) + 1;
+      const i0 = Math.floor(gi);
+      const tx = gi - i0;
+      const i1 = Math.min(i0 + 1, NX - 1);
+      const j1 = Math.min(j0 + 1, NY - 1);
+      const d =
+        dens[IX(i0, j0)] * (1 - tx) * (1 - ty) +
+        dens[IX(i1, j0)] * tx * (1 - ty) +
+        dens[IX(i0, j1)] * (1 - tx) * ty +
+        dens[IX(i1, j1)] * tx * ty;
+      if (d > dmax) dmax = d;
+      const t = 1 - Math.exp(-d * 1.6);
+      const bg = 18;
+      const r = Math.round(bg + t * 35);
+      const g = Math.round(bg + 12 + t * 95);
+      const b = Math.round(bg + 28 + t * 145);
+      const p = (py * W + px) * 4;
+      data[p] = r;
+      data[p + 1] = g;
+      data[p + 2] = b;
+      data[p + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  maxStat.textContent = dmax.toFixed(2);
+
+  if (showVel) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,220,0.35)';
+    ctx.lineWidth = 0.8;
+    const step = 8;
+    for (let j = step; j < NY - step; j += step) {
+      for (let i = step; i < NX - step; i += step) {
+        const ui = u[IX(i, j)], vi = v[IX(i, j)];
+        const spd = Math.hypot(ui, vi);
+        if (spd < 0.02) continue;
+        const x0 = (i / NX) * W;
+        const y0 = (j / NY) * H;
+        const sc = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x0 + ui * sc, y0 + vi * sc);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  ctx.strokeStyle = 'rgba(100,180,255,0.12)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+}
+
+function loop() {
+  if (!paused) step();
+  render();
+  requestAnimationFrame(loop);
+}
+
+function onDown(e) {
+  e.preventDefault();
+  pointer.down = true;
+  hint.style.display = 'none';
+  const rect = cv.getBoundingClientRect();
+  pointer.x = (e.clientX - rect.left) * (W / rect.width);
+  pointer.y = (e.clientY - rect.top) * (H / rect.height);
+  pointer.lx = pointer.x;
+  pointer.ly = pointer.y;
+  const g = screenToGrid(pointer.x, pointer.y);
+  splat(g.gi, g.gj, force * 1.2, 5);
+}
+
+function onMove(e) {
+  if (!pointer.down) return;
+  const rect = cv.getBoundingClientRect();
+  pointer.x = (e.clientX - rect.left) * (W / rect.width);
+  pointer.y = (e.clientY - rect.top) * (H / rect.height);
+}
+
+function onUp() { pointer.down = false; }
+
+cv.addEventListener('mousedown', onDown);
+cv.addEventListener('mousemove', onMove);
+window.addEventListener('mouseup', onUp);
+cv.addEventListener('touchstart', (e) => onDown(e.touches[0]), { passive: false });
+cv.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e.touches[0]); }, { passive: false });
+cv.addEventListener('touchend', onUp);
+
+document.getElementById('eul-visc').addEventListener('input', function () {
+  visc = 0.00001 + this.value / 120000;
+});
+document.getElementById('eul-diff').addEventListener('input', function () {
+  diff = 0.000005 + this.value / 180000;
+});
+document.getElementById('eul-force').addEventListener('input', function () {
+  force = 40 + this.value * 9;
+});
+document.getElementById('eul-vel').addEventListener('change', function () {
+  showVel = this.checked;
+});
+document.getElementById('eul-pour').addEventListener('click', () => {
+  hint.style.display = 'none';
+  pourWater();
+});
+document.getElementById('eul-reset').addEventListener('click', () => {
+  initWater();
+  hint.style.display = '';
+});
+document.getElementById('eul-pause').addEventListener('click', function () {
+  paused = !paused;
+  this.textContent = paused ? '继续' : '暂停';
+  this.classList.toggle('active', paused);
+});
+
+window.addEventListener('resize', resize);
+allocFields();
+gridStat.textContent = `${NX}×${NY}`;
+resize();
+initWater();
+requestAnimationFrame(loop);
+</script>

@@ -117,6 +117,7 @@ print("hello")
   description: 一句话描述，会显示在 Gallery 卡片列表页
   thumbnail: /assets/gallery/my-new-work.png
   detail_url: "/gallery/我的新作品.html"
+  ready: false   # 开发中置灰；完成后改为 true 显示 Ready 标签
 ```
 
 | 字段 | 说明 |
@@ -126,6 +127,7 @@ print("hello")
 | `description` | 卡片一句话描述 |
 | `thumbnail` | 缩略图路径（放在 `assets/` 下） |
 | `detail_url` | 指向你新建的 `.html` 文件 |
+| `ready` | `true`：卡片缩略图右上角显示 **Ready** 标签；`false`：卡片整体置灰（仍可点击进入） |
 
 ---
 
@@ -205,6 +207,7 @@ $$
   description: Diamond-Square 算法实时生成分形山脉地形。
   thumbnail: /assets/gallery/fractal-mountain.png
   detail_url: "/gallery/分形山.html"
+  ready: true
 ```
 
 **4. 运行流水线**
@@ -221,6 +224,7 @@ python3 Tools/gallery_pipeline.py
 | `webgl-water` | WebGL 水面焦散 | `WebGL Water.html` / `WebGL Water.md` |
 | `cpu-path-tracing` | CPU 路径追踪 | `cpu-path-tracing.html` / `cpu-path-tracing.md` |
 | `wfc` | WFC 纹理合成 | `wfc.html` / `wfc.md` |
+| `ik-spider` | IK 蜘蛛 | `ik-spider.html` / `ik-spider.md` |
 
 ---
 

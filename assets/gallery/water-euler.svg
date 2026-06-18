@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="240" viewBox="0 0 400 240">
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="rgba(100,180,255,0.12)" stroke-width="0.8"/>
+    </pattern>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a5a8a" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#0e3a5c" stop-opacity="0.85"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="240" fill="#0a1018"/>
+  <rect width="400" height="240" fill="url(#grid)"/>
+  <path d="M40,180 Q120,160 200,175 T360,165 L360,210 L40,210 Z" fill="url(#water)"/>
+  <path d="M100,150 Q140,130 180,145" fill="none" stroke="rgba(255,240,180,0.4)" stroke-width="1.2" marker-end="url(#arr)"/>
+  <path d="M220,120 Q260,100 300,115" fill="none" stroke="rgba(255,240,180,0.35)" stroke-width="1"/>
+  <path d="M160,190 Q200,170 240,185" fill="none" stroke="rgba(255,240,180,0.3)" stroke-width="1"/>
+  <text x="200" y="220" text-anchor="middle" fill="#b8dff5" font-family="Segoe UI,sans-serif" font-size="14">'ÉQ<AS</text>
+</svg>

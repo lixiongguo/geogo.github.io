@@ -1,0 +1,329 @@
+---
+layout: gallery_item
+slug: water-line
+title: 2D 水线波动
+---
+<style>
+  .wl-wrap { width:100%; height:100%; display:flex; flex-direction:column; background:#0c1420; }
+  .wl-bar {
+    display:flex; align-items:center; gap:12px; padding:8px 14px; flex-shrink:0; flex-wrap:wrap;
+    background:rgba(12,20,32,0.97); border-bottom:1px solid rgba(120,190,255,0.12);
+    font-size:12px; color:#9ec5e8;
+  }
+  .wl-bar label { display:flex; align-items:center; gap:6px; }
+  .wl-bar input[type=range] { width:72px; accent-color:#5ec4ff; }
+  .wl-bar button {
+    padding:5px 12px; border:1px solid rgba(120,190,255,0.22); border-radius:5px;
+    background:rgba(25,55,90,0.55); color:#d8eeff; cursor:pointer; font-size:12px;
+  }
+  .wl-bar button:hover { background:rgba(45,95,150,0.65); }
+  .wl-bar button.active { background:#1a7ab8; border-color:#5ec4ff; color:#fff; }
+  .wl-bar .sep { width:1px; height:18px; background:rgba(120,190,255,0.18); }
+  .wl-canvas { flex:1; position:relative; min-height:0; cursor:crosshair; }
+  .wl-canvas canvas { display:block; width:100%; height:100%; }
+  .wl-hint {
+    position:absolute; left:50%; top:42%; transform:translate(-50%,-50%);
+    color:rgba(200,230,255,0.22); font-size:15px; pointer-events:none; text-align:center; line-height:1.7;
+  }
+</style>
+
+<div class="wl-wrap">
+  <div class="wl-bar">
+    <span>点击 / 拖拽扰动水线</span>
+    <label>波速 <input type="range" id="wl-speed" min="1" max="20" value="9"></label>
+    <label>阻尼 <input type="range" id="wl-damp" min="1" max="20" value="14"></label>
+    <label>力度 <input type="range" id="wl-force" min="1" max="20" value="7"></label>
+    <div class="sep"></div>
+    <button type="button" id="wl-drop">投石</button>
+    <button type="button" id="wl-reset">重置</button>
+    <button type="button" id="wl-pause">暂停</button>
+  </div>
+  <div class="wl-canvas" id="wl-wrap">
+    <canvas id="wl-cv"></canvas>
+    <div class="wl-hint" id="wl-hint">平静时水线只是一条直线<br>点击或拖拽试试</div>
+  </div>
+</div>
+
+<script>
+const wrap = document.getElementById('wl-wrap');
+const cv = document.getElementById('wl-cv');
+const ctx = cv.getContext('2d');
+const hint = document.getElementById('wl-hint');
+
+const N = 320;
+let h = new Float32Array(N);
+let hPrev = new Float32Array(N);
+
+let W = 1, H = 1, DPR = 1;
+let baseY = 0;
+let waveSpeed = 0.91;
+let damping = 0.993;
+let impulse = 0.55;
+const VIS_AMP = 0.11;
+let paused = false;
+let pointer = { down: false, idx: 0, lastIdx: 0 };
+
+const duck = { x: 0.72, vx: 0, w: 0.07, phase: 0 };
+
+function resize() {
+  DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  W = wrap.clientWidth;
+  H = wrap.clientHeight;
+  cv.width = Math.floor(W * DPR);
+  cv.height = Math.floor(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  baseY = H * 0.58;
+}
+
+function reset() {
+  h.fill(0);
+  hPrev.fill(0);
+  duck.x = 0.72;
+  duck.vx = 0;
+  duck.phase = 0;
+}
+
+function sampleH(t) {
+  t = Math.max(0, Math.min(N - 1.001, t));
+  const i0 = Math.floor(t);
+  const f = t - i0;
+  return h[i0] * (1 - f) + h[i0 + 1] * f;
+}
+
+function sampleGrad(t) {
+  const eps = 1.2;
+  return (sampleH(t + eps) - sampleH(t - eps)) / (2 * eps);
+}
+
+function addImpulse(idx, strength, radius) {
+  const r = radius || 6;
+  const c = Math.round(idx);
+  for (let i = c - r; i <= c + r; i++) {
+    if (i < 1 || i >= N - 1) continue;
+    const d = (i - idx) / r;
+    if (Math.abs(d) > 1) continue;
+    const f = Math.cos(d * Math.PI * 0.5);
+    h[i] += strength * f;
+  }
+}
+
+function stepWater() {
+  for (let i = 1; i < N - 1; i++) {
+    const avg = (hPrev[i - 1] + hPrev[i + 1]) * 0.5;
+    h[i] = (avg - h[i]) * waveSpeed;
+  }
+  for (let i = 0; i < N; i++) {
+    h[i] *= damping;
+    if (h[i] > 6) h[i] = 6 + (h[i] - 6) * 0.35;
+    if (h[i] < -6) h[i] = -6 + (h[i] + 6) * 0.35;
+  }
+  const tmp = hPrev;
+  hPrev = h;
+  h = tmp;
+}
+
+function stepDuck() {
+  const idx = duck.x * (N - 1);
+  const hi = sampleH(idx);
+  const grad = sampleGrad(idx);
+  duck.vx += -grad * 0.001 - duck.vx * 0.08;
+  duck.x += duck.vx;
+  if (duck.x < 0.06) { duck.x = 0.06; duck.vx *= -0.35; }
+  if (duck.x > 0.94) { duck.x = 0.94; duck.vx *= -0.35; }
+  addImpulse(idx, -hi * 0.022, 4);
+  duck.phase += 0.04 + Math.abs(duck.vx) * 2;
+}
+
+function idxFromScreen(sx) {
+  return (sx / W) * (N - 1);
+}
+
+function drawSky() {
+  const g = ctx.createLinearGradient(0, 0, 0, baseY);
+  g.addColorStop(0, '#1a2840');
+  g.addColorStop(0.55, '#2a4568');
+  g.addColorStop(1, '#4a7aa8');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, baseY + 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  ctx.beginPath();
+  ctx.ellipse(W * 0.78, H * 0.14, 48, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function surfacePoint(i) {
+  const t = i / (N - 1);
+  return { x: t * W, y: baseY - h[i] * (H * VIS_AMP) };
+}
+
+function drawWaterBody() {
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  ctx.lineTo(0, baseY - h[0] * (H * VIS_AMP));
+  for (let i = 1; i < N; i++) {
+    const p = surfacePoint(i);
+    ctx.lineTo(p.x, p.y);
+  }
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, baseY, 0, H);
+  g.addColorStop(0, 'rgba(40,120,180,0.55)');
+  g.addColorStop(0.35, '#0e3a5c');
+  g.addColorStop(1, '#061828');
+  ctx.fillStyle = g;
+  ctx.fill();
+}
+
+function drawSurfaceLine() {
+  ctx.beginPath();
+  const p0 = surfacePoint(0);
+  ctx.moveTo(p0.x, p0.y);
+  for (let i = 1; i < N; i++) {
+    const p = surfacePoint(i);
+    ctx.lineTo(p.x, p.y);
+  }
+  ctx.strokeStyle = 'rgba(180,230,255,0.95)';
+  ctx.lineWidth = 2.2;
+  ctx.shadowColor = 'rgba(120,200,255,0.6)';
+  ctx.shadowBlur = 6;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  ctx.beginPath();
+  ctx.moveTo(p0.x, p0.y);
+  for (let i = 1; i < N; i++) {
+    const p = surfacePoint(i);
+    ctx.lineTo(p.x, p.y);
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+}
+
+function drawDuck() {
+  const idx = duck.x * (N - 1);
+  const hi = sampleH(idx);
+  const sx = duck.x * W;
+  const sy = baseY - hi * (H * VIS_AMP) - 4;
+  const bob = Math.sin(duck.phase) * 1.5;
+  const s = duck.w * Math.min(W, H);
+
+  ctx.save();
+  ctx.translate(sx, sy + bob);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(2, s * 0.55, s * 0.85, s * 0.22, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#e8a020';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s * 0.95, s * 0.55, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#1a8a4a';
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.15, -s * 0.35, s * 0.35, s * 0.28, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f0b030';
+  ctx.beginPath();
+  ctx.arc(s * 0.55, -s * 0.05, s * 0.32, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2a2a30';
+  ctx.beginPath();
+  ctx.arc(s * 0.68, -s * 0.12, s * 0.05, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#e07020';
+  ctx.beginPath();
+  ctx.moveTo(s * 0.88, -s * 0.02);
+  ctx.lineTo(s * 1.25, s * 0.08);
+  ctx.lineTo(s * 0.86, s * 0.12);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function render() {
+  drawSky();
+  drawWaterBody();
+  drawSurfaceLine();
+  drawDuck();
+}
+
+function loop() {
+  if (!paused) {
+    if (pointer.down) {
+      const steps = Math.max(1, Math.abs(pointer.idx - pointer.lastIdx));
+      for (let s = 0; s <= steps; s++) {
+        const t = steps ? s / steps : 0;
+        const idx = pointer.lastIdx + (pointer.idx - pointer.lastIdx) * t;
+        addImpulse(idx, impulse * 0.22, 4 + impulse * 0.3);
+      }
+      pointer.lastIdx = pointer.idx;
+    }
+    stepWater();
+    stepDuck();
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+
+function onDown(e) {
+  e.preventDefault();
+  pointer.down = true;
+  hint.style.display = 'none';
+  const rect = cv.getBoundingClientRect();
+  const sx = (e.clientX - rect.left) * (W / rect.width);
+  pointer.idx = pointer.lastIdx = idxFromScreen(sx);
+  addImpulse(pointer.idx, impulse * 0.55, 4 + impulse * 0.4);
+  const dx = sx - duck.x * W;
+  if (Math.abs(dx) < duck.w * Math.min(W, H) * 1.1) {
+    duck.vx += dx / W * 0.05;
+    addImpulse(pointer.idx, impulse * 0.3, 3);
+  }
+}
+
+function onMove(e) {
+  if (!pointer.down) return;
+  const rect = cv.getBoundingClientRect();
+  const sx = (e.clientX - rect.left) * (W / rect.width);
+  pointer.idx = idxFromScreen(sx);
+}
+
+function onUp() { pointer.down = false; }
+
+cv.addEventListener('mousedown', onDown);
+cv.addEventListener('mousemove', onMove);
+window.addEventListener('mouseup', onUp);
+cv.addEventListener('touchstart', (e) => onDown(e.touches[0]), { passive: false });
+cv.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e.touches[0]); }, { passive: false });
+cv.addEventListener('touchend', onUp);
+
+document.getElementById('wl-speed').addEventListener('input', function () {
+  waveSpeed = 0.86 + this.value / 220;
+});
+document.getElementById('wl-damp').addEventListener('input', function () {
+  damping = 0.982 + this.value / 900;
+});
+document.getElementById('wl-force').addEventListener('input', function () {
+  impulse = 0.25 + this.value / 22;
+});
+document.getElementById('wl-drop').addEventListener('click', () => {
+  hint.style.display = 'none';
+  const idx = 0.15 + Math.random() * 0.7;
+  addImpulse(idx * (N - 1), impulse * 1.1, 6);
+  addImpulse(idx * (N - 1), impulse * 0.5, 10);
+});
+document.getElementById('wl-reset').addEventListener('click', () => {
+  reset();
+  hint.style.display = '';
+});
+document.getElementById('wl-pause').addEventListener('click', function () {
+  paused = !paused;
+  this.textContent = paused ? '继续' : '暂停';
+  this.classList.toggle('active', paused);
+});
+
+window.addEventListener('resize', resize);
+resize();
+reset();
+requestAnimationFrame(loop);
+</script>

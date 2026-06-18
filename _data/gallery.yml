@@ -3,46 +3,95 @@
   description: 水面焦散的实现：射线追踪反射折射、高度场模拟与实时焦散。
   thumbnail: /assets/gallery/webgl-water.png
   detail_url: "/gallery/WebGL Water.html"
+  ready: true
 
 - slug: cpu-path-tracing
   title: CPU 路径追踪
   description: 纯 CPU 实现的路径追踪渲染器，与 cpp/CPUPathTracing 同构演示。
   thumbnail: /assets/gallery/cpu_pathtracing.png
   detail_url: "/gallery/cpu-path-tracing.html"
+  ready: true
 
 - slug: wfc
   title: WFC 纹理合成
   description: Wave Function Collapse 算法：从样本纹理中提取 tile 邻接约束，回溯合成大尺寸纹理。
   thumbnail: /assets/WFC/circuit_9_9.png
   detail_url: "/gallery/wfc.html"
+  ready: true
 
 - slug: simple-binpack
   title: 3D 装箱问题
   description: 三维 Bin Packing：贪心装箱与回溯装箱的 Three.js 可视化，支持调节箱数、尺寸与容量。
   thumbnail: /assets/gallery/simple_bin_pack.png
   detail_url: "/gallery/simple-binpack.html"
+  ready: true
 
 - slug: sdf-raymarching
   title: SDF Ray Marching
   description: 有符号距离场实时渲染：MetaBall 融合、光滑混合、CSG 组合、重复镜像 — 全部在片元着色器中完成。
   thumbnail: /assets/gallery/sdf_raymarching.png
   detail_url: "/gallery/sdf-raymarching.html"
+  ready: true
 
 - slug: lbm-suiboku
   title: LBM 水墨动画
   description: 格子玻尔兹曼法 (D2Q9) 模拟墨水在水中的扩散与流动，鼠标拖拽落笔，实时渲染水墨晕染效果。
   thumbnail: /assets/gallery/lbm-suiboku.png
   detail_url: "/gallery/lbm-suiboku.html"
+  ready: true
 
 - slug: boid
   title: Boid 群体运动
   description: 鸟群/鱼群的涌现行为模拟：分离、对齐、凝聚三规则驱动数百个箭头个体，鼠标引力实时交互。
   thumbnail: /assets/gallery/boid.png
   detail_url: "/gallery/boid.html"
+  ready: false
 
 - slug: bezier-editor
   title: Bézier 曲线编辑器
   description: 类 PS 钢笔工具：拖拽创建三次 Bézier 曲线，Ctrl 移动锚点，Alt 断开平滑手柄，右键删除。
   thumbnail: /assets/gallery/bezier-editor.png
   detail_url: "/gallery/bezier-editor.html"
+  ready: true
 
+- slug: ik-spider
+  title: IK 蜘蛛
+  description: CCD 逆运动学驱动八足蜘蛛在简易场景中行走，WASD 控制移动，可显示 IK 链与调节迭代次数。
+  thumbnail: /assets/gallery/ik-spider.svg
+  detail_url: "/gallery/ik-spider.html"
+  ready: false
+
+- slug: neural-ot
+  title: Neural Lagrangian OT
+  description: 神经拉格朗日最优传输可视化：粒子沿时变速度场从源分布推送到目标分布，可切换三峰/圆环/双月形目标。
+  thumbnail: /assets/gallery/neural-ot.svg
+  detail_url: "/gallery/neural-ot.html"
+  ready: true
+
+- slug: water-2d
+  title: 2D 交互水面
+  description: 二维波方程高度场模拟：点击拖拽制造涟漪，浮球随波面起伏并与水面双向耦合，支持雨滴模式。
+  thumbnail: /assets/gallery/water-2d.svg
+  detail_url: "/gallery/water-2d.html"
+  ready: false
+
+- slug: water-line
+  title: 2D 水线波动
+  description: 侧视一维水面：平静时水线为直线，点击拖拽或投石激起波动，阻尼控制波纹衰减，小黄鸭随波漂移。
+  thumbnail: /assets/gallery/water-line.svg
+  detail_url: "/gallery/water-line.html"
+  ready: true
+
+- slug: sph-water
+  title: SPH / PBF 粒子水体
+  description: 拉格朗日粒子流体：可切换 SPH 力积分或 PBF 位置约束，Poly6/Spiky 核，拖拽推动与注水交互。
+  thumbnail: /assets/gallery/sph-water.svg
+  detail_url: "/gallery/sph-water.html"
+  ready: true
+
+- slug: water-euler
+  title: 欧拉网格流体
+  description: Stable Fluids 二维欧拉网格：半拉格朗日平流、压力投影与染料示踪，拖拽搅动水体，可显示速度场。
+  thumbnail: /assets/gallery/water-euler.svg
+  detail_url: "/gallery/water-euler.html"
+  ready: true

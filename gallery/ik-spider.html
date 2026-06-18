@@ -1,0 +1,391 @@
+---
+layout: gallery_item
+slug: ik-spider
+title: IK 蜘蛛
+head_extra: |
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/"
+    }
+  }
+  </script>
+---
+<style>
+  .sp-wrap { width:100%; height:100%; display:flex; flex-direction:column; background:#1a1f16; }
+  .sp-bar {
+    display:flex; align-items:center; gap:12px; padding:8px 14px; flex-shrink:0; flex-wrap:wrap;
+    background:rgba(20,24,18,0.96); border-bottom:1px solid rgba(255,255,255,0.06);
+    font-size:12px; color:#9ca88a;
+  }
+  .sp-bar kbd {
+    padding:2px 6px; border-radius:4px; background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.12); color:#d4e4c4; font-family:inherit;
+  }
+  .sp-bar label { display:flex; align-items:center; gap:6px; }
+  .sp-bar input[type=range] { width:72px; accent-color:#7cb342; }
+  .sp-bar button {
+    padding:5px 12px; border:1px solid rgba(255,255,255,0.12); border-radius:4px;
+    background:rgba(255,255,255,0.04); color:#c9d1c4; cursor:pointer;
+  }
+  .sp-bar button:hover { background:rgba(124,179,66,0.2); border-color:#7cb342; }
+  .sp-bar button.active { background:rgba(124,179,66,0.25); border-color:#7cb342; color:#e8f5e9; }
+  .sp-canvas { flex:1; position:relative; min-height:0; }
+  #sp-container { width:100%; height:100%; }
+  .sp-hud {
+    position:absolute; left:12px; bottom:12px; padding:8px 10px; border-radius:6px;
+    background:rgba(0,0,0,0.45); font-size:11px; color:#a8b89a; line-height:1.5; pointer-events:none;
+  }
+</style>
+
+<div class="sp-wrap">
+  <div class="sp-bar">
+    <span>移动 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> · 转向 <kbd>Q</kbd><kbd>E</kbd></span>
+    <label>速度 <input type="range" id="sp-speed" min="0" max="100" value="55"></label>
+    <label>IK 迭代 <input type="range" id="sp-iter" min="2" max="24" value="12"></label>
+    <button type="button" id="sp-show-ik">显示 IK 链</button>
+    <button type="button" id="sp-reset">重置位置</button>
+  </div>
+  <div class="sp-canvas">
+    <div id="sp-container"></div>
+    <div class="sp-hud" id="sp-hud">CCD IK · 8 腿 × 3 骨节 · 足端目标由步态生成</div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ─── CCD IK Solver（与右侧文档公式对应）────────────────────
+function solveCCD(joints, boneLengths, target, iterations, maxAngles) {
+  const n = joints.length;
+  if (n < 2) return;
+
+  const end = joints[n - 1];
+  const tmp = new THREE.Vector3();
+  const dirEnd = new THREE.Vector3();
+  const dirTgt = new THREE.Vector3();
+  const q = new THREE.Quaternion();
+  const id = new THREE.Quaternion();
+
+  for (let iter = 0; iter < iterations; iter++) {
+    if (end.distanceToSquared(target) < 1e-5) break;
+
+    for (let i = n - 2; i >= 0; i--) {
+      const pivot = joints[i];
+      dirEnd.subVectors(end, pivot);
+      dirTgt.subVectors(target, pivot);
+      const lenE = dirEnd.length();
+      const lenT = dirTgt.length();
+      if (lenE < 1e-6 || lenT < 1e-6) continue;
+      dirEnd.multiplyScalar(1 / lenE);
+      dirTgt.multiplyScalar(1 / lenT);
+
+      q.setFromUnitVectors(dirEnd, dirTgt);
+      if (maxAngles && maxAngles[i] !== undefined) {
+        const ang = 2 * Math.acos(THREE.MathUtils.clamp(q.w, -1, 1));
+        if (ang > maxAngles[i]) q.slerp(id, 1 - maxAngles[i] / ang);
+      }
+
+      for (let j = i + 1; j < n; j++) {
+        tmp.subVectors(joints[j], pivot).applyQuaternion(q).add(pivot);
+        joints[j].copy(tmp);
+      }
+    }
+
+    for (let i = 0; i < n - 1; i++) {
+      tmp.subVectors(joints[i + 1], joints[i]);
+      const len = tmp.length() || 1;
+      tmp.multiplyScalar(boneLengths[i] / len);
+      joints[i + 1].copy(joints[i]).add(tmp);
+    }
+  }
+}
+
+// ─── Scene ───────────────────────────────────────────────────
+const container = document.getElementById('sp-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87a8c4);
+scene.fog = new THREE.Fog(0x87a8c4, 12, 42);
+
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 80);
+camera.position.set(4, 3.2, 5.5);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0, 0.4, 0);
+controls.maxPolarAngle = Math.PI * 0.48;
+controls.minDistance = 2;
+controls.maxDistance = 18;
+
+scene.add(new THREE.HemisphereLight(0xc8e6ff, 0x3d4a2e, 0.55));
+const sun = new THREE.DirectionalLight(0xfff4d6, 1.1);
+sun.position.set(6, 12, 4);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 30;
+sun.shadow.camera.left = sun.shadow.camera.bottom = -10;
+sun.shadow.camera.right = sun.shadow.camera.top = 10;
+scene.add(sun);
+
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(28, 28),
+  new THREE.MeshStandardMaterial({ color: 0x5a6b48, roughness: 0.92 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const grid = new THREE.GridHelper(28, 28, 0x4a5a3a, 0x3a4a32);
+grid.position.y = 0.01;
+scene.add(grid);
+
+function addRock(x, z, s) {
+  const m = new THREE.Mesh(
+    new THREE.DodecahedronGeometry(s, 0),
+    new THREE.MeshStandardMaterial({ color: 0x6a6a72, roughness: 0.85, flatShading: true })
+  );
+  m.position.set(x, s * 0.55, z);
+  m.rotation.set(Math.random() * 0.5, Math.random() * 6, Math.random() * 0.5);
+  m.castShadow = m.receiveShadow = true;
+  scene.add(m);
+}
+[[-3, -2, 0.35], [2.5, 1.8, 0.5], [-1.5, 3, 0.28], [4, -3, 0.4]].forEach(([x, z, s]) => addRock(x, z, s));
+
+const stump = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.45, 0.55, 0.35, 10),
+  new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 1 })
+);
+stump.position.set(-2.2, 0.175, 1.2);
+stump.castShadow = stump.receiveShadow = true;
+scene.add(stump);
+
+// ─── Spider ──────────────────────────────────────────────────
+const spider = new THREE.Group();
+scene.add(spider);
+
+const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2a2a30, roughness: 0.55, metalness: 0.15 });
+const jointMat = new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.7 });
+const legMat = new THREE.MeshStandardMaterial({ color: 0x1a1a22, roughness: 0.5, metalness: 0.2 });
+
+const cephalothorax = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 16), bodyMat);
+cephalothorax.scale.set(1.15, 0.65, 1.05);
+cephalothorax.castShadow = true;
+spider.add(cephalothorax);
+
+const abdomen = new THREE.Mesh(new THREE.SphereGeometry(0.38, 18, 14), bodyMat);
+abdomen.position.set(0, 0.05, -0.48);
+abdomen.scale.set(0.95, 0.7, 1.15);
+abdomen.castShadow = true;
+spider.add(abdomen);
+
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 10), bodyMat);
+head.position.set(0, 0.02, 0.42);
+head.castShadow = true;
+spider.add(head);
+
+const segGeo = new THREE.CylinderGeometry(0.035, 0.028, 1, 6);
+segGeo.translate(0, 0.5, 0);
+
+const BONE_LEN = [0.32, 0.48, 0.42];
+const MAX_ANG = [0.85, 1.1, 1.35];
+const LEG_ANGLES = [0.35, 0.85, 1.45, 2.05, 2.55, 3.15, 3.75, 4.35];
+const LEG_SIDE = [1, 1, 1, 1, -1, -1, -1, -1];
+
+let showIK = false;
+const ikLineMat = new THREE.LineBasicMaterial({ color: 0xffeb3b, transparent: true, opacity: 0.9 });
+
+function makeLeg() {
+  const segs = [];
+  for (let i = 0; i < 3; i++) {
+    const mesh = new THREE.Mesh(segGeo, legMat);
+    mesh.castShadow = true;
+    spider.add(mesh);
+    segs.push(mesh);
+  }
+  const jointMeshes = [];
+  for (let i = 0; i < 4; i++) {
+    const jm = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), jointMat);
+    jm.castShadow = true;
+    spider.add(jm);
+    jointMeshes.push(jm);
+  }
+  const lineGeo = new THREE.BufferGeometry();
+  const line = new THREE.Line(lineGeo, ikLineMat);
+  line.visible = false;
+  spider.add(line);
+  return { segs, jointMeshes, line };
+}
+
+const legs = [];
+for (let i = 0; i < 8; i++) {
+  legs.push({
+    angle: LEG_ANGLES[i],
+    side: LEG_SIDE[i],
+    phase: i * 0.125,
+    boneLengths: [...BONE_LEN],
+    joints: [
+      new THREE.Vector3(), new THREE.Vector3(),
+      new THREE.Vector3(), new THREE.Vector3(),
+    ],
+    target: new THREE.Vector3(),
+    ...makeLeg(),
+  });
+}
+
+const _yAxis = new THREE.Vector3(0, 1, 0);
+const _dir = new THREE.Vector3();
+
+function orientSegment(mesh, a, b) {
+  const len = a.distanceTo(b);
+  if (len < 1e-5) return;
+  mesh.position.copy(a).lerp(b, 0.5);
+  mesh.scale.set(1, len, 1);
+  _dir.subVectors(b, a).normalize();
+  mesh.quaternion.setFromUnitVectors(_yAxis, _dir);
+}
+
+function updateLegVisual(leg) {
+  const j = leg.joints;
+  for (let i = 0; i < 3; i++) orientSegment(leg.segs[i], j[i], j[i + 1]);
+  for (let i = 0; i < 4; i++) leg.jointMeshes[i].position.copy(j[i]);
+  const pos = new Float32Array(12);
+  for (let i = 0; i < 4; i++) {
+    pos[i * 3] = j[i].x;
+    pos[i * 3 + 1] = j[i].y;
+    pos[i * 3 + 2] = j[i].z;
+  }
+  leg.line.geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  leg.line.geometry.attributes.position.needsUpdate = true;
+  leg.line.visible = showIK;
+}
+
+function getAttachLocal(angle, side) {
+  const lateral = 0.38 * side;
+  const forward = 0.55 * Math.cos(angle);
+  const sideW = 0.55 * Math.sin(angle);
+  return new THREE.Vector3(sideW, -0.08, forward + lateral * 0.15);
+}
+
+function getFootTarget(leg, yaw, speed, time) {
+  const cycle = (time * 0.0035 * (0.4 + speed) + leg.phase) % 1;
+  const swing = cycle < 0.45;
+  const lift = swing ? Math.sin((cycle / 0.45) * Math.PI) * 0.22 : 0;
+  const stride = speed > 0.05 ? 0.38 : 0;
+  const strideOff = swing ? stride * (1 - cycle / 0.45) : -stride * 0.35;
+
+  const reach = 0.95;
+  const lx = Math.cos(leg.angle) * reach + strideOff;
+  const lz = Math.sin(leg.angle) * reach;
+  const ly = 0.02 + lift;
+
+  const local = new THREE.Vector3(leg.side * 0.52 + lx * 0.15, ly, lz);
+  const c = Math.cos(yaw);
+  const s = Math.sin(yaw);
+  return new THREE.Vector3(
+    spider.position.x + local.x * c - local.z * s,
+    local.y,
+    spider.position.z + local.x * s + local.z * c
+  );
+}
+
+// ─── Movement ────────────────────────────────────────────────
+const keys = {};
+let moveSpeed = 0.55;
+let ikIter = 12;
+let yaw = 0;
+
+document.addEventListener('keydown', (e) => { keys[e.code] = true; });
+document.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+document.getElementById('sp-speed').addEventListener('input', (e) => {
+  moveSpeed = parseInt(e.target.value, 10) / 100;
+});
+document.getElementById('sp-iter').addEventListener('input', (e) => {
+  ikIter = parseInt(e.target.value, 10);
+});
+document.getElementById('sp-show-ik').addEventListener('click', function () {
+  showIK = !showIK;
+  this.classList.toggle('active', showIK);
+});
+document.getElementById('sp-reset').addEventListener('click', () => {
+  spider.position.set(0, 0, 0);
+  yaw = 0;
+  spider.rotation.y = 0;
+});
+
+function resize() {
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+resize();
+window.addEventListener('resize', resize);
+
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = performance.now();
+
+  let vx = 0;
+  let vz = 0;
+  if (keys.KeyW || keys.ArrowUp) vz -= 1;
+  if (keys.KeyS || keys.ArrowDown) vz += 1;
+  if (keys.KeyA || keys.ArrowLeft) vx -= 1;
+  if (keys.KeyD || keys.ArrowRight) vx += 1;
+  if (keys.KeyQ) yaw += dt * 1.8;
+  if (keys.KeyE) yaw -= dt * 1.8;
+
+  const len = Math.hypot(vx, vz);
+  if (len > 0) {
+    vx /= len;
+    vz /= len;
+    const speed = moveSpeed * 2.2;
+    spider.position.x += (vx * Math.cos(yaw) - vz * Math.sin(yaw)) * speed * dt;
+    spider.position.z += (vx * Math.sin(yaw) + vz * Math.cos(yaw)) * speed * dt;
+    spider.rotation.y = yaw + Math.atan2(vx, -vz);
+  } else {
+    spider.rotation.y = THREE.MathUtils.lerp(spider.rotation.y, yaw, 0.08);
+  }
+
+  spider.position.x = THREE.MathUtils.clamp(spider.position.x, -12, 12);
+  spider.position.z = THREE.MathUtils.clamp(spider.position.z, -12, 12);
+
+  const actualSpeed = len > 0 ? moveSpeed : 0;
+
+  for (const leg of legs) {
+    const attachLocal = getAttachLocal(leg.angle, leg.side);
+    const attachWorld = attachLocal.clone().applyAxisAngle(_yAxis, spider.rotation.y).add(spider.position);
+    leg.target.copy(getFootTarget(leg, spider.rotation.y, actualSpeed, t));
+
+    leg.joints[0].copy(attachWorld);
+    _dir.subVectors(leg.target, leg.joints[0]).normalize();
+    leg.joints[1].copy(leg.joints[0]).add(_dir.clone().multiplyScalar(leg.boneLengths[0]));
+    leg.joints[2].copy(leg.joints[1]).add(_dir.clone().multiplyScalar(leg.boneLengths[1]));
+    leg.joints[3].copy(leg.joints[2]).add(_dir.clone().multiplyScalar(leg.boneLengths[2]));
+
+    solveCCD(leg.joints, leg.boneLengths, leg.target, ikIter, MAX_ANG);
+    updateLegVisual(leg);
+  }
+
+  controls.target.lerp(
+    new THREE.Vector3(spider.position.x, 0.35, spider.position.z),
+    0.06
+  );
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+animate();
+</script>

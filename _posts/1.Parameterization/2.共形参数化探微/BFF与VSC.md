@@ -1,218 +1,230 @@
-## 2.5边界自动调整方法 BFF (Boundary First Flattening)
-
-
+## 2.5 边界自动调整方法 BFF (Boundary First Flattening)
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260529132033157.png)
 
+共形映射 $f:M\to\mathbb{C}$ 写为 $f=a+b\mathrm{i}$，其中 $a,b$ 为共轭调和函数对；尺度因子 $e^u=|df|$ 由边界曲率/长度数据控制。
+
 ### 算法核心洞察
 
-前面介绍的 CETM、Circle Patterns、Ricci 流等方法，都是**同时求解内部和边界**的共形参数化。Sawhney & Crane (2017) 提出了一个截然不同的思路：**先处理边界，再处理内部**——这就是 BFF（Boundary First Flattening）的核心洞察。
+CETM、Circle Patterns、Ricci 流等**同时求内部与边界**；BFF（Sawhney & Crane, 2017）**先边界、后内部**。
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250318173816762.png)
 
-**关键思想**：共形映射 $f = a + bi$ 是共轭调和映射对。由调和函数的性质，**边界值唯一决定了内部值**。因此我们可以：
+共形映射 $f=a+b\mathrm{i}$ 为共轭调和对；**边界值唯一决定内部**。流程：
 
-1. **先**在边界上确定目标曲率分布（如均匀分布 → 圆形边界）
-2. **再**用 Poisson 方程将边界信息传播到内部
-3. **最后**通过 Hilbert 变换得到共轭函数
-
-这种方式将耦合的非线性问题解耦为两个线性子问题，既简化了计算，又支持实时交互式编辑。
+1. 在 $\partial M$ 上确定目标曲率/长度；
+2. Poisson 方程将边界信息传播到内部；
+3. Hilbert 变换得到共轭分量 $b$。
 
 ### 数学基础：Cherrier 方程
 
-Cherrier 方程是带边流形上的 Yamabe 方程，描述了共形因子 $u$ 在内部和边界上分别满足的条件：
+Cherrier 方程（带边流形上的 Yamabe 方程）描述共形因子 $u$（$\tilde g=e^{2u}g$）：
 
 $$
-\begin{array} { r c l c l }
-{ \Delta u } & { = } & { K - e ^ { 2 u } \widetilde { K } } & { \mathrm { on } } & { M } \\[6pt]
-{ \frac { \partial u } { \partial n } } & { = } & { \kappa - e ^ { u } \widetilde { \kappa } } & { \mathrm { on } } & { \partial M }
-\end{array}
+\begin{aligned}
+\Delta u &= K - e^{2u}\widetilde K && \text{on } M,\\
+\frac{\partial u}{\partial n} &= \kappa - e^{u}\widetilde\kappa && \text{on } \partial M.
+\end{aligned}
 $$
 
-其中：
-- $\Delta$ 是 Laplace-Beltrami 算子
-- $K, \kappa$ 分别是当前度量的内部高斯曲率和边界测地曲率
-- $\widetilde{K}, \widetilde{\kappa}$ 是目标度量的对应曲率
-- $u$ 是共形因子，满足 $\widetilde{g} = e^{2u}g$
-
-**对于平坦参数化**（目标度量是欧氏度量）：$\widetilde{K} = 0, \widetilde{\kappa}$ 由用户指定。
+$K,\kappa$ 为当前度量曲率；$\widetilde K,\widetilde\kappa$ 为目标度量曲率。平坦参数化取 $\widetilde K=0$，$\widetilde\kappa$ 由用户指定。
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251026164745483.png)
 
-对内部方程(1)进行积分，结合 Gauss-Bonnet 定理：
+共轭调和条件（Cauchy–Riemann）：
+
+$$
+J\nabla a=\nabla b,\qquad f=a+b\mathrm{i},\qquad \Delta a=\Delta b=0.
+$$
+
+对内部方程积分，结合 Gauss–Bonnet（圆盘 $\chi(M)=1$）：
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251026164937672.png)
 
-其中 $\Omega$ 是离散网格的角盈。
+$$
+\int_M \Delta u\,dA=\int_{\partial M}\frac{\partial u}{\partial n}\,ds
+=\int_M K\,dA-\int_M e^{2u}\widetilde K\,dA.
+$$
 
-同样对边界方程(2)进行积分：
+$\widetilde K=0$ 时 $\displaystyle\int_{\partial M}\frac{\partial u}{\partial n}=\int_M K\,dA$；又 $\displaystyle\int_M K\,dA+\int_{\partial M}\kappa\,ds=2\pi$，故
+
+$$
+\int_{\partial M}\frac{\partial u}{\partial n}\,ds=2\pi-\int_{\partial M}\kappa\,ds=\Omega,
+$$
+
+$\Omega$ 为离散**角盈**（内部顶点角度亏损之和）。
+
+对边界方程积分：
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251026165025429.png)
 
-其中定义在边界上的 $h$ 称为 **Neumann 值**，它编码了边界曲率信息。
+$$
+\int_{\partial M}\frac{\partial u}{\partial n}\,ds=\int_{\partial M}(\kappa-e^u\widetilde\kappa)\,ds.
+$$
+
+离散边界上定义 **Neumann 数据** $h_i$（编码目标曲率差）：
+
+$$
+h_i=\kappa_i-\widetilde\kappa_i.
+$$
 
 ### 共轭对偶
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260529130728969.png)
 
-### Poincaré-Steklov 算子：边界条件转换
+$$
+f=a+b\mathrm{i},\quad J\nabla a=\nabla b,\quad |df|=e^u.
+$$
 
-BFF 的核心机制是 **Poincaré-Steklov 算子**——将 Poisson 方程的 Dirichlet 边界条件与 Neumann 边界条件相互转换。BFF 支持两种输入模式：
+$a$ 由 Poisson 方程（及边界条件）求得；$b$ 由 $\nabla b=(\nabla a)^\perp$ 经 Hilbert 变换恢复。
 
-**模式 1：Curvature 驱动（Neumann → Dirichlet）**
+### Poincaré–Steklov 算子
 
-指定目标边界曲率 $\widetilde{\kappa}$，算法自动确定边界形状：
+将 Poisson 方程 $\Delta u=0$ 的 Dirichlet 迹与 Neumann 迹相互转换：
+
+$$
+\Lambda_D:\ a|_{\partial M}\mapsto \frac{\partial a}{\partial n}\Big|_{\partial M},\qquad
+\Lambda_N:\ \frac{\partial a}{\partial n}\Big|_{\partial M}\mapsto a|_{\partial M}.
+$$
+
+**模式 1：Curvature 驱动（Neumann $\to$ Dirichlet）**
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251026182359225.png)
 
-**模式 2：Position 驱动（Dirichlet → Neumann）**
+给定 $\widetilde\kappa_i$，设 $h_i=\kappa_i-\widetilde\kappa_i$，解
 
-直接指定目标边界位置 $g$（如映射到单位圆），算法求解内部：
+$$
+\Delta a=0\ \text{on }M,\qquad \frac{\partial a}{\partial n}=h\ \text{on }\partial M,
+$$
+
+得边界 $a|_{\partial M}$，再 Hilbert 求 $b$。
+
+**模式 2：Position 驱动（Dirichlet $\to$ Neumann）**
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251026182335699.png)
 
-### Hilbert 变换：从调和函数到共形映射
-
-共形映射 $f = a + bi$ 由一对共轭调和函数组成。给定调和函数 $a$，其共轭 $b$ 满足 Cauchy-Riemann 方程：
+给定边界位置 $g=a|_{\partial M}$（如单位圆），分块 Laplacian 解内部：
 
 $$
-\frac{\partial b}{\partial x} = -\frac{\partial a}{\partial y}, \quad \frac{\partial b}{\partial y} = \frac{\partial a}{\partial x}
+L_{II}\,a_I=-L_{IB}\,g.
 $$
 
-等价于 $\nabla b = (\nabla a)^\perp$（将 $a$ 的梯度旋转 $90^\circ$）。
+### Hilbert 变换
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251026182754319.png)
 
-**离散 Hilbert 变换步骤**：
-1. 在每个三角面上计算 $\nabla a$（通过重心坐标梯度）
-2. 将梯度旋转 $90^\circ$ 得到 $\nabla b$ 的面估计
-3. 将面梯度面积加权插值到顶点
-4. 对 $\nabla b$ 求散度，解 Poisson 方程 $L \cdot b = \text{div}(\nabla b)$
+$$
+\frac{\partial b}{\partial x}=-\frac{\partial a}{\partial y},\quad
+\frac{\partial b}{\partial y}=\frac{\partial a}{\partial x}
+\quad\Leftrightarrow\quad \nabla b=(\nabla a)^\perp.
+$$
 
-计算出 Neumann 值 $h$ 后，即可将边界延拓到内部：
+离散步骤：面片上求 $\nabla a$ → 旋转 $90^\circ$ 得 $\nabla b$ → 插值到顶点 → 解 $L b=\mathrm{div}(\nabla b)$。
+
+得到 $h$ 后，将边界延拓到内部：
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251026182551767.png)
+
+$$
+\begin{bmatrix}L_{II}&L_{IB}\\ L_{IB}^T&L_{BB}\end{bmatrix}
+\begin{bmatrix}a_I\\a_B\end{bmatrix}
+=
+\begin{bmatrix}0\\ h\end{bmatrix}
+\quad\text{或}\quad
+L_{II}a_I=-L_{IB}g\ (a_B=g).
+$$
 
 ### 算法流程
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250318174618349.png)
 
-**Curvature 模式完整流程**：
+**Curvature 模式**：$\kappa_i\to h_i=\kappa_i-\widetilde\kappa_i\to$ Poisson(Neumann) $\to$ Hilbert $\to (a,b)$。
 
-```
-1. 计算离散边界曲率 κ_i（每个边界顶点处的转向角缺陷）
-2. 设定目标边界曲率 κ̃_i（默认：均匀分布 2π/B → 圆形边界）
-3. 计算 Neumann 数据 h_i = κ_i - κ̃_i
-4. 解 Poisson 方程 L·a = 0，边界条件 ∂a/∂n = h
-5. Hilbert 变换：∇b = (∇a)^⊥ → 解 Poisson 得 b
-6. (a, b) 即为共形参数化 UV 坐标
-```
+**Position 模式**：指定 $g\to L_{II}a_I=-L_{IB}g\to (a,b)$。
 
-**Position 模式流程**：
-
-```
-1. 指定目标边界位置 g（如单位圆上的点）
-2. 构建边界-内部分块 Laplacian：L_II · a_I = -L_IB · g
-3. 分别对 U 和 V 分量求解
-4. 拼接得到完整 UV
-```
-
-**交互式编辑**：用户可以拖拽边界顶点实时调整参数域形状：
+交互编辑：拖拽边界顶点实时更新 $\widetilde\kappa$ 或 $g$。
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251026182908277.png)
 
-
+---
 
 ## Poisson 方程离散化
 
-Poisson 方程 $\Delta a = b$ 是一种椭圆型偏微分方程，自然界中应用广泛（如热扩散）。在三角网格上离散化后转化为稀疏线性系统：
+$\Delta a=b$ 在三角网格上离散为 $A a=P\phi$，$A$ 为 cotan-Laplace 矩阵：
 
 $$
-A a = P \phi
+A_{ij}=-\tfrac12\bigl(\cot\beta_p^{ij}+\cot\beta_q^{ij}\bigr),\quad
+A_{ii}=-\sum_{j\sim i}A_{ij}.
 $$
 
-其中 $A \in \mathbb{R}^{V \times V}$ 为 **cotan-Laplace 矩阵**：
+$P$ 为 lumped 质量矩阵。**Neumann**：$\phi_B-h$ 在边界行；**Dirichlet**：$a_B=g$ 已知时 $A_{II}a_I=\phi_I-A_{IB}g$。
 
-$$
-A_{ij} = -\frac{1}{2}\left(\cot\beta_p^{ij} + \cot\beta_q^{ij}\right),\quad
-A_{ii} = -\sum_{ij \in E} A_{ij}
-$$
-
-$P$ 是 Mass 矩阵（对角 lumped mass：每个顶点面积 = 相邻面面积的 1/3 之和）。
-
-### 边界条件的分块处理
-
-将网格顶点分为内部点（$I$）与边界点（$B$），对矩阵 $A$ 分块：
-
-**Neumann 边界条件**：
-
-$$
-\begin{bmatrix}
-A_{II} & A_{IB} \\
-A_{IB}^T & A_{BB}
-\end{bmatrix}
-\begin{bmatrix}
-a_I \\ a_B
-\end{bmatrix}
-=
-\begin{bmatrix}
-\phi_I \\ \phi_B - h
-\end{bmatrix}
-$$
-
-其中 $h$ 是 Neumann 边界数据（编码边界曲率差）。
-
-**Dirichlet 边界条件**（$a_B = g$ 已知）：
-
-$$
-A_{II}\, a_I = \phi_I - A_{IB}\, g
-$$
-
-消去边界未知量后得到仅关于内部变量的对称正定系统，可直接用 Cholesky 分解求解。
+> **代码实现**：[代码实现汇总](https://lixiongguo.github.io/parameterization/2019/12/01/代码实现汇总/#1-bff-边界优先展开)；在线演示 [uv-unwrap.html](https://lixiongguo.github.io/uv-unwrap.html) 选 **BFF**。
 
 ---
 
-> **代码实现**：BFF 算法的完整 C++ 源码、WebAssembly 编译命令、JavaScript 调用接口和复杂度分析已统一归集到 [代码实现汇总](https://lixiongguo.github.io/parameterization/2019/12/01/代码实现汇总/#1-bff-边界优先展开)。
-> 
-> 在线演示：[https://lixiongguo.github.io/uv-unwrap.html](https://lixiongguo.github.io/uv-unwrap.html)，选择 **"BFF (边界优先展开)"**。
+## Variational Surface Cut (VSC)
 
-
-## Variational Surface Cut
+Sharp & Crane, SIGGRAPH 2018：用变分法求切割路径 $\gamma$，使展平后度量扭曲最小（无需显式参数化）。
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251010142551440.png)
 
-可以得到很好的分割效果
+在曲面上求闭合切割曲线 $\gamma$，切开后的曲面片 $M_\gamma$ 可低扭曲展平。
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251010192434507.png)
 
-用变分法的方式求解析优化的方式，而不再用传统的组合优化方式
+切割线光滑，可穿过三角形内部（不限于网格边）。
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251010174554855.png)
 
-定义一个依赖于切割路径的能量函数，然后通过连续变形（演化）切割路径不断降低这个能量值
+传统组合优化在边上搜索；VSC 在连续曲线上用形状导数优化**展平扭曲**本身。
 
-变形过程中需要共形因子时刻满足如下Yamabe方程
+变形过程中共形因子 $u$ 满足 Yamabe 方程：
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251010183229321.png)
 
-
+$$
+\Delta u=-K\ \text{on }M_\gamma,\qquad u=0\ \text{on }\partial M_\gamma.
+$$
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251010142836409.png)
 
-通过连续变形一条曲线 $\gamma$,使得一方面distortion尽可能小，另外长度尽可能小
+连续变形 $\gamma(t)$，同时最小化扭曲并抑制切割长度。
 
-用Dirichlet能量来度量distortion
+用 Dirichlet 能量度量面积扭曲：
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251010143206213.png)
 
-仅要求distortion尽可能小，那么问题就是ill-posed，由于可以通过不断延展 $\gamma$ 的长度来减小distortion，所以需要对curve长度进行约束
+$$
+E_D(\gamma):=\int_{M_\gamma}|\nabla u|^2\,dA.
+$$
+
+仅最小化 $E_D$ 为 ill-posed（延长 $\gamma$ 可无限降扭曲），需约束长度：
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251010143507440.png)
 
-Cea方法
+$$
+E_L(\gamma):=\tfrac12\int_\gamma ds,\qquad
+E(\gamma):=E_D(\gamma)+\alpha_L E_L(\gamma).
+$$
+
+**Céa 方法**（PDE 约束的形状优化）：
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251010145117349.png)
 
-构造Lagrangian函数
+对约束 $\Delta u=-K$、$u|_{\partial M_\gamma}=0$ 构造 Lagrangian，在临界点求形状导数 $D_\sigma E$。
 
 ![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251010192645924.png)
+
+$$
+\mathcal{L}=\int_{M_\gamma} j(u)\,dA+\int_{M_\gamma} p(\Delta u+K)\,dA+\int_{\partial M_\gamma}\lambda u\,ds.
+$$
+
+Dirichlet 能量下，沿切割法向 $n$ 的梯度流为
+
+$$
+\frac{d}{dt}\gamma=-\sigma^*\,n,\qquad
+\sigma^*=\Bigl(\frac{\partial u^+}{\partial n}\Bigr)^2-\Bigl(\frac{\partial u^-}{\partial n}\Bigr)^2+\alpha_L\kappa_\gamma,
+$$
+
+$u^\pm$ 为 $\gamma$ 两侧尺度因子，$\kappa_\gamma$ 为切割曲线测地曲率。
