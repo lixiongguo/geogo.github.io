@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ruppert 三角化 - Delaunay 细化</title>
-  <script src="assets/js/wasm-loader.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
   <style>
@@ -126,7 +125,7 @@
   </div>
   <div class="main">
     <div class="panel" id="main-panel">
-      <div class="panel-label">字母网格 — Ruppert Delaunay 细化（CDT / WASM）</div>
+      <div class="panel-label">字母网格 — Ruppert Delaunay 细化（质量三角化）</div>
       <canvas id="main-canvas"></canvas>
       <div class="panel-info" id="panel-info"></div>
     </div>
@@ -266,89 +265,7 @@
     camera.lookAt(0, 0, 0);
   }
 
-  // ==================== WASM (CDT + Ruppert) ====================
-
-  let ruppertInst = null;
-
-  async function initRuppertWasm() {
-    if (ruppertInst) return ruppertInst;
-    try {
-      ruppertInst = await WasmLoader.loadWasmModule('ruppert', 'RuppertModule');
-      return ruppertInst;
-    } catch (e) {
-      console.warn('Ruppert WASM 加载失败，将使用 JS 回退', e);
-      return null;
-    }
-  }
-
-  function extractBoundaryPSLG(V, F) {
-    const key = (a, b) => a < b ? a + '_' + b : b + '_' + a;
-    const cnt = new Map();
-    for (const f of F) {
-      for (const [a, b] of [[f[0], f[1]], [f[1], f[2]], [f[2], f[0]]]) {
-        const k = key(a, b);
-        cnt.set(k, (cnt.get(k) || 0) + 1);
-      }
-    }
-    const bset = new Set(), segs = [];
-    for (const f of F) {
-      for (const [a, b] of [[f[0], f[1]], [f[1], f[2]], [f[2], f[0]]]) {
-        if (cnt.get(key(a, b)) === 1) { segs.push([a, b]); bset.add(a); bset.add(b); }
-      }
-    }
-    const remap = new Map(), ptsFlat = [];
-    for (const vi of bset) {
-      remap.set(vi, ptsFlat.length / 2);
-      ptsFlat.push(V[vi][0], V[vi][1]);
-    }
-    const segIdx = [];
-    for (const [a, b] of segs) segIdx.push(remap.get(a), remap.get(b));
-    return { ptsFlat, segIdx, count: ptsFlat.length / 2 };
-  }
-
-  function callRuppertWasm(inst, ptsArr, segArr, minAngle) {
-    const ptsPtr = inst._malloc(ptsArr.length * 8);
-    inst.HEAPF64.set(ptsArr, ptsPtr / 8);
-    const segPtr = inst._malloc(segArr.length * 4);
-    inst.HEAP32.set(segArr, segPtr / 4);
-    let result = null;
-    try {
-      const ret = inst.ccall('ruppert_run', 'number',
-        ['number', 'number', 'number', 'number', 'number', 'number', 'number'],
-        [ptsPtr, ptsArr.length, segPtr, segArr.length, minAngle, 0, 0]);
-      if (ret === 0) {
-        const pSize = inst.ccall('get_points_size', 'number', [], []);
-        const pPtr  = inst.ccall('get_points', 'number', [], []);
-        const tSize = inst.ccall('get_triangles_size', 'number', [], []);
-        const tPtr  = inst.ccall('get_triangles', 'number', [], []);
-        const positions = [];
-        for (let i = 0; i < pSize; i += 2) {
-          positions.push([inst.HEAPF64[pPtr / 8 + i], inst.HEAPF64[pPtr / 8 + i + 1], 0]);
-        }
-        const faces = [];
-        for (let i = 0; i < tSize; i += 3) {
-          faces.push([inst.HEAP32[tPtr / 4 + i], inst.HEAP32[tPtr / 4 + i + 1], inst.HEAP32[tPtr / 4 + i + 2]]);
-        }
-        const ms = inst.ccall('get_last_time_ms', 'number', [], []);
-        result = { positions, faces, ms };
-      }
-    } finally {
-      inst._free(ptsPtr);
-      inst._free(segPtr);
-      inst.ccall('dispose', 'void', [], []);
-    }
-    return result;
-  }
-
-  async function ruppertWasm(V, F, minAngle) {
-    const inst = await initRuppertWasm();
-    if (!inst) return null;
-    const { ptsFlat, segIdx, count } = extractBoundaryPSLG(V, F);
-    if (count < 3 || segIdx.length < 6) return null;
-    return callRuppertWasm(inst, new Float64Array(ptsFlat), new Int32Array(segIdx), minAngle);
-  }
-
-  // ==================== Ruppert 三角化 (JS 回退) ====================
+  // ==================== Ruppert 三角化 ====================
 
   function circumcenter2D(a, b, c) {
     const ax = a[0], ay = a[1], bx = b[0], by = b[1], cx = c[0], cy = c[1];
@@ -580,34 +497,21 @@
     const minAngle = parseInt(minAngleSelect.value, 10);
     setStatus('Ruppert 三角化中...', '#ffb446');
 
-    (async () => {
+    setTimeout(() => {
       try {
         const src = originalMeshData;
-        let refined = null;
-        let viaWasm = false;
-        try {
-          refined = await ruppertWasm(src.positions, src.faces, minAngle);
-          viaWasm = !!(refined && refined.faces.length);
-        } catch (e) {
-          console.error('WASM Ruppert 失败', e);
-        }
-        if (!viaWasm) {
-          refined = ruppertRefine(src.positions, src.faces, minAngle, 200);
-          refined.positions = refined.positions.map(p => [p[0], p[1], p[2] != null ? p[2] : 0]);
-        }
+        const refined = ruppertRefine(src.positions, src.faces, minAngle, 200);
         currentMeshData = refined;
 
-        const info = 'Ruppert' + (viaWasm ? ' (CDT/WASM)' : ' (JS)')
-          + ': ' + refined.positions.length + ' 顶点 | ' + refined.faces.length
-          + ' 面 (最小角 ≥ ' + minAngle + '°)'
-          + (refined.ms ? ' | ' + refined.ms.toFixed(1) + ' ms' : '');
+        const info = 'Ruppert: ' + refined.positions.length + ' 顶点 | ' + refined.faces.length
+          + ' 面 (最小角 ≥ ' + minAngle + '°)';
         showMesh(refined, info);
         setStatus('Ruppert 三角化完成', '#89f0b6');
       } catch (err) {
         console.error(err);
         setStatus('三角化失败: ' + err.message, '#ff9d9d');
       }
-    })();
+    }, 10);
   });
 
   async function loadMesh(path, label) {
@@ -682,7 +586,6 @@
   }
 
   resize();
-  initRuppertWasm();
   letterSelect.value = 'A';
   loadMesh('assets/charaters/A_2d.obj', '字母 A');
   animate();

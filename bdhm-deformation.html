@@ -82,6 +82,9 @@ canvas.dragging{cursor:grabbing}
       <label class="chk"><input type="checkbox" id="show-color"> 失真着色</label>
     </div>
     <div class="group">
+      <label class="chk"><input type="checkbox" id="show-cage" checked> 显示 Cage</label>
+    </div>
+    <div class="group">
       <button id="demo-btn">演示形变</button>
       <button class="btn-reset" id="reset-btn">复位</button>
     </div>
@@ -103,6 +106,7 @@ canvas.dragging{cursor:grabbing}
     </div>
     <div class="hint">
       选择真实模型（来自 <b>assets/bdhm_models</b>）后<b>拖动</b>黄色操控点变形，或点「<b>演示形变</b>」播放录制位姿。
+      勾选「<b>显示 Cage</b>」可叠加 data.json 中的 <b>allcages</b> 控制笼（外轮廓青色、洞轮廓橙色），随变形联动。
       开启「有界失真」后每个三角形的共形扭曲被约束 <b>K ≤ C</b> 且 <b>无翻转</b>（J&gt;0）；关闭后对比自由变形的过度拉伸与翻转（红色）。
     </div>
     <div class="title-tag">
@@ -330,8 +334,12 @@ function wasmComputeStats(){
 let texImage=null;    // 当前模型纹理 (Image)
 let texReady=false;   // 纹理是否加载完成
 let texUV=null;       // 每顶点纹理坐标 (像素) Float64Array 2*nV
+let texDomainBBox=null;
+let texImageRect=null;
+let modelJson=null;
 let demoTargets={};   // 录制的目标位姿 {vert: [x,y]} (来自 P2Pdst)
 let modelName='';     // 当前模型名 ('' = 合成形状)
+let modelCages=[];    // 来自 data.json 的 cage 多边形
 let loadToken=0;      // 防止异步加载竞态
 
 const opt={
@@ -393,68 +401,221 @@ function nearestVerts(pts){
   return res;
 }
 
+/* ============ Cage 边界 + 纹理域 ============ */
+function extractBoundaryLoops(V, F) {
+  const key = (a, b) => a < b ? a + '_' + b : b + '_' + a;
+  const cnt = new Map();
+  for (const f of F) {
+    for (let e = 0; e < 3; e++) {
+      const a = f[e], b = f[(e + 1) % 3];
+      const k = key(a, b);
+      cnt.set(k, (cnt.get(k) || 0) + 1);
+    }
+  }
+  const boundary = [];
+  for (const f of F) {
+    for (let e = 0; e < 3; e++) {
+      const a = f[e], b = f[(e + 1) % 3];
+      if (cnt.get(key(a, b)) === 1) boundary.push([a, b]);
+    }
+  }
+  const loops = [], used = new Set();
+  for (let si = 0; si < boundary.length; si++) {
+    if (used.has(si)) continue;
+    const loop = [];
+    let head = boundary[si][0], tail = boundary[si][1];
+    loop.push([V[head][0], V[head][1]]);
+    used.add(si);
+    for (let guard = 0; guard < boundary.length + 2; guard++) {
+      loop.push([V[tail][0], V[tail][1]]);
+      if (tail === head) break;
+      let found = false;
+      for (let i = 0; i < boundary.length; i++) {
+        if (used.has(i)) continue;
+        const [u, v] = boundary[i];
+        if (u === tail) { used.add(i); tail = v; found = true; break; }
+        if (v === tail) { used.add(i); tail = u; found = true; break; }
+      }
+      if (!found) break;
+    }
+    if (loop.length >= 3) loops.push(loop);
+  }
+  return loops;
+}
+
+function polysBBox(polys) {
+  let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+  for (const poly of polys) {
+    if (!poly) continue;
+    for (const p of poly) {
+      minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
+      minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
+    }
+  }
+  return [minX, minY, maxX, maxY];
+}
+
+function imageOpaqueRect(img) {
+  const w = img.naturalWidth, h = img.naturalHeight;
+  if (!w || !h) return [0, 0, w, h];
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0);
+  const data = g.getImageData(0, 0, w, h).data;
+  let minX = w, minY = h, maxX = -1, maxY = -1, found = false;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (data[(y * w + x) * 4 + 3] > 12) {
+      found = true;
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+  }
+  if (!found) return [0, 0, w, h];
+  return [minX, minY, maxX + 1, maxY + 1];
+}
+
+function rebuildTexUV() {
+  if (!rest || !nV) return;
+  const shapePolys = (modelJson && modelJson.v && modelJson.v.length) ? modelJson.v : modelCages;
+  if (!shapePolys || !shapePolys.length) return;
+  const [bx0, by0, bx1, by1] = polysBBox(shapePolys);
+  const scale = (modelJson && modelJson.textureScale) || 1;
+  const bw = (bx1 - bx0) / scale || 1, bh = (by1 - by0) / scale || 1;
+  texDomainBBox = [bx0, by0, bx1, by1];
+  const iw = texImage ? texImage.naturalWidth : ((modelJson && modelJson.img_w) || 1024);
+  const ih = texImage ? texImage.naturalHeight : ((modelJson && modelJson.img_h) || 1024);
+  const [ix0, iy0, ix1, iy1] = texImageRect || [0, 0, iw, ih];
+  const pw = ix1 - ix0 || iw, ph = iy1 - iy0 || ih;
+  texUV = new Float64Array(2 * nV);
+  for (let v = 0; v < nV; v++) {
+    const u = (rest[2 * v] - bx0) / bw;
+    const t = (rest[2 * v + 1] - by0) / bh;
+    texUV[2 * v]     = ix0 + u * pw;
+    texUV[2 * v + 1] = iy0 + (1 - t) * ph;
+  }
+}
+
+function barycentric2D(px, py, ax, ay, bx, by, cx, cy) {
+  const det = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
+  if (Math.abs(det) < 1e-14) return null;
+  const w0 = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / det;
+  const w1 = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / det;
+  const w2 = 1 - w0 - w1;
+  if (w0 >= -1e-8 && w1 >= -1e-8 && w2 >= -1e-8) return [w0, w1, w2];
+  return null;
+}
+
+function deformCagePoint(px, py) {
+  if (!mesh || !rest || !uv) return [px, py];
+  for (let f = 0; f < nF; f++) {
+    const [a, b, c] = mesh.F[f];
+    const bc = barycentric2D(
+      px, py,
+      rest[2 * a], rest[2 * a + 1],
+      rest[2 * b], rest[2 * b + 1],
+      rest[2 * c], rest[2 * c + 1]
+    );
+    if (bc) {
+      const [w0, w1, w2] = bc;
+      return [
+        w0 * uv[2 * a] + w1 * uv[2 * b] + w2 * uv[2 * c],
+        w0 * uv[2 * a + 1] + w1 * uv[2 * b + 1] + w2 * uv[2 * c + 1]
+      ];
+    }
+  }
+  let best = 0, bd = 1e18;
+  for (let v = 0; v < nV; v++) {
+    const d = (rest[2 * v] - px) ** 2 + (rest[2 * v + 1] - py) ** 2;
+    if (d < bd) { bd = d; best = v; }
+  }
+  return [uv[2 * best], uv[2 * best + 1]];
+}
+
+function drawCages() {
+  if (!document.getElementById('show-cage').checked || !modelCages.length) return;
+  ctx.save();
+  ctx.lineWidth = 2.2;
+  ctx.setLineDash([7, 5]);
+  for (let ci = 0; ci < modelCages.length; ci++) {
+    const poly = modelCages[ci];
+    if (!poly || poly.length < 2) continue;
+    ctx.strokeStyle = ci === 0 ? 'rgba(0, 230, 200, 0.92)' : 'rgba(255, 120, 90, 0.88)';
+    ctx.beginPath();
+    for (let i = 0; i < poly.length; i++) {
+      const [x, y] = deformCagePoint(poly[i][0], poly[i][1]);
+      const p = toScreen(x, y);
+      i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]);
+    }
+    ctx.closePath();
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
 /* ============ 构建合成形状 ============ */
-function buildMesh(kind){
-  loadToken++; modelName=''; texReady=false; texImage=null; texUV=null; demoTargets={};
+function buildMesh(kind) {
+  loadToken++; modelName = ''; modelJson = null; texReady = false; texImage = null;
+  texImageRect = null; texUV = null; demoTargets = {};
   let m;
-  if(kind==='bar') m=makeGrid(15,5,3.2,1.0);
-  else if(kind==='square') m=makeGrid(9,9,2.0,2.0);
-  else m=makeCross(9,2.0,2.0);
+  if (kind === 'bar') m = makeGrid(15, 5, 3.2, 1.0);
+  else if (kind === 'square') m = makeGrid(9, 9, 2.0, 2.0);
+  else m = makeCross(9, 2.0, 2.0);
   setupMesh(m);
-  handles=pickHandles(m.V);
-  targets={};
-  for(const h of handles) targets[h]=[rest[2*h],rest[2*h+1]];
+  modelCages = extractBoundaryLoops(m.V, m.F);
+  rebuildTexUV();
+  handles = pickHandles(m.V);
+  targets = {};
+  for (const h of handles) targets[h] = [rest[2 * h], rest[2 * h + 1]];
 }
 
 /* ============ 加载真实模型 (assets/bdhm_models/<name>/) ============ */
-async function loadModel(name){
-  const token=++loadToken;
-  modelName=name; texReady=false; texImage=null; texUV=null;
-  setStatusMsg('正在加载 '+name+' …');
+async function loadModel(name) {
+  const token = ++loadToken;
+  modelName = name; modelJson = null; texReady = false; texImage = null;
+  texImageRect = null; texUV = null;
+  setStatusMsg('正在加载 ' + name + ' …');
   let data;
-  try{
-    const resp=await fetch('assets/bdhm_models/'+name+'/data.json');
-    data=await resp.json();
-  }catch(err){ setStatusMsg('加载失败: '+name); return; }
-  if(token!==loadToken) return; // 已切换到别的模型
+  try {
+    const resp = await fetch('assets/bdhm_models/' + name + '/data.json');
+    data = await resp.json();
+  } catch (err) { setStatusMsg('加载失败: ' + name); return; }
+  if (token !== loadToken) return;
+  modelJson = data;
 
-  const cages=data.allcages||data.v||[];
-  if(!cages.length){ setStatusMsg('模型无边界数据: '+name); return; }
-  const outer=cages[0];
-  const nHoles=(data.holes&&data.holes.length)||(cages.length-1);
-  const holes=cages.slice(1,1+nHoles);
+  const cages = data.allcages || data.v || [];
+  if (!cages.length) { setStatusMsg('模型无边界数据: ' + name); return; }
+  modelCages = cages.map(poly => poly.map(pt => [pt[0], pt[1]]));
+  const outer = cages[0];
+  const nHoles = (data.holes && data.holes.length) || (cages.length - 1);
+  const holes = cages.slice(1, 1 + nHoles);
 
-  // 自适应分辨率：限制三角形数量以保证交互流畅
-  const m=makePolyMesh(outer,holes,38);
-  if(token!==loadToken) return;
-  if(m.F.length<2){ setStatusMsg('网格化失败: '+name); return; }
+  const m = makePolyMesh(outer, holes, 38);
+  if (token !== loadToken) return;
+  if (m.F.length < 2) { setStatusMsg('网格化失败: ' + name); return; }
   setupMesh(m);
 
-  // 纹理坐标：rest 包围盒 → 图像像素 (y 翻转)
-  const [bx0,by0,bx1,by1]=m.bbox, bw=bx1-bx0||1, bh=by1-by0||1;
-  const iw=data.img_w||1024, ih=data.img_h||1024;
-  texUV=new Float64Array(2*nV);
-  for(let v=0;v<nV;v++){
-    texUV[2*v]   = ((rest[2*v]-bx0)/bw)*iw;
-    texUV[2*v+1] = (1-(rest[2*v+1]-by0)/bh)*ih;
-  }
-
-  // 操控点：P2Psrc → 最近顶点；目标默认在 src（静止），演示目标取 P2Pdst
-  const src=data.P2Psrc||[], dst=data.P2Pdst||[];
-  const hv=nearestVerts(src);
-  handles=[]; targets={}; demoTargets={};
-  for(let i=0;i<hv.length;i++){
-    const v=hv[i]; if(v<0||handles.indexOf(v)>=0) continue;
+  const src = data.P2Psrc || [], dst = data.P2Pdst || [];
+  const hv = nearestVerts(src);
+  handles = []; targets = {}; demoTargets = {};
+  for (let i = 0; i < hv.length; i++) {
+    const v = hv[i]; if (v < 0 || handles.indexOf(v) >= 0) continue;
     handles.push(v);
-    targets[v]=[rest[2*v],rest[2*v+1]];
-    if(dst[i]) demoTargets[v]=[dst[i][0],dst[i][1]];
+    targets[v] = [rest[2 * v], rest[2 * v + 1]];
+    if (dst[i]) demoTargets[v] = [dst[i][0], dst[i][1]];
   }
 
-  // 加载纹理图片
-  const img=new Image();
-  img.onload=()=>{ if(token===loadToken){texImage=img; texReady=true;} };
-  img.onerror=()=>{ /* 无纹理时退化为失真着色 */ };
-  img.src='assets/bdhm_models/'+name+'/image.png';
+  const img = new Image();
+  img.onload = () => {
+    if (token !== loadToken) return;
+    texImage = img;
+    texImageRect = imageOpaqueRect(img);
+    rebuildTexUV();
+    texReady = true;
+  };
+  img.onerror = () => {};
+  img.src = 'assets/bdhm_models/' + name + '/image.png';
 
   setStatusMsg('');
 }
@@ -555,16 +716,16 @@ function setStatusMsg(msg){
 // 把纹理三角形 (像素坐标 tp) 仿射映射到屏幕三角形 (sp)
 function drawTexTri(sp,tp){
   const [[x0,y0],[x1,y1],[x2,y2]]=sp, [[u0,v0],[u1,v1],[u2,v2]]=tp;
-  const den=u0*(v1-v2)-u1*(v0-v2)+u2*(v0-v1);
+  const den=u0*(v1-v2)+u1*(v2-v0)+u2*(v0-v1);
   if(Math.abs(den)<1e-9) return;
-  const a=(x0*(v1-v2)-x1*(v0-v2)+x2*(v0-v1))/den;
-  const b=-(x0*(u1-u2)-x1*(u0-u2)+x2*(u0-u1))/den;
-  const c=(y0*(v1-v2)-y1*(v0-v2)+y2*(v0-v1))/den;
-  const d=-(y0*(u1-u2)-y1*(u0-u2)+y2*(u0-u1))/den;
-  const e=x0-a*u0-b*v0, f=y0-c*u0-d*v0;
+  const a=(x0*(v1-v2)+x1*(v2-v0)+x2*(v0-v1))/den;
+  const b=(y0*(v1-v2)+y1*(v2-v0)+y2*(v0-v1))/den;
+  const c=(x0*(u2-u1)+x1*(u0-u2)+x2*(u1-u0))/den;
+  const d=(y0*(u2-u1)+y1*(u0-u2)+y2*(u1-u0))/den;
+  const e=x0-a*u0-c*v0, f=y0-b*u0-d*v0;
   ctx.save();
   ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.lineTo(x2,y2);ctx.closePath();ctx.clip();
-  ctx.setTransform(a,c,b,d,e,f);
+  ctx.setTransform(a,b,c,d,e,f);
   ctx.drawImage(texImage,0,0);
   ctx.restore();
 }
@@ -583,6 +744,8 @@ function render(){
     for(let l=0;l<3;l++){const p=toScreen(rest[2*f[l]],rest[2*f[l]+1]); l?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);}
     ctx.closePath();ctx.stroke();
   }
+
+  drawCages();
 
   // 变形网格 (纹理 / 失真着色)
   for(let f=0;f<nF;f++){
@@ -631,7 +794,7 @@ function render(){
 /* ============ 演示形变（平滑过渡到录制的 P2Pdst） ============ */
 let demoActive=false, demoT=0;
 function startDemo(){
-  if(Object.keys(demoTargets).length){demoActive=true; demoT=0;}
+  if(Object.keys(demoTargets).length){demoActive=true; demoT=0; solveActive=true;}
 }
 function stepDemo(){
   if(!demoActive) return;
@@ -645,11 +808,32 @@ function stepDemo(){
 }
 
 /* ============ 主循环 ============ */
+let solveActive=false;
+
+function resetDeformation(){
+  demoActive=false;
+  demoT=0;
+  dragVert=-1;
+  solveActive=false;
+  cv.classList.remove('dragging');
+  if(!rest||!nV) return;
+  uv=rest.slice();
+  targets={};
+  for(const h of handles) targets[h]=[rest[2*h],rest[2*h+1]];
+  lastIters=0;
+  if(wasmInst && wasmMeshReady){
+    wasmInst.ccall('reset_uv','void',[],[]);
+    wasmReadUvFromWasm().catch(console.error);
+  }
+}
+
 function loop(){
   if(mesh){
     stepDemo();
-    const big=nF>700, active=(dragVert>=0||demoActive);
-    lastIters=optimizeStep(active?(big?9:14):(big?4:8));
+    if(solveActive && (dragVert>=0 || demoActive)){
+      const big=nF>700;
+      lastIters=optimizeStep(big?9:14);
+    }
     render();
   }
   requestAnimationFrame(loop);
@@ -663,7 +847,7 @@ function pickHandle(px,py){
   return best;
 }
 function evtPos(e){const r=cv.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return [t.clientX-r.left,t.clientY-r.top];}
-function down(e){const [px,py]=evtPos(e); dragVert=pickHandle(px,py); if(dragVert>=0){demoActive=false; cv.classList.add('dragging');e.preventDefault();}}
+function down(e){const [px,py]=evtPos(e); dragVert=pickHandle(px,py); if(dragVert>=0){demoActive=false; solveActive=true; cv.classList.add('dragging');e.preventDefault();}}
 function move(e){if(dragVert<0)return; const [px,py]=evtPos(e); const m=toModel(px,py); targets[dragVert]=[m[0],m[1]]; e.preventDefault();}
 function up(){dragVert=-1;cv.classList.remove('dragging');}
 cv.addEventListener('mousedown',down);window.addEventListener('mousemove',move);window.addEventListener('mouseup',up);
@@ -677,6 +861,7 @@ function setEnergy(mode){
 }
 function selectShape(val){
   demoActive=false;
+  solveActive=false;
   if(val.indexOf('model:')===0) loadModel(val.slice(6));
   else buildMesh(val);
 }
@@ -690,14 +875,7 @@ document.getElementById('bound-range').addEventListener('input',e=>{
 });
 document.getElementById('bound-on').addEventListener('change',e=>{opt.bound_on=e.target.checked; pushOptionsToWasm();});
 document.getElementById('demo-btn').addEventListener('click',startDemo);
-document.getElementById('reset-btn').addEventListener('click',()=>{
-  demoActive=false;
-  uv=rest.slice(); targets={}; for(const h of handles)targets[h]=[rest[2*h],rest[2*h+1]];
-  if(wasmInst && wasmMeshReady){
-    wasmInst.ccall('reset_uv','void',[],[]);
-    wasmReadUvFromWasm().catch(console.error);
-  }
-});
+document.getElementById('reset-btn').addEventListener('click',resetDeformation);
 
 function resize(){cv.width=cv.clientWidth;cv.height=cv.clientHeight;fitView();}
 window.addEventListener('resize',resize);
@@ -708,7 +886,6 @@ resize();
 initWasm();
 selectShape(document.getElementById('shape-select').value);
 requestAnimationFrame(loop);
-
 })();
 </script>
 </body>
