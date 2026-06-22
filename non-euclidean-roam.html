@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>非欧曲面漫游</title>
+  <script src="assets/js/wasm-loader.js"></script>
+  <script src="assets/wasm/uv_unwrap_simple.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/"
+    }
+  }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body {
+      background: #060b14;
+      color: #d8def7;
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+    .app { display: flex; flex-direction: column; height: 100vh; }
+    .toolbar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 12px 18px;
+      background: rgba(9, 15, 28, 0.96);
+      border-bottom: 1px solid rgba(106, 132, 255, 0.18);
+    }
+    .toolbar h1 { margin: 0; font-size: 16px; font-weight: 600; color: #eef2ff; }
+    .toolbar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #c6d1f4; }
+    .toolbar input[type=range] { width: 90px; accent-color: #6a84ff; }
+    select, button {
+      border: 1px solid rgba(106, 132, 255, 0.25);
+      background: #121b31; color: #eef2ff;
+      border-radius: 10px; padding: 8px 12px; font-size: 13px; cursor: pointer;
+    }
+    button:hover { background: #172546; }
+    button.active {
+      background: linear-gradient(135deg, #ff6b35, #ff8f5e);
+      border-color: transparent; color: #fff;
+    }
+    .status { margin-left: auto; font-size: 13px; color: #8cc4ff; min-width: 160px; text-align: right; }
+    .canvas-wrap { position: relative; flex: 1; min-height: 0; }
+    #canvas-container { width: 100%; height: 100%; }
+    .hud {
+      position: absolute; left: 14px; bottom: 14px;
+      padding: 10px 12px; border-radius: 8px;
+      background: rgba(0, 0, 0, 0.5);
+      font-size: 12px; color: #a8b4d8; line-height: 1.6;
+      pointer-events: none;
+    }
+    .hud kbd {
+      padding: 1px 5px; border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      font-family: inherit;
+    }
+    .overlay-hint {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(6, 11, 20, 0.55); color: #eef2ff; font-size: 15px;
+      pointer-events: none; transition: opacity 0.25s;
+    }
+    .overlay-hint.hidden { opacity: 0; }
+    .loading {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(6, 11, 20, 0.85); font-size: 14px; color: #8cc4ff;
+    }
+    .loading.hidden { display: none; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="toolbar">
+    <h1>非欧曲面漫游</h1>
+    <button type="button" id="btn-view" class="active">第一视角</button>
+    <label>速度 <input type="range" id="speed-slider" min="10" max="200" value="80"></label>
+    <button type="button" id="btn-reset">重置位置</button>
+    <span class="status" id="status">加载中…</span>
+  </div>
+  <div class="canvas-wrap">
+    <div id="canvas-container"></div>
+    <div class="hud">
+      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动 · 鼠标环顾 · <kbd>V</kbd> 切换视角<br>
+      第一视角：点击画面锁定鼠标 · <kbd>Esc</kbd> 解锁
+    </div>
+    <div class="overlay-hint" id="click-hint">点击画面开始漫游</div>
+    <div class="loading" id="loading">正在加载双环面并计算共形 UV…</div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+const MODEL_FILE = 'double-torus_F6144.obj';
+const MODEL_URLS = [
+  'assets/Models2/' + MODEL_FILE,
+  './assets/Models2/' + MODEL_FILE,
+  '../assets/Models2/' + MODEL_FILE,
+];
+const TERRAIN_SCALE = 6;
+const EYE_HEIGHT = 0.08;
+const THIRD_DIST = 0.55;
+const THIRD_LIFT = 0.2;
+
+const statusEl = document.getElementById('status');
+const loadingEl = document.getElementById('loading');
+const clickHintEl = document.getElementById('click-hint');
+const btnView = document.getElementById('btn-view');
+const btnReset = document.getElementById('btn-reset');
+const speedSlider = document.getElementById('speed-slider');
+const container = document.getElementById('canvas-container');
+
+function setStatus(msg, color) {
+  statusEl.textContent = msg;
+  if (color) statusEl.style.color = color;
+}
+
+// ─── OBJ / mesh helpers ───────────────────────────────────────
+
+function parseObjMeshData(txt) {
+  const positions = [], faces = [], lines = txt.split(/\r?\n/);
+  function objIndex(token) {
+    const raw = parseInt(token.split('/')[0], 10);
+    if (isNaN(raw)) return -1;
+    return raw > 0 ? raw - 1 : positions.length + raw;
+  }
+  for (const line of lines) {
+    const t = line.trim();
+    if (t.startsWith('v ') || t.startsWith('v\t')) {
+      const p = t.slice(1).trim().split(/\s+/).map(Number);
+      if (p.length >= 3 && p.every(Number.isFinite)) positions.push([p[0], p[1], p[2]]);
+    } else if (t.startsWith('f ') || t.startsWith('f\t')) {
+      const idx = t.slice(1).trim().split(/\s+/).map(objIndex).filter(x => x >= 0);
+      for (let k = 1; k + 1 < idx.length; k++) faces.push([idx[0], idx[k], idx[k + 1]]);
+    }
+  }
+  return positions.length && faces.length ? { positions, faces } : null;
+}
+
+function normalizeMeshData(meshData) {
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  for (const p of meshData.positions) {
+    if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
+    if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
+    if (p[2] < minZ) minZ = p[2]; if (p[2] > maxZ) maxZ = p[2];
+  }
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2, cz = (minZ + maxZ) / 2;
+  const s = Math.max(maxX - minX, maxY - minY, maxZ - minZ) || 1;
+  for (const p of meshData.positions) {
+    p[0] = (p[0] - cx) / s * TERRAIN_SCALE;
+    p[1] = (p[1] - cy) / s * TERRAIN_SCALE;
+    p[2] = (p[2] - cz) / s * TERRAIN_SCALE;
+  }
+  return meshData;
+}
+
+function chooseAnchorPair(v) {
+  let ba = 0, bb = 1, bd = -1;
+  for (let i = 0; i < v.length; i++) {
+    for (let j = i + 1; j < v.length; j++) {
+      const d = (v[i][0] - v[j][0]) ** 2 + (v[i][1] - v[j][1]) ** 2 + (v[i][2] - v[j][2]) ** 2;
+      if (d > bd) { bd = d; ba = i; bb = j; }
+    }
+  }
+  return [ba, bb];
+}
+
+function createCheckerTexture() {
+  const texSize = 512, cells = 16, cellSize = texSize / cells;
+  const canvas = document.createElement('canvas');
+  canvas.width = texSize; canvas.height = texSize;
+  const ctx = canvas.getContext('2d');
+  for (let y = 0; y < cells; y++) {
+    for (let x = 0; x < cells; x++) {
+      const dark = ((x + y) & 1) === 0;
+      ctx.fillStyle = dark ? '#1f2f54' : '#e9f0ff';
+      ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+    }
+  }
+  ctx.strokeStyle = 'rgba(120, 150, 210, 0.4)';
+  for (let i = 0; i <= cells; i++) {
+    const p = i * cellSize;
+    ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, texSize); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(texSize, p); ctx.stroke();
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  return texture;
+}
+
+function buildTexturedMesh(meshData, uv) {
+  const pos = [], idx = [], uvFlat = [];
+  for (const p of meshData.positions) pos.push(p[0], p[1], p[2]);
+  for (const f of meshData.faces) idx.push(f[0], f[1], f[2]);
+  for (const u of uv) uvFlat.push(u[0], u[1]);
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvFlat, 2));
+  geom.setIndex(idx);
+  geom.computeVertexNormals();
+  return new THREE.Mesh(
+    geom,
+    new THREE.MeshStandardMaterial({
+      map: createCheckerTexture(),
+      metalness: 0.05,
+      roughness: 0.75,
+      side: THREE.DoubleSide,
+    })
+  );
+}
+
+function buildFallbackMesh(meshData) {
+  const pos = [], idx = [];
+  for (const p of meshData.positions) pos.push(p[0], p[1], p[2]);
+  for (const f of meshData.faces) idx.push(f[0], f[1], f[2]);
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geom.setIndex(idx);
+  geom.computeVertexNormals();
+  return new THREE.Mesh(
+    geom,
+    new THREE.MeshStandardMaterial({ color: 0x7fa7ff, roughness: 0.55, metalness: 0.05, side: THREE.DoubleSide })
+  );
+}
+
+// ─── WASM LSCM ────────────────────────────────────────────────
+
+let simpleInstance = null;
+let wasmReady = false;
+
+async function initSimpleSolver() {
+  if (wasmReady) return true;
+  if (typeof UvUnwrapSimpleSolver !== 'function') return false;
+  simpleInstance = await UvUnwrapSimpleSolver({ locateFile: p => WasmLoader.BASE + p });
+  wasmReady = true;
+  return true;
+}
+
+async function solveLSCM(meshData) {
+  const vertices = meshData.positions;
+  const faces = meshData.faces;
+  const anchors = chooseAnchorPair(vertices);
+  if (!wasmReady && !(await initSimpleSolver())) throw new Error('WASM 初始化失败');
+
+  const flatPositions = new Float64Array(vertices.length * 3);
+  for (let i = 0; i < vertices.length; i++) {
+    flatPositions[i * 3] = vertices[i][0];
+    flatPositions[i * 3 + 1] = vertices[i][1];
+    flatPositions[i * 3 + 2] = vertices[i][2];
+  }
+  const flatFaces = new Int32Array(faces.length * 3);
+  for (let i = 0; i < faces.length; i++) {
+    flatFaces[i * 3] = faces[i][0];
+    flatFaces[i * 3 + 1] = faces[i][1];
+    flatFaces[i * 3 + 2] = faces[i][2];
+  }
+
+  const posPtr = simpleInstance._malloc(flatPositions.length * 8);
+  const facePtr = simpleInstance._malloc(flatFaces.length * 4);
+  try {
+    for (let i = 0; i < flatPositions.length; i++) {
+      simpleInstance.setValue(posPtr + i * 8, flatPositions[i], 'double');
+    }
+    for (let i = 0; i < flatFaces.length; i++) {
+      simpleInstance.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+    }
+    const ret = simpleInstance.ccall(
+      'solve_lscm', 'number',
+      ['number', 'number', 'number', 'number', 'number', 'number'],
+      [posPtr, flatPositions.length, facePtr, flatFaces.length, anchors[0], anchors[1]]
+    );
+    if (ret !== 0) throw new Error('solve_lscm 返回 ' + ret);
+    const uvSize = simpleInstance.ccall('get_uv_result_size', 'number', [], []);
+    const uvPtr = simpleInstance.ccall('get_uv_result', 'number', [], []);
+    const uv = [];
+    for (let i = 0; i < uvSize; i++) uv.push(simpleInstance.getValue(uvPtr + i * 8, 'double'));
+    simpleInstance.ccall('dispose', 'void', [], []);
+    const result = [];
+    for (let i = 0; i < vertices.length; i++) result.push([uv[i * 2], uv[i * 2 + 1]]);
+    return result;
+  } finally {
+    simpleInstance._free(posPtr);
+    simpleInstance._free(facePtr);
+  }
+}
+
+// ─── Face frames & adjacency ──────────────────────────────────
+
+function buildFaceFramesAndAdjacency(positions, faces) {
+  const numF = faces.length;
+  const V = new Float32Array(positions.length * 3);
+  for (let i = 0; i < positions.length; i++) {
+    V[i * 3] = positions[i][0];
+    V[i * 3 + 1] = positions[i][1];
+    V[i * 3 + 2] = positions[i][2];
+  }
+  const F = new Int32Array(numF * 3);
+  for (let i = 0; i < numF; i++) {
+    F[i * 3] = faces[i][0];
+    F[i * 3 + 1] = faces[i][1];
+    F[i * 3 + 2] = faces[i][2];
+  }
+
+  const normals = new Float32Array(numF * 3);
+  const T1 = new Float32Array(numF * 3);
+  const T2 = new Float32Array(numF * 3);
+  const cent = new Float32Array(numF * 3);
+  const faceArea = new Float32Array(numF);
+
+  for (let fi = 0; fi < numF; fi++) {
+    const i0 = F[fi * 3], i1 = F[fi * 3 + 1], i2 = F[fi * 3 + 2];
+    const x0 = V[i0 * 3], y0 = V[i0 * 3 + 1], z0 = V[i0 * 3 + 2];
+    const x1 = V[i1 * 3], y1 = V[i1 * 3 + 1], z1 = V[i1 * 3 + 2];
+    const x2 = V[i2 * 3], y2 = V[i2 * 3 + 1], z2 = V[i2 * 3 + 2];
+    cent[fi * 3] = (x0 + x1 + x2) / 3;
+    cent[fi * 3 + 1] = (y0 + y1 + y2) / 3;
+    cent[fi * 3 + 2] = (z0 + z1 + z2) / 3;
+    const e0x = x1 - x0, e0y = y1 - y0, e0z = z1 - z0;
+    const e1x = x2 - x0, e1y = y2 - y0, e1z = z2 - z0;
+    let nx = e0y * e1z - e0z * e1y;
+    let ny = e0z * e1x - e0x * e1z;
+    let nz = e0x * e1y - e0y * e1x;
+    const nl = Math.hypot(nx, ny, nz) + 1e-20;
+    faceArea[fi] = nl * 0.5;
+    nx /= nl; ny /= nl; nz /= nl;
+    normals[fi * 3] = nx; normals[fi * 3 + 1] = ny; normals[fi * 3 + 2] = nz;
+    let d = e0x * nx + e0y * ny + e0z * nz;
+    let t1x = e0x - d * nx, t1y = e0y - d * ny, t1z = e0z - d * nz;
+    const t1l = Math.hypot(t1x, t1y, t1z) + 1e-20;
+    t1x /= t1l; t1y /= t1l; t1z /= t1l;
+    const t2x = ny * t1z - nz * t1y;
+    const t2y = nz * t1x - nx * t1z;
+    const t2z = nx * t1y - ny * t1x;
+    T1[fi * 3] = t1x; T1[fi * 3 + 1] = t1y; T1[fi * 3 + 2] = t1z;
+    T2[fi * 3] = t2x; T2[fi * 3 + 1] = t2y; T2[fi * 3 + 2] = t2z;
+  }
+
+  const edgeMap = new Map();
+  function addEdge(a, b, fi) {
+    const k = a < b ? a + '_' + b : b + '_' + a;
+    if (!edgeMap.has(k)) edgeMap.set(k, []);
+    edgeMap.get(k).push(fi);
+  }
+  for (let fi = 0; fi < numF; fi++) {
+    addEdge(F[fi * 3], F[fi * 3 + 1], fi);
+    addEdge(F[fi * 3 + 1], F[fi * 3 + 2], fi);
+    addEdge(F[fi * 3 + 2], F[fi * 3], fi);
+  }
+
+  const adj = Array.from({ length: numF }, () => []);
+  edgeMap.forEach((list, key) => {
+    if (list.length !== 2) return;
+    const fa = list[0], fb = list[1];
+    const verts = [F[fa * 3], F[fa * 3 + 1], F[fa * 3 + 2]];
+    const bverts = [F[fb * 3], F[fb * 3 + 1], F[fb * 3 + 2]];
+    const inter = verts.filter(v => bverts.includes(v));
+    if (inter.length < 2) return;
+    const va = inter[0], vb = inter[1];
+    adj[fa].push({ other: fb, va, vb });
+    adj[fb].push({ other: fa, va, vb });
+  });
+
+  return { V, F, normals, T1, T2, cent, adj, faceArea, numF };
+}
+
+function parallelTransportAngle(nAx, nAy, nAz, nBx, nBy, nBz, pAx, pAy, pAz, pBx, pBy, pBz) {
+  const ex = pBx - pAx, ey = pBy - pAy, ez = pBz - pAz;
+  const el = Math.hypot(ex, ey, ez) + 1e-20;
+  const tx = ex / el, ty = ey / el, tz = ez / el;
+  const xax = nAy * tz - nAz * ty, xay = nAz * tx - nAx * tz, xaz = nAx * ty - nAy * tx;
+  const xbx = nBy * tz - nBz * ty, xby = nBz * tx - nBx * tz, xbz = nBx * ty - nBy * tx;
+  const la = Math.hypot(xax, xay, xaz) + 1e-20;
+  const lb = Math.hypot(xbx, xby, xbz) + 1e-20;
+  const uax = xax / la, uay = xay / la, uaz = xaz / la;
+  const ubx = xbx / lb, uby = xby / lb, ubz = xbz / lb;
+  const cx = uay * ubz - uaz * uby;
+  const cy = uaz * ubx - uax * ubz;
+  const cz = uax * uby - uay * ubx;
+  const sinb = cx * tx + cy * ty + cz * tz;
+  const cosb = uax * ubx + uay * uby + uaz * ubz;
+  return Math.atan2(sinb, cosb);
+}
+
+// ─── Surface player ───────────────────────────────────────────
+
+const _va = new THREE.Vector3();
+const _vb = new THREE.Vector3();
+const _vc = new THREE.Vector3();
+const _pos = new THREE.Vector3();
+const _normal = new THREE.Vector3();
+const _fwd = new THREE.Vector3();
+const _right = new THREE.Vector3();
+const _delta = new THREE.Vector3();
+const _edge = new THREE.Vector3();
+const _tmp = new THREE.Vector3();
+
+class SurfacePlayer {
+  constructor(meshState) {
+    this.ms = meshState;
+    this.faceIdx = 0;
+    this.u = 1 / 3;
+    this.v = 1 / 3;
+    this.yaw = 0;
+    this.pitch = 0;
+    this.keys = { w: false, a: false, s: false, d: false };
+    this.resetSpawn();
+  }
+
+  resetSpawn() {
+    const { faceArea, numF } = this.ms;
+    let best = 0, bestA = 0;
+    for (let fi = 0; fi < numF; fi++) {
+      if (faceArea[fi] > bestA) { bestA = faceArea[fi]; best = fi; }
+    }
+    this.faceIdx = best;
+    this.u = 1 / 3;
+    this.v = 1 / 3;
+    this.yaw = 0;
+    this.pitch = 0;
+    this.syncForwardFromYaw();
+  }
+
+  getVerts(fi) {
+    const { F } = this.ms;
+    return [F[fi * 3], F[fi * 3 + 1], F[fi * 3 + 2]];
+  }
+
+  getVertex(i, target) {
+    const { V } = this.ms;
+    return target.set(V[i * 3], V[i * 3 + 1], V[i * 3 + 2]);
+  }
+
+  baryToPos(u, v, A, B, C, target) {
+    const w = 1 - u - v;
+    return target.set(
+      u * A.x + v * B.x + w * C.x,
+      u * A.y + v * B.y + w * C.y,
+      u * A.z + v * B.z + w * C.z
+    );
+  }
+
+  posToBary(P, A, B, C) {
+    const v0x = B.x - A.x, v0y = B.y - A.y, v0z = B.z - A.z;
+    const v1x = C.x - A.x, v1y = C.y - A.y, v1z = C.z - A.z;
+    const v2x = P.x - A.x, v2y = P.y - A.y, v2z = P.z - A.z;
+    const d00 = v0x * v0x + v0y * v0y + v0z * v0z;
+    const d01 = v0x * v1x + v0y * v1y + v0z * v1z;
+    const d11 = v1x * v1x + v1y * v1y + v1z * v1z;
+    const d20 = v2x * v0x + v2y * v0y + v2z * v0z;
+    const d21 = v2x * v1x + v2y * v1y + v2z * v1z;
+    const denom = d00 * d11 - d01 * d01 + 1e-20;
+    const w1 = (d11 * d20 - d01 * d21) / denom;
+    const w2 = (d00 * d21 - d01 * d20) / denom;
+    const w0 = 1 - w1 - w2;
+    return [w0, w1, w2];
+  }
+
+  getPosition(target) {
+    const [i0, i1, i2] = this.getVerts(this.faceIdx);
+    this.getVertex(i0, _va);
+    this.getVertex(i1, _vb);
+    this.getVertex(i2, _vc);
+    return this.baryToPos(this.u, this.v, _va, _vb, _vc, target);
+  }
+
+  getNormal(target) {
+    return this.getFaceNormal(this.faceIdx, target);
+  }
+
+  getFaceNormal(fi, target) {
+    const { normals } = this.ms;
+    return target.set(normals[fi * 3], normals[fi * 3 + 1], normals[fi * 3 + 2]);
+  }
+
+  getTangentFrame(targetFwd, targetRight) {
+    const { T1, T2 } = this.ms;
+    const fi = this.faceIdx;
+    const t1x = T1[fi * 3], t1y = T1[fi * 3 + 1], t1z = T1[fi * 3 + 2];
+    const t2x = T2[fi * 3], t2y = T2[fi * 3 + 1], t2z = T2[fi * 3 + 2];
+    const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
+    targetFwd.set(cy * t1x + sy * t2x, cy * t1y + sy * t2y, cy * t1z + sy * t2z).normalize();
+    this.getNormal(_normal);
+    targetRight.crossVectors(targetFwd, _normal).normalize();
+    targetFwd.crossVectors(_normal, targetRight).normalize();
+    return targetFwd;
+  }
+
+  syncForwardFromYaw() {
+    this.getTangentFrame(_fwd, _right);
+  }
+
+  findNeighborAcrossEdge(fi, va, vb) {
+    for (const nb of this.ms.adj[fi]) {
+      if ((nb.va === va && nb.vb === vb) || (nb.va === vb && nb.vb === va)) return nb;
+    }
+    return null;
+  }
+
+  transportForward(fiA, fiB, va, vb) {
+    this.getVertex(va, _va);
+    this.getVertex(vb, _vb);
+    this.getFaceNormal(fiA, _normal);
+    const nAx = _normal.x, nAy = _normal.y, nAz = _normal.z;
+    this.getFaceNormal(fiB, _tmp);
+    const nBx = _tmp.x, nBy = _tmp.y, nBz = _tmp.z;
+    const angle = parallelTransportAngle(
+      nAx, nAy, nAz, nBx, nBy, nBz,
+      _va.x, _va.y, _va.z, _vb.x, _vb.y, _vb.z
+    );
+    _edge.subVectors(_vb, _va).normalize();
+    this.getTangentFrame(_fwd, _right);
+    _fwd.applyAxisAngle(_edge, angle);
+    this.getFaceNormal(fiB, _normal);
+    _fwd.addScaledVector(_normal, -_fwd.dot(_normal)).normalize();
+    const { T1, T2 } = this.ms;
+    const t1x = T1[fiB * 3], t1y = T1[fiB * 3 + 1], t1z = T1[fiB * 3 + 2];
+    const t2x = T2[fiB * 3], t2y = T2[fiB * 3 + 1], t2z = T2[fiB * 3 + 2];
+    this.yaw = Math.atan2(
+      _fwd.x * t2x + _fwd.y * t2y + _fwd.z * t2z,
+      _fwd.x * t1x + _fwd.y * t1y + _fwd.z * t1z
+    );
+  }
+
+  walkStep(delta) {
+    let remaining = delta.length();
+    if (remaining < 1e-10) return;
+    _delta.copy(delta);
+    let guard = 24;
+    const eps = 1e-5;
+
+    while (remaining > 1e-8 && guard-- > 0) {
+      const [i0, i1, i2] = this.getVerts(this.faceIdx);
+      this.getVertex(i0, _va);
+      this.getVertex(i1, _vb);
+      this.getVertex(i2, _vc);
+      this.baryToPos(this.u, this.v, _va, _vb, _vc, _pos);
+      this.getFaceNormal(this.faceIdx, _normal);
+
+      _tmp.copy(_delta).setLength(Math.min(remaining, 0.15));
+      _tmp.addScaledVector(_normal, -_tmp.dot(_normal));
+      if (_tmp.lengthSq() < 1e-14) break;
+
+      const sx = _pos.x, sy = _pos.y, sz = _pos.z;
+      const stepX = _tmp.x, stepY = _tmp.y, stepZ = _tmp.z;
+      const stepLen = Math.hypot(stepX, stepY, stepZ);
+      _pos.add(_tmp);
+      const bc = this.posToBary(_pos, _va, _vb, _vc);
+      if (bc[0] >= -eps && bc[1] >= -eps && bc[2] >= -eps) {
+        this.u = bc[0]; this.v = bc[1];
+        remaining -= stepLen;
+        break;
+      }
+
+      let crossEdge = 0;
+      let minB = bc[0];
+      if (bc[1] < minB) { minB = bc[1]; crossEdge = 1; }
+      if (bc[2] < minB) { crossEdge = 2; }
+
+      let ea, eb;
+      if (crossEdge === 0) { ea = i1; eb = i2; }
+      else if (crossEdge === 1) { ea = i0; eb = i2; }
+      else { ea = i0; eb = i1; }
+
+      const nb = this.findNeighborAcrossEdge(this.faceIdx, ea, eb);
+      if (!nb) {
+        this.u = Math.max(0, Math.min(1, bc[0]));
+        this.v = Math.max(0, Math.min(1 - this.u, bc[1]));
+        break;
+      }
+
+      this.getVertex(ea, _va);
+      this.getVertex(eb, _vb);
+      _tmp.set(sx, sy, sz);
+      _right.set(stepX, stepY, stepZ);
+      const tHit = this.rayEdgeHit(_tmp, _right, _va, _vb);
+      _pos.lerpVectors(_va, _vb, tHit);
+
+      const fiOld = this.faceIdx;
+      this.faceIdx = nb.other;
+      this.transportForward(fiOld, this.faceIdx, nb.va, nb.vb);
+
+      const [j0, j1, j2] = this.getVerts(this.faceIdx);
+      this.getVertex(j0, _va);
+      this.getVertex(j1, _vb);
+      this.getVertex(j2, _vc);
+      const nbc = this.posToBary(_pos, _va, _vb, _vc);
+      this.u = nbc[0]; this.v = nbc[1];
+
+      remaining -= stepLen;
+    }
+  }
+
+  rayEdgeHit(origin, dir, A, B) {
+    _edge.subVectors(B, A);
+    const denom = dir.dot(_edge);
+    if (Math.abs(denom) < 1e-12) return 0.5;
+    const num = (origin.x - A.x) * _edge.x + (origin.y - A.y) * _edge.y + (origin.z - A.z) * _edge.z;
+    return Math.max(0, Math.min(1, num / denom));
+  }
+
+  update(dt, speed, useCameraDir, camera) {
+    let moveX = 0, moveZ = 0;
+    if (this.keys.w) moveZ += 1;
+    if (this.keys.s) moveZ -= 1;
+    if (this.keys.a) moveX -= 1;
+    if (this.keys.d) moveX += 1;
+    if (moveX === 0 && moveZ === 0) return;
+
+    this.getNormal(_normal);
+    if (useCameraDir && camera) {
+      camera.getWorldDirection(_fwd);
+      _fwd.addScaledVector(_normal, -_fwd.dot(_normal));
+      if (_fwd.lengthSq() < 1e-10) this.getTangentFrame(_fwd, _right);
+      else _fwd.normalize();
+      _right.crossVectors(_normal, _fwd).normalize();
+      _fwd.crossVectors(_right, _normal).normalize();
+    } else {
+      this.getTangentFrame(_fwd, _right);
+    }
+
+    _delta.set(0, 0, 0)
+      .addScaledVector(_fwd, moveZ)
+      .addScaledVector(_right, moveX);
+    if (_delta.lengthSq() < 1e-12) return;
+    _delta.normalize().multiplyScalar(speed * dt);
+    this.walkStep(_delta);
+  }
+}
+
+// ─── Scene setup ──────────────────────────────────────────────
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x060b14);
+scene.fog = new THREE.Fog(0x060b14, 8, 24);
+
+const camera = new THREE.PerspectiveCamera(60, 1, 0.01, 100);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+container.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0x8899cc, 0.55));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+dirLight.position.set(4, 6, 3);
+scene.add(dirLight);
+
+const terrainGroup = new THREE.Group();
+scene.add(terrainGroup);
+
+const avatar = new THREE.Mesh(
+  new THREE.CapsuleGeometry(0.06, 0.12, 4, 8),
+  new THREE.MeshStandardMaterial({ color: 0xff6b35, roughness: 0.4, metalness: 0.1 })
+);
+avatar.visible = false;
+scene.add(avatar);
+
+let meshState = null;
+let player = null;
+let firstPerson = true;
+let pointerLocked = false;
+
+const pointerControls = new PointerLockControls(camera, renderer.domElement);
+pointerControls.addEventListener('lock', () => {
+  pointerLocked = true;
+  clickHintEl.classList.add('hidden');
+});
+pointerControls.addEventListener('unlock', () => {
+  pointerLocked = false;
+  if (firstPerson) clickHintEl.classList.remove('hidden');
+});
+
+renderer.domElement.addEventListener('click', () => {
+  if (firstPerson && !pointerLocked) pointerControls.lock();
+});
+
+const KEY_MAP = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
+
+function onKeyDown(e) {
+  if (e.code === 'KeyV') { toggleView(); return; }
+  if (!player) return;
+  const k = KEY_MAP[e.code];
+  if (k) {
+    player.keys[k] = true;
+    e.preventDefault();
+  }
+}
+function onKeyUp(e) {
+  if (!player) return;
+  const k = KEY_MAP[e.code];
+  if (k) player.keys[k] = false;
+}
+window.addEventListener('keydown', onKeyDown);
+window.addEventListener('keyup', onKeyUp);
+
+pointerControls.addEventListener('change', () => {
+  if (!player || !firstPerson || !pointerLocked) return;
+  player.pitch = pointerControls.getObject().rotation.x;
+  player.yaw = pointerControls.getObject().rotation.y;
+});
+
+function toggleView() {
+  firstPerson = !firstPerson;
+  btnView.textContent = firstPerson ? '第一视角' : '第三视角';
+  btnView.classList.toggle('active', firstPerson);
+  avatar.visible = !firstPerson;
+  if (firstPerson) {
+    btnView.classList.add('active');
+  } else {
+    pointerControls.unlock();
+    clickHintEl.classList.add('hidden');
+  }
+  if (firstPerson && !pointerLocked) clickHintEl.classList.remove('hidden');
+}
+
+btnView.addEventListener('click', toggleView);
+btnReset.addEventListener('click', () => {
+  if (player) player.resetSpawn();
+});
+
+function updateCamera() {
+  if (!player) return;
+  player.getPosition(_pos);
+  player.getNormal(_normal);
+
+  if (firstPerson) {
+    camera.position.copy(_pos).addScaledVector(_normal, EYE_HEIGHT);
+    camera.up.copy(_normal);
+    if (!pointerLocked) {
+      player.getTangentFrame(_fwd, _right);
+      _tmp.copy(_pos).addScaledVector(_fwd, 0.5).addScaledVector(_normal, EYE_HEIGHT);
+      camera.lookAt(_tmp);
+    }
+  } else {
+    player.getTangentFrame(_fwd, _right);
+    _tmp.copy(_pos)
+      .addScaledVector(_fwd, -THIRD_DIST)
+      .addScaledVector(_normal, THIRD_LIFT + EYE_HEIGHT);
+    camera.position.lerp(_tmp, 0.12);
+    _tmp.copy(_pos).addScaledVector(_fwd, 0.4).addScaledVector(_normal, EYE_HEIGHT * 0.5);
+    camera.lookAt(_tmp);
+
+    avatar.position.copy(_pos).addScaledVector(_normal, EYE_HEIGHT * 0.6);
+    player.getTangentFrame(_fwd, _right);
+    _tmp.copy(avatar.position).add(_fwd);
+    avatar.up.copy(_normal);
+    avatar.lookAt(_tmp);
+  }
+}
+
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (player) {
+    const speed = parseFloat(speedSlider.value) / 25;
+    player.update(dt, speed, firstPerson && pointerLocked, camera);
+    updateCamera();
+  }
+  renderer.render(scene, camera);
+}
+
+function onResize() {
+  const w = container.clientWidth, h = container.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+onResize();
+animate();
+
+// ─── Load model ───────────────────────────────────────────────
+
+async function fetchObjText() {
+  for (const url of MODEL_URLS) {
+    try {
+      const r = await fetch(url);
+      if (r.ok) return await r.text();
+    } catch (_) { /* try next */ }
+  }
+  throw new Error('无法加载 ' + MODEL_FILE);
+}
+
+async function loadTerrain() {
+  setStatus('加载模型…', '#8cc4ff');
+  const txt = await fetchObjText();
+  let meshData = parseObjMeshData(txt);
+  if (!meshData) throw new Error('OBJ 解析失败');
+  meshData = normalizeMeshData(meshData);
+
+  setStatus('计算 LSCM UV…', '#ffd38a');
+  let terrainMesh;
+  try {
+    const uv = await solveLSCM(meshData);
+    terrainMesh = buildTexturedMesh(meshData, uv);
+    setStatus('棋盘格就绪', '#89f0b6');
+  } catch (err) {
+    console.warn('LSCM 失败，使用法线着色:', err);
+    terrainMesh = buildFallbackMesh(meshData);
+    setStatus('UV 失败，已降级显示', '#ffd38a');
+  }
+
+  const wire = new THREE.LineSegments(
+    new THREE.WireframeGeometry(terrainMesh.geometry),
+    new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent: true, opacity: 0.25 })
+  );
+  terrainGroup.add(terrainMesh);
+  terrainGroup.add(wire);
+
+  meshState = buildFaceFramesAndAdjacency(meshData.positions, meshData.faces);
+  player = new SurfacePlayer(meshState);
+
+  const box = new THREE.Box3().setFromObject(terrainGroup);
+  const size = box.getSize(new THREE.Vector3());
+  scene.fog.near = size.length() * 0.5;
+  scene.fog.far = size.length() * 3;
+
+  loadingEl.classList.add('hidden');
+  updateCamera();
+}
+
+loadTerrain().catch(err => {
+  console.error(err);
+  loadingEl.textContent = '加载失败: ' + err.message;
+  setStatus('加载失败', '#ff9d9d');
+});
+</script>
+</body>
+</html>
