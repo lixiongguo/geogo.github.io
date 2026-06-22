@@ -17,3 +17,6 @@
 [submodule "treemaker"]
 	path = treemaker
 	url = https://github.com/lixiongguo/treemaker.git
+[submodule "cpp/CDT"]
+	path = cpp/CDT
+	url = https://github.com/lixiongguo/CDT.git

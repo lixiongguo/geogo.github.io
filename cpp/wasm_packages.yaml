@@ -211,7 +211,14 @@ packages:
     make_target: build-ruppert
     binding: wasm/bindings_ruppert_compat.cpp
     methods: [ruppert]
-    exports: [refine, dispose]
+    exports:
+      - ruppert_run
+      - get_points_size
+      - get_points
+      - get_triangles_size
+      - get_triangles
+      - get_last_time_ms
+      - dispose
     sources:
       - wasm/bindings_ruppert_compat.cpp
 
