@@ -5,6 +5,9 @@
 [submodule "cpp/emsdk"]
 	path = cpp/emsdk
 	url = https://github.com/emscripten-core/emsdk.git
+[submodule "cpp/OptimalTransport"]
+	path = cpp/OptimalTransport
+	url = https://github.com/lixiongguo/OptimalTransport.git
 [submodule "Tools/ddg-exercises"]
 	path = Tools/ddg-exercises
 	url = https://github.com/lixiongguo/ddg-exercises.git
