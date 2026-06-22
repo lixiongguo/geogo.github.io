@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import platform
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +12,9 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent.parent
 MANIFEST_PATH = REPO_ROOT / "cpp" / "wasm_packages.yaml"
 OUTPUT_DIR = REPO_ROOT / "assets" / "wasm"
-BUILD_SCRIPT = REPO_ROOT / "cpp" / "build_wasm.ps1"
+BUILD_SCRIPT_PS1 = REPO_ROOT / "cpp" / "build_wasm.ps1"
+BUILD_SCRIPT_SH = REPO_ROOT / "cpp" / "build_wasm.sh"
+BUILD_SCRIPT = BUILD_SCRIPT_PS1 if platform.system() == "Windows" else BUILD_SCRIPT_SH
 
 
 def load_manifest(path: Path | None = None) -> dict[str, Any]:

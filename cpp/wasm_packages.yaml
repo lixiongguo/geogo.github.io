@@ -1,0 +1,249 @@
+# WASM package manifest for Tools/wasm_build_manager
+# Paths are relative to cpp/conformal-parameterization/
+
+source_groups:
+  basemesh:
+    - BaseMesh/Mesh.cpp
+    - BaseMesh/MeshIO.cpp
+    - BaseMesh/Vertex.cpp
+    - BaseMesh/Edge.cpp
+    - BaseMesh/Face.cpp
+    - BaseMesh/HalfEdge.cpp
+    - BaseMesh/GaussianCurvature.cpp
+    - BaseMesh/QcError.cpp
+    - Parameterization/Parameterization.cpp
+
+  cutseam:
+    - CutSeamMesh/CutSeamMesh.cpp
+
+  solver:
+    - Solvers/Solver.cpp
+    - Solvers/AugmentedLagrangian.cpp
+    - Solvers/MixedIntegerProgram.cpp
+
+  lscm:
+    - Parameterization/SimpleParam/LSCM/Lscm.cpp
+    - Parameterization/SimpleParam/LSCM/Scp.cpp
+
+  abf:
+    - Parameterization/SimpleParam/ABF/AbfPlusPlus.cpp
+    - Parameterization/SimpleParam/ABF/LinAbf.cpp
+
+  arap:
+    - Parameterization/SimpleParam/ARAP/ARAP.cpp
+    - Parameterization/SimpleParam/ARAP/Tutte.cpp
+
+  cone:
+    - Parameterization/ConeParam/ConeParameterization.cpp
+    - Parameterization/ConeParam/Conformal/CirclePatterns.cpp
+    - Parameterization/ConeParam/Conformal/Cetm.cpp
+    - Parameterization/ConeParam/RicciFlow/RicciFlow.cpp
+
+  fasthgp:
+    - FastHGP/FastHGPSimple.cpp
+
+  field_global:
+    - Parameterization/GlobalFieldsParam/GlobalFieldsParameterization.cpp
+    - Parameterization/GlobalFieldsParam/QuadCover.cpp
+    - Parameterization/GlobalFieldsParam/MIQQuad.cpp
+
+  cutseam_param:
+    - Parameterization/CutSeamParam/CutSeamParameterization.cpp
+    - Parameterization/CutSeamParam/HoloOneForm/HolomorphicOneForm.cpp
+
+  vector_fields:
+    - VectorFileds/NRosyVectorFields.cpp
+    - VectorFileds/PrincipalCurvatureFields/PrincipalCurvatureField.cpp
+
+  abel_jacobi:
+    - Parameterization/CutSeamParam/Abel_Jacoi/AbelJacobi.cpp
+    - Parameterization/CutSeamParam/Abel_Jacoi/AbelJacobiParameterization.cpp
+
+  bd_lscm_core:
+    - Bounded/bounded_distortion_mapping/BoundedDistortionMapping.cpp
+
+  bdhm:
+    - Bounded/bdhm/BoundedDistortionHarmonicMap.cpp
+    - Bounded/cauchy_coordinates/CauchyCoordinates.cpp
+    - Solvers/Lbfgs.cpp
+
+packages:
+  uv_unwrap_simple:
+    kind: compat
+    export_name: UvUnwrapSimpleSolver
+    make_target: build-simple-compat
+    binding: wasm/bindings_uv_unwrap_simple_compat.cpp
+    methods: [lscm, scp, tutte, linabf, abfpp, arap, fasthgp, cp, cetm, ricci, gauss_curvature]
+    exports:
+      - solve_lscm
+      - solve_scp
+      - solve_tutte_circle
+      - solve_tutte_square
+      - solve_linabf
+      - solve_abfpp
+      - solve_arap
+      - solve_fasthgp
+      - solve_cp
+      - solve_cetm
+      - solve_ricci
+      - compute_gauss_curvature
+      - get_uv_result
+      - get_uv_result_size
+      - get_last_time_ms
+      - dispose
+    sources:
+      - { group: basemesh }
+      - { group: solver }
+      - { group: lscm }
+      - { group: abf }
+      - { group: arap }
+      - { group: fasthgp }
+      - { group: cone }
+      - wasm/bindings_uv_unwrap_simple_compat.cpp
+
+  uv_unwrap_field:
+    kind: compat
+    export_name: UvUnwrapFieldSolver
+    make_target: build-field-compat
+    binding: wasm/bindings_uv_unwrap_field_compat.cpp
+    methods: [quadcover, miq, hof]
+    exports:
+      - load_mesh
+      - step1_compute_principal_field
+      - step2_smooth_and_matching
+      - step3_solve_quadcover
+      - solve_miq
+      - solve_hof
+      - get_uv_result
+      - get_uv_result_size
+      - dispose
+    sources:
+      - { group: basemesh }
+      - { group: cutseam }
+      - { group: solver }
+      - { group: field_global }
+      - { group: cutseam_param }
+      - { group: lscm }
+      - { group: vector_fields }
+      - wasm/bindings_uv_unwrap_field_compat.cpp
+
+  uv_unwrap_abel_jacobi:
+    kind: compat
+    export_name: UvUnwrapAbelJacobiSolver
+    make_target: build-abel-compat
+    binding: wasm/bindings_uv_unwrap_abel_jacobi_compat.cpp
+    methods: [abel_jacobi]
+    exports:
+      - load_mesh
+      - build_abel_jacobi
+      - solve_abel_jacobi
+      - get_genus
+      - get_uv_result
+      - get_uv_result_size
+      - dispose
+    sources:
+      - { group: basemesh }
+      - { group: cutseam }
+      - { group: cutseam_param }
+      - { group: abel_jacobi }
+      - { group: lscm }
+      - wasm/bindings_uv_unwrap_abel_jacobi_compat.cpp
+
+  bd_lscm:
+    kind: embind
+    export_name: BD_LSCMModule
+    make_target: build-bd-lscm
+    binding: wasm/bindings_bd_lscm.cpp
+    methods: [bd_lscm]
+    exports: [Lscm, parameterize, computeQcError]
+    sources:
+      - { group: basemesh }
+      - { group: bd_lscm_core }
+      - { group: lscm }
+      - wasm/bindings_bd_lscm.cpp
+
+  dgp_basic:
+    kind: compat
+    export_name: DgpBasicSolver
+    make_target: build-dgp-compat
+    binding: wasm/bindings_dgp_basic_compat.cpp
+    methods: [gauss_curvature, principal_curvature]
+    exports:
+      - load_mesh
+      - compute_gauss_curvature
+      - compute_principal_curvature
+      - dispose
+    sources:
+      - { group: basemesh }
+      - wasm/bindings_dgp_basic_compat.cpp
+
+  bd_deformation:
+    kind: compat
+    export_name: BdDeformationSolver
+    make_target: build-bd-deform-compat
+    binding: wasm/bindings_bd_deformation_compat.cpp
+    methods: [bounded_distortion]
+    exports:
+      - setup_mesh
+      - optimize_step
+      - reset_uv
+      - get_uv_ptr
+      - dispose
+    sources:
+      - { group: bd_lscm_core }
+      - wasm/bindings_bd_deformation_compat.cpp
+
+  bdhm:
+    kind: embind
+    export_name: BDHMModule
+    make_target: build-bdhm
+    binding: wasm/bindings_bdhm.cpp
+    methods: [bdhm]
+    exports: [solve, SolveResult]
+    sources:
+      - { group: bdhm }
+      - { group: solver }
+      - wasm/bindings_bdhm.cpp
+
+  ruppert:
+    kind: compat
+    export_name: RuppertModule
+    make_target: build-ruppert
+    binding: wasm/bindings_ruppert_compat.cpp
+    methods: [ruppert]
+    exports: [refine, dispose]
+    sources:
+      - wasm/bindings_ruppert_compat.cpp
+
+pages:
+  uv-unwrap.html:
+    packages:
+      - { name: uv_unwrap_simple, load: eager }
+      - { name: bd_lscm, load: lazy }
+
+  uv_unwrap_global.html:
+    packages:
+      - { name: uv_unwrap_simple, load: eager }
+      - { name: uv_unwrap_field, load: eager }
+      - { name: uv_unwrap_abel_jacobi, load: lazy }
+      - { name: bd_lscm, load: lazy }
+
+  non-euclidean-roam.html:
+    packages:
+      - { name: uv_unwrap_simple, load: eager }
+
+  bdhm-deformation.html:
+    packages:
+      - { name: bd_deformation, load: eager }
+
+  deformation-lab.html:
+    packages:
+      - { name: ruppert, load: eager }
+
+  ruppert.html:
+    packages:
+      - { name: ruppert, load: eager }
+
+  vector-field.html:
+    packages:
+      - { name: dgp_basic, load: eager }

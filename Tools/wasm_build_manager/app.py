@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -211,16 +212,19 @@ class WasmBuildManager(QMainWindow):
             QMessageBox.critical(self, "错误", f"未找到 {BUILD_SCRIPT}")
             return
         self.log.clear()
-        self.log.append(f"> powershell -File build_wasm.ps1 -Target {target}\n")
+        if platform.system() == "Windows":
+            cmd = "powershell"
+            args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(BUILD_SCRIPT), "-Target", target]
+            self.log.append(f"> powershell -File build_wasm.ps1 -Target {target}\n")
+        else:
+            cmd = "bash"
+            args = [str(BUILD_SCRIPT), target]
+            self.log.append(f"> bash build_wasm.sh {target}\n")
         self._process = QProcess(self)
         self._process.setProcessChannelMode(QProcess.MergedChannels)
         self._process.readyReadStandardOutput.connect(self._read_log)
         self._process.finished.connect(self._build_finished)
-        self._process.start(
-            "powershell",
-            ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(BUILD_SCRIPT), "-Target", target],
-            cwd=str(REPO_ROOT / "cpp"),
-        )
+        self._process.start(cmd, args, cwd=str(REPO_ROOT / "cpp"))
 
     def _read_log(self) -> None:
         if not self._process:
