@@ -19,7 +19,7 @@ from PyQt5.QtGui import QFont, QColor, QPalette, QTextCursor
 # ── 路径配置 ──────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent.parent  # .../lixiongguo.github.io/
-PROJECTS_DIR = PROJECT_ROOT / "cpp" / "ddg-exercises" / "projects"
+PROJECTS_DIR = PROJECT_ROOT / "Tools" / "ddg-exercises" / "projects"
 HISTORY_FILE = SCRIPT_DIR / "history.json"
 EIGEN_PATH = PROJECT_ROOT / "cpp" / "deps" / "eigen-3.4.0"
 
