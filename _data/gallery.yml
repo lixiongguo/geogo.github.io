@@ -95,3 +95,24 @@
   thumbnail: /assets/gallery/water-euler.svg
   detail_url: "/gallery/water-euler.html"
   ready: true
+
+- slug: gaussian-splat
+  title: 3D Gaussian Splatting
+  description: 3DGS 高斯溅射渲染：加载中式居家住宅 SPZ 模型，数百万高斯椭球体实时渲染，自由旋转观察。
+  thumbnail: /assets/gallery/gaussian-splat.png
+  detail_url: "/gallery/gaussian-splat.html"
+  ready: true
+
+- slug: gaussian-splat-ply
+  title: 3DGS PLY 远程加载
+  description: 从阿里云 OSS CDN 加载 330MB 中式居家住宅 PLY 模型，1.46M 高斯椭球体实时渲染，支持球谐光照。
+  thumbnail: /assets/gallery/gaussian-splat.png
+  detail_url: "/gallery/gaussian-splat-ply.html"
+  ready: true
+
+- slug: little-tokyo
+  title: Draco GLB 渲染
+  description: 加载 Draco 压缩的 Littlest Tokyo 场景（3.9MB GLB），展示量化+Edgebreaker+熵编码的极致压缩效果。
+  thumbnail: /assets/gallery/little-tokyo.png
+  detail_url: "/gallery/little-tokyo.html"
+  ready: true

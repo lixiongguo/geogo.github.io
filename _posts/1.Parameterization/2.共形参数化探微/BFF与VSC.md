@@ -1,14 +1,16 @@
-## 2.5 边界自动调整方法 BFF (Boundary First Flattening)
+## 边界自动调整方法 BFF (Boundary First Flattening)
 
-![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260529132033157.png)
-
-共形映射 $f:M\to\mathbb{C}$ 写为 $f=a+b\mathrm{i}$，其中 $a,b$ 为共轭调和函数对；尺度因子 $e^u=|df|$ 由边界曲率/长度数据控制。
-
-### 算法核心洞察
+曲面到平面的共形映射**不是唯一的**，根据RIemannn映射定理，任何平面图形都对应着一个共形映射，那一个自然的问题是能否通过控制平面边界调整共形映射？
 
 CETM、Circle Patterns、Ricci 流等**同时求内部与边界**；BFF（Sawhney & Crane, 2017）**先边界、后内部**。
 
-![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250318173816762.png)
+<img src="/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260620212253121.png" alt="image-20260620212253121" style="zoom:50%;" />
+
+### 算法核心洞察
+
+<img src="/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260620211906353.png" alt="image-20260620211906353" style="zoom: 33%;" />
+
+共形映射 $f:M\to\mathbb{C}$ 写为 $f=a+b\mathrm{i}$，其中 $a,b$ 为共轭调和函数对；尺度因子 $e^u=|df|$ 由边界曲率/长度数据控制。
 
 共形映射 $f=a+b\mathrm{i}$ 为共轭调和对；**边界值唯一决定内部**。流程：
 
@@ -29,8 +31,6 @@ $$
 
 $K,\kappa$ 为当前度量曲率；$\widetilde K,\widetilde\kappa$ 为目标度量曲率。平坦参数化取 $\widetilde K=0$，$\widetilde\kappa$ 由用户指定。
 
-![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251026164745483.png)
-
 共轭调和条件（Cauchy–Riemann）：
 
 $$
@@ -39,7 +39,7 @@ $$
 
 对内部方程积分，结合 Gauss–Bonnet（圆盘 $\chi(M)=1$）：
 
-![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251026164937672.png)
+
 
 $$
 \int_M \Delta u\,dA=\int_{\partial M}\frac{\partial u}{\partial n}\,ds
@@ -55,8 +55,6 @@ $$
 $\Omega$ 为离散**角盈**（内部顶点角度亏损之和）。
 
 对边界方程积分：
-
-![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251026165025429.png)
 
 $$
 \int_{\partial M}\frac{\partial u}{\partial n}\,ds=\int_{\partial M}(\kappa-e^u\widetilde\kappa)\,ds.

@@ -31,4 +31,4 @@ scripts/AccessKey.csv
 **/build/
 Tools/imgs
 imgs/imgs
-**/.cache/
+*.ply

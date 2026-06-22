@@ -1,0 +1,222 @@
+# 全局调和参数化
+
+ **$q$-CCM（$q$-convex combinatorial map，凸组合映射）**，其中 $q$ 用于约束角度为 $2\pi/q$，对于四边形网格化取 $q=4$，这是对经典 **Tutte 参数化** 和 **Gortler 凸组合方法**的推广。关键策略是：**在覆盖空间中构造映射**利用分支覆盖，将求 $q$-CCM 转化为求**覆盖空间上的凸映射**。
+
+这篇文章提出了一种对**任意亏格（arbitrary genus）**曲面进行参数化的方法，能够同时保证 **局部单射（local injectivity）** 与 **无缝（seamless）**，且计算效率较高。
+
+ **$q$-CCM** 可以看作 CCM 在**多边界、任意亏格**上的推广：内部顶点仍满足正权重凸组合（对应后文公式 (7)(8) 的调和条件），但在 seam 上额外加入 $q$ -fold 旋转约束 $e^{i2\pi r/q}$。
+
+**与 HGP / q-CCM 的关系**：HGP 在覆盖空间 $\tilde{S}_q$ 上求**分段调和**的复坐标 $z = u + iv$，最小化 $\|Lz\|^2$（调和能量），并在 seam 上施加旋转约束 (6)。因此 q-CCM 可以理解为：**在 branched cover 上的调和映照 + 离散凸组合单射性保证**。
+
+给定一个**带锥奇异点**的三角网格曲面 $S$ 和正整数 $q$，映射 $f: S \to \mathbb{R}^2$ 称为一个 **$q$-CCM**，当且仅当：
+
+1. **凸组合性**：对每个内部顶点 $v_i$，存在一组正权重 $\{w_{ij} > 0\}_{v_j \in N(v_i)}$（$\sum w_{ij} = 1$），使得
+
+$$
+f(v_i) = \sum_{v_j \in N(v_i)} w_{ij} \, f(v_j)
+$$
+
+即映射像点位于邻居像点的凸包内部。
+
+2. **锥角约束**：对每个锥奇异点 $v_c$（预设锥角系数 $k_c \in \mathbb{Z}$），其周围的总映射角度为
+
+$$
+\Theta_{v_c} = \frac{2\pi k_c}{q}
+$$
+
+3. **边界旋转约束**（若有边界）：对每条边界分量，映射像沿逆时针方向的旋转角为 $2\pi l_j / q$（$l_j \in \mathbb{Z}$）。
+
+4. **Seam 旋转约束**：沿割缝 $G_s$，两侧的映射相差一个 $2\pi / q$ 的整数倍旋转：
+
+$$
+f^b(v) - f^a(v) = e^{i\frac{2\pi r_{ij}}{q}} \bigl(f^b(u) - f^a(u)\bigr),  r_{ij} \in \mathbb{Z}_q
+$$
+
+#### 与 Tutte 参数化的关系
+
+- $q=1$（无锥点，圆盘拓扑）：退化为经典 **Tutte 嵌入**（各内部顶点为邻居凸组合，边界固定到凸多边形）
+- $q=2$：等价于寻找一个全纯微分（角度以 $180^\circ$ 为单位），即经典共形参数化
+- $q=4$：对应四边形网格化——每个面期望为正方形，cross field 的 $4$-fold 对称性
+- 一般 $q$：对应 $q$ 边形网格化（如 $q=6$ 为三角化中的等边三角形网格）
+
+#### 核心思想：覆盖空间上的凸映射
+
+直接构造 $q$-CCM 是一个带锥角约束的非线性问题。HGP 的巧妙之处在于：先在 $S$ 的 **$q$-fold 分支覆盖** $\tilde{S}_q$ 上构造一个**无锥点的凸组合映射**，再通过覆盖映射投影回 $S$，使得投影后的角度约束自然满足 $2\pi k_c / q$。
+
+
+## 局部单射性保证
+
+映射 $f$ 是**局部单射的（Locally Injective）**，即映射后内部三角形的边不能自交
+
+<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250227112126656.png" alt="image-20250227112126656" style="zoom:50%;" />
+
+### 分支覆盖（Branched Cover）
+
+![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250924184009210.png) 
+
+- **图 A/B**：将原始曲面 $S$ 的二维网格复制为 $q$ 份 $S_C^0, S_C^1, \ldots, S_C^{q-1}$，沿割缝粘合得到 $\tilde{S}_q$——称为 $S$ 的 **$q$-fold branched cover**
+- **图 C**：所得覆盖空间中所有内部顶点均为 **wheel** 结构，便于进行 Index Counting
+
+有了 $\tilde{S}_q$ 后，存在一个**覆盖映射（Covering map）**$P_q: \tilde{S}_q \to S$。
+
+### Riemann-Hurwitz 公式
+
+若 $\tilde{M}$ 是基曲面 $M$ 的 $N$ 叶分支覆盖，$\mathcal{R}$ 为分支点(或者也叫**锥点(cone)**)集，$e_P$ 为点 $P$ 处的**分支指数（ramification index）**，则：
+
+$$
+\chi(\tilde{M}) = N\chi(M) - \sum_{P \in \mathcal{R}}(e_P - 1)
+$$
+
+特别地，对于本文中的 $q$-fold branched cover $\tilde{S}_q \to S$：
+
+$$
+\chi(\tilde{S}_q) = q\chi(S) - \sum_{P \in \mathcal{R}}(e_P - 1)
+$$
+
+其中 $\mathcal{R}$ 是分支点在 $\tilde{S}_q$ 中的原像集合，$e_P = \frac{k_i}{\gcd(k_i,q)}$（$k_i$ 为锥角对应的整数）。
+
+### 覆叠与分支覆盖
+
+覆叠映射 $p: \tilde{S} \to S$ 是局部同胚；万有覆叠 $\tilde{S}$ 是单连通的。
+
+万有覆叠消去 $H_1$，任何闭曲线可缩。在 $\tilde{S}$ 上：
+
+- 调和 1-形式变为恰当形式 $\omega = df$；
+- $f: \tilde{S} \to \mathbb{C}$ 为单值共形映射。
+
+然后通过覆叠变换群（deck transformation）投影回 $S$：
+
+$$
+f(p^{-1}(x)) = \{f(\tilde{x}) + \gamma \mid \gamma \in \Gamma\}
+$$
+
+$q$-fold 分支覆盖：$p$ 在分支点 $P$ 处局部形如 $z \mapsto z^{e_P}$（$e_P \ge 2$ 为分歧指数）。
+
+### Riemann–Hurwitz 公式
+
+设 $p: \tilde{S} \to S$ 为 $N$ 叶分支覆盖，$P$ 为分支点，$e_P$ 为分歧指数。则 Euler 示性数满足：
+
+$$
+\chi(\tilde{S}) = N \,\chi(S) - \sum_{P} (e_P - 1)
+$$
+
+在离散曲面参数化中，$\chi = V - E + F$，分支点对应锥奇异点。锥点配置与覆盖度必须满足拓扑平衡。
+
+### 为什么 Riemann–Hurwitz 能证明单射性
+
+$q$-CCM 单射性证明的核心思路分为三步：
+
+#### 第一步：锥点消除——覆盖空间变"平"
+
+在基曲面 $S$ 上，锥奇异点 $v_c$ 处锥角为 $\Theta_c = 2\pi k_c / q$（$k_c \neq 1$）。这意味着如果绕 $v_c$ 走一圈，映射像在平面上只转了 $k_c / q$ 圈——不是完整的一圈。但在 **$q$-fold 分支覆盖** $\tilde{S}_q$ 上，$v_c$ 的原像被复制了 $q$ 份并按旋转关系粘合。绕原像一圈后，映射像累积了
+
+$$
+q \cdot \frac{k_c}{q} = k_c \in \mathbb{Z}
+$$
+
+个完整圈——**锥点在覆盖空间上被"展开"为普通点**。因此 $\tilde{S}_q$ 上的锥点集合被消除，变为一个普通的有边界曲面。
+
+#### 第二步：Riemann–Hurwitz 判断覆盖空间的拓扑
+
+Riemann–Hurwitz 公式计算 $\tilde{S}_q$ 的 Euler 示性数：
+
+$$
+\chi(\tilde{S}_q) = q\chi(S) - \sum_{P \in \mathcal{R}}(e_P - 1)
+$$
+
+关键在于：当锥点和边界满足一定条件时，$\tilde{S}_q$ 是一个**拓扑圆盘**（$\chi = 1$）或具有凸边界、$\chi > 0$ 的曲面。具体地：
+
+- 对于闭合曲面无锥点：$q\chi(S) = q(2-2g)$，若 $g>0$ 则覆盖空间亏格更高，不会变成圆盘——此时需要**额外引入锥点**来"吸收"亏格
+- 锥点的 $\sum(e_P-1)$ 项恰好抵消 $q \cdot 2g$ 带来的负 Euler 示性数贡献，使覆盖空间"退化"为拓扑圆盘
+- 这正是公式 $q\|C| - \sum k_i + \sum l_j = q(2 - 2g - m)$ 的含义——锥点配置必须使覆盖空间的 $\chi > 0$
+
+#### 第三步：Tutte 定理保证覆盖空间上的全局单射
+
+一旦 $\tilde{S}_q$ 被构造为拓扑圆盘（或具有固定凸边界的曲面），Tutte 嵌入定理的直接推广保证了：**任何将边界固定到凸多边形的凸组合映射，在整个 $\tilde{S}_q$ 上是全局单射的（无翻转、无重叠）**。
+
+原因：凸组合映射等价于求解一个带 Dirichlet 边界的 Laplace 方程，其系数矩阵为 M-matrix（对角占优且不可约），解满足离散极大值原理，从而保证了单射性。
+
+#### 第四步：投影保持局部单射
+
+单射映射 $\tilde{f}: \tilde{S}_q \to \mathbb{R}^2$ 通过覆盖投影 $P_q$ 回到基曲面：
+
+$$
+f = \tilde{f} \circ P_q^{-1}: S \to \mathbb{R}^2
+$$
+
+由于 $P_q$ 是局部微分同胚（在非分支点处），$f$ 在 $S$ 上处处**局部单射**（每个三角面正向映射，不发生翻转），从而满足 $q$-CCM 的全部条件。
+
+**总结**：Riemann–Hurwitz 在此扮演的角色是**拓扑可行性检验**——它确保锥点和边界配置能使覆盖空间退化为 Tutte 定理可用的拓扑类型（圆盘或正 Euler 示性数）；没有这个保证，凸组合方法就无法证明单射性。
+
+基于 Gauss-Bonnet 定理还可以证明以下关键引理：
+
+$$
+q|C| - \sum_{v_i \in C} k_i + \sum_{j=1}^{m} l_j = q(2 - 2g - m)
+$$
+
+其中 $\|C\|$ 为外部面/顶点数，$k_i$ 为各锥点的角度系数，$l_j$ 为边界旋转角对应的整数，$m$ 为边界分量数。
+
+综上，设 $f$ 为 $S$ 上的一个 $q$-CCM，指定锥点与角度系数以确定旋转约束。若锥点和边界三角形以保持定向的方式映射，且诱导度量实现了目标锥角与边界旋转角，则由覆盖空间上 Tutte 定理的全局单射性及覆盖投影的局部微分同胚性，**$f$ 是局部单射的**。
+
+
+
+## 算法实现
+
+综合以上理论，HGP 算法最终归结为一个**带约束的凸优化问题**。下面分别给出各约束条件，最后汇总为完整的优化模型。
+
+为保证参数化的光滑性和一致性，需要对不同类型的元素施加**调和性约束(Harmonicity Conditions)**：
+
+**Seam edge 旋转约束** —— 保证割缝两侧的参数化相差一个固定旋转：
+
+$$
+z_j^a - z_i^a = e^{i\frac{2\pi r_{ij}}{q}}(z_j^b - z_i^b), \quad e_{ij} \in G_s 
+$$
+
+**Non-seam vertex 调和条件** —— 内部顶点的凸组合平均：
+
+$$
+\sum_{v_j \in N(v_i)} w_{ij}(z_i - z_j) = 0, \quad v_i \in V \setminus G_s 
+$$
+
+**Seam vertex 调和条件** —— 割缝顶点需同时考虑两个副本的贡献（可转化为附录中的公式 (14)）：
+$$
+\sum_{v_j \in N^*(v_i^0)} w_{ij}(z_i^0 - z_j) + \sum_{v_j \in N^*(v_i^1)} w_{ij}e^{i\frac{2\pi r_j}{q}}(z_i^1 - z_j) = 0 
+$$
+
+**Lipman 单射性约束** —— **Lipman 凸化约束**保证局部单射，对含边界点或锥奇异点的三角形施加标架条件，防止翻转
+
+$$
+\text{Re}\left(f_{\bar{z}} \overline{\left(\frac{f_z^j}{f_z^i}\right)}\right) - |f_z| \geq \epsilon, \quad t_j \in F_{cb}
+$$
+
+<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107101000576.png" alt="image-20251107101000576" style="zoom:;" />
+
+将上述所有条件统一，我们最小化**调和能量**，得到最终优化问题：
+$$
+\begin{aligned}
+\text{min}\quad E_{harmonic} = \quad & \|Lz\|^2 \\
+\text{subject to} \quad & z_j^a - z_i^a = e^{i\frac{2\pi r_{ij}}{q}}(z_j^b - z_i^b), \quad e_{ij} \in G_s  \\
+& \text{Re}\left(f_{\bar{z}} \overline{\left(\frac{f_z^j}{f_z^i}\right)}\right) - |f_z| \geq \epsilon, \quad t_j \in F_{cb} 
+\end{aligned}
+$$
+
+最后的约束条件来自Lipman的凸化，以及陈仁杰老师的BDHM这篇文章
+
+---
+
+## 参考文献
+
+1. **Gortler, S. J., Gotsman, C., & Thurston, D.** (2006). *Discrete One-Forms on Meshes and Applications to 3D Mesh Parameterization*. Computer Aided Geometric Design, 23(2), 83–112.  
+   提出了离散 1-form 的 index counting 方法，将 Tutte 定理统一到 Poincaré-Hopf 框架下。
+
+2. **Mercat, C.** (2001). *Discrete Riemann Surfaces and the Ising Model*. Communications in Mathematical Physics, 218(1), 177–216.  
+   证明了闭合曲面上调和 1-form 构成 $2g$ 维实向量空间。
+
+3. **Tutte, W. T.** (1963). *How to Draw a Graph*. Proceedings of the London Mathematical Society, 13(1), 743–767.  
+   Tutte 嵌入定理的原始论文——凸边界 + 正权重凸组合 → 全局单射。
+
+4. **Lipman, Y.** (2012). *Bounded Distortion Mapping Spaces for Triangular Meshes*. ACM Transactions on Graphics, 31(4), 108:1–108:13.  
+   提出了保证局部单射的凸化约束条件（Lipman 凸化约束）。
+
+5. **Pinkall, U. & Polthier, K.** (1993). *Computing Discrete Minimal Surfaces and Their Conjugates*. Experimental Mathematics, 2(1), 15–36.  
+   离散共形结构与调和 1-form 的构造方法。

@@ -1,3 +1,36 @@
+webgl-water: '<h2>光的舞蹈-焦散</h2>
+
+  <p>焦散(''caustic'')是光线经过经过表面的散射和折射作用后形成的现象。</p>
+
+  <p><img alt="image-20250801140209582" src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250801140209582.png" /></p>
+
+  <p><img alt="image-20250724090825649" src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250724090825649.png" /></p>
+
+  <p>水面由于有水波(wave)的存在，使其构成了多个凹面镜与凸面镜,最简单的焦散效果—透镜聚焦</p>
+
+  <p><img alt="image-20250724091317364" src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250724091317364.png" /></p>
+
+  <p>实时渲染的模拟方案:直接用一个triangle mesh来做为光源波面</p>
+
+  <p><img alt="image-20250801134149935" src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250801134149935.png" /></p>
+
+  <p><em>图：实时渲染管线 — (1) Use mesh for the light wavefront，将三角形网格作为光源波面；(2) Refract vertices through the surface，顶点经水面折射；(3) Intersect rays with the ground plane，与地平面求交得到焦散图案。</em></p>
+
+  <p>通过模拟光线的运动可以实现效果，但是需要消耗太多运算资源。不显式计算顶点位置，直接求原始三角形与折射后三角形的面积比。</p>
+
+  <!-- ![image-20250801160146361](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250801160146361.png)
+
+
+  *图：GLSL 面积比计算。可以不显式计算顶点位置，直接求原始三角形与折射后三角形的面积比。利用 fragment shader 的 2x2 并行求值特性，通过 `dFdx()` / `dFdy()` 有限差分得到屏幕空间偏导数，计算面积比并作为颜色输出：* -->
+
+
+  <div class="codehilite"><pre><span></span><code><span class="kt">float</span><span class="w"> </span><span class="n">oldArea</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">length</span><span class="p">(</span><span class="n">dFdx</span><span class="p">(</span><span class="n">oldPos</span><span class="p">))</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">length</span><span class="p">(</span><span class="n">dFdy</span><span class="p">(</span><span class="n">oldPos</span><span class="p">));</span>
+
+  <span class="kt">float</span><span class="w"> </span><span class="n">newArea</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">length</span><span class="p">(</span><span class="n">dFdx</span><span class="p">(</span><span class="n">newPos</span><span class="p">))</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">length</span><span class="p">(</span><span class="n">dFdy</span><span class="p">(</span><span class="n">newPos</span><span class="p">));</span>
+
+  <span class="nb">gl_FragColor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kt">vec4</span><span class="p">(</span><span class="n">oldArea</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">newArea</span><span class="p">,</span><span class="w"> </span><span class="mo">0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.2</span><span class="p">);</span>
+
+  </code></pre></div>'
 bezier-editor: '<h2>Bézier 曲线编辑器</h2>
 
   <p>Bézier 曲线是计算机图形学中最基础的参数曲线，由法国工程师 Pierre Bézier 于 1962 年在雷诺汽车公司开发，用于汽车车身设计。</p>
@@ -408,34 +441,476 @@ boid: '<h2>Boid — 群体运动算法</h2>
   </ul>'
 cpu-path-tracing: "<p>光线追踪（Ray Tracing）是计算机图形学中模拟光照的核心方法。本文从经典的 Whitted 递归光线追踪出发，逐步演进到基于物理的蒙特卡洛路径追踪，并讨论其加速策略。</p>\n<!--more-->\n\n<hr />\n<h2>1. 为什么需要光线追踪</h2>\n<p>光栅化（Rasterization）擅长快速渲染几何体，但在处理以下全局光照效果时有本质困难：</p>\n<ul>\n<li><strong>软阴影</strong>（Soft Shadows）：光源有面积时的半影效果</li>\n<li><strong>光泽反射</strong>（Glossy Reflection）：非完美镜面的模糊反射</li>\n<li><strong>间接光照</strong>（Indirect Illumination）：光线在物体间多次弹射后的效果</li>\n<li><strong>焦散</strong>（Caustics）：光线通过透明体聚焦后形成的亮斑</li>\n</ul>\n<p>光栅化只计算<strong>直接光照</strong>（眼睛 → 物体 → 光源，一次反射），无法处理光线的多次弹射。光线追踪通过<strong>追踪光线的传播路径</strong>来精确模拟这些效果。</p>\n<blockquote>\n<p><strong>核心假设</strong>：<br />\n- 光沿直线传播<br />\n- 光线之间不会碰撞<br />\n- 光线可逆（从相机出发和从光源出发等价）</p>\n</blockquote>\n<hr />\n<h2>2. Whitted 风格光线追踪</h2>\n<h3>2.1 算法概览</h3>\n<p>Whitted（1979）提出了一种递归式光线追踪算法。它从相机出发，对每个像素发射一条光线，在交点处递归地生成反射、折射和阴影光线。</p>\n<h3>2.2 三种光线</h3>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">光线类型</th>\n<th style=\"text-align: left;\">起点</th>\n<th style=\"text-align: left;\">方向</th>\n\
   <th style=\"text-align: left;\">作用</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>主射线（Primary Ray）</strong></td>\n<td style=\"text-align: left;\">相机</td>\n<td style=\"text-align: left;\">穿过像素平面进入场景</td>\n<td style=\"text-align: left;\">找到最近的交点</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>阴影射线（Shadow Ray）</strong></td>\n<td style=\"text-align: left;\">交点</td>\n<td style=\"text-align: left;\">指向光源</td>\n<td style=\"text-align: left;\">判断交点是否在阴影中</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>反射/折射射线</strong></td>\n<td style=\"text-align: left;\">交点</td>\n<td style=\"text-align: left;\">按反射/折射定律计算</td>\n<td style=\"text-align: left;\">模拟镜面反射和透明材质</td>\n</tr>\n</tbody>\n</table>\n<h3>2.3 反射与折射的数学</h3>\n<p><strong>反射方向</strong>（入射角 = 反射角）：</p>\n<p>$$\\mathbf{R} = \\mathbf{I} - 2(\\mathbf{I} \\cdot \\mathbf{N})\\mathbf{N}$$</p>\n<p>其中 $\\mathbf{I}$ 是入射方向（指向表面），$\\mathbf{N}$ 是表面法线。</p>\n<p><strong>折射方向</strong>（Snell 定律）：</p>\n<p>$$\\frac{\\\
-  sin\\theta_1}{\\sin\\theta_2} = \\frac{\\eta_1}{\\eta_2}$$</p>\n<p>$$\\mathbf{T} = \\frac{\\eta_1}{\\eta_2}\\mathbf{I} + \\left(\\frac{\\eta_1}{\\eta_2}\\cos\\theta_i - \\cos\\theta_t\\right)\\mathbf{N}$$</p>\n<p><strong>菲涅耳项（Fresnel）</strong>：决定反射和折射的比例：</p>\n<p>$$F_R = F_0 + (1 - F_0)(1 - \\cos\\theta_i)^5$$</p>\n<p>其中 $F_0$ 是垂直入射时的反射率。</p>\n<h3>2.4 完整伪代码</h3>\n<pre class=\"codehilite\"><code>function WhittedRayTrace(scene, ray, depth):\n    if depth &lt;= 0:\n        return backgroundColor\n\n    // 1. 找最近交点\n    hit = FindClosestIntersection(scene, ray)\n    if no hit:\n        return backgroundColor\n\n    color = BLACK\n    point = hit.point\n    normal = hit.normal\n\n    // 2. 直接光照（阴影射线）\n    for each light in scene.lights:\n        shadowDir = light.position - point\n        shadowRay = Ray(point + epsilon * normal, shadowDir)\n\n        if NOT IntersectsAnyObject(scene, shadowRay):\n            // 不在阴影中，计算光照\n            color += shading(hit.material, normal, light, shadowDir)\n\
-  \n    // 3. 反射\n    if hit.material.reflective AND depth &gt; 0:\n        reflectDir = Reflect(ray.direction, normal)\n        reflectRay = Ray(point + epsilon * normal, reflectDir)\n        reflectColor = WhittedRayTrace(scene, reflectRay, depth - 1)\n        color += hit.material.reflectivity * reflectColor\n\n    // 4. 折射\n    if hit.material.transparent AND depth &gt; 0:\n        refractDir = Refract(ray.direction, normal, hit.material.ior)\n        if refractDir exists:  // 非全反射\n            refractRay = Ray(point - epsilon * normal, refractDir)\n            refractColor = WhittedRayTrace(scene, refractRay, depth - 1)\n            color += hit.material.transparency * refractColor\n\n    return color\n</code></pre>\n\n<h3>2.5 Whitted 光追的局限</h3>\n<p>Whitted 光追在每次交点只生成<strong>确定性的</strong>反射/折射光线，这导致它无法模拟以下效果：</p>\n<ul>\n<li><strong>漫反射的间接光照</strong>：粗糙表面反射的光会照亮周围物体，但 Whitted 只处理镜面反射</li>\n<li><strong>软阴影</strong>：只生成一条阴影光线，结果只有硬阴影</li>\n<li><strong>焦散</strong>：光线通过透镜聚焦后的复杂效果</li>\n\
-  <li><strong>光泽反射</strong>：只能做完美镜面或完全漫反射，没有中间状态</li>\n</ul>\n<p>这些问题需要<strong>路径追踪（Path Tracing）</strong>来解决。</p>\n<hr />\n<h2>3. 路径追踪（Path Tracing）</h2>\n<h3>3.1 渲染方程</h3>\n<p>路径追踪的理论基础是 Kajiya（1986）提出的<strong>渲染方程</strong>：</p>\n<p>$$L_o(\\mathbf{p}, \\omega_o) = L_e(\\mathbf{p}, \\omega_o) + \\int_{\\Omega^+} f_r(\\mathbf{p}, \\omega_i, \\omega_o) \\cdot L_i(\\mathbf{p}, \\omega_i) \\cdot (\\mathbf{n} \\cdot \\omega_i) \\, d\\omega_i$$</p>\n<p>各符号含义：</p>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">符号</th>\n<th style=\"text-align: left;\">含义</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\">$L_o(\\mathbf{p}, \\omega_o)$</td>\n<td style=\"text-align: left;\">点 $\\mathbf{p}$ 沿方向 $\\omega_o$ 的出射光亮度</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">$L_e(\\mathbf{p}, \\omega_o)$</td>\n<td style=\"text-align: left;\">自发光（光源）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">$f_r(\\mathbf{p}, \\omega_i, \\omega_o)$</td>\n<td style=\"text-align: left;\">BRDF（双向反射分布函数）</td>\n\
-  </tr>\n<tr>\n<td style=\"text-align: left;\">$L_i(\\mathbf{p}, \\omega_i)$</td>\n<td style=\"text-align: left;\">沿方向 $\\omega_i$ 的入射光亮度</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">$\\mathbf{n} \\cdot \\omega_i$</td>\n<td style=\"text-align: left;\">余弦项（Lambert 定律）</td>\n</tr>\n</tbody>\n</table>\n<p>渲染方程本质上是一个<strong>积分方程</strong>——出射光 = 自发光 + 入射光在半球面上的加权积分。难点在于：这个积分通常没有解析解。</p>\n<h3>3.2 蒙特卡洛积分</h3>\n<p>既然无法直接计算渲染方程的积分，路径追踪使用<strong>蒙特卡洛方法</strong>来近似：</p>\n<p>$$\\int_a^b f(x) \\, dx \\approx \\frac{1}{N} \\sum_{i=1}^{N} \\frac{f(x_i)}{p(x_i)}$$</p>\n<p>其中 $x_i$ 是按概率密度 $p(x)$ 采样得到的随机点。</p>\n<p>应用到渲染方程：</p>\n<blockquote>\n<p>在半球面上随机采样一个方向 $\\omega_i$，沿该方向发射一条光线，获得该方向的入射光亮度 $L_i$，再乘以 BRDF 和余弦项。重复多次取平均，即可逼近积分值。</p>\n</blockquote>\n<h3>3.3 路径追踪算法</h3>\n<pre class=\"codehilite\"><code>function PathTrace(scene, ray, depth):\n    if depth &lt;= 0:\n        return backgroundColor\n\n    hit = FindClosestIntersection(scene, ray)\n    if no hit:\n        return backgroundColor\n\n    // 自发光\n\
-  \    color = hit.material.emissive\n\n    // 直接光照（光源采样 = 重要性采样）\n    for each light in scene.lights:\n        lightDir, lightDist = SampleLight(light)\n        shadowRay = Ray(hit.point + epsilon * normal, lightDir)\n\n        if NOT IntersectsAnyObject(scene, shadowRay, lightDist):\n            // 计算直接光照贡献\n            L_i = light.intensity / lightDist^2\n            pdf = light.pdf\n            color += hit.material.BRDF(normal, lightDir, -ray.direction)\n                   * L_i * max(0, dot(normal, lightDir)) / pdf\n\n    // 间接光照（随机采样半球方向）\n    // 1. 在半球面上按余弦加权随机采样\n    wi, pdf = CosineWeightedHemisphereSample(normal)\n\n    // 2. 沿该方向发射光线（递归）\n    indirectRay = Ray(hit.point + epsilon * normal, wi)\n    L_i = PathTrace(scene, indirectRay, depth - 1)\n\n    // 3. 计算 BRDF 贡献\n    f_r = hit.material.BRDF(normal, wi, -ray.direction)\n    cos_term = max(0, dot(normal, wi))\n    color += f_r * L_i * cos_term / pdf\n\n    return color\n</code></pre>\n\n<h3>3.4 俄罗斯轮盘赌（Russian Roulette）</h3>\n\
-  <p>路径追踪的递归深度无法预先确定——理论上光线可以在场景中无限弹射。如果简单地设定一个最大深度，会导致深路径的贡献被截断，产生偏差。</p>\n<p><strong>俄罗斯轮盘赌</strong>（RR）提供了一种<strong>无偏</strong>的截断方法：</p>\n<pre class=\"codehilite\"><code>// 在每次递归前，以概率 P_RR 决定是否继续\nP_RR = 0.8  // 存活概率\n\nif random() &gt; P_RR:\n    return BLACK  // 终止路径\n\n// 如果继续，贡献值除以 P_RR 以保持期望正确\nindirect_color = PathTrace(...) / P_RR\n</code></pre>\n\n<p><strong>数学正确性</strong>：设某条路径的真实贡献为 $C$。使用 RR 后：</p>\n<p>$$E[\\text{output}] = P_{RR} \\cdot \\frac{C}{P_{RR}} + (1 - P_{RR}) \\cdot 0 = C$$</p>\n<p>期望值不变，因此 RR 是<strong>无偏的</strong>——理论上，路径追踪的输出是渲染方程的<strong>无偏估计</strong>。</p>\n<h3>3.5 采样策略与降噪</h3>\n<p>路径追踪的核心问题是<strong>噪声（noise）</strong>——采样数不足时，蒙特卡洛积分的方差很大。</p>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">策略</th>\n<th style=\"text-align: left;\">方法</th>\n<th style=\"text-align: left;\">效果</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>增加 SPP</strong></td>\n<td style=\"text-align: left;\">每像素发射更多路径</td>\n<td style=\"text-align: left;\"\
-  >降低方差，但线性增加计算量</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>重要性采样</strong></td>\n<td style=\"text-align: left;\">偏向光源/BRDF 峰值方向采样</td>\n<td style=\"text-align: left;\">大幅降低方差</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>直接光照分离</strong></td>\n<td style=\"text-align: left;\">显式采样光源计算直接光照</td>\n<td style=\"text-align: left;\">最高效的降噪手段</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>双向路径追踪（BDPT）</strong></td>\n<td style=\"text-align: left;\">同时从相机和光源采样</td>\n<td style=\"text-align: left;\">处理困难光照路径</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>多重要性采样（MIS）</strong></td>\n<td style=\"text-align: left;\">组合多个采样策略</td>\n<td style=\"text-align: left;\">进一步降低方差</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>后处理降噪</strong></td>\n<td style=\"text-align: left;\">空间/时域滤波</td>\n<td style=\"text-align: left;\">最终图像平滑（可能引入模糊）</td>\n</tr>\n</tbody>\n</table>\n<h3>3.6 Whitted vs 路径追踪</h3>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\"\
-  >维度</th>\n<th style=\"text-align: left;\">Whitted 光追</th>\n<th style=\"text-align: left;\">路径追踪</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>间接光照</strong></td>\n<td style=\"text-align: left;\">❌ 只处理镜面反射</td>\n<td style=\"text-align: left;\">✅ 蒙特卡洛积分处理所有反射</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>软阴影</strong></td>\n<td style=\"text-align: left;\">❌ 硬阴影</td>\n<td style=\"text-align: left;\">✅ 面光源自然产生软阴影</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>物理正确</strong></td>\n<td style=\"text-align: left;\">❌ 启发式模型</td>\n<td style=\"text-align: left;\">✅ 基于渲染方程</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>噪声</strong></td>\n<td style=\"text-align: left;\">无</td>\n<td style=\"text-align: left;\">有（需多 SPP 降噪）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>速度</strong></td>\n<td style=\"text-align: left;\">快（确定性光线）</td>\n<td style=\"text-align: left;\">慢（随机采样）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>用途</strong></td>\n\
-  <td style=\"text-align: left;\">实时渲染、游戏</td>\n<td style=\"text-align: left;\">离线渲染、电影</td>\n</tr>\n</tbody>\n</table>\n<hr />\n<h2>4. 路径追踪加速</h2>\n<p>路径追踪的计算瓶颈在于<strong>射线-场景求交</strong>——每条路径需要数十次射线求交，而一个场景可能有数百万个三角形。暴力遍历的复杂度为 $O(n)$ 每条射线，完全不实用。</p>\n<h3>4.1 BVH vs KD Tree</h3>\n<p>两种最常用的加速结构：</p>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">维度</th>\n<th style=\"text-align: left;\">BVH（包围体层次）</th>\n<th style=\"text-align: left;\">KD Tree（KD 树）</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>划分对象</strong></td>\n<td style=\"text-align: left;\">物体（三角形的包围盒）</td>\n<td style=\"text-align: left;\">空间（轴对齐平面切分）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>构建速度</strong></td>\n<td style=\"text-align: left;\">快（$O(n \\log n)$）</td>\n<td style=\"text-align: left;\">较慢（$O(n \\log^2 n)$，SAH 优化）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>遍历效率</strong></td>\n<td style=\"text-align: left;\">高（紧凑的包围盒）</td>\n<td style=\"text-align: left;\"\
-  >通常更快（更精确的空间划分）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>动态场景</strong></td>\n<td style=\"text-align: left;\">✅ 易于更新（Refit）</td>\n<td style=\"text-align: left;\">❌ 难以更新（需重建）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>内存开销</strong></td>\n<td style=\"text-align: left;\">低</td>\n<td style=\"text-align: left;\">较高（需存储分割平面）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>GPU 适用性</strong></td>\n<td style=\"text-align: left;\">✅ 适合</td>\n<td style=\"text-align: left;\">⚠️ 不太适合</td>\n</tr>\n</tbody>\n</table>\n<p><strong>工程实践</strong>：现代光线追踪器（如 RTX 光追、Embree）<strong>几乎统一使用 BVH</strong>，主要因为构建和更新更高效，对动态场景更友好。</p>\n<h3>4.2 SAH（Surface Area Heuristic）</h3>\n<p><strong>SAH（表面积启发式）</strong> 是指导 BVH 构建的最优分割策略。其核心洞察：</p>\n<blockquote>\n<p>一条随机射线击中某个包围盒的概率，与该包围盒的<strong>表面积成正比</strong>。</p>\n</blockquote>\n<p>基于此，BVH 节点的射线遍历代价估计为：</p>\n<p>$$C_{\\text{split}} = C_{\\text{trav}} + P_A \\cdot N_A \\cdot C_{\\text{isect}} + P_B \\cdot N_B \\cdot C_{\\text{isect}}$$</p>\n\
-  <p>其中：<br />\n- $C_{\\text{trav}}$：遍历一个节点的固定开销<br />\n- $C_{\\text{isect}}$：一次射线-图元相交测试的开销<br />\n- $P_A = \\frac{SA(A)}{SA(\\text{parent})}$：射线击中左子树的概率（= 左子树表面积 / 父节点表面积）<br />\n- $N_A, N_B$：左右子树的图元数量</p>\n<p><strong>构建时</strong>：对每个候选分割平面计算上述代价，选择使 $C_{\\text{split}}$ 最小的分割。</p>\n<pre class=\"codehilite\"><code>function BuildBVH_SAH(primitives):\n    if |primitives| &lt;= LEAF_SIZE:\n        return LeafNode(primitives)\n\n    best_cost = infinity\n    best_axis, best_split = None\n\n    for each axis in {x, y, z}:\n        // 对图元按该轴排序\n        sort primitives by centroid[axis]\n\n        // 遍历所有可能的分割位置\n        for split in candidates:\n            left = primitives[:split]\n            right = primitives[split:]\n\n            cost = C_trav\n                  + SA(left_bbox) / SA(parent_bbox) * |left| * C_isect\n                  + SA(right_bbox) / SA(parent_bbox) * |right| * C_isect\n\n            if cost &lt; best_cost:\n                best_cost = cost\n                best_axis\
-  \ = axis\n                best_split = split\n\n    left_node = BuildBVH_SAH(primitives[:best_split])\n    right_node = BuildBVH_SAH(primitives[best_split:])\n    return InternalNode(left_node, right_node)\n</code></pre>\n\n<p>SAH 构建的 BVH 遍历效率远优于简单的中位数分割或等量划分，是现代光线追踪器的<strong>标准构建策略</strong>。</p>\n<h3>4.3 Morton Code 与 LBVH</h3>\n<p><strong>Morton Code（莫顿码）</strong> 也称为 Z-order curve，是一种将 3D 坐标编码为一维整数的方法：</p>\n<p>$$\\text{Morton}(x, y, z) = \\text{InterleaveBits}(x, y, z)$$</p>\n<p>例如，$(5, 3, 6)$ 的 Morton 码通过将 $x, y, z$ 的二进制位交错得到：</p>\n<pre class=\"codehilite\"><code>x = 5 = 101\ny = 3 = 011\nz = 6 = 110\n\nMorton = 100 111 010  (交错: z2y2x2 z1y1x1 z0y0x0)\n       = 100111010\n</code></pre>\n\n<p><strong>关键性质</strong>：3D 空间中<strong>位置相近</strong>的点，其 Morton 码也<strong>相近</strong>。这意味着按 Morton 码排序后，空间上相邻的三角形会被排在一起。</p>\n<p><strong>LBVH（Linear BVH）</strong> 利用这一性质：</p>\n<pre class=\"codehilite\"><code>function BuildLBVH(triangles):\n    // 1. 计算每个三角形重心的 Morton 码\n    for each tri in triangles:\n\
-  \        morton_code = MortonEncode(tri.centroid)\n        tri.morton = morton_code\n\n    // 2. 按 Morton 码排序（O(n log n)）\n    sort triangles by morton_code\n\n    // 3. 自顶向下按 Morton 码的最高有效位分割\n    //    或使用并行前缀和构建（GPU 友好）\n    return BuildTreeRecursive(triangles, 0, |triangles|, max_bit)\n</code></pre>\n\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">特性</th>\n<th style=\"text-align: left;\">SAH BVH</th>\n<th style=\"text-align: left;\">LBVH</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>构建速度</strong></td>\n<td style=\"text-align: left;\">$O(n \\log^2 n)$</td>\n<td style=\"text-align: left;\">$O(n \\log n)$（排序瓶颈）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>遍历质量</strong></td>\n<td style=\"text-align: left;\">✅ 最优（SAH 优化）</td>\n<td style=\"text-align: left;\">⚠️ 近似（可能不如 SAH）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>并行性</strong></td>\n<td style=\"text-align: left;\">❌ 串行递归</td>\n<td style=\"text-align: left;\">✅ 高度并行（适合\
-  \ GPU）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>GPU 构建</strong></td>\n<td style=\"text-align: left;\">困难</td>\n<td style=\"text-align: left;\">✅ 原生支持</td>\n</tr>\n</tbody>\n</table>\n<p>LBVH 特别适合 GPU 上的<strong>实时重建</strong>场景——例如动态物体的 BVH 在每帧更新。</p>\n<hr />\n<h2>5. SIMD 与 GPU 并行化</h2>\n<h3>5.1 SIMD（单指令多数据）</h3>\n<p>CPU 上的 SIMD（SSE/AVX）可以同时处理多条光线：</p>\n<pre class=\"codehilite\"><code>// AVX：同时处理 8 条光线\n__m256 ox = {ray[0].ox, ray[1].ox, ..., ray[7].ox};  // 8 个 x 原点\n__m256 oy = {ray[0].oy, ray[1].oy, ..., ray[7].oy};  // 8 个 y 原点\n// 一条指令完成 8 条光线的 AABB 相交测试\n__m256 tmin = AABB_Intersect_8(ox, oy, oz, dx, dy, dz, bmin, bmax);\n</code></pre>\n\n<p><strong>Packet Tracing</strong>：将多条光线打包为一组，同时对 BVH 的一个节点进行相交测试。当多条光线访问相同的 BVH 节点时，可以共享内存访问，减少 cache miss。</p>\n<h3>5.2 GPU 并行化</h3>\n<p>GPU 拥有数千个计算核心，天然适合光线追踪的<strong>大规模并行</strong>——每个像素/每条路径可以独立计算。</p>\n<p><strong>挑战与优化</strong>：</p>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">挑战</th>\n<th style=\"text-align: left;\"\
-  >原因</th>\n<th style=\"text-align: left;\">优化策略</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>分支分化</strong></td>\n<td style=\"text-align: left;\">不同路径的递归深度不同</td>\n<td style=\"text-align: left;\">减少分支，使用 wave-wide 操作</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>内存访问</strong></td>\n<td style=\"text-align: left;\">BVH 遍历的访问模式不可预测</td>\n<td style=\"text-align: left;\">节点线性存储，合并访存</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>栈管理</strong></td>\n<td style=\"text-align: left;\">递归遍历需要栈</td>\n<td style=\"text-align: left;\">使用紧凑的短栈（Wavefront tracing）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>构建 BVH</strong></td>\n<td style=\"text-align: left;\">GPU 上构建 BVH 较复杂</td>\n<td style=\"text-align: left;\">使用 LBVH / HLSBVH</td>\n</tr>\n</tbody>\n</table>\n<h3>5.3 现代 GPU 光追</h3>\n<p>2018 年 NVIDIA RTX 20 系列引入了<strong>硬件光线追踪（RT Cores）</strong>：</p>\n<ul>\n<li><strong>专用 BVH 遍历单元</strong>：硬件加速射线-AABB 和射线-三角形相交测试</li>\n<li><strong>API\
-  \ 支持</strong>：DXR（DirectX Raytracing）、Vulkan Ray Tracing、OptiX</li>\n<li><strong>性能</strong>：相比纯软件实现，BVH 遍历加速约 10 倍</li>\n</ul>\n<pre class=\"codehilite\"><code>现代实时光追管线：\n  GPU Compute Shader / Ray Generation Shader\n    → 发射光线（TraceRay）\n      → RT Core: BVH 遍历 + 三角形求交（硬件加速）\n        → Hit/Miss Shader: 着色计算\n          → 可能继续发射新光线（递归）\n</code></pre>\n\n<hr />\n<h2>总结</h2>\n<p>$$\\boxed{\\text{Whitted 光追}} \\xrightarrow{\\text{物理化}} \\boxed{\\text{路径追踪（蒙特卡洛）}} \\xrightarrow{\\text{加速}} \\boxed{\\text{BVH + SAH + SIMD/GPU}}$$</p>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">主题</th>\n<th style=\"text-align: left;\">核心内容</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>Whitted 光追</strong></td>\n<td style=\"text-align: left;\">递归光线追踪、反射/折射、阴影射线</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>路径追踪</strong></td>\n<td style=\"text-align: left;\">渲染方程、蒙特卡洛积分、BRDF、俄罗斯轮盘赌</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>BVH vs KD Tree</strong></td>\n\
-  <td style=\"text-align: left;\">BVH 更适合动态场景和 GPU</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>SAH</strong></td>\n<td style=\"text-align: left;\">表面积启发式代价模型，指导最优分割</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>Morton Code / LBVH</strong></td>\n<td style=\"text-align: left;\">空间编码 + 线性 BVH，GPU 友好</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>SIMD / GPU</strong></td>\n<td style=\"text-align: left;\">数据并行、Packet Tracing、RT Core 硬件加速</td>\n</tr>\n</tbody>\n</table>\n<h2>参考</h2>\n<ul>\n<li>Whitted, T. (1979). \"An improved illumination model for shaded display.\" <em>Communications of the ACM</em>.</li>\n<li>Kajiya, J. T. (1986). \"The rendering equation.\" <em>SIGGRAPH</em>.</li>\n<li>Pharr, M., Jakob, W., &amp; Humphreys, G. (2016). <em>Physically Based Rendering: From Theory to Implementation</em> (3rd ed.).</li>\n<li>Laine, S., &amp; Karras, T. (2011). \"High-Performance BVH Construction on GPU.\" <em>GPU Pro 2</em>.</li>\n</ul>"
+  sin\\theta_1}{\\sin\\theta_2} = \\frac{\\eta_1}{\\eta_2}$$</p>\n<p>$$\\mathbf{T} = \\frac{\\eta_1}{\\eta_2}\\mathbf{I} + \\left(\\frac{\\eta_1}{\\eta_2}\\cos\\theta_i - \\cos\\theta_t\\right)\\mathbf{N}$$</p>\n<p><strong>菲涅耳项（Fresnel）</strong>：决定反射和折射的比例：</p>\n<p>$$F_R = F_0 + (1 - F_0)(1 - \\cos\\theta_i)^5$$</p>\n<p>其中 $F_0$ 是垂直入射时的反射率。</p>\n<h3>2.4 完整伪代码</h3>\n<div class=\"codehilite\"><pre><span></span><code><span class=\"k\">function</span><span class=\"w\"> </span><span class=\"nf\">WhittedRayTrace</span><span class=\"p\">(</span>scene, ray, depth<span class=\"p\">):</span>\n<span class=\"w\">    </span><span class=\"k\">if</span><span class=\"w\"> </span><span class=\"n\">depth</span><span class=\"w\"> </span><span class=\"o\">&lt;=</span><span class=\"w\"> </span><span class=\"mi\">0</span><span class=\"p\">:</span>\n<span class=\"w\">        </span><span class=\"k\">return</span><span class=\"w\"> </span><span class=\"n\">backgroundColor</span>\n\n<span class=\"w\">    </span><span\
+  \ class=\"o\">//</span><span class=\"w\"> </span><span class=\"mf\">1.</span><span class=\"w\"> </span>找最近交点\n<span class=\"w\">    </span><span class=\"n\">hit</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">FindClosestIntersection</span><span class=\"p\">(</span><span class=\"n\">scene</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">ray</span><span class=\"p\">)</span>\n<span class=\"w\">    </span><span class=\"k\">if</span><span class=\"w\"> </span><span class=\"n\">no</span><span class=\"w\"> </span><span class=\"n\">hit</span><span class=\"p\">:</span>\n<span class=\"w\">        </span><span class=\"k\">return</span><span class=\"w\"> </span><span class=\"n\">backgroundColor</span>\n\n<span class=\"w\">    </span><span class=\"n\">color</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">BLACK</span>\n<span class=\"w\">    </span><span class=\"n\">point</span><span\
+  \ class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">hit</span><span class=\"p\">.</span><span class=\"n\">point</span>\n<span class=\"w\">    </span><span class=\"n\">normal</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">hit</span><span class=\"p\">.</span><span class=\"n\">normal</span>\n\n<span class=\"w\">    </span><span class=\"o\">//</span><span class=\"w\"> </span><span class=\"mf\">2.</span><span class=\"w\"> </span>直接光照（阴影射线）\n<span class=\"w\">    </span><span class=\"k\">for</span><span class=\"w\"> </span><span class=\"n\">each</span><span class=\"w\"> </span><span class=\"nb\">light</span><span class=\"w\"> </span><span class=\"n\">in</span><span class=\"w\"> </span><span class=\"n\">scene</span><span class=\"p\">.</span><span class=\"n\">lights</span><span class=\"p\">:</span>\n<span class=\"w\">        </span><span class=\"n\">shadowDir</span><span class=\"w\"> </span><span class=\"\
+  p\">=</span><span class=\"w\"> </span><span class=\"nb\">light</span><span class=\"p\">.</span><span class=\"n\">position</span><span class=\"w\"> </span><span class=\"o\">-</span><span class=\"w\"> </span><span class=\"n\">point</span>\n<span class=\"w\">        </span><span class=\"n\">shadowRay</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">Ray</span><span class=\"p\">(</span><span class=\"n\">point</span><span class=\"w\"> </span><span class=\"o\">+</span><span class=\"w\"> </span><span class=\"n\">epsilon</span><span class=\"w\"> </span><span class=\"o\">*</span><span class=\"w\"> </span><span class=\"n\">normal</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">shadowDir</span><span class=\"p\">)</span>\n\n<span class=\"w\">        </span><span class=\"k\">if</span><span class=\"w\"> </span><span class=\"n\">NOT</span><span class=\"w\"> </span><span class=\"n\">IntersectsAnyObject</span><span class=\"\
+  p\">(</span><span class=\"n\">scene</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">shadowRay</span><span class=\"p\">):</span>\n<span class=\"w\">            </span><span class=\"o\">//</span><span class=\"w\"> </span>不在阴影中，计算光照\n<span class=\"w\">            </span><span class=\"n\">color</span><span class=\"w\"> </span><span class=\"o\">+</span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"nb\">shading</span><span class=\"p\">(</span><span class=\"n\">hit</span><span class=\"p\">.</span><span class=\"n\">material</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">normal</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"nb\">light</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">shadowDir</span><span class=\"p\">)</span>\n\n<span class=\"w\">    </span><span class=\"o\">//</span><span class=\"w\"> </span><span class=\"mf\">3.</span><span class=\"w\"> </span>反射\n<span\
+  \ class=\"w\">    </span><span class=\"k\">if</span><span class=\"w\"> </span><span class=\"n\">hit</span><span class=\"p\">.</span><span class=\"n\">material</span><span class=\"p\">.</span><span class=\"n\">reflective</span><span class=\"w\"> </span><span class=\"n\">AND</span><span class=\"w\"> </span><span class=\"n\">depth</span><span class=\"w\"> </span><span class=\"o\">&gt;</span><span class=\"w\"> </span><span class=\"mi\">0</span><span class=\"p\">:</span>\n<span class=\"w\">        </span><span class=\"n\">reflectDir</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">Reflect</span><span class=\"p\">(</span><span class=\"n\">ray</span><span class=\"p\">.</span><span class=\"n\">direction</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">normal</span><span class=\"p\">)</span>\n<span class=\"w\">        </span><span class=\"n\">reflectRay</span><span class=\"w\"> </span><span class=\"p\">=</span><span\
+  \ class=\"w\"> </span><span class=\"n\">Ray</span><span class=\"p\">(</span><span class=\"n\">point</span><span class=\"w\"> </span><span class=\"o\">+</span><span class=\"w\"> </span><span class=\"n\">epsilon</span><span class=\"w\"> </span><span class=\"o\">*</span><span class=\"w\"> </span><span class=\"n\">normal</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">reflectDir</span><span class=\"p\">)</span>\n<span class=\"w\">        </span><span class=\"n\">reflectColor</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">WhittedRayTrace</span><span class=\"p\">(</span><span class=\"n\">scene</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">reflectRay</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">depth</span><span class=\"w\"> </span><span class=\"o\">-</span><span class=\"w\"> </span><span class=\"mi\">1</span><span class=\"p\">)</span>\n<span class=\"\
+  w\">        </span><span class=\"n\">color</span><span class=\"w\"> </span><span class=\"o\">+</span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">hit</span><span class=\"p\">.</span><span class=\"n\">material</span><span class=\"p\">.</span><span class=\"n\">reflectivity</span><span class=\"w\"> </span><span class=\"o\">*</span><span class=\"w\"> </span><span class=\"n\">reflectColor</span>\n\n<span class=\"w\">    </span><span class=\"o\">//</span><span class=\"w\"> </span><span class=\"mf\">4.</span><span class=\"w\"> </span>折射\n<span class=\"w\">    </span><span class=\"k\">if</span><span class=\"w\"> </span><span class=\"n\">hit</span><span class=\"p\">.</span><span class=\"n\">material</span><span class=\"p\">.</span><span class=\"n\">transparent</span><span class=\"w\"> </span><span class=\"n\">AND</span><span class=\"w\"> </span><span class=\"n\">depth</span><span class=\"w\"> </span><span class=\"o\">&gt;</span><span class=\"w\"> </span><span class=\"mi\"\
+  >0</span><span class=\"p\">:</span>\n<span class=\"w\">        </span><span class=\"n\">refractDir</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">Refract</span><span class=\"p\">(</span><span class=\"n\">ray</span><span class=\"p\">.</span><span class=\"n\">direction</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">normal</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">hit</span><span class=\"p\">.</span><span class=\"n\">material</span><span class=\"p\">.</span><span class=\"n\">ior</span><span class=\"p\">)</span>\n<span class=\"w\">        </span><span class=\"k\">if</span><span class=\"w\"> </span><span class=\"n\">refractDir</span><span class=\"w\"> </span><span class=\"n\">exists</span><span class=\"p\">:</span><span class=\"w\">  </span><span class=\"o\">//</span><span class=\"w\"> </span>非全反射\n<span class=\"w\">            </span><span class=\"n\">refractRay</span><span\
+  \ class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">Ray</span><span class=\"p\">(</span><span class=\"n\">point</span><span class=\"w\"> </span><span class=\"o\">-</span><span class=\"w\"> </span><span class=\"n\">epsilon</span><span class=\"w\"> </span><span class=\"o\">*</span><span class=\"w\"> </span><span class=\"n\">normal</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">refractDir</span><span class=\"p\">)</span>\n<span class=\"w\">            </span><span class=\"n\">refractColor</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">WhittedRayTrace</span><span class=\"p\">(</span><span class=\"n\">scene</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">refractRay</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">depth</span><span class=\"w\"> </span><span class=\"o\">-</span><span class=\"w\"> </span><span class=\"\
+  mi\">1</span><span class=\"p\">)</span>\n<span class=\"w\">            </span><span class=\"n\">color</span><span class=\"w\"> </span><span class=\"o\">+</span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">hit</span><span class=\"p\">.</span><span class=\"n\">material</span><span class=\"p\">.</span><span class=\"n\">transparency</span><span class=\"w\"> </span><span class=\"o\">*</span><span class=\"w\"> </span><span class=\"n\">refractColor</span>\n\n<span class=\"w\">    </span><span class=\"k\">return</span><span class=\"w\"> </span><span class=\"n\">color</span>\n</code></pre></div>\n\n<h3>2.5 Whitted 光追的局限</h3>\n<p>Whitted 光追在每次交点只生成<strong>确定性的</strong>反射/折射光线，这导致它无法模拟以下效果：</p>\n<ul>\n<li><strong>漫反射的间接光照</strong>：粗糙表面反射的光会照亮周围物体，但 Whitted 只处理镜面反射</li>\n<li><strong>软阴影</strong>：只生成一条阴影光线，结果只有硬阴影</li>\n<li><strong>焦散</strong>：光线通过透镜聚焦后的复杂效果</li>\n<li><strong>光泽反射</strong>：只能做完美镜面或完全漫反射，没有中间状态</li>\n</ul>\n<p>这些问题需要<strong>路径追踪（Path Tracing）</strong>来解决。</p>\n\
+  <hr />\n<h2>3. 路径追踪（Path Tracing）</h2>\n<h3>3.1 渲染方程</h3>\n<p>路径追踪的理论基础是 Kajiya（1986）提出的<strong>渲染方程</strong>：</p>\n<p>$$L_o(\\mathbf{p}, \\omega_o) = L_e(\\mathbf{p}, \\omega_o) + \\int_{\\Omega^+} f_r(\\mathbf{p}, \\omega_i, \\omega_o) \\cdot L_i(\\mathbf{p}, \\omega_i) \\cdot (\\mathbf{n} \\cdot \\omega_i) \\, d\\omega_i$$</p>\n<p>各符号含义：</p>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">符号</th>\n<th style=\"text-align: left;\">含义</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\">$L_o(\\mathbf{p}, \\omega_o)$</td>\n<td style=\"text-align: left;\">点 $\\mathbf{p}$ 沿方向 $\\omega_o$ 的出射光亮度</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">$L_e(\\mathbf{p}, \\omega_o)$</td>\n<td style=\"text-align: left;\">自发光（光源）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">$f_r(\\mathbf{p}, \\omega_i, \\omega_o)$</td>\n<td style=\"text-align: left;\">BRDF（双向反射分布函数）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">$L_i(\\mathbf{p}, \\omega_i)$</td>\n<td style=\"text-align:\
+  \ left;\">沿方向 $\\omega_i$ 的入射光亮度</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">$\\mathbf{n} \\cdot \\omega_i$</td>\n<td style=\"text-align: left;\">余弦项（Lambert 定律）</td>\n</tr>\n</tbody>\n</table>\n<p>渲染方程本质上是一个<strong>积分方程</strong>——出射光 = 自发光 + 入射光在半球面上的加权积分。难点在于：这个积分通常没有解析解。</p>\n<h3>3.2 蒙特卡洛积分</h3>\n<p>既然无法直接计算渲染方程的积分，路径追踪使用<strong>蒙特卡洛方法</strong>来近似：</p>\n<p>$$\\int_a^b f(x) \\, dx \\approx \\frac{1}{N} \\sum_{i=1}^{N} \\frac{f(x_i)}{p(x_i)}$$</p>\n<p>其中 $x_i$ 是按概率密度 $p(x)$ 采样得到的随机点。</p>\n<p>应用到渲染方程：</p>\n<blockquote>\n<p>在半球面上随机采样一个方向 $\\omega_i$，沿该方向发射一条光线，获得该方向的入射光亮度 $L_i$，再乘以 BRDF 和余弦项。重复多次取平均，即可逼近积分值。</p>\n</blockquote>\n<h3>3.3 路径追踪算法</h3>\n<div class=\"codehilite\"><pre><span></span><code><span class=\"k\">function</span><span class=\"w\"> </span><span class=\"nf\">PathTrace</span><span class=\"p\">(</span>scene, ray, depth<span class=\"p\">):</span>\n<span class=\"w\">    </span><span class=\"k\">if</span><span class=\"w\"> </span><span class=\"n\">depth</span><span class=\"\
+  w\"> </span><span class=\"o\">&lt;=</span><span class=\"w\"> </span><span class=\"mi\">0</span><span class=\"p\">:</span>\n<span class=\"w\">        </span><span class=\"k\">return</span><span class=\"w\"> </span><span class=\"n\">backgroundColor</span>\n\n<span class=\"w\">    </span><span class=\"n\">hit</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">FindClosestIntersection</span><span class=\"p\">(</span><span class=\"n\">scene</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">ray</span><span class=\"p\">)</span>\n<span class=\"w\">    </span><span class=\"k\">if</span><span class=\"w\"> </span><span class=\"n\">no</span><span class=\"w\"> </span><span class=\"n\">hit</span><span class=\"p\">:</span>\n<span class=\"w\">        </span><span class=\"k\">return</span><span class=\"w\"> </span><span class=\"n\">backgroundColor</span>\n\n<span class=\"w\">    </span><span class=\"o\">//</span><span class=\"\
+  w\"> </span>自发光\n<span class=\"w\">    </span><span class=\"n\">color</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">hit</span><span class=\"p\">.</span><span class=\"n\">material</span><span class=\"p\">.</span><span class=\"n\">emissive</span>\n\n<span class=\"w\">    </span><span class=\"o\">//</span><span class=\"w\"> </span>直接光照（光源采样<span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span>重要性采样）\n<span class=\"w\">    </span><span class=\"k\">for</span><span class=\"w\"> </span><span class=\"n\">each</span><span class=\"w\"> </span><span class=\"nb\">light</span><span class=\"w\"> </span><span class=\"n\">in</span><span class=\"w\"> </span><span class=\"n\">scene</span><span class=\"p\">.</span><span class=\"n\">lights</span><span class=\"p\">:</span>\n<span class=\"w\">        </span><span class=\"n\">lightDir</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">lightDist</span><span\
+  \ class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">SampleLight</span><span class=\"p\">(</span><span class=\"nb\">light</span><span class=\"p\">)</span>\n<span class=\"w\">        </span><span class=\"n\">shadowRay</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">Ray</span><span class=\"p\">(</span><span class=\"n\">hit</span><span class=\"p\">.</span><span class=\"n\">point</span><span class=\"w\"> </span><span class=\"o\">+</span><span class=\"w\"> </span><span class=\"n\">epsilon</span><span class=\"w\"> </span><span class=\"o\">*</span><span class=\"w\"> </span><span class=\"n\">normal</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">lightDir</span><span class=\"p\">)</span>\n\n<span class=\"w\">        </span><span class=\"k\">if</span><span class=\"w\"> </span><span class=\"n\">NOT</span><span class=\"w\"> </span><span class=\"n\">IntersectsAnyObject</span><span\
+  \ class=\"p\">(</span><span class=\"n\">scene</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">shadowRay</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">lightDist</span><span class=\"p\">):</span>\n<span class=\"w\">            </span><span class=\"o\">//</span><span class=\"w\"> </span>计算直接光照贡献\n<span class=\"w\">            </span><span class=\"n\">L_i</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"nb\">light</span><span class=\"p\">.</span><span class=\"n\">intensity</span><span class=\"w\"> </span><span class=\"o\">/</span><span class=\"w\"> </span><span class=\"n\">lightDist</span><span class=\"o\">^</span><span class=\"mi\">2</span>\n<span class=\"w\">            </span><span class=\"n\">pdf</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"nb\">light</span><span class=\"p\">.</span><span class=\"n\">pdf</span>\n<span class=\"w\"\
+  >            </span><span class=\"n\">color</span><span class=\"w\"> </span><span class=\"o\">+</span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">hit</span><span class=\"p\">.</span><span class=\"n\">material</span><span class=\"p\">.</span><span class=\"n\">BRDF</span><span class=\"p\">(</span><span class=\"n\">normal</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">lightDir</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"o\">-</span><span class=\"n\">ray</span><span class=\"p\">.</span><span class=\"n\">direction</span><span class=\"p\">)</span>\n<span class=\"w\">                   </span><span class=\"o\">*</span><span class=\"w\"> </span><span class=\"n\">L_i</span><span class=\"w\"> </span><span class=\"o\">*</span><span class=\"w\"> </span><span class=\"nb\">max</span><span class=\"p\">(</span><span class=\"mi\">0</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"nb\">dot</span><span\
+  \ class=\"p\">(</span><span class=\"n\">normal</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">lightDir</span><span class=\"p\">))</span><span class=\"w\"> </span><span class=\"o\">/</span><span class=\"w\"> </span><span class=\"n\">pdf</span>\n\n<span class=\"w\">    </span><span class=\"o\">//</span><span class=\"w\"> </span>间接光照（随机采样半球方向）\n<span class=\"w\">    </span><span class=\"o\">//</span><span class=\"w\"> </span><span class=\"mf\">1.</span><span class=\"w\"> </span>在半球面上按余弦加权随机采样\n<span class=\"w\">    </span><span class=\"n\">wi</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">pdf</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">CosineWeightedHemisphereSample</span><span class=\"p\">(</span><span class=\"n\">normal</span><span class=\"p\">)</span>\n\n<span class=\"w\">    </span><span class=\"o\">//</span><span class=\"w\"> </span><span class=\"mf\">2.</span><span class=\"\
+  w\"> </span>沿该方向发射光线（递归）\n<span class=\"w\">    </span><span class=\"n\">indirectRay</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">Ray</span><span class=\"p\">(</span><span class=\"n\">hit</span><span class=\"p\">.</span><span class=\"n\">point</span><span class=\"w\"> </span><span class=\"o\">+</span><span class=\"w\"> </span><span class=\"n\">epsilon</span><span class=\"w\"> </span><span class=\"o\">*</span><span class=\"w\"> </span><span class=\"n\">normal</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">wi</span><span class=\"p\">)</span>\n<span class=\"w\">    </span><span class=\"n\">L_i</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">PathTrace</span><span class=\"p\">(</span><span class=\"n\">scene</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">indirectRay</span><span class=\"p\">,</span><span class=\"w\"> </span><span\
+  \ class=\"n\">depth</span><span class=\"w\"> </span><span class=\"o\">-</span><span class=\"w\"> </span><span class=\"mi\">1</span><span class=\"p\">)</span>\n\n<span class=\"w\">    </span><span class=\"o\">//</span><span class=\"w\"> </span><span class=\"mf\">3.</span><span class=\"w\"> </span>计算<span class=\"w\"> </span><span class=\"n\">BRDF</span><span class=\"w\"> </span>贡献\n<span class=\"w\">    </span><span class=\"n\">f_r</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">hit</span><span class=\"p\">.</span><span class=\"n\">material</span><span class=\"p\">.</span><span class=\"n\">BRDF</span><span class=\"p\">(</span><span class=\"n\">normal</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">wi</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"o\">-</span><span class=\"n\">ray</span><span class=\"p\">.</span><span class=\"n\">direction</span><span class=\"p\">)</span>\n<span class=\"\
+  w\">    </span><span class=\"n\">cos_term</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"nb\">max</span><span class=\"p\">(</span><span class=\"mi\">0</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"nb\">dot</span><span class=\"p\">(</span><span class=\"n\">normal</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">wi</span><span class=\"p\">))</span>\n<span class=\"w\">    </span><span class=\"n\">color</span><span class=\"w\"> </span><span class=\"o\">+</span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">f_r</span><span class=\"w\"> </span><span class=\"o\">*</span><span class=\"w\"> </span><span class=\"n\">L_i</span><span class=\"w\"> </span><span class=\"o\">*</span><span class=\"w\"> </span><span class=\"n\">cos_term</span><span class=\"w\"> </span><span class=\"o\">/</span><span class=\"w\"> </span><span class=\"n\">pdf</span>\n\n<span class=\"w\">    </span><span\
+  \ class=\"k\">return</span><span class=\"w\"> </span><span class=\"n\">color</span>\n</code></pre></div>\n\n<h3>3.4 俄罗斯轮盘赌（Russian Roulette）</h3>\n<p>路径追踪的递归深度无法预先确定——理论上光线可以在场景中无限弹射。如果简单地设定一个最大深度，会导致深路径的贡献被截断，产生偏差。</p>\n<p><strong>俄罗斯轮盘赌</strong>（RR）提供了一种<strong>无偏</strong>的截断方法：</p>\n<div class=\"codehilite\"><pre><span></span><code><span class=\"c1\">// 在每次递归前，以概率 P_RR 决定是否继续</span>\n<span class=\"n\">P_RR</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"mf\">0.8</span><span class=\"w\">  </span><span class=\"c1\">// 存活概率</span>\n\n<span class=\"k\">if</span><span class=\"w\"> </span><span class=\"n\">random</span><span class=\"p\">()</span><span class=\"w\"> </span><span class=\"o\">&gt;</span><span class=\"w\"> </span><span class=\"n\">P_RR</span><span class=\"p\">:</span>\n<span class=\"w\">    </span><span class=\"k\">return</span><span class=\"w\"> </span><span class=\"n\">BLACK</span><span class=\"w\">  </span><span class=\"c1\"\
+  >// 终止路径</span>\n\n<span class=\"c1\">// 如果继续，贡献值除以 P_RR 以保持期望正确</span>\n<span class=\"n\">indirect_color</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">PathTrace</span><span class=\"p\">(...)</span><span class=\"w\"> </span><span class=\"o\">/</span><span class=\"w\"> </span><span class=\"n\">P_RR</span>\n</code></pre></div>\n\n<p><strong>数学正确性</strong>：设某条路径的真实贡献为 $C$。使用 RR 后：</p>\n<p>$$E[\\text{output}] = P_{RR} \\cdot \\frac{C}{P_{RR}} + (1 - P_{RR}) \\cdot 0 = C$$</p>\n<p>期望值不变，因此 RR 是<strong>无偏的</strong>——理论上，路径追踪的输出是渲染方程的<strong>无偏估计</strong>。</p>\n<h3>3.5 采样策略与降噪</h3>\n<p>路径追踪的核心问题是<strong>噪声（noise）</strong>——采样数不足时，蒙特卡洛积分的方差很大。</p>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">策略</th>\n<th style=\"text-align: left;\">方法</th>\n<th style=\"text-align: left;\">效果</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>增加 SPP</strong></td>\n<td style=\"text-align: left;\">每像素发射更多路径</td>\n<td style=\"\
+  text-align: left;\">降低方差，但线性增加计算量</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>重要性采样</strong></td>\n<td style=\"text-align: left;\">偏向光源/BRDF 峰值方向采样</td>\n<td style=\"text-align: left;\">大幅降低方差</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>直接光照分离</strong></td>\n<td style=\"text-align: left;\">显式采样光源计算直接光照</td>\n<td style=\"text-align: left;\">最高效的降噪手段</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>双向路径追踪（BDPT）</strong></td>\n<td style=\"text-align: left;\">同时从相机和光源采样</td>\n<td style=\"text-align: left;\">处理困难光照路径</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>多重要性采样（MIS）</strong></td>\n<td style=\"text-align: left;\">组合多个采样策略</td>\n<td style=\"text-align: left;\">进一步降低方差</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>后处理降噪</strong></td>\n<td style=\"text-align: left;\">空间/时域滤波</td>\n<td style=\"text-align: left;\">最终图像平滑（可能引入模糊）</td>\n</tr>\n</tbody>\n</table>\n<h3>3.6 Whitted vs 路径追踪</h3>\n<table>\n<thead>\n<tr>\n<th style=\"\
+  text-align: left;\">维度</th>\n<th style=\"text-align: left;\">Whitted 光追</th>\n<th style=\"text-align: left;\">路径追踪</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>间接光照</strong></td>\n<td style=\"text-align: left;\">❌ 只处理镜面反射</td>\n<td style=\"text-align: left;\">✅ 蒙特卡洛积分处理所有反射</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>软阴影</strong></td>\n<td style=\"text-align: left;\">❌ 硬阴影</td>\n<td style=\"text-align: left;\">✅ 面光源自然产生软阴影</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>物理正确</strong></td>\n<td style=\"text-align: left;\">❌ 启发式模型</td>\n<td style=\"text-align: left;\">✅ 基于渲染方程</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>噪声</strong></td>\n<td style=\"text-align: left;\">无</td>\n<td style=\"text-align: left;\">有（需多 SPP 降噪）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>速度</strong></td>\n<td style=\"text-align: left;\">快（确定性光线）</td>\n<td style=\"text-align: left;\">慢（随机采样）</td>\n</tr>\n<tr>\n<td style=\"text-align:\
+  \ left;\"><strong>用途</strong></td>\n<td style=\"text-align: left;\">实时渲染、游戏</td>\n<td style=\"text-align: left;\">离线渲染、电影</td>\n</tr>\n</tbody>\n</table>\n<hr />\n<h2>4. 路径追踪加速</h2>\n<p>路径追踪的计算瓶颈在于<strong>射线-场景求交</strong>——每条路径需要数十次射线求交，而一个场景可能有数百万个三角形。暴力遍历的复杂度为 $O(n)$ 每条射线，完全不实用。</p>\n<h3>4.1 BVH vs KD Tree</h3>\n<p>两种最常用的加速结构：</p>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">维度</th>\n<th style=\"text-align: left;\">BVH（包围体层次）</th>\n<th style=\"text-align: left;\">KD Tree（KD 树）</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>划分对象</strong></td>\n<td style=\"text-align: left;\">物体（三角形的包围盒）</td>\n<td style=\"text-align: left;\">空间（轴对齐平面切分）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>构建速度</strong></td>\n<td style=\"text-align: left;\">快（$O(n \\log n)$）</td>\n<td style=\"text-align: left;\">较慢（$O(n \\log^2 n)$，SAH 优化）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>遍历效率</strong></td>\n<td style=\"text-align: left;\">高（紧凑的包围盒）</td>\n\
+  <td style=\"text-align: left;\">通常更快（更精确的空间划分）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>动态场景</strong></td>\n<td style=\"text-align: left;\">✅ 易于更新（Refit）</td>\n<td style=\"text-align: left;\">❌ 难以更新（需重建）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>内存开销</strong></td>\n<td style=\"text-align: left;\">低</td>\n<td style=\"text-align: left;\">较高（需存储分割平面）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>GPU 适用性</strong></td>\n<td style=\"text-align: left;\">✅ 适合</td>\n<td style=\"text-align: left;\">⚠️ 不太适合</td>\n</tr>\n</tbody>\n</table>\n<p><strong>工程实践</strong>：现代光线追踪器（如 RTX 光追、Embree）<strong>几乎统一使用 BVH</strong>，主要因为构建和更新更高效，对动态场景更友好。</p>\n<h3>4.2 SAH（Surface Area Heuristic）</h3>\n<p><strong>SAH（表面积启发式）</strong> 是指导 BVH 构建的最优分割策略。其核心洞察：</p>\n<blockquote>\n<p>一条随机射线击中某个包围盒的概率，与该包围盒的<strong>表面积成正比</strong>。</p>\n</blockquote>\n<p>基于此，BVH 节点的射线遍历代价估计为：</p>\n<p>$$C_{\\text{split}} = C_{\\text{trav}} + P_A \\cdot N_A \\cdot C_{\\text{isect}} + P_B \\\
+  cdot N_B \\cdot C_{\\text{isect}}$$</p>\n<p>其中：<br />\n- $C_{\\text{trav}}$：遍历一个节点的固定开销<br />\n- $C_{\\text{isect}}$：一次射线-图元相交测试的开销<br />\n- $P_A = \\frac{SA(A)}{SA(\\text{parent})}$：射线击中左子树的概率（= 左子树表面积 / 父节点表面积）<br />\n- $N_A, N_B$：左右子树的图元数量</p>\n<p><strong>构建时</strong>：对每个候选分割平面计算上述代价，选择使 $C_{\\text{split}}$ 最小的分割。</p>\n<div class=\"codehilite\"><pre><span></span><code><span class=\"k\">function</span><span class=\"w\"> </span><span class=\"nf\">BuildBVH_SAH</span><span class=\"p\">(</span>primitives<span class=\"p\">):</span>\n<span class=\"w\">    </span><span class=\"k\">if</span><span class=\"w\"> </span><span class=\"o\">|</span><span class=\"n\">primitives</span><span class=\"o\">|</span><span class=\"w\"> </span><span class=\"o\">&lt;=</span><span class=\"w\"> </span><span class=\"n\">LEAF_SIZE</span><span class=\"p\">:</span>\n<span class=\"w\">        </span><span class=\"k\">return</span><span class=\"w\"> </span><span class=\"n\">LeafNode</span><span class=\"p\">(</span><span\
+  \ class=\"n\">primitives</span><span class=\"p\">)</span>\n\n<span class=\"w\">    </span><span class=\"n\">best_cost</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">infinity</span>\n<span class=\"w\">    </span><span class=\"n\">best_axis</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">best_split</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">None</span>\n\n<span class=\"w\">    </span><span class=\"k\">for</span><span class=\"w\"> </span><span class=\"n\">each</span><span class=\"w\"> </span><span class=\"nb\">axis</span><span class=\"w\"> </span><span class=\"n\">in</span><span class=\"w\"> </span><span class=\"p\">{</span><span class=\"n\">x</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">y</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">z</span><span class=\"p\">}:</span>\n<span class=\"w\"\
+  >        </span><span class=\"o\">//</span><span class=\"w\"> </span>对图元按该轴排序\n<span class=\"w\">        </span><span class=\"nb\">sort</span><span class=\"w\"> </span><span class=\"n\">primitives</span><span class=\"w\"> </span><span class=\"n\">by</span><span class=\"w\"> </span><span class=\"nb\">centroid</span><span class=\"p\">[</span><span class=\"nb\">axis</span><span class=\"p\">]</span>\n\n<span class=\"w\">        </span><span class=\"o\">//</span><span class=\"w\"> </span>遍历所有可能的分割位置\n<span class=\"w\">        </span><span class=\"k\">for</span><span class=\"w\"> </span><span class=\"nb\">split</span><span class=\"w\"> </span><span class=\"n\">in</span><span class=\"w\"> </span><span class=\"n\">candidates</span><span class=\"p\">:</span>\n<span class=\"w\">            </span><span class=\"n\">left</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">primitives</span><span class=\"p\">[:</span><span class=\"nb\">split</span><span\
+  \ class=\"p\">]</span>\n<span class=\"w\">            </span><span class=\"n\">right</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">primitives</span><span class=\"p\">[</span><span class=\"nb\">split</span><span class=\"p\">:]</span>\n\n<span class=\"w\">            </span><span class=\"n\">cost</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">C_trav</span>\n<span class=\"w\">                  </span><span class=\"o\">+</span><span class=\"w\"> </span><span class=\"n\">SA</span><span class=\"p\">(</span><span class=\"n\">left_bbox</span><span class=\"p\">)</span><span class=\"w\"> </span><span class=\"o\">/</span><span class=\"w\"> </span><span class=\"n\">SA</span><span class=\"p\">(</span><span class=\"n\">parent_bbox</span><span class=\"p\">)</span><span class=\"w\"> </span><span class=\"o\">*</span><span class=\"w\"> </span><span class=\"o\">|</span><span class=\"n\">left</span><span\
+  \ class=\"o\">|</span><span class=\"w\"> </span><span class=\"o\">*</span><span class=\"w\"> </span><span class=\"n\">C_isect</span>\n<span class=\"w\">                  </span><span class=\"o\">+</span><span class=\"w\"> </span><span class=\"n\">SA</span><span class=\"p\">(</span><span class=\"n\">right_bbox</span><span class=\"p\">)</span><span class=\"w\"> </span><span class=\"o\">/</span><span class=\"w\"> </span><span class=\"n\">SA</span><span class=\"p\">(</span><span class=\"n\">parent_bbox</span><span class=\"p\">)</span><span class=\"w\"> </span><span class=\"o\">*</span><span class=\"w\"> </span><span class=\"o\">|</span><span class=\"n\">right</span><span class=\"o\">|</span><span class=\"w\"> </span><span class=\"o\">*</span><span class=\"w\"> </span><span class=\"n\">C_isect</span>\n\n<span class=\"w\">            </span><span class=\"k\">if</span><span class=\"w\"> </span><span class=\"n\">cost</span><span class=\"w\"> </span><span class=\"o\">&lt;</span><span class=\"w\"\
+  > </span><span class=\"n\">best_cost</span><span class=\"p\">:</span>\n<span class=\"w\">                </span><span class=\"n\">best_cost</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">cost</span>\n<span class=\"w\">                </span><span class=\"n\">best_axis</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"nb\">axis</span>\n<span class=\"w\">                </span><span class=\"n\">best_split</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"nb\">split</span>\n\n<span class=\"w\">    </span><span class=\"n\">left_node</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">BuildBVH_SAH</span><span class=\"p\">(</span><span class=\"n\">primitives</span><span class=\"p\">[:</span><span class=\"n\">best_split</span><span class=\"p\">])</span>\n<span class=\"w\">    </span><span class=\"\
+  n\">right_node</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">BuildBVH_SAH</span><span class=\"p\">(</span><span class=\"n\">primitives</span><span class=\"p\">[</span><span class=\"n\">best_split</span><span class=\"p\">:])</span>\n<span class=\"w\">    </span><span class=\"k\">return</span><span class=\"w\"> </span><span class=\"n\">InternalNode</span><span class=\"p\">(</span><span class=\"n\">left_node</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">right_node</span><span class=\"p\">)</span>\n</code></pre></div>\n\n<p>SAH 构建的 BVH 遍历效率远优于简单的中位数分割或等量划分，是现代光线追踪器的<strong>标准构建策略</strong>。</p>\n<h3>4.3 Morton Code 与 LBVH</h3>\n<p><strong>Morton Code（莫顿码）</strong> 也称为 Z-order curve，是一种将 3D 坐标编码为一维整数的方法：</p>\n<p>$$\\text{Morton}(x, y, z) = \\text{InterleaveBits}(x, y, z)$$</p>\n<p>例如，$(5, 3, 6)$ 的 Morton 码通过将 $x, y, z$ 的二进制位交错得到：</p>\n<div class=\"codehilite\"><pre><span></span><code>x = 5 = 101\ny = 3 = 011\n\
+  z = 6 = 110\n\nMorton = 100 111 010  (交错: z2y2x2 z1y1x1 z0y0x0)\n       = 100111010\n</code></pre></div>\n\n<p><strong>关键性质</strong>：3D 空间中<strong>位置相近</strong>的点，其 Morton 码也<strong>相近</strong>。这意味着按 Morton 码排序后，空间上相邻的三角形会被排在一起。</p>\n<p><strong>LBVH（Linear BVH）</strong> 利用这一性质：</p>\n<div class=\"codehilite\"><pre><span></span><code><span class=\"k\">function</span><span class=\"w\"> </span><span class=\"nf\">BuildLBVH</span><span class=\"p\">(</span>triangles<span class=\"p\">):</span>\n<span class=\"w\">    </span><span class=\"o\">//</span><span class=\"w\"> </span><span class=\"mf\">1.</span><span class=\"w\"> </span>计算每个三角形重心的<span class=\"w\"> </span><span class=\"n\">Morton</span><span class=\"w\"> </span>码\n<span class=\"w\">    </span><span class=\"k\">for</span><span class=\"w\"> </span><span class=\"n\">each</span><span class=\"w\"> </span><span class=\"n\">tri</span><span class=\"w\"> </span><span class=\"n\">in</span><span class=\"w\"> </span><span class=\"n\">triangles</span><span\
+  \ class=\"p\">:</span>\n<span class=\"w\">        </span><span class=\"n\">morton_code</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">MortonEncode</span><span class=\"p\">(</span><span class=\"n\">tri</span><span class=\"p\">.</span><span class=\"n\">centroid</span><span class=\"p\">)</span>\n<span class=\"w\">        </span><span class=\"n\">tri</span><span class=\"p\">.</span><span class=\"n\">morton</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">morton_code</span>\n\n<span class=\"w\">    </span><span class=\"o\">//</span><span class=\"w\"> </span><span class=\"mf\">2.</span><span class=\"w\"> </span>按<span class=\"w\"> </span><span class=\"n\">Morton</span><span class=\"w\"> </span>码排序（<span class=\"n\">O</span><span class=\"p\">(</span><span class=\"n\">n</span><span class=\"w\"> </span><span class=\"nb\">log</span><span class=\"w\"> </span><span class=\"n\">n</span><span\
+  \ class=\"p\">)</span>）\n<span class=\"w\">    </span><span class=\"nb\">sort</span><span class=\"w\"> </span><span class=\"n\">triangles</span><span class=\"w\"> </span><span class=\"n\">by</span><span class=\"w\"> </span><span class=\"n\">morton_code</span>\n\n<span class=\"w\">    </span><span class=\"o\">//</span><span class=\"w\"> </span><span class=\"mf\">3.</span><span class=\"w\"> </span>自顶向下按<span class=\"w\"> </span><span class=\"n\">Morton</span><span class=\"w\"> </span>码的最高有效位分割\n<span class=\"w\">    </span><span class=\"o\">//</span><span class=\"w\">    </span>或使用并行前缀和构建（<span class=\"n\">GPU</span><span class=\"w\"> </span>友好）\n<span class=\"w\">    </span><span class=\"k\">return</span><span class=\"w\"> </span><span class=\"n\">BuildTreeRecursive</span><span class=\"p\">(</span><span class=\"n\">triangles</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"mi\">0</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"o\">|</span><span\
+  \ class=\"n\">triangles</span><span class=\"o\">|</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">max_bit</span><span class=\"p\">)</span>\n</code></pre></div>\n\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">特性</th>\n<th style=\"text-align: left;\">SAH BVH</th>\n<th style=\"text-align: left;\">LBVH</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>构建速度</strong></td>\n<td style=\"text-align: left;\">$O(n \\log^2 n)$</td>\n<td style=\"text-align: left;\">$O(n \\log n)$（排序瓶颈）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>遍历质量</strong></td>\n<td style=\"text-align: left;\">✅ 最优（SAH 优化）</td>\n<td style=\"text-align: left;\">⚠️ 近似（可能不如 SAH）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>并行性</strong></td>\n<td style=\"text-align: left;\">❌ 串行递归</td>\n<td style=\"text-align: left;\">✅ 高度并行（适合 GPU）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>GPU 构建</strong></td>\n<td style=\"text-align: left;\"\
+  >困难</td>\n<td style=\"text-align: left;\">✅ 原生支持</td>\n</tr>\n</tbody>\n</table>\n<p>LBVH 特别适合 GPU 上的<strong>实时重建</strong>场景——例如动态物体的 BVH 在每帧更新。</p>\n<hr />\n<h2>5. SIMD 与 GPU 并行化</h2>\n<h3>5.1 SIMD（单指令多数据）</h3>\n<p>CPU 上的 SIMD（SSE/AVX）可以同时处理多条光线：</p>\n<div class=\"codehilite\"><pre><span></span><code><span class=\"c1\">// AVX：同时处理 8 条光线</span>\n<span class=\"n\">__m256</span><span class=\"w\"> </span><span class=\"n\">ox</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"p\">{</span><span class=\"n\">ray</span><span class=\"p\">[</span><span class=\"mi\">0</span><span class=\"p\">].</span><span class=\"n\">ox</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">ray</span><span class=\"p\">[</span><span class=\"mi\">1</span><span class=\"p\">].</span><span class=\"n\">ox</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"p\">...,</span><span class=\"w\"> </span><span class=\"n\">ray</span><span class=\"\
+  p\">[</span><span class=\"mi\">7</span><span class=\"p\">].</span><span class=\"n\">ox</span><span class=\"p\">};</span><span class=\"w\">  </span><span class=\"c1\">// 8 个 x 原点</span>\n<span class=\"n\">__m256</span><span class=\"w\"> </span><span class=\"n\">oy</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"p\">{</span><span class=\"n\">ray</span><span class=\"p\">[</span><span class=\"mi\">0</span><span class=\"p\">].</span><span class=\"n\">oy</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">ray</span><span class=\"p\">[</span><span class=\"mi\">1</span><span class=\"p\">].</span><span class=\"n\">oy</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"p\">...,</span><span class=\"w\"> </span><span class=\"n\">ray</span><span class=\"p\">[</span><span class=\"mi\">7</span><span class=\"p\">].</span><span class=\"n\">oy</span><span class=\"p\">};</span><span class=\"w\">  </span><span class=\"\
+  c1\">// 8 个 y 原点</span>\n<span class=\"c1\">// 一条指令完成 8 条光线的 AABB 相交测试</span>\n<span class=\"n\">__m256</span><span class=\"w\"> </span><span class=\"n\">tmin</span><span class=\"w\"> </span><span class=\"p\">=</span><span class=\"w\"> </span><span class=\"n\">AABB_Intersect_8</span><span class=\"p\">(</span><span class=\"n\">ox</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">oy</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">oz</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">dx</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">dy</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">dz</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">bmin</span><span class=\"p\">,</span><span class=\"w\"> </span><span class=\"n\">bmax</span><span class=\"p\">);</span>\n</code></pre></div>\n\n<p><strong>Packet Tracing</strong>：将多条光线打包为一组，同时对 BVH\
+  \ 的一个节点进行相交测试。当多条光线访问相同的 BVH 节点时，可以共享内存访问，减少 cache miss。</p>\n<h3>5.2 GPU 并行化</h3>\n<p>GPU 拥有数千个计算核心，天然适合光线追踪的<strong>大规模并行</strong>——每个像素/每条路径可以独立计算。</p>\n<p><strong>挑战与优化</strong>：</p>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">挑战</th>\n<th style=\"text-align: left;\">原因</th>\n<th style=\"text-align: left;\">优化策略</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>分支分化</strong></td>\n<td style=\"text-align: left;\">不同路径的递归深度不同</td>\n<td style=\"text-align: left;\">减少分支，使用 wave-wide 操作</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>内存访问</strong></td>\n<td style=\"text-align: left;\">BVH 遍历的访问模式不可预测</td>\n<td style=\"text-align: left;\">节点线性存储，合并访存</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>栈管理</strong></td>\n<td style=\"text-align: left;\">递归遍历需要栈</td>\n<td style=\"text-align: left;\">使用紧凑的短栈（Wavefront tracing）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>构建 BVH</strong></td>\n<td style=\"text-align: left;\"\
+  >GPU 上构建 BVH 较复杂</td>\n<td style=\"text-align: left;\">使用 LBVH / HLSBVH</td>\n</tr>\n</tbody>\n</table>\n<h3>5.3 现代 GPU 光追</h3>\n<p>2018 年 NVIDIA RTX 20 系列引入了<strong>硬件光线追踪（RT Cores）</strong>：</p>\n<ul>\n<li><strong>专用 BVH 遍历单元</strong>：硬件加速射线-AABB 和射线-三角形相交测试</li>\n<li><strong>API 支持</strong>：DXR（DirectX Raytracing）、Vulkan Ray Tracing、OptiX</li>\n<li><strong>性能</strong>：相比纯软件实现，BVH 遍历加速约 10 倍</li>\n</ul>\n<div class=\"codehilite\"><pre><span></span><code>现代实时光追管线：\n  GPU Compute Shader / Ray Generation Shader\n    → 发射光线（TraceRay）\n      → RT Core: BVH 遍历 + 三角形求交（硬件加速）\n        → Hit/Miss Shader: 着色计算\n          → 可能继续发射新光线（递归）\n</code></pre></div>\n\n<hr />\n<h2>总结</h2>\n<p>$$\\boxed{\\text{Whitted 光追}} \\xrightarrow{\\text{物理化}} \\boxed{\\text{路径追踪（蒙特卡洛）}} \\xrightarrow{\\text{加速}} \\boxed{\\text{BVH + SAH + SIMD/GPU}}$$</p>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">主题</th>\n<th style=\"text-align: left;\">核心内容</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align:\
+  \ left;\"><strong>Whitted 光追</strong></td>\n<td style=\"text-align: left;\">递归光线追踪、反射/折射、阴影射线</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>路径追踪</strong></td>\n<td style=\"text-align: left;\">渲染方程、蒙特卡洛积分、BRDF、俄罗斯轮盘赌</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>BVH vs KD Tree</strong></td>\n<td style=\"text-align: left;\">BVH 更适合动态场景和 GPU</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>SAH</strong></td>\n<td style=\"text-align: left;\">表面积启发式代价模型，指导最优分割</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>Morton Code / LBVH</strong></td>\n<td style=\"text-align: left;\">空间编码 + 线性 BVH，GPU 友好</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>SIMD / GPU</strong></td>\n<td style=\"text-align: left;\">数据并行、Packet Tracing、RT Core 硬件加速</td>\n</tr>\n</tbody>\n</table>\n<h2>参考</h2>\n<ul>\n<li>Whitted, T. (1979). \"An improved illumination model for shaded display.\" <em>Communications of the ACM</em>.</li>\n<li>Kajiya, J. T. (1986). \"The rendering\
+  \ equation.\" <em>SIGGRAPH</em>.</li>\n<li>Pharr, M., Jakob, W., &amp; Humphreys, G. (2016). <em>Physically Based Rendering: From Theory to Implementation</em> (3rd ed.).</li>\n<li>Laine, S., &amp; Karras, T. (2011). \"High-Performance BVH Construction on GPU.\" <em>GPU Pro 2</em>.</li>\n</ul>"
+gaussian-splat-ply: '<h2>3D Gaussian Splatting（3DGS）高斯基元渲染</h2>
+
+  <p>3D Gaussian Splatting 是 2023 年提出的新一代场景重建与渲染方法，它用<strong>数百万个各向异性的 3D 高斯椭球体</strong>精确建模现实场景，实现照片级真实感的实时渲染。</p>
+
+  <h3>核心思想</h3>
+
+  <p>与传统的点云或 Mesh 不同，每个高斯核在三维空间中具有：</p>
+
+  <ul>
+
+  <li><strong>位置</strong> <code>μ ∈ ℝ³</code>（均值中心）</li>
+
+  <li><strong>协方差矩阵</strong> <code>Σ ∈ ℝ³ˣ³</code>（椭球的形状与方向）</li>
+
+  <li><strong>颜色</strong> 由球面谐波函数（Spherical Harmonics, SH）表示</li>
+
+  <li><strong>不透明度</strong> <code>α ∈ [0,1]</code></li>
+
+  </ul>
+
+  <p>场景由 $N$ 个 3D 高斯混合表示：</p>
+
+  <p>$$G(\mathbf{x}) = \exp\left(-\frac{1}{2}(\mathbf{x} - \mathbf{\mu})^\top \mathbf{\Sigma}^{-1} (\mathbf{x} - \mathbf{\mu})\right)$$</p>
+
+  <h3>渲染流程（Tile-based Rasterization）</h3>
+
+  <ol>
+
+  <li><strong>排好深度序</strong>：所有高斯核按到相机的距离排序</li>
+
+  <li><strong>投影到屏幕</strong>：3D 协方差矩阵 → 2D 屏幕协方差矩阵</li>
+
+  <li><strong>α-blending</strong>：从近到远逐层叠加颜色</li>
+
+  </ol>
+
+  <p>$$C = \sum_{i=1}^{N} c_i \alpha_i \prod_{j=1}^{i-1} (1 - \alpha_j)$$</p>
+
+  <h3>特点</h3>
+
+  <table>
+
+  <thead>
+
+  <tr>
+
+  <th style="text-align: left;">优势</th>
+
+  <th style="text-align: left;">说明</th>
+
+  </tr>
+
+  </thead>
+
+  <tbody>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>照片级真实感</strong></td>
+
+  <td style="text-align: left;">捕捉视相关效果（高光、反射）</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>实时渲染</strong></td>
+
+  <td style="text-align: left;">≥30 FPS 在普通 GPU 上</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>显式表示</strong></td>
+
+  <td style="text-align: left;">无需神经网络推理，直接光栅化</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>紧凑</strong></td>
+
+  <td style="text-align: left;">场景压缩为几 MB ~ 几十 MB 的 <code>.spz</code> / <code>.ply</code> 文件</td>
+
+  </tr>
+
+  </tbody>
+
+  </table>
+
+  <h3>SPZ 格式</h3>
+
+  <p><code>.spz</code> 格式是专门为 Gaussian Splatting 优化的压缩格式，将位置、协方差、颜色、SH 系数等数据压缩存储，便于网络传输。</p>
+
+  <h3>参考</h3>
+
+  <ul>
+
+  <li>Kerbl et al. (2023). "3D Gaussian Splatting for Real-Time Radiance Field Rendering." <em>ACM Transactions on Graphics (SIGGRAPH 2023)</em>.</li>
+
+  <li>gsplat.js: WebGL-based 3DGS viewer by Kevin Kwok.</li>
+
+  </ul>'
+gaussian-splat: '<h2>3D Gaussian Splatting（3DGS）高斯基元渲染</h2>
+
+  <p>3D Gaussian Splatting 是 2023 年提出的新一代场景重建与渲染方法，它用<strong>数百万个各向异性的 3D 高斯椭球体</strong>精确建模现实场景，实现照片级真实感的实时渲染。</p>
+
+  <h3>核心思想</h3>
+
+  <p>与传统的点云或 Mesh 不同，每个高斯核在三维空间中具有：</p>
+
+  <ul>
+
+  <li><strong>位置</strong> <code>μ ∈ ℝ³</code>（均值中心）</li>
+
+  <li><strong>协方差矩阵</strong> <code>Σ ∈ ℝ³ˣ³</code>（椭球的形状与方向）</li>
+
+  <li><strong>颜色</strong> 由球面谐波函数（Spherical Harmonics, SH）表示</li>
+
+  <li><strong>不透明度</strong> <code>α ∈ [0,1]</code></li>
+
+  </ul>
+
+  <p>场景由 $N$ 个 3D 高斯混合表示：</p>
+
+  <p>$$G(\mathbf{x}) = \exp\left(-\frac{1}{2}(\mathbf{x} - \mathbf{\mu})^\top \mathbf{\Sigma}^{-1} (\mathbf{x} - \mathbf{\mu})\right)$$</p>
+
+  <h3>渲染流程（Tile-based Rasterization）</h3>
+
+  <ol>
+
+  <li><strong>排好深度序</strong>：所有高斯核按到相机的距离排序</li>
+
+  <li><strong>投影到屏幕</strong>：3D 协方差矩阵 → 2D 屏幕协方差矩阵</li>
+
+  <li><strong>α-blending</strong>：从近到远逐层叠加颜色</li>
+
+  </ol>
+
+  <p>$$C = \sum_{i=1}^{N} c_i \alpha_i \prod_{j=1}^{i-1} (1 - \alpha_j)$$</p>
+
+  <h3>特点</h3>
+
+  <table>
+
+  <thead>
+
+  <tr>
+
+  <th style="text-align: left;">优势</th>
+
+  <th style="text-align: left;">说明</th>
+
+  </tr>
+
+  </thead>
+
+  <tbody>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>照片级真实感</strong></td>
+
+  <td style="text-align: left;">捕捉视相关效果（高光、反射）</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>实时渲染</strong></td>
+
+  <td style="text-align: left;">≥30 FPS 在普通 GPU 上</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>显式表示</strong></td>
+
+  <td style="text-align: left;">无需神经网络推理，直接光栅化</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>紧凑</strong></td>
+
+  <td style="text-align: left;">场景压缩为几 MB ~ 几十 MB 的 <code>.spz</code> / <code>.ply</code> 文件</td>
+
+  </tr>
+
+  </tbody>
+
+  </table>
+
+  <h3>SPZ 格式</h3>
+
+  <p><code>.spz</code> 格式是专门为 Gaussian Splatting 优化的压缩格式，将位置、协方差、颜色、SH 系数等数据压缩存储，便于网络传输。</p>
+
+  <h3>参考</h3>
+
+  <ul>
+
+  <li>Kerbl et al. (2023). "3D Gaussian Splatting for Real-Time Radiance Field Rendering." <em>ACM Transactions on Graphics (SIGGRAPH 2023)</em>.</li>
+
+  <li>gsplat.js: WebGL-based 3DGS viewer by Kevin Kwok.</li>
+
+  </ul>'
 ik-spider: "<h2>IK 蜘蛛 — CCD 逆运动学驱动</h2>\n<p>本 demo 用 <strong>CCD（Cyclic Coordinate Descent，循环坐标下降）</strong> 求解器驱动 8 条三骨节腿，足端目标由简单步态生成；身体用 WASD 在平地上移动。右侧可开关 <strong>IK 链</strong> 黄色折线，观察每帧迭代如何拉近足尖与目标点。</p>\n<hr />\n<h3>逆运动学（IK）问题</h3>\n<p>已知开链骨骼：根关节 $\\mathbf{p}<em>0$（固定在身体上）与 $n-1$ 段定长连杆 $| \\mathbf{p}</em>{i+1}-\\mathbf{p}<em>i | = L_i$，求关节角使末端 $\\mathbf{p}</em>{n-1}$ 到达目标 $\\mathbf{t}$。</p>\n<p>与正运动学（FK）$\\mathbf{p}<em>i = f(\\theta_1,\\ldots,\\theta</em>{n-1})$ 相反，IK 一般<strong>无闭式解</strong>（$n&gt;2$ 时），需迭代数值法。</p>\n<p>本 demo 每条腿：$n=4$ 个关节（髋 → 膝 → 踝 → 趾尖），3 段骨长 $L_0,L_1,L_2$。</p>\n<hr />\n<h3>CCD 算法原理</h3>\n<p><strong>思想</strong>：从末端向根，逐个关节“转向”末端，使末端方向对准目标；再从前向后<strong>恢复骨长</strong>；重复直至收敛。</p>\n<p>对关节 $i$（$i = n-2,\\ldots,0$）：</p>\n<ol>\n<li>记枢轴 $\\mathbf{p}<em>i$，末端 $\\mathbf{p}</em>{n-1}$，目标 $\\mathbf{t}$。</li>\n<li>单位向量 $\\mathbf{u} = (\\mathbf{p}_{n-1}-\\mathbf{p}_i)/|\\cdot|$，$\\mathbf{v} = (\\mathbf{t}-\\mathbf{p}_i)/|\\cdot|$。</li>\n<li>求最小旋转 $\\mathbf{R}$ 使 $\\mathbf{R}\\mathbf{u}=\\\
-  mathbf{v}$（轴角 / 四元数 <code>setFromUnitVectors</code>）。</li>\n<li>对 $j=i+1,\\ldots,n-1$：$\\mathbf{p}_j \\leftarrow \\mathbf{p}_i + \\mathbf{R}(\\mathbf{p}_j-\\mathbf{p}_i)$。</li>\n<li><strong>前向约束</strong>：固定 $\\mathbf{p}<em>0$，依次 $\\mathbf{p}</em>{i+1} = \\mathbf{p}<em>i + L_i \\cdot \\mathrm{normalize}(\\mathbf{p}</em>{i+1}-\\mathbf{p}_i)$。</li>\n</ol>\n<pre class=\"codehilite\"><code>while 未收敛 and 迭代 &lt; maxIter:\n  for i = n-2 .. 0:\n      旋转关节 i，使末端指向目标\n  for i = 0 .. n-2:\n      恢复骨长 L[i]\n</code></pre>\n\n<p><strong>优点</strong>：实现简单、每关节 $O(n)$、无需雅可比矩阵；适合实时角色/机械臂。</p>\n<p><strong>缺点</strong>：可能陷入局部极小；长链或大角度弯曲时收敛慢。本 demo 对每关节加 <strong>最大转角</strong> <code>maxAngles[i]</code> 避免腿反折。</p>\n<hr />\n<h3>与 FABRIK 的对比</h3>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">方法</th>\n<th style=\"text-align: left;\">机制</th>\n<th style=\"text-align: left;\">特点</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>CCD</strong></td>\n<td style=\"text-align: left;\"\
-  >逐关节旋转，再拉直骨长</td>\n<td style=\"text-align: left;\">实现极简，本 demo 采用</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>FABRIK</strong></td>\n<td style=\"text-align: left;\">先向目标“伸手”，再向根“拉回”保持骨长</td>\n<td style=\"text-align: left;\">大弯曲更稳，无三角函数</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>雅可比转置 / IK</strong></td>\n<td style=\"text-align: left;\">$\\Delta\\theta = J^T (\\mathbf{t}-\\mathbf{p}_{end})$</td>\n<td style=\"text-align: left;\">通用，需求导与步长控制</td>\n</tr>\n</tbody>\n</table>\n<hr />\n<h3>本 demo 中的运动管线</h3>\n<pre class=\"codehilite\"><code>身体位姿 (位置 + yaw)\n    ↓\n每条腿：髋附着点（体坐标 → 世界坐标）\n    ↓\n步态相位 → 足端目标 t（摆动相抬脚 + 迈步偏移）\n    ↓\nCCD(关节, 骨长, t) → 更新 4 个关节世界坐标\n    ↓\n圆柱段 + 关节球体对齐骨骼\n</code></pre>\n\n<p><strong>步态</strong>：8 条腿相位错开 $0.125$；<code>cycle &lt; 0.45</code> 为摆动相（正弦抬脚），否则为支撑相；移动时沿身体前方加 <code>stride</code> 偏移，形成交替迈步。</p>\n<p><strong>场景</strong>：草地平面、网格、石块与树桩，阴影 + 雾效；相机 <code>OrbitControls</code> 可环绕，移动时目标点跟随蜘蛛。</p>\n<hr />\n<h3>操作说明</h3>\n<table>\n<thead>\n\
-  <tr>\n<th style=\"text-align: left;\">按键</th>\n<th style=\"text-align: left;\">功能</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>W A S D</strong></td>\n<td style=\"text-align: left;\">前后左右移动</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>Q / E</strong></td>\n<td style=\"text-align: left;\">身体原地转向</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>速度</strong></td>\n<td style=\"text-align: left;\">移动与步频</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>IK 迭代</strong></td>\n<td style=\"text-align: left;\">CCD 每帧循环次数（越大越贴目标，略耗性能）</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>显示 IK 链</strong></td>\n<td style=\"text-align: left;\">黄色折线：髋→趾尖</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>重置位置</strong></td>\n<td style=\"text-align: left;\">回到场景中心</td>\n</tr>\n</tbody>\n</table>\n<hr />\n<h3>代码入口</h3>\n<p>求解器函数 <code>solveCCD(joints, boneLengths, target, iterations, maxAngles)</code> 在 <code>ik-spider.html</code>\
-  \ 脚本顶部，与上述伪代码一一对应，便于对照阅读。</p>\n<hr />\n<h3>参考</h3>\n<ul>\n<li>Wang, L.-C. T., &amp; Chen, C.-C. (1991). <em>A Combined Optimization Method for Solving the Inverse Kinematics Problem of Mechanical Manipulators.</em> IEEE Trans. RA.</li>\n<li>Aristidou, A., &amp; Lasenby, J. (2011). <em>FABRIK: A fast, iterative solver for the inverse kinematics problem.</em> Graphical Models.</li>\n<li>Bouaziz, S., et al. (2012). <em>Shape-Up</em> — 局部投影与全局线性步（另一套约束求解范式，可与 IK 对比）。</li>\n</ul>"
+  mathbf{v}$（轴角 / 四元数 <code>setFromUnitVectors</code>）。</li>\n<li>对 $j=i+1,\\ldots,n-1$：$\\mathbf{p}_j \\leftarrow \\mathbf{p}_i + \\mathbf{R}(\\mathbf{p}_j-\\mathbf{p}_i)$。</li>\n<li><strong>前向约束</strong>：固定 $\\mathbf{p}<em>0$，依次 $\\mathbf{p}</em>{i+1} = \\mathbf{p}<em>i + L_i \\cdot \\mathrm{normalize}(\\mathbf{p}</em>{i+1}-\\mathbf{p}_i)$。</li>\n</ol>\n<div class=\"codehilite\"><pre><span></span><code><span class=\"k\">while</span><span class=\"w\"> </span><span class=\"n\">未收敛</span><span class=\"w\"> </span><span class=\"ow\">and</span><span class=\"w\"> </span><span class=\"n\">迭代</span><span class=\"w\"> </span><span class=\"o\">&lt;</span><span class=\"w\"> </span><span class=\"nl\">maxIter</span><span class=\"p\">:</span>\n<span class=\"w\">  </span><span class=\"k\">for</span><span class=\"w\"> </span><span class=\"n\">i</span><span class=\"w\"> </span><span class=\"o\">=</span><span class=\"w\"> </span><span class=\"n\">n</span><span class=\"o\">-</span><span class=\"mi\">2</span><span\
+  \ class=\"w\"> </span><span class=\"p\">..</span><span class=\"w\"> </span><span class=\"mi\">0</span><span class=\"err\">:</span>\n<span class=\"w\">      </span><span class=\"n\">旋转关节</span><span class=\"w\"> </span><span class=\"n\">i</span><span class=\"err\">，</span><span class=\"n\">使末端指向目标</span>\n<span class=\"w\">  </span><span class=\"k\">for</span><span class=\"w\"> </span><span class=\"n\">i</span><span class=\"w\"> </span><span class=\"o\">=</span><span class=\"w\"> </span><span class=\"mi\">0</span><span class=\"w\"> </span><span class=\"p\">..</span><span class=\"w\"> </span><span class=\"n\">n</span><span class=\"o\">-</span><span class=\"mi\">2</span><span class=\"err\">:</span>\n<span class=\"w\">      </span><span class=\"n\">恢复骨长</span><span class=\"w\"> </span><span class=\"n\">L</span><span class=\"o\">[</span><span class=\"n\">i</span><span class=\"o\">]</span>\n</code></pre></div>\n\n<p><strong>优点</strong>：实现简单、每关节 $O(n)$、无需雅可比矩阵；适合实时角色/机械臂。</p>\n<p><strong>缺点</strong>：可能陷入局部极小；长链或大角度弯曲时收敛慢。本\
+  \ demo 对每关节加 <strong>最大转角</strong> <code>maxAngles[i]</code> 避免腿反折。</p>\n<hr />\n<h3>与 FABRIK 的对比</h3>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">方法</th>\n<th style=\"text-align: left;\">机制</th>\n<th style=\"text-align: left;\">特点</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>CCD</strong></td>\n<td style=\"text-align: left;\">逐关节旋转，再拉直骨长</td>\n<td style=\"text-align: left;\">实现极简，本 demo 采用</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>FABRIK</strong></td>\n<td style=\"text-align: left;\">先向目标“伸手”，再向根“拉回”保持骨长</td>\n<td style=\"text-align: left;\">大弯曲更稳，无三角函数</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>雅可比转置 / IK</strong></td>\n<td style=\"text-align: left;\">$\\Delta\\theta = J^T (\\mathbf{t}-\\mathbf{p}_{end})$</td>\n<td style=\"text-align: left;\">通用，需求导与步长控制</td>\n</tr>\n</tbody>\n</table>\n<hr />\n<h3>本 demo 中的运动管线</h3>\n<div class=\"codehilite\"><pre><span></span><code>身体位姿 (位置 + yaw)\n    ↓\n每条腿：髋附着点（体坐标 → 世界坐标）\n\
+  \    ↓\n步态相位 → 足端目标 t（摆动相抬脚 + 迈步偏移）\n    ↓\nCCD(关节, 骨长, t) → 更新 4 个关节世界坐标\n    ↓\n圆柱段 + 关节球体对齐骨骼\n</code></pre></div>\n\n<p><strong>步态</strong>：8 条腿相位错开 $0.125$；<code>cycle &lt; 0.45</code> 为摆动相（正弦抬脚），否则为支撑相；移动时沿身体前方加 <code>stride</code> 偏移，形成交替迈步。</p>\n<p><strong>场景</strong>：草地平面、网格、石块与树桩，阴影 + 雾效；相机 <code>OrbitControls</code> 可环绕，移动时目标点跟随蜘蛛。</p>\n<hr />\n<h3>操作说明</h3>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">按键</th>\n<th style=\"text-align: left;\">功能</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>W A S D</strong></td>\n<td style=\"text-align: left;\">前后左右移动</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>Q / E</strong></td>\n<td style=\"text-align: left;\">身体原地转向</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>速度</strong></td>\n<td style=\"text-align: left;\">移动与步频</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>IK 迭代</strong></td>\n<td style=\"text-align: left;\">CCD 每帧循环次数（越大越贴目标，略耗性能）</td>\n</tr>\n<tr>\n\
+  <td style=\"text-align: left;\"><strong>显示 IK 链</strong></td>\n<td style=\"text-align: left;\">黄色折线：髋→趾尖</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>重置位置</strong></td>\n<td style=\"text-align: left;\">回到场景中心</td>\n</tr>\n</tbody>\n</table>\n<hr />\n<h3>代码入口</h3>\n<p>求解器函数 <code>solveCCD(joints, boneLengths, target, iterations, maxAngles)</code> 在 <code>ik-spider.html</code> 脚本顶部，与上述伪代码一一对应，便于对照阅读。</p>\n<hr />\n<h3>参考</h3>\n<ul>\n<li>Wang, L.-C. T., &amp; Chen, C.-C. (1991). <em>A Combined Optimization Method for Solving the Inverse Kinematics Problem of Mechanical Manipulators.</em> IEEE Trans. RA.</li>\n<li>Aristidou, A., &amp; Lasenby, J. (2011). <em>FABRIK: A fast, iterative solver for the inverse kinematics problem.</em> Graphical Models.</li>\n<li>Bouaziz, S., et al. (2012). <em>Shape-Up</em> — 局部投影与全局线性步（另一套约束求解范式，可与 IK 对比）。</li>\n</ul>"
 lbm-suiboku: "<h2>LBM 水墨动画</h2>\n<p>水墨画的视觉本质是<strong>墨水在水中的扩散与流动</strong>。本 demo 用 D2Q9 LBM 提供速度场，墨水浓度用<strong>标量场</strong>在平流-扩散方程下演化，模拟落笔、晕染与提笔后的静止晕开。</p>\n<hr />\n<h3>D2Q9 流体（速度场）</h3>\n<p>二维 D2Q9 在每个格点追踪 9 个方向的分布函数 $f_i$，宏观密度 $\\rho$ 和速度 $\\mathbf{u}$ 由矩求得：</p>\n<p>$$\\rho = \\sum_i f_i, \\quad \\rho\\mathbf{u} = \\sum_i \\mathbf{c}_i f_i$$</p>\n<p>采用 <strong>pull scheme</strong>（先沿格点拉取邻域分布，再 BGK 碰撞），边界用 bounce-back，比 collide-then-stream 更稳定：</p>\n<p>$$f_i^{\\text{eq}} = w_i\\rho\\left[1 + 3(\\mathbf{c}_i \\cdot \\mathbf{u}) + \\frac{9}{2}(\\mathbf{c}_i \\cdot \\mathbf{u})^2 - \\frac{3}{2}\\mathbf{u}^2\\right]$$</p>\n<p>每步后对速度场施加衰减，避免余流长期搅动墨水。</p>\n<hr />\n<h3>墨水标量场（浓度 $C$）</h3>\n<p>墨水<strong>不再</strong>用第二套 LBM 分布函数 $g_i$ 求解（见下方「问题记录」）。当前实现：</p>\n<p>$$\\frac{\\partial C}{\\partial t} + \\mathbf{u} \\cdot \\nabla C = D_{\\text{eff}} \\nabla^2 C$$</p>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">步骤</th>\n<th style=\"text-align: left;\">做法</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n\
   <td style=\"text-align: left;\"><strong>平流</strong></td>\n<td style=\"text-align: left;\">半拉格朗日回溯：$C(\\mathbf{x}) \\leftarrow C(\\mathbf{x} - \\mathbf{u}\\,\\Delta t)$，双线性插值</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>扩散</strong></td>\n<td style=\"text-align: left;\">五点拉普拉斯显式扩散，系数 $D_{\\text{eff}} = D \\cdot (0.35 + 0.65\\,C)$</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>注入</strong></td>\n<td style=\"text-align: left;\">鼠标落笔向 $C$ 直接加墨，并沿笔触方向给局部速度脉冲</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>渲染</strong></td>\n<td style=\"text-align: left;\">$t = \\bigl(1 - e^{-4.2C}\\bigr)^{0.78}$，灰度 $252 - 228t$，避免硬裁切为纯黑</td>\n</tr>\n</tbody>\n</table>\n<p><strong>提笔后</strong>：扩散系数降为落笔时的约 28%；流速接近零时跳过平流插值，减少数值耗散导致的「越晕越淡」。</p>\n<hr />\n<h3>控制参数</h3>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">参数</th>\n<th style=\"text-align: left;\">效果</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>粘度</strong> ($\\tau$)</td>\n<td style=\"\
   text-align: left;\">流体弛豫时间；越大流速衰减越快、墨迹越「定」</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>扩散</strong> ($D$)</td>\n<td style=\"text-align: left;\">晕染速度；越小墨心保持越久</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>笔触强度</strong></td>\n<td style=\"text-align: left;\">单次落笔注入浓度与笔锋半径</td>\n</tr>\n</tbody>\n</table>\n<hr />\n<h3>水墨效果</h3>\n<ul>\n<li><strong>笔触</strong>：拖拽落笔，墨迹随流体自然扩散</li>\n<li><strong>晕染 (Nijimi)</strong>：适当扩散 + 流体搅动 → 边缘晕开</li>\n<li><strong>叠加</strong>：多层墨迹在浓度上限 $C \\le 1$ 内叠加产生浓淡变化</li>\n</ul>\n<hr />\n<h3>问题记录（开发与调参）</h3>\n<h4>1. 提笔后墨团变黑块（原始 bug）</h4>\n<p><strong>现象</strong>：每次落笔再提笔，墨迹中心逐渐变成不自然的浓黑团块。</p>\n<p><strong>原因（多重叠加）</strong>：</p>\n<ol>\n<li><strong>主循环仅在 <code>drawing === true</code> 时步进</strong> — 提笔后模拟冻结，高浓度墨停在落笔点无法继续扩散，视觉上像「凝固的黑斑」。</li>\n<li><strong>墨水用 $g_i$ BGK 被动标量</strong> — 在浓墨、高梯度区域，$\\tau_g$ 接近稳定性下限时 BGK 易产生数值振荡与局部堆积。</li>\n<li><strong>注入过强</strong>（原 <code>×1.8</code>）+ <strong>线性渲染硬裁切</strong> — 浓度快速饱和后显示为纯黑。</li>\n<li><strong>边界 stream\
   \ 的 bounce-back</strong> — 边界格点反射分布，与上述问题叠加时局部浓度更易异常。</li>\n</ol>\n<p><strong>第一次修补（效果更差）</strong>：持续模拟 + <code>DYE_CAP</code> 钳制 + 减弱注入 + 柔和 tone mapping。黑块减轻，但整体偏淡、晕染不自然，用户反馈「好像更差了」。</p>\n<h4>2. 架构调整（当前方案）</h4>\n<p><strong>思路</strong>：流体仍用 LBM 求 $\\mathbf{u}$；墨水改为<strong>标量场 $C$</strong> + 半拉格朗日平流 + 显式扩散。</p>\n<ul>\n<li>去掉 $g_i$ 分布函数与 <code>clampDyeField</code> 等补丁逻辑</li>\n<li>每格 $C \\in [0,1]$ 硬上限，从物理量层面防止 blow-up</li>\n<li>pull-scheme 流体 + 速度衰减，落笔时沿笔触注入速度</li>\n</ul>\n<p><strong>结果</strong>：提笔后墨迹能自然晕开，黑块问题消除。</p>\n<h4>3. 墨迹偏淡</h4>\n<p><strong>调整</strong>：提高注入系数（<code>0.22 → 0.32</code>）、加强渲染对比（<code>exp(-d·2.8) → exp(-d·4.0)</code>）、默认笔触滑块略增。</p>\n<h4>4. 静置后淡化过快</h4>\n<p><strong>现象</strong>：停笔一段时间后，笔画整体变淡、墨心被冲散。</p>\n<p><strong>原因</strong>：拉普拉斯扩散使浓度从峰向周围摊薄；半拉格朗日插值在有余流时带来额外数值耗散；随机速度扰动延长搅动时间。</p>\n<p><strong>调整</strong>：</p>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">项</th>\n<th style=\"text-align: left;\">改动</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align:\
-  \ left;\">默认扩散</td>\n<td style=\"text-align: left;\"><code>diffK</code> 降低，滑块默认 5</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">提笔后</td>\n<td style=\"text-align: left;\">扩散 ×0.28</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">非线性扩散</td>\n<td style=\"text-align: left;\">$D_{\\text{eff}} \\propto (0.35 + 0.65C)$，浓墨区更抗扩散</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">低速跳过平流</td>\n<td style=\"text-align: left;\">$|\\mathbf{u}| &lt; 0.015$ 时不做回溯插值</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">速度衰减</td>\n<td style=\"text-align: left;\"><code>velDamp</code> 0.965 → 0.92，余流更快静止</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">渲染</td>\n<td style=\"text-align: left;\">低浓度 gamma 0.78，淡墨仍可见</td>\n</tr>\n</tbody>\n</table>\n<hr />\n<h3>实现要点（<code>lbm-suiboku.html</code>）</h3>\n<pre class=\"codehilite\"><code>主循环 (!paused):\n  stepFluid()   // D2Q9 pull + 速度衰减\n  stepDye()     // 半拉格朗日 + 扩散（提笔后降扩散）\n  render()      // tone mapping 出图\n\n落笔:\n  inject() → C += 墨量, ux/uy += 笔触方向脉冲\n\
-  </code></pre>\n\n<p>格点分辨率 <code>200×150</code>，与画布等比映射；模拟在 <code>requestAnimationFrame</code> 中每帧 1～2 子步。</p>\n<hr />\n<h3>参考</h3>\n<ul>\n<li>Chen &amp; Doolen (1998). \"Lattice Boltzmann method for fluid flows.\" <em>Annual Review of Fluid Mechanics</em>.</li>\n<li>Krüger et al. (2017). <em>The Lattice Boltzmann Method: Principles and Practice.</em> Springer.</li>\n<li>Stam (1999). \"Stable Fluids.\" <em>SIGGRAPH</em> — 半拉格朗日平流 + 扩散思路。</li>\n</ul>"
+  \ left;\">默认扩散</td>\n<td style=\"text-align: left;\"><code>diffK</code> 降低，滑块默认 5</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">提笔后</td>\n<td style=\"text-align: left;\">扩散 ×0.28</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">非线性扩散</td>\n<td style=\"text-align: left;\">$D_{\\text{eff}} \\propto (0.35 + 0.65C)$，浓墨区更抗扩散</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">低速跳过平流</td>\n<td style=\"text-align: left;\">$|\\mathbf{u}| &lt; 0.015$ 时不做回溯插值</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">速度衰减</td>\n<td style=\"text-align: left;\"><code>velDamp</code> 0.965 → 0.92，余流更快静止</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">渲染</td>\n<td style=\"text-align: left;\">低浓度 gamma 0.78，淡墨仍可见</td>\n</tr>\n</tbody>\n</table>\n<hr />\n<h3>实现要点（<code>lbm-suiboku.html</code>）</h3>\n<div class=\"codehilite\"><pre><span></span><code>主循环 (!paused):\n  stepFluid()   // D2Q9 pull + 速度衰减\n  stepDye()     // 半拉格朗日 + 扩散（提笔后降扩散）\n  render()      // tone mapping 出图\n\n落笔:\n  inject() → C += 墨量,\
+  \ ux/uy += 笔触方向脉冲\n</code></pre></div>\n\n<p>格点分辨率 <code>200×150</code>，与画布等比映射；模拟在 <code>requestAnimationFrame</code> 中每帧 1～2 子步。</p>\n<hr />\n<h3>参考</h3>\n<ul>\n<li>Chen &amp; Doolen (1998). \"Lattice Boltzmann method for fluid flows.\" <em>Annual Review of Fluid Mechanics</em>.</li>\n<li>Krüger et al. (2017). <em>The Lattice Boltzmann Method: Principles and Practice.</em> Springer.</li>\n<li>Stam (1999). \"Stable Fluids.\" <em>SIGGRAPH</em> — 半拉格朗日平流 + 扩散思路。</li>\n</ul>"
+little-tokyo: '<h2>Draco 几何压缩</h2>
+
+  <p>Draco 是 Google 开源的高效 3D 几何压缩库，专为网格和点云数据的传输与存储优化设计。它将模型文件体积压缩至 <strong>原来的 5%~20%</strong>，解码速度极快，是 Web 3D 应用的标准压缩方案。</p>
+
+  <h3>核心原理</h3>
+
+  <p>Draco 的核心思路是<strong>对网格数据进行量化和熵编码</strong>，而非简单的 zlib/gzip 字节流压缩——后者对浮点几何数据几乎没有效果。</p>
+
+  <h4>1. 顶点位置量化（Position Quantization）</h4>
+
+  <p>顶点坐标通常是 32 位浮点数（每顶点 12 字节）。Draco 首先计算模型的包围盒，然后将顶点归一化到包围盒内的整数网格：</p>
+
+  <p>$$v_q = \left\lfloor \frac{v - v_{\min}}{v_{\max} - v_{\min}} \cdot (2^b - 1) + 0.5 \right\rfloor$$</p>
+
+  <p>其中 $b$ 为量化位深（通常 8~14 位），$v_q$ 为整数坐标。</p>
+
+  <blockquote>
+
+  <p>这样每个顶点坐标从 96 位压缩到 $3b$ 位（如 b=10 即为 30 位），体积缩小 3~10 倍。</p>
+
+  </blockquote>
+
+  <p>解码时反量化恢复近似浮点位置：</p>
+
+  <p>$$v'' = v_{\min} + \frac{v_q}{2^b - 1} \cdot (v_{\max} - v_{\min})$$</p>
+
+  <h4>2. 边断裂器（Edgebreaker）连通性压缩</h4>
+
+  <p>三角面片的顶点索引占用大量空间。Draco 使用 Edgebreaker 算法，将网格拓扑编码为 CLERS 符号序列：</p>
+
+  <table>
+
+  <thead>
+
+  <tr>
+
+  <th style="text-align: left;">符号</th>
+
+  <th style="text-align: left;">含义</th>
+
+  </tr>
+
+  </thead>
+
+  <tbody>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>C</strong></td>
+
+  <td style="text-align: left;">新顶点，创建三角形</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>L</strong></td>
+
+  <td style="text-align: left;">左邻接，闭合左侧</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>R</strong></td>
+
+  <td style="text-align: left;">右邻接，闭合右侧</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>E</strong></td>
+
+  <td style="text-align: left;">边界</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>S</strong></td>
+
+  <td style="text-align: left;">分裂，创建新边界</td>
+
+  </tr>
+
+  </tbody>
+
+  </table>
+
+  <p>每个三角形只需 1~2 位编码，远小于原始索引的 96 位/面。</p>
+
+  <h4>3. 平行四边形预测（Parallelogram Prediction）</h4>
+
+  <p>相邻顶点通常位于近似平行四边形顶点上。Draco 利用这一规律对量化后的顶点残差编码：</p>
+
+  <p>$$\hat{v}<em>k = v</em>{k-1} + v_{k-2} - v_{k-3}$$</p>
+
+  <p>仅存储预测残差 $\Delta = v_k - \hat{v}_k$，残差很小（通常 0~3），熵编码效率极高。</p>
+
+  <h4>4. 熵编码（Entropy Coding）</h4>
+
+  <p>量化后的整数序列和残差通过 <strong>rANS</strong>（范围非对称数字系统）进行熵编码。rANS 兼具算术编码的压缩率和 Huffman 编码的速度。</p>
+
+  <h3>Draco 在 GLTF/GLB 中的应用</h3>
+
+  <p>GLTF 2.0 规范原生支持 Draco 压缩扩展 <code>KHR_draco_mesh_compression</code>。压缩后的 GLB 文件中：</p>
+
+  <ul>
+
+  <li><strong>bufferView</strong> 指向压缩的 Draco 数据</li>
+
+  <li><strong>extension</strong> 声明中记录量化参数</li>
+
+  <li><strong>accessor</strong> 信息保留原始语义（位置/法线/UV）</li>
+
+  </ul>
+
+  <p>Three.js 中解码仅需一行：</p>
+
+  <div class="codehilite"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">dracoLoader</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">DRACOLoader</span><span class="p">();</span>
+
+  <span class="nx">dracoLoader</span><span class="p">.</span><span class="nx">setDecoderPath</span><span class="p">(</span><span class="s1">&#39;/draco/&#39;</span><span class="p">);</span>
+
+  <span class="nx">gltfLoader</span><span class="p">.</span><span class="nx">setDRACOLoader</span><span class="p">(</span><span class="nx">dracoLoader</span><span class="p">);</span>
+
+  </code></pre></div>
+
+
+  <h3>压缩效果参考</h3>
+
+  <table>
+
+  <thead>
+
+  <tr>
+
+  <th style="text-align: left;">模型</th>
+
+  <th style="text-align: left;">原始大小</th>
+
+  <th style="text-align: left;">Draco 压缩后</th>
+
+  <th style="text-align: left;">压缩率</th>
+
+  </tr>
+
+  </thead>
+
+  <tbody>
+
+  <tr>
+
+  <td style="text-align: left;">Littlest Tokyo</td>
+
+  <td style="text-align: left;">~40 MB (OBJ)</td>
+
+  <td style="text-align: left;"><strong>3.9 MB</strong> (GLB)</td>
+
+  <td style="text-align: left;"><strong>10%</strong></td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;">典型建筑场景</td>
+
+  <td style="text-align: left;">25 MB</td>
+
+  <td style="text-align: left;">2.5 MB</td>
+
+  <td style="text-align: left;">10%</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;">角色模型</td>
+
+  <td style="text-align: left;">8 MB</td>
+
+  <td style="text-align: left;">1.2 MB</td>
+
+  <td style="text-align: left;">15%</td>
+
+  </tr>
+
+  </tbody>
+
+  </table>
+
+  <h3>参考</h3>
+
+  <ul>
+
+  <li>Galligan et al. (2018). "Google Draco: 3D Data Compression." Google.</li>
+
+  <li><code>KHR_draco_mesh_compression</code> GLTF Extension Specification.</li>
+
+  <li>Edgebreaker: Rossignac (1999). "Edgebreaker: Connectivity compression for triangle meshes." <em>IEEE TVCG</em>.</li>
+
+  </ul>'
 neural-ot: '<h2>Neural Lagrangian OT 可视化</h2>
 
   <p>本 demo 展示 <strong>Neural Lagrangian Optimal Transport (NLOT)</strong> 的核心思想：用神经网络参数化的<strong>时变速度场</strong> $v_\theta(x,t)$ 驱动粒子（拉格朗日视角），将源分布 $\rho_0$ 连续推送到目标分布 $\rho_1$，而不是在网格上显式求解密度 PDE。</p>
@@ -711,15 +1186,561 @@ neural-ot: '<h2>Neural Lagrangian OT 可视化</h2>
   <li>相关 Neural OT / Lagrangian OT 文献（粒子 push-forward + 神经速度场）。</li>
 
   </ul>'
-sdf-raymarching: "<h2>SDF（有符号距离场）</h2>\n<p>SDF（Signed Distance Function / Signed Distance Field）是空间中每个点到最近表面的<strong>有符号距离</strong>：点在物体内部为负值，外部为正值，表面为零。</p>\n<p>$$f(\\mathbf{p}) = d(\\mathbf{p}, \\text{surface}) \\cdot \\text{sign}(\\text{inside})$$</p>\n<h3>基本图元</h3>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">图元</th>\n<th style=\"text-align: left;\">SDF 表达式</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>球体</strong></td>\n<td style=\"text-align: left;\">$f(\\mathbf{p}) = |\\mathbf{p} - \\mathbf{c}| - r$</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>立方体</strong></td>\n<td style=\"text-align: left;\">$f(\\mathbf{p}) = \\max(|p_x|,\\ |p_y|,\\ |p_z|) - s$</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>平面</strong></td>\n<td style=\"text-align: left;\">$f(\\mathbf{p}) = \\mathbf{p} \\cdot \\mathbf{n} - d$</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>圆环</strong></td>\n<td style=\"text-align: left;\">$f(\\mathbf{p})\
-  \ = |(\\sqrt{p_x^2 + p_z^2} - R,\\ p_y)| - r$</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>圆柱</strong></td>\n<td style=\"text-align: left;\">$f(\\mathbf{p}) = |(p_x,\\ p_z)| - r$（裁剪 y 后）</td>\n</tr>\n</tbody>\n</table>\n<h3>组合操作（CSG）</h3>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">操作</th>\n<th style=\"text-align: left;\">表达式</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>并集</strong></td>\n<td style=\"text-align: left;\">$\\min(f_1, f_2)$</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>交集</strong></td>\n<td style=\"text-align: left;\">$\\max(f_1, f_2)$</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>差集</strong></td>\n<td style=\"text-align: left;\">$\\max(f_1, -f_2)$</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>光滑混合</strong></td>\n<td style=\"text-align: left;\">$\\text{smin}(f_1, f_2, k)$</td>\n</tr>\n</tbody>\n</table>\n<p>光滑混合（Smooth Minimum）：</p>\n<p>$$\\text{smin}(a, b, k) = -\\log\\left(e^{-k\
-  \ \\cdot a} + e^{-k \\cdot b}\\right) \\cdot \\frac{1}{k}$$</p>\n<pre class=\"codehilite\"><code class=\"language-glsl\">float smin(float a, float b, float k) {\n    float h = max(k - abs(a - b), 0.0) / k;\n    return min(a, b) - h * h * k * 0.25;\n}\n</code></pre>\n\n<h3>形变</h3>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">形变</th>\n<th style=\"text-align: left;\">操作</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>平移</strong></td>\n<td style=\"text-align: left;\">$f(\\mathbf{p} - \\mathbf{t})$</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>旋转</strong></td>\n<td style=\"text-align: left;\">$f(R^{-1} \\cdot \\mathbf{p})$</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>缩放</strong></td>\n<td style=\"text-align: left;\">$f(\\mathbf{p} / s) \\cdot s$</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>镜像</strong></td>\n<td style=\"text-align: left;\">$f(\\text{abs}(\\mathbf{p}))$ — 在原点处镜像</td>\n</tr>\n<tr>\n<td style=\"\
-  text-align: left;\"><strong>重复/平铺</strong></td>\n<td style=\"text-align: left;\">$f(\\text{mod}(\\mathbf{p}, c) - c/2)$ — 无限周期复制</td>\n</tr>\n</tbody>\n</table>\n<hr />\n<h2>Ray Marching（光线步进）</h2>\n<p>Ray Marching 是结合 SDF 的实时渲染方法。核心算法是 <strong>Sphere Tracing</strong>：</p>\n<h3>算法</h3>\n<pre class=\"codehilite\"><code class=\"language-glsl\">vec3 rayMarch(vec3 ro, vec3 rd) {\n    float t = 0.0;\n    for (int i = 0; i &lt; MAX_STEPS; i++) {\n        vec3 p = ro + rd * t;       // 当前采样点\n        float d = sdfScene(p);       // 到最近表面的距离\n        if (d &lt; EPS) break;          // 击中表面\n        t += d;                      // 安全步进\n        if (t &gt; FAR) break;          // 超出范围\n    }\n    return ro + rd * t;\n}\n</code></pre>\n\n<p><strong>关键洞察</strong>：SDF 给出的距离保证了以该距离为半径的球体内<strong>不会碰到任何表面</strong>，因此可以安全地一次前进 <code>d</code> 的距离。</p>\n<h3>法线计算</h3>\n<p>通过梯度近似：</p>\n<pre class=\"codehilite\"><code class=\"language-glsl\">vec3 calcNormal(vec3 p) {\n    float h = 0.001;\n    return normalize(vec3(\n\
-  \        sdfScene(p + vec3(h, 0, 0)) - sdfScene(p - vec3(h, 0, 0)),\n        sdfScene(p + vec3(0, h, 0)) - sdfScene(p - vec3(0, h, 0)),\n        sdfScene(p + vec3(0, 0, h)) - sdfScene(p - vec3(0, 0, h))\n    ));\n}\n</code></pre>\n\n<h3>AO（环境光遮蔽）</h3>\n<p>在法线方向采样几步 SDF，距离越近越暗：</p>\n<p>$$AO = \\frac{1}{n} \\sum_{i=1}^{n} \\max\\left(0,\\ \\frac{\\text{sdf}(p + N \\cdot t_i) - t_i}{t_i}\\right)$$</p>\n<h3>软阴影</h3>\n<p>从着色点向光源方向步进，检查是否有遮挡。遮挡物越近，阴影越暗：</p>\n<p>$$k = \\min\\left(1,\\ 32 \\cdot \\frac{d_i}{t_i}\\right)$$</p>\n<hr />\n<h2>Marching Cube（移动立方体）</h2>\n<p>Marching Cube 将 SDF（或其他标量场）转换为三角网格，用于离线渲染或 3D 打印。</p>\n<h3>算法流程</h3>\n<ol>\n<li>在三维网格的每个顶点求 SDF 值</li>\n<li>每条边上：若两端 SDF 异号，则该边与曲面相交</li>\n<li>根据 8 个顶点的正负组合查表，确定该体素内的三角形拓扑</li>\n<li>线性插值求交点的精确位置</li>\n</ol>\n<p>$$<br />\n\\mathbf{p}_{\\text{intersect}} = \\mathbf{p}_1 + \\frac{|f_1|}{|f_1| + |f_2|} (\\mathbf{p}_2 - \\mathbf{p}_1)<br />\n$$</p>\n<h3>配置表</h3>\n<p>8 个顶点，每个顶点两种状态（内/外），共 $2^8 = 256$ 种配置。利用对称性可简化为 <strong>15 种基本情形</strong>：</p>\n\
-  <table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">情形</th>\n<th style=\"text-align: left;\">描述</th>\n<th style=\"text-align: left;\">三角数</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\">0</td>\n<td style=\"text-align: left;\">全部在内/外</td>\n<td style=\"text-align: left;\">0</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">1</td>\n<td style=\"text-align: left;\">一个顶角不同</td>\n<td style=\"text-align: left;\">1</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">2</td>\n<td style=\"text-align: left;\">两个相邻顶角</td>\n<td style=\"text-align: left;\">2</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">3</td>\n<td style=\"text-align: left;\">对角/相邻三个</td>\n<td style=\"text-align: left;\">2–3</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\">4</td>\n<td style=\"text-align: left;\">四顶角切片</td>\n<td style=\"text-align: left;\">2–4</td>\n</tr>\n</tbody>\n</table>\n<h3>应用</h3>\n<ul>\n<li>医学影像（CT/MRI）的三维重建</li>\n<li>SDF 网格生成（CSG → mesh）</li>\n<li>元球渲染（Metaball）</li>\n<li>地形等值面提取</li>\n\
-  </ul>\n<hr />\n<h2>MetaBall（元球）</h2>\n<p>MetaBall 是有机融合多个球体的技术：多个球体的<strong>势能函数叠加</strong>后取等值面。</p>\n<h3>势能函数</h3>\n<p>单个球的势能：</p>\n<p>$$f_i(\\mathbf{p}) = \\frac{1}{|\\mathbf{p} - \\mathbf{c}_i|^2}$$</p>\n<p>多个球的总势能：</p>\n<p>$$F(\\mathbf{p}) = \\sum_i f_i(\\mathbf{p})$$</p>\n<p>取 $F(\\mathbf{p}) = \\text{threshold}$ 的等值面即可得到融合后的光滑曲面。</p>\n<h3>SDF 等效实现</h3>\n<pre class=\"codehilite\"><code class=\"language-glsl\">float sdMetaBall(vec3 p) {\n    float d = 0.0;\n    for (int i = 0; i &lt; BALL_COUNT; i++) {\n        float dist = length(p - balls[i].center);\n        d += 1.0 / (dist * dist);  // 势能叠加\n    }\n    return 1.0 / sqrt(d) - threshold;  // 转回距离\n}\n</code></pre>\n\n<h3>特性对比</h3>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">方法</th>\n<th style=\"text-align: left;\">融合效果</th>\n<th style=\"text-align: left;\">计算量</th>\n<th style=\"text-align: left;\">用途</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>普通球体</strong></td>\n<td style=\"text-align:\
-  \ left;\">无融合，硬边界</td>\n<td style=\"text-align: left;\">O(n)</td>\n<td style=\"text-align: left;\">刚性球体</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>MetaBall</strong></td>\n<td style=\"text-align: left;\">自然融合，有机感</td>\n<td style=\"text-align: left;\">O(n)</td>\n<td style=\"text-align: left;\">流体、有机体</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>SDF Smooth Union</strong></td>\n<td style=\"text-align: left;\">可控融合半径</td>\n<td style=\"text-align: left;\">O(log n)</td>\n<td style=\"text-align: left;\">CSG 建模</td>\n</tr>\n</tbody>\n</table>\n<h3>典型效果</h3>\n<p>多个球体靠近时会自动\"拉丝\"融合，远离时恢复独立球体形态——这正是 MetaBall 的经典视觉效果，广泛用于 2D/3D 的有机形态生成。</p>\n<hr />\n<h2>总结</h2>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">技术</th>\n<th style=\"text-align: left;\">核心思想</th>\n<th style=\"text-align: left;\">输出形式</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>SDF</strong></td>\n<td style=\"text-align: left;\">空间各点到表面的距离</td>\n<td style=\"text-align:\
-  \ left;\">隐式曲面</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>Ray Marching</strong></td>\n<td style=\"text-align: left;\">沿 SDF 安全步进求交</td>\n<td style=\"text-align: left;\">像素图像</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>Marching Cube</strong></td>\n<td style=\"text-align: left;\">体素等值面提取</td>\n<td style=\"text-align: left;\">三角网格</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>MetaBall</strong></td>\n<td style=\"text-align: left;\">势能场叠加 + 等值面</td>\n<td style=\"text-align: left;\">隐式曲面 → 图像或网格</td>\n</tr>\n</tbody>\n</table>"
+sdf-raymarching: '<h2>SDF（有符号距离场）</h2>
+
+  <p>SDF（Signed Distance Function / Signed Distance Field）是空间中每个点到最近表面的<strong>有符号距离</strong>：点在物体内部为负值，外部为正值，表面为零。</p>
+
+  <p>$$f(\mathbf{p}) = d(\mathbf{p}, \text{surface}) \cdot \text{sign}(\text{inside})$$</p>
+
+  <h3>基本图元</h3>
+
+  <table>
+
+  <thead>
+
+  <tr>
+
+  <th style="text-align: left;">图元</th>
+
+  <th style="text-align: left;">SDF 表达式</th>
+
+  </tr>
+
+  </thead>
+
+  <tbody>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>球体</strong></td>
+
+  <td style="text-align: left;">$f(\mathbf{p}) = |\mathbf{p} - \mathbf{c}| - r$</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>立方体</strong></td>
+
+  <td style="text-align: left;">$f(\mathbf{p}) = \max(|p_x|,\ |p_y|,\ |p_z|) - s$</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>平面</strong></td>
+
+  <td style="text-align: left;">$f(\mathbf{p}) = \mathbf{p} \cdot \mathbf{n} - d$</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>圆环</strong></td>
+
+  <td style="text-align: left;">$f(\mathbf{p}) = |(\sqrt{p_x^2 + p_z^2} - R,\ p_y)| - r$</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>圆柱</strong></td>
+
+  <td style="text-align: left;">$f(\mathbf{p}) = |(p_x,\ p_z)| - r$（裁剪 y 后）</td>
+
+  </tr>
+
+  </tbody>
+
+  </table>
+
+  <h3>组合操作（CSG）</h3>
+
+  <table>
+
+  <thead>
+
+  <tr>
+
+  <th style="text-align: left;">操作</th>
+
+  <th style="text-align: left;">表达式</th>
+
+  </tr>
+
+  </thead>
+
+  <tbody>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>并集</strong></td>
+
+  <td style="text-align: left;">$\min(f_1, f_2)$</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>交集</strong></td>
+
+  <td style="text-align: left;">$\max(f_1, f_2)$</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>差集</strong></td>
+
+  <td style="text-align: left;">$\max(f_1, -f_2)$</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>光滑混合</strong></td>
+
+  <td style="text-align: left;">$\text{smin}(f_1, f_2, k)$</td>
+
+  </tr>
+
+  </tbody>
+
+  </table>
+
+  <p>光滑混合（Smooth Minimum）：</p>
+
+  <p>$$\text{smin}(a, b, k) = -\log\left(e^{-k \cdot a} + e^{-k \cdot b}\right) \cdot \frac{1}{k}$$</p>
+
+  <div class="codehilite"><pre><span></span><code><span class="kt">float</span><span class="w"> </span><span class="n">smin</span><span class="p">(</span><span class="kt">float</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="kt">float</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="kt">float</span><span class="w"> </span><span class="n">k</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+
+  <span class="w">    </span><span class="kt">float</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">max</span><span class="p">(</span><span class="n">k</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">abs</span><span class="p">(</span><span class="n">a</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">b</span><span class="p">),</span><span class="w"> </span><span class="mf">0.0</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">k</span><span class="p">;</span>
+
+  <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">min</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">k</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">0.25</span><span class="p">;</span>
+
+  <span class="p">}</span>
+
+  </code></pre></div>
+
+
+  <h3>形变</h3>
+
+  <table>
+
+  <thead>
+
+  <tr>
+
+  <th style="text-align: left;">形变</th>
+
+  <th style="text-align: left;">操作</th>
+
+  </tr>
+
+  </thead>
+
+  <tbody>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>平移</strong></td>
+
+  <td style="text-align: left;">$f(\mathbf{p} - \mathbf{t})$</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>旋转</strong></td>
+
+  <td style="text-align: left;">$f(R^{-1} \cdot \mathbf{p})$</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>缩放</strong></td>
+
+  <td style="text-align: left;">$f(\mathbf{p} / s) \cdot s$</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>镜像</strong></td>
+
+  <td style="text-align: left;">$f(\text{abs}(\mathbf{p}))$ — 在原点处镜像</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>重复/平铺</strong></td>
+
+  <td style="text-align: left;">$f(\text{mod}(\mathbf{p}, c) - c/2)$ — 无限周期复制</td>
+
+  </tr>
+
+  </tbody>
+
+  </table>
+
+  <hr />
+
+  <h2>Ray Marching（光线步进）</h2>
+
+  <p>Ray Marching 是结合 SDF 的实时渲染方法。核心算法是 <strong>Sphere Tracing</strong>：</p>
+
+  <h3>算法</h3>
+
+  <div class="codehilite"><pre><span></span><code><span class="kt">vec3</span><span class="w"> </span><span class="n">rayMarch</span><span class="p">(</span><span class="kt">vec3</span><span class="w"> </span><span class="n">ro</span><span class="p">,</span><span class="w"> </span><span class="kt">vec3</span><span class="w"> </span><span class="n">rd</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+
+  <span class="w">    </span><span class="kt">float</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
+
+  <span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mo">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">MAX_STEPS</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+
+  <span class="w">        </span><span class="kt">vec3</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ro</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">rd</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">t</span><span class="p">;</span><span class="w">       </span><span class="c1">// 当前采样点</span>
+
+  <span class="w">        </span><span class="kt">float</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sdfScene</span><span class="p">(</span><span class="n">p</span><span class="p">);</span><span class="w">       </span><span class="c1">// 到最近表面的距离</span>
+
+  <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">d</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">EPS</span><span class="p">)</span><span class="w"> </span><span class="k">break</span><span class="p">;</span><span class="w">          </span><span class="c1">// 击中表面</span>
+
+  <span class="w">        </span><span class="n">t</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">d</span><span class="p">;</span><span class="w">                      </span><span class="c1">// 安全步进</span>
+
+  <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">t</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">FAR</span><span class="p">)</span><span class="w"> </span><span class="k">break</span><span class="p">;</span><span class="w">          </span><span class="c1">// 超出范围</span>
+
+  <span class="w">    </span><span class="p">}</span>
+
+  <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">ro</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">rd</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">t</span><span class="p">;</span>
+
+  <span class="p">}</span>
+
+  </code></pre></div>
+
+
+  <p><strong>关键洞察</strong>：SDF 给出的距离保证了以该距离为半径的球体内<strong>不会碰到任何表面</strong>，因此可以安全地一次前进 <code>d</code> 的距离。</p>
+
+  <h3>法线计算</h3>
+
+  <p>通过梯度近似：</p>
+
+  <div class="codehilite"><pre><span></span><code><span class="kt">vec3</span><span class="w"> </span><span class="n">calcNormal</span><span class="p">(</span><span class="kt">vec3</span><span class="w"> </span><span class="n">p</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+
+  <span class="w">    </span><span class="kt">float</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.001</span><span class="p">;</span>
+
+  <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">normalize</span><span class="p">(</span><span class="kt">vec3</span><span class="p">(</span>
+
+  <span class="w">        </span><span class="n">sdfScene</span><span class="p">(</span><span class="n">p</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="kt">vec3</span><span class="p">(</span><span class="n">h</span><span class="p">,</span><span class="w"> </span><span class="mo">0</span><span class="p">,</span><span class="w"> </span><span class="mo">0</span><span class="p">))</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">sdfScene</span><span class="p">(</span><span class="n">p</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="kt">vec3</span><span class="p">(</span><span class="n">h</span><span class="p">,</span><span class="w"> </span><span class="mo">0</span><span class="p">,</span><span class="w"> </span><span class="mo">0</span><span class="p">)),</span>
+
+  <span class="w">        </span><span class="n">sdfScene</span><span class="p">(</span><span class="n">p</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="kt">vec3</span><span class="p">(</span><span class="mo">0</span><span class="p">,</span><span class="w"> </span><span class="n">h</span><span class="p">,</span><span class="w"> </span><span class="mo">0</span><span class="p">))</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">sdfScene</span><span class="p">(</span><span class="n">p</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="kt">vec3</span><span class="p">(</span><span class="mo">0</span><span class="p">,</span><span class="w"> </span><span class="n">h</span><span class="p">,</span><span class="w"> </span><span class="mo">0</span><span class="p">)),</span>
+
+  <span class="w">        </span><span class="n">sdfScene</span><span class="p">(</span><span class="n">p</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="kt">vec3</span><span class="p">(</span><span class="mo">0</span><span class="p">,</span><span class="w"> </span><span class="mo">0</span><span class="p">,</span><span class="w"> </span><span class="n">h</span><span class="p">))</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">sdfScene</span><span class="p">(</span><span class="n">p</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="kt">vec3</span><span class="p">(</span><span class="mo">0</span><span class="p">,</span><span class="w"> </span><span class="mo">0</span><span class="p">,</span><span class="w"> </span><span class="n">h</span><span class="p">))</span>
+
+  <span class="w">    </span><span class="p">));</span>
+
+  <span class="p">}</span>
+
+  </code></pre></div>
+
+
+  <h3>AO（环境光遮蔽）</h3>
+
+  <p>在法线方向采样几步 SDF，距离越近越暗：</p>
+
+  <p>$$AO = \frac{1}{n} \sum_{i=1}^{n} \max\left(0,\ \frac{\text{sdf}(p + N \cdot t_i) - t_i}{t_i}\right)$$</p>
+
+  <h3>软阴影</h3>
+
+  <p>从着色点向光源方向步进，检查是否有遮挡。遮挡物越近，阴影越暗：</p>
+
+  <p>$$k = \min\left(1,\ 32 \cdot \frac{d_i}{t_i}\right)$$</p>
+
+  <hr />
+
+  <h2>Marching Cube（移动立方体）</h2>
+
+  <p>Marching Cube 将 SDF（或其他标量场）转换为三角网格，用于离线渲染或 3D 打印。</p>
+
+  <h3>算法流程</h3>
+
+  <ol>
+
+  <li>在三维网格的每个顶点求 SDF 值</li>
+
+  <li>每条边上：若两端 SDF 异号，则该边与曲面相交</li>
+
+  <li>根据 8 个顶点的正负组合查表，确定该体素内的三角形拓扑</li>
+
+  <li>线性插值求交点的精确位置</li>
+
+  </ol>
+
+  <p>$$<br />
+
+  \mathbf{p}_{\text{intersect}} = \mathbf{p}_1 + \frac{|f_1|}{|f_1| + |f_2|} (\mathbf{p}_2 - \mathbf{p}_1)<br />
+
+  $$</p>
+
+  <h3>配置表</h3>
+
+  <p>8 个顶点，每个顶点两种状态（内/外），共 $2^8 = 256$ 种配置。利用对称性可简化为 <strong>15 种基本情形</strong>：</p>
+
+  <table>
+
+  <thead>
+
+  <tr>
+
+  <th style="text-align: left;">情形</th>
+
+  <th style="text-align: left;">描述</th>
+
+  <th style="text-align: left;">三角数</th>
+
+  </tr>
+
+  </thead>
+
+  <tbody>
+
+  <tr>
+
+  <td style="text-align: left;">0</td>
+
+  <td style="text-align: left;">全部在内/外</td>
+
+  <td style="text-align: left;">0</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;">1</td>
+
+  <td style="text-align: left;">一个顶角不同</td>
+
+  <td style="text-align: left;">1</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;">2</td>
+
+  <td style="text-align: left;">两个相邻顶角</td>
+
+  <td style="text-align: left;">2</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;">3</td>
+
+  <td style="text-align: left;">对角/相邻三个</td>
+
+  <td style="text-align: left;">2–3</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;">4</td>
+
+  <td style="text-align: left;">四顶角切片</td>
+
+  <td style="text-align: left;">2–4</td>
+
+  </tr>
+
+  </tbody>
+
+  </table>
+
+  <h3>应用</h3>
+
+  <ul>
+
+  <li>医学影像（CT/MRI）的三维重建</li>
+
+  <li>SDF 网格生成（CSG → mesh）</li>
+
+  <li>元球渲染（Metaball）</li>
+
+  <li>地形等值面提取</li>
+
+  </ul>
+
+  <hr />
+
+  <h2>MetaBall（元球）</h2>
+
+  <p>MetaBall 是有机融合多个球体的技术：多个球体的<strong>势能函数叠加</strong>后取等值面。</p>
+
+  <h3>势能函数</h3>
+
+  <p>单个球的势能：</p>
+
+  <p>$$f_i(\mathbf{p}) = \frac{1}{|\mathbf{p} - \mathbf{c}_i|^2}$$</p>
+
+  <p>多个球的总势能：</p>
+
+  <p>$$F(\mathbf{p}) = \sum_i f_i(\mathbf{p})$$</p>
+
+  <p>取 $F(\mathbf{p}) = \text{threshold}$ 的等值面即可得到融合后的光滑曲面。</p>
+
+  <h3>SDF 等效实现</h3>
+
+  <div class="codehilite"><pre><span></span><code><span class="kt">float</span><span class="w"> </span><span class="n">sdMetaBall</span><span class="p">(</span><span class="kt">vec3</span><span class="w"> </span><span class="n">p</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+
+  <span class="w">    </span><span class="kt">float</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
+
+  <span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mo">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">BALL_COUNT</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+
+  <span class="w">        </span><span class="kt">float</span><span class="w"> </span><span class="n">dist</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">length</span><span class="p">(</span><span class="n">p</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">balls</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">center</span><span class="p">);</span>
+
+  <span class="w">        </span><span class="n">d</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mf">1.0</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="n">dist</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">dist</span><span class="p">);</span><span class="w">  </span><span class="c1">// 势能叠加</span>
+
+  <span class="w">    </span><span class="p">}</span>
+
+  <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mf">1.0</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">sqrt</span><span class="p">(</span><span class="n">d</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">threshold</span><span class="p">;</span><span class="w">  </span><span class="c1">// 转回距离</span>
+
+  <span class="p">}</span>
+
+  </code></pre></div>
+
+
+  <h3>特性对比</h3>
+
+  <table>
+
+  <thead>
+
+  <tr>
+
+  <th style="text-align: left;">方法</th>
+
+  <th style="text-align: left;">融合效果</th>
+
+  <th style="text-align: left;">计算量</th>
+
+  <th style="text-align: left;">用途</th>
+
+  </tr>
+
+  </thead>
+
+  <tbody>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>普通球体</strong></td>
+
+  <td style="text-align: left;">无融合，硬边界</td>
+
+  <td style="text-align: left;">O(n)</td>
+
+  <td style="text-align: left;">刚性球体</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>MetaBall</strong></td>
+
+  <td style="text-align: left;">自然融合，有机感</td>
+
+  <td style="text-align: left;">O(n)</td>
+
+  <td style="text-align: left;">流体、有机体</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>SDF Smooth Union</strong></td>
+
+  <td style="text-align: left;">可控融合半径</td>
+
+  <td style="text-align: left;">O(log n)</td>
+
+  <td style="text-align: left;">CSG 建模</td>
+
+  </tr>
+
+  </tbody>
+
+  </table>
+
+  <h3>典型效果</h3>
+
+  <p>多个球体靠近时会自动"拉丝"融合，远离时恢复独立球体形态——这正是 MetaBall 的经典视觉效果，广泛用于 2D/3D 的有机形态生成。</p>
+
+  <hr />
+
+  <h2>总结</h2>
+
+  <table>
+
+  <thead>
+
+  <tr>
+
+  <th style="text-align: left;">技术</th>
+
+  <th style="text-align: left;">核心思想</th>
+
+  <th style="text-align: left;">输出形式</th>
+
+  </tr>
+
+  </thead>
+
+  <tbody>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>SDF</strong></td>
+
+  <td style="text-align: left;">空间各点到表面的距离</td>
+
+  <td style="text-align: left;">隐式曲面</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>Ray Marching</strong></td>
+
+  <td style="text-align: left;">沿 SDF 安全步进求交</td>
+
+  <td style="text-align: left;">像素图像</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>Marching Cube</strong></td>
+
+  <td style="text-align: left;">体素等值面提取</td>
+
+  <td style="text-align: left;">三角网格</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>MetaBall</strong></td>
+
+  <td style="text-align: left;">势能场叠加 + 等值面</td>
+
+  <td style="text-align: left;">隐式曲面 → 图像或网格</td>
+
+  </tr>
+
+  </tbody>
+
+  </table>'
 simple-binpack: '<h2>三维装箱问题 — 3D Bin Packing</h2>
 
   <p>装箱问题（Bin Packing Problem）是组合优化中的经典 NP-hard 问题：将若干小物品放入容量有限的大容器中，使得容器数量最少或空间利用率最高。</p>
@@ -1532,52 +2553,828 @@ water-line: '<h2>2D 水线波动</h2>
   <li>鸭子为装饰性简化耦合，非刚体浮力全模型</li>
 
   </ul>'
-webgl-water: '<h2>光的舞蹈-焦散</h2>
+wfc: '<p>本文从一个每个人都见过的约束满足问题——<strong>数独</strong>出发，引出波函数塌缩（Wave Function Collapse, WFC）算法的核心思想，再将其推广到图像生成与程序化内容创建。</p>
 
-  <p>焦散(''caustic'')是光线经过经过表面的散射和折射作用后形成的现象。</p>
+  <hr />
 
-  <p><img alt="image-20250801140209582" src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250801140209582.png" /></p>
+  <h2>1. 从数独说起</h2>
 
-  <p><img alt="image-20250724090825649" src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250724090825649.png" /></p>
+  <h3>1.1 数独是什么</h3>
 
-  <p>水面由于有水波(wave)的存在，使其构成了多个凹面镜与凸面镜,最简单的焦散效果—透镜聚焦</p>
+  <p>一个 $9 \times 9$ 的网格，部分格子已填入 1-9 的数字，要求在空格中填入数字，使得<strong>每行、每列、每个 $3 \times 3$ 宫格</strong>都恰好包含 1-9 各一次。</p>
 
-  <p><img alt="image-20250724091317364" src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250724091317364.png" /></p>
+  <p>这不是一个数学问题，而是一个<strong>约束满足问题（Constraint Satisfaction Problem, CSP）</strong>。</p>
 
-  <p>实时渲染的模拟方案:直接用一个triangle mesh来做为光源波面</p>
+  <h3>1.2 用计算机解数独</h3>
 
-  <p><img alt="image-20250801134149935" src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250801134149935.png" /></p>
+  <p>最朴素的解法是穷举：每个空格试 1-9，遇到矛盾就回溯。但一个数独有 81 个格子，穷举的复杂度是 $9^{81}$，显然不现实。</p>
 
-  <p><em>图：实时渲染管线 — (1) Use mesh for the light wavefront，将三角形网格作为光源波面；(2) Refract vertices through the surface，顶点经水面折射；(3) Intersect rays with the ground plane，与地平面求交得到焦散图案。</em></p>
+  <p>聪明一点的解法利用了<strong>约束传播</strong>：</p>
 
-  <p>通过模拟光线的运动可以实现效果，但是需要消耗太多运算资源。不显式计算顶点位置，直接求原始三角形与折射后三角形的面积比。</p>
+  <blockquote>
 
-  <!-- ![image-20250801160146361](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250801160146361.png)
+  <p>当我们确定某个格子是 5 之后，与它在同一行、同一列、同一宫格的所有格子就<strong>不可能</strong>是 5 了——这就是"约束传播"。</p>
+
+  </blockquote>
+
+  <p>更进一步：我们应该<strong>优先填那些可能性最少的格子</strong>。如果一个格子只剩 1 种可能，那它就是确定的，应该立刻填上；如果另一个格子还有 8 种可能，就先放一放。</p>
+
+  <p>这就是<strong>"最小剩余值"（Minimum Remaining Values, MRV）</strong>启发式——优先处理约束最强的变量。</p>
+
+  <h3>1.3 数独求解算法</h3>
+
+  <div class="codehilite"><pre><span></span><code><span class="k">function</span><span class="w"> </span><span class="nf">SolveSudoku</span><span class="p">(</span>grid<span class="p">):</span>
+
+  <span class="w">    </span><span class="o">//</span><span class="w"> </span>初始化：每个空格的可能性为<span class="w"> </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="k">...</span><span class="c">,9}</span>
+
+  <span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">each</span><span class="w"> </span><span class="nb">empty</span><span class="w"> </span><span class="nb">cell</span><span class="p">:</span>
+
+  <span class="w">        </span><span class="nb">cell</span><span class="p">.</span><span class="n">possibilities</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="k">...</span><span class="c">, 9}</span>
 
 
-  *图：GLSL 面积比计算。可以不显式计算顶点位置，直接求原始三角形与折射后三角形的面积比。利用 fragment shader 的 2x2 并行求值特性，通过 `dFdx()` / `dFdy()` 有限差分得到屏幕空间偏导数，计算面积比并作为颜色输出：* -->
+  <span class="w">    </span><span class="o">//</span><span class="w"> </span>约束传播：根据已知数字削减可能性
+
+  <span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">each</span><span class="w"> </span><span class="n">given</span><span class="w"> </span><span class="n">number</span><span class="w"> </span><span class="n">in</span><span class="w"> </span><span class="nb">grid</span><span class="p">:</span>
+
+  <span class="w">        </span><span class="n">Propagate</span><span class="p">(</span><span class="n">given</span><span class="p">.</span><span class="n">cell</span><span class="p">,</span><span class="w"> </span><span class="nb">grid</span><span class="p">)</span>
 
 
-  <pre class="codehilite"><code class="language-glsl">float oldArea = length(dFdx(oldPos)) * length(dFdy(oldPos));
+  <span class="w">    </span><span class="o">//</span><span class="w"> </span>主循环
 
-  float newArea = length(dFdx(newPos)) * length(dFdy(newPos));
+  <span class="w">    </span><span class="k">while</span><span class="w"> </span>存在未确定的格子<span class="p">:</span>
 
-  gl_FragColor = vec4(oldArea / newArea, 0, 0.2);
+  <span class="w">        </span><span class="o">//</span><span class="w"> </span>选择可能性最少的格子
 
-  </code></pre>'
-wfc: "<p>本文从一个每个人都见过的约束满足问题——<strong>数独</strong>出发，引出波函数塌缩（Wave Function Collapse, WFC）算法的核心思想，再将其推广到图像生成与程序化内容创建。</p>\n<hr />\n<h2>1. 从数独说起</h2>\n<h3>1.1 数独是什么</h3>\n<p>一个 $9 \\times 9$ 的网格，部分格子已填入 1-9 的数字，要求在空格中填入数字，使得<strong>每行、每列、每个 $3 \\times 3$ 宫格</strong>都恰好包含 1-9 各一次。</p>\n<p>这不是一个数学问题，而是一个<strong>约束满足问题（Constraint Satisfaction Problem, CSP）</strong>。</p>\n<h3>1.2 用计算机解数独</h3>\n<p>最朴素的解法是穷举：每个空格试 1-9，遇到矛盾就回溯。但一个数独有 81 个格子，穷举的复杂度是 $9^{81}$，显然不现实。</p>\n<p>聪明一点的解法利用了<strong>约束传播</strong>：</p>\n<blockquote>\n<p>当我们确定某个格子是 5 之后，与它在同一行、同一列、同一宫格的所有格子就<strong>不可能</strong>是 5 了——这就是\"约束传播\"。</p>\n</blockquote>\n<p>更进一步：我们应该<strong>优先填那些可能性最少的格子</strong>。如果一个格子只剩 1 种可能，那它就是确定的，应该立刻填上；如果另一个格子还有 8 种可能，就先放一放。</p>\n<p>这就是<strong>\"最小剩余值\"（Minimum Remaining Values, MRV）</strong>启发式——优先处理约束最强的变量。</p>\n<h3>1.3 数独求解算法</h3>\n<pre class=\"codehilite\"><code>function SolveSudoku(grid):\n    // 初始化：每个空格的可能性为 {1,2,...,9}\n    for each empty cell:\n        cell.possibilities = {1, 2, ..., 9}\n\n    // 约束传播：根据已知数字削减可能性\n\
-  \    for each given number in grid:\n        Propagate(given.cell, grid)\n\n    // 主循环\n    while 存在未确定的格子:\n        // 选择可能性最少的格子\n        cell = FindMinPossibilitiesCell(grid)\n\n        if cell.possibilities 为空:\n            return FAILURE  // 矛盾！需要回溯或重启\n\n        // &quot;塌缩&quot;：随机选一个可能值\n        chosen = RandomPick(cell.possibilities)\n        cell.value = chosen\n        cell.possibilities = {chosen}\n\n        // 约束传播：更新同行/列/宫的格子\n        if NOT Propagate(cell, grid):\n            return FAILURE\n\n    return grid  // 成功！\n\nfunction Propagate(cell, grid):\n    // 从同行、同列、同宫格的其他格子中\n    // 移除 cell.value 这个可能性\n    for each related cell (同行/同列/同宫):\n        if cell.value in related.possibilities:\n            related.possibilities -= cell.value\n            if related.possibilities 为空:\n                return false  // 矛盾！\n    return true\n</code></pre>\n\n<h3>1.4 数独中已经包含了 WFC 的全部要素</h3>\n<p>仔细看上面的算法，它包含了三个核心步骤：</p>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">步骤</th>\n\
-  <th style=\"text-align: left;\">数独中的含义</th>\n<th style=\"text-align: left;\">WFC 中的对应</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>初始化</strong></td>\n<td style=\"text-align: left;\">每个空格可以是 1-9 中的任何一个</td>\n<td style=\"text-align: left;\">每个格子可以是任何一个 tile</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>塌缩</strong></td>\n<td style=\"text-align: left;\">选择可能性最少的格子，填入一个数字</td>\n<td style=\"text-align: left;\">选择熵最低的格子，放上一个 tile</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>约束传播</strong></td>\n<td style=\"text-align: left;\">同行/列/宫的格子不能再填这个数字</td>\n<td style=\"text-align: left;\">相邻格子的允许 tile 被削减</td>\n</tr>\n</tbody>\n</table>\n<p><strong>WFC 本质上就是\"数独的泛化\"</strong>——把数独的\"行/列/宫约束\"替换为\"相邻 tile 的匹配约束\"，把\"数字 1-9\"替换为\"图像小块（tiles）\"，就得到了 WFC。</p>\n<hr />\n<h2>2. WFC：从数独到图像生成</h2>\n<h3>2.1 从数字到图像</h3>\n<p>数独中每个格子填的是一个<strong>数字</strong>，相邻格子的约束是\"不能重复\"。</p>\n<p>WFC 中每个格子放的是一个<strong>图像小块（tile）</strong>，相邻格子的约束是\"<strong>边缘像素必须匹配</strong>\"\
-  。</p>\n<p>$$\\boxed{\\text{数独：格子} \\to \\text{数字，约束} \\to \\text{不重复}} \\xrightarrow{\\text{泛化}} \\boxed{\\text{WFC：格子} \\to \\text{tile，约束} \\to \\text{边缘匹配}}$$</p>\n<h3>2.2 量子力学的类比</h3>\n<p>WFC 的命名来源于量子力学的类比：</p>\n<ul>\n<li><strong>\"波函数\"</strong>：每个格子处于所有可能 tile 的<strong>叠加态</strong>（就像薛定谔的猫\"既是活的又是死的\"）</li>\n<li><strong>\"观测/塌缩\"</strong>：选择一个格子，将其固定为某个确定 tile（就像\"打开盒子观测猫\"）</li>\n<li><strong>\"约束传播\"</strong>：一次塌缩会影响相邻格子的可能性，像波纹一样扩散</li>\n</ul>\n<p>这个类比虽然形象，但本质上是<strong>约束满足 + 启发式搜索</strong>——和数独求解的数学本质完全一样。</p>\n<h3>2.3 核心思想</h3>\n<blockquote>\n<p><strong>从小的样本图像生成更大的图像，保证局部连续性。</strong></p>\n</blockquote>\n<p>与数独不同的是：数独的约束规则是人为规定的（行/列/宫不重复），而 WFC 的约束规则是<strong>从样本图像中自动提取的</strong>。</p>\n<hr />\n<h2>3. WFC 的完整流程</h2>\n<h3>3.1 样例展示</h3>\n<p>样本图：</p>\n<p><img alt=\"circuit\" src=\"https://lgximgs.oss-cn-beijing.aliyuncs.com/images/circuit.png\" /></p>\n<p>生成结果：</p>\n<p><img alt=\"circuit_9_9\" src=\"https://lgximgs.oss-cn-beijing.aliyuncs.com/images/circuit_9_9.png\" /></p>\n<p>样本图\
-  \ 2：</p>\n<p><img alt=\"greek\" src=\"https://lgximgs.oss-cn-beijing.aliyuncs.com/images/greek.png\" /></p>\n<p>生成结果：</p>\n<p><img alt=\"greek_9_9\" src=\"https://lgximgs.oss-cn-beijing.aliyuncs.com/images/greek_9_9.png\" /></p>\n<h3>3.2 步骤一：图片切分</h3>\n<p>将输入图像切分成 $N \\times N$ 个小块（tiles），作为基本单元。</p>\n<pre class=\"codehilite\"><code class=\"language-matlab\">imgList{N*N} = [];\npixNum = size(img, 1) / N;\nfor i = 1:N\n    for j = 1:N\n        imgList{sub2ind([N,N],i,j)} = ...\n            img(((i-1)*pixNum+1):(i*pixNum), ...\n                ((j-1)*pixNum+1):(j*pixNum), :);\n    end\nend\n</code></pre>\n\n<p>每个 tile 被赋予一个<strong>权重</strong>（通常就是它在样本中出现的频率）。权重越高，该 tile 在随机选择时被选中的概率越大。</p>\n<blockquote>\n<p><strong>类比数独</strong>：这一步相当于确定\"每个格子可以填哪些数字\"——在数独中是 ${1, 2, \\ldots, 9}$，在 WFC 中是 ${\\text{tile}<em>1, \\text{tile}_2, \\ldots, \\text{tile}</em>{N^2}}$。</p>\n</blockquote>\n<h3>3.3 步骤二：构建邻接表（Adjacency Rules）</h3>\n<p>计算哪些 tile 可以在上下左右四个方向相邻。这是 WFC 的<strong>核心数据</strong>——相当于数独中\"同行/列/宫不能重复\"\
-  的规则。</p>\n<p><strong>判定标准</strong>：使用<strong>边缘像素的均方根误差（RMSE）</strong>：</p>\n<p>$$\\text{RMSE} = \\sqrt{\\frac{1}{k} \\sum_{i=1}^{k} (p_i^{\\text{left}} - p_i^{\\text{right}})^2}$$</p>\n<p>其中 $k$ 是边缘像素数量。RMSE &lt; 阈值（如 40）则认为可以连接。</p>\n<pre class=\"codehilite\"><code class=\"language-matlab\">for i = 1:N*N\n    for j = 1:N*N\n        % 检测右连接：i 的右边缘 vs j 的左边缘\n        rErr = sqrt(mean((rImgC - rImgS).^2));\n        if rErr &lt; err\n            adjList(i).right = [adjList(i).right, j];\n        end\n        % 类似地检测左、上、下连接...\n    end\nend\n</code></pre>\n\n<p><strong>结果</strong>：每条规则形如 \"tile $i$ 的右边可以接 tile $j$\"，存储在邻接表中。</p>\n<blockquote>\n<p><strong>类比数独</strong>：邻接表相当于数独的约束规则——数独中\"同行不能有相同数字\"是一种约束，WFC 中\"tile $i$ 的右边必须能接 tile $j$\"也是一种约束。区别在于数独的约束是人为规定的，WFC 的约束是从样本中<strong>自动学习</strong>的。</p>\n</blockquote>\n<h3>3.4 步骤三：波函数塌缩生成</h3>\n<p>这是 WFC 算法的核心——与数独的 MRV 启发式完全一致：<strong>优先处理可能性最少的格子</strong>。</p>\n<h4>初始化</h4>\n<p>创建一个 $R \\times C$ 的网格，每个格子初始状态为<strong>所有 tile 的叠加态</strong>：</p>\n\
-  <p>$$\\text{cell}(i,j).\\text{possibilities} = {1, 2, \\ldots, N^2}$$</p>\n<h4>主循环</h4>\n<pre class=\"codehilite\"><code>function WFC(rows, cols, adjList, weights):\n    // 初始化：每个格子可以是任何 tile\n    grid = Grid(rows, cols)\n    for each cell in grid:\n        cell.possibilities = {ALL_TILES}\n\n    while 存在未塌缩的格子:\n        // 1. 选择熵最低的未塌缩格子（类比数独的 MRV）\n        cell = FindLowestEntropyCell(grid)\n\n        // 2. 塌缩：根据权重随机选择一个 tile\n        chosen = WeightedRandom(cell.possibilities, weights)\n        cell.possibilities = {chosen}  // 塌缩为单态\n\n        // 3. 约束传播（类比数独中更新同行/列/宫）\n        if NOT Propagate(cell, grid, adjList):\n            return FAILURE  // 矛盾！某格子可能性清零\n\n    return grid  // 成功！\n</code></pre>\n\n<h4>熵的计算</h4>\n<p>WFC 使用<strong>加权香农熵</strong>来选择塌缩顺序：</p>\n<p>$$H = \\log\\left(\\sum_{i} w_i\\right) - \\frac{\\sum_{i} w_i \\log w_i}{\\sum_{i} w_i}$$</p>\n<p>其中 $w_i$ 是 tile $i$ 的权重（频率），求和遍历该格子当前所有可能 tile。</p>\n<p><strong>为什么选熵最低的格子？</strong> 熵最低意味着可能性最少，约束最强。优先塌缩最受限的格子可以<strong>尽早发现矛盾</strong>——这和数独中\"\
-  先填只剩 1 种可能的格子\"是完全一样的策略。</p>\n<p>为避免熵相同的格子产生随机性，实际中通常加一个微小的随机扰动：$H' = H + \\epsilon \\cdot \\text{random}()$。</p>\n<h4>约束传播（Constraint Propagation）</h4>\n<p>这是 WFC 的<strong>精髓</strong>，也是数独求解器中的核心机制。</p>\n<pre class=\"codehilite\"><code>function Propagate(startCell, grid, adjList):\n    stack = [startCell]\n\n    while stack 非空:\n        cell = stack.pop()\n\n        for each neighbor of cell (上下左右):\n            // 获取 neighbor 在 cell 方向上允许的 tile\n            allowed = GetAllowedTiles(cell, neighbor, adjList)\n\n            // 从 neighbor 的可能性中剔除不允许的 tile\n            removed = neighbor.possibilities - allowed\n\n            if removed 非空:\n                neighbor.possibilities -= removed\n                if neighbor.possibilities 为空:\n                    return false  // 矛盾！\n                stack.push(neighbor)  // 继续传播\n\n    return true\n</code></pre>\n\n<blockquote>\n<p><strong>类比数独</strong>：<br />\n- 数独中：格子填了 5 → 同行/列/宫的格子不能再填 5<br />\n- WFC 中：格子放了 tile $A$ → 右边格子只能放 $A$ 的允许邻居（比如\
-  \ tile $B$ 或 tile $D$）</p>\n<p>传播机制完全相同——都是\"确定一个格子的状态后，削减相关格子的可能性\"。</p>\n</blockquote>\n<h3>3.5 步骤四：图像合成</h3>\n<p>根据最终塌缩结果，将 tile 拼接为输出图像。</p>\n<pre class=\"codehilite\"><code class=\"language-matlab\">newImg = zeros([rows*pixNum, cols*pixNum, size(img,3)]);\nfor i = 1:rows\n    for j = 1:cols\n        newImg(((i-1)*pixNum+1):(i*pixNum), ...\n               ((j-1)*pixNum+1):(j*pixNum), :) = ...\n            imgList{indMat(i,j)};\n    end\nend\n</code></pre>\n\n<hr />\n<h2>4. 数独 vs WFC：一张表看懂本质</h2>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">维度</th>\n<th style=\"text-align: left;\">数独</th>\n<th style=\"text-align: left;\">WFC（Tiled Model）</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>格子状态</strong></td>\n<td style=\"text-align: left;\">数字 ${1, \\ldots, 9}$</td>\n<td style=\"text-align: left;\">图像 tile ${\\text{tile}_1, \\ldots, \\text{tile}_k}$</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>约束类型</strong></td>\n<td style=\"text-align:\
-  \ left;\">同行/列/宫不重复</td>\n<td style=\"text-align: left;\">相邻 tile 边缘像素匹配</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>约束来源</strong></td>\n<td style=\"text-align: left;\">人为规定</td>\n<td style=\"text-align: left;\">从样本图像自动提取</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>塌缩策略</strong></td>\n<td style=\"text-align: left;\">选可能性最少的格子</td>\n<td style=\"text-align: left;\">选熵最低的格子</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>约束传播</strong></td>\n<td style=\"text-align: left;\">削减同行/列/宫的可能性</td>\n<td style=\"text-align: left;\">削减相邻格子的可能性</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>矛盾处理</strong></td>\n<td style=\"text-align: left;\">回溯或重启</td>\n<td style=\"text-align: left;\">回溯或重启</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>输出</strong></td>\n<td style=\"text-align: left;\">唯一解（有解数独）</td>\n<td style=\"text-align: left;\">多种可能（随机性生成）</td>\n</tr>\n</tbody>\n</table>\n<p>核心观察：<strong>WFC 的算法骨架与数独求解器几乎完全相同</strong>，只是把\"数字 + 行列宫约束\"\
-  泛化为了\"tile + 邻接约束\"，并加入了权重随机性以产生多样化的输出。</p>\n<hr />\n<h2>5. 两种模型</h2>\n<h3>5.1 Tiled Model（拼贴模型）</h3>\n<p>将样本图像切分为若干个小块（tiles），分析它们之间的邻接关系，然后基于这些关系生成新图像。</p>\n<ul>\n<li><strong>输入</strong>：一张样本图像 + tiles 的切分信息</li>\n<li><strong>规则来源</strong>：手工指定或自动提取 tiles 之间的邻接关系</li>\n<li><strong>优点</strong>：概念简单，可控性强</li>\n<li><strong>缺点</strong>：需要预先定义 tiles 和邻接规则</li>\n</ul>\n<h3>5.2 Overlapping Model（重叠模型）</h3>\n<p>不预定义 tiles，而是从样本图像中提取 $N \\times N$ 的<strong>像素模式（patterns）</strong>，分析这些模式之间的重叠关系。</p>\n<ul>\n<li><strong>输入</strong>：仅一张样本图像</li>\n<li><strong>规则来源</strong>：自动从样本中提取模式及其允许的重叠方式</li>\n<li><strong>优点</strong>：完全自动化，不需要手工定义规则</li>\n<li><strong>缺点</strong>：模式数量可能很多，计算开销更大</li>\n</ul>\n<hr />\n<h2>6. 矛盾处理：回溯 vs 重启</h2>\n<p>当约束传播导致某个格子的可能性清零时，算法遇到了<strong>矛盾</strong>——就像数独中某个格子没有任何合法数字可填。</p>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">策略</th>\n<th style=\"text-align: left;\">方法</th>\n<th style=\"text-align: left;\">优点</th>\n<th style=\"text-align: left;\">缺点</th>\n</tr>\n</thead>\n\
-  <tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>重启（Restart）</strong></td>\n<td style=\"text-align: left;\">放弃当前结果，从头开始</td>\n<td style=\"text-align: left;\">实现简单</td>\n<td style=\"text-align: left;\">可能多次失败，浪费计算</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>回溯（Backtracking）</strong></td>\n<td style=\"text-align: left;\">撤销上一次塌缩决策，尝试其他 tile</td>\n<td style=\"text-align: left;\">更高成功率</td>\n<td style=\"text-align: left;\">实现复杂，可能指数级回溯</td>\n</tr>\n</tbody>\n</table>\n<p>原始 WFC 实现使用<strong>重启策略</strong>。实践表明，对于合理设计的邻接规则，重启几次后几乎总能成功。但对于约束很紧的问题（类似于数独中的\"极难数独\"），回溯更可靠。</p>\n<hr />\n<h2>7. WFC 与其他程序化生成方法的对比</h2>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">方法</th>\n<th style=\"text-align: left;\">原理</th>\n<th style=\"text-align: left;\">输入</th>\n<th style=\"text-align: left;\">优点</th>\n<th style=\"text-align: left;\">缺点</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>WFC</strong></td>\n<td style=\"text-align: left;\">约束传播 + 熵塌缩</td>\n\
-  <td style=\"text-align: left;\">一张样本图</td>\n<td style=\"text-align: left;\">自动学习规则，局部连续性好</td>\n<td style=\"text-align: left;\">全局结构不可控</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>L-System</strong></td>\n<td style=\"text-align: left;\">字符串重写规则</td>\n<td style=\"text-align: left;\">产生式规则</td>\n<td style=\"text-align: left;\">适合植物/分形结构</td>\n<td style=\"text-align: left;\">规则需手工设计</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>噪声函数（Perlin/Simplex）</strong></td>\n<td style=\"text-align: left;\">梯度噪声插值</td>\n<td style=\"text-align: left;\">参数</td>\n<td style=\"text-align: left;\">连续平滑，计算快</td>\n<td style=\"text-align: left;\">不适合结构化内容</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>Cellular Automata</strong></td>\n<td style=\"text-align: left;\">局部邻域规则</td>\n<td style=\"text-align: left;\">规则 + 初始状态</td>\n<td style=\"text-align: left;\">简单直观，适合洞穴生成</td>\n<td style=\"text-align: left;\">规则需手工设计</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>Voronoi\
-  \ 图</strong></td>\n<td style=\"text-align: left;\">最近邻划分</td>\n<td style=\"text-align: left;\">种子点</td>\n<td style=\"text-align: left;\">天然分区效果</td>\n<td style=\"text-align: left;\">生成结果模式单一</td>\n</tr>\n</tbody>\n</table>\n<p>WFC 的独特优势在于<strong>数据驱动</strong>——只需提供一张样本，算法自动提取规则。不需要手工编写规则，也不需要机器学习训练。</p>\n<hr />\n<h2>8. 应用场景</h2>\n<table>\n<thead>\n<tr>\n<th style=\"text-align: left;\">领域</th>\n<th style=\"text-align: left;\">用途</th>\n<th style=\"text-align: left;\">示例</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"text-align: left;\"><strong>游戏关卡设计</strong></td>\n<td style=\"text-align: left;\">生成城市布局、地牢、平台关卡</td>\n<td style=\"text-align: left;\">Caves of Qud, Townscaper</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>纹理合成</strong></td>\n<td style=\"text-align: left;\">从小样本生成大纹理贴图</td>\n<td style=\"text-align: left;\">砖墙、地板、布料纹理</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>3D 场景生成</strong></td>\n<td style=\"text-align: left;\">生成建筑群、城市街道</td>\n<td style=\"text-align:\
-  \ left;\">城市天际线生成</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>像素艺术</strong></td>\n<td style=\"text-align: left;\">扩展精灵图（sprite sheet）</td>\n<td style=\"text-align: left;\">角色动画帧生成</td>\n</tr>\n<tr>\n<td style=\"text-align: left;\"><strong>音乐生成</strong></td>\n<td style=\"text-align: left;\">基于模式的音乐序列生成</td>\n<td style=\"text-align: left;\">—</td>\n</tr>\n</tbody>\n</table>\n<hr />\n<h2>9. 实现/代码资源</h2>\n<ul>\n<li><strong>原始实现（C#）</strong>：<a href=\"https://github.com/mxgmn/WaveFunctionCollapse\">mxgmn/WaveFunctionCollapse</a></li>\n<li><strong>Python 实现</strong>：<a href=\"https://github.com/eyalrd/WaveFunctionCollapse\">eyalrd/WaveFunctionCollapse</a></li>\n<li><strong>Web 在线演示</strong>：<a href=\"https://wavefunctioncollapse.com/\">wavefunctioncollapse.com</a></li>\n</ul>\n<h2>参考</h2>\n<ul>\n<li>Gumin, M. (2016). <em>WaveFunctionCollapse</em>. GitHub repository.</li>\n<li>Karth, I., &amp; Smith, A. M. (2017). \"WaveFunctionCollapse is constraint solving in the wild.\" <em>Proceedings\
-  \ of the 12th International Conference on the Foundations of Digital Games</em>.</li>\n<li>Heaton, R. (2018). \"The Wavefunction Collapse Algorithm explained very clearly.\" <a href=\"https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/\">Blog post</a>.</li>\n<li>Russell, S., &amp; Norvig, P. (2020). <em>Artificial Intelligence: A Modern Approach</em>. Chapter 6: Constraint Satisfaction Problems.</li>\n</ul>"
+  <span class="w">        </span><span class="nb">cell</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">FindMinPossibilitiesCell</span><span class="p">(</span><span class="nb">grid</span><span class="p">)</span>
+
+
+  <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nb">cell</span><span class="p">.</span><span class="n">possibilities</span><span class="w"> </span>为空<span class="p">:</span>
+
+  <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">FAILURE</span><span class="w">  </span><span class="o">//</span><span class="w"> </span>矛盾！需要回溯或重启
+
+
+  <span class="w">        </span><span class="o">//</span><span class="w"> </span><span class="s">&quot;塌缩&quot;</span>：随机选一个可能值
+
+  <span class="w">        </span><span class="n">chosen</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">RandomPick</span><span class="p">(</span><span class="nb">cell</span><span class="p">.</span><span class="n">possibilities</span><span class="p">)</span>
+
+  <span class="w">        </span><span class="nb">cell</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">chosen</span>
+
+  <span class="w">        </span><span class="nb">cell</span><span class="p">.</span><span class="n">possibilities</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">{</span><span class="n">chosen</span><span class="p">}</span>
+
+
+  <span class="w">        </span><span class="o">//</span><span class="w"> </span>约束传播：更新同行<span class="o">/</span>列<span class="o">/</span>宫的格子
+
+  <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">NOT</span><span class="w"> </span><span class="n">Propagate</span><span class="p">(</span><span class="nb">cell</span><span class="p">,</span><span class="w"> </span><span class="nb">grid</span><span class="p">):</span>
+
+  <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">FAILURE</span>
+
+
+  <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">grid</span><span class="w">  </span><span class="o">//</span><span class="w"> </span>成功！
+
+
+  <span class="k">function</span><span class="w"> </span><span class="nf">Propagate</span><span class="p">(</span>cell, grid<span class="p">):</span>
+
+  <span class="w">    </span><span class="o">//</span><span class="w"> </span>从同行、同列、同宫格的其他格子中
+
+  <span class="w">    </span><span class="o">//</span><span class="w"> </span>移除<span class="w"> </span><span class="nb">cell</span><span class="p">.</span><span class="n">value</span><span class="w"> </span>这个可能性
+
+  <span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">each</span><span class="w"> </span><span class="n">related</span><span class="w"> </span><span class="nb">cell</span><span class="w"> </span><span class="p">(</span>同行<span class="o">/</span>同列<span class="o">/</span>同宫<span class="p">):</span>
+
+  <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nb">cell</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="n">in</span><span class="w"> </span><span class="n">related</span><span class="p">.</span><span class="n">possibilities</span><span class="p">:</span>
+
+  <span class="w">            </span><span class="n">related</span><span class="p">.</span><span class="n">possibilities</span><span class="w"> </span><span class="o">-</span><span class="p">=</span><span class="w"> </span><span class="nb">cell</span><span class="p">.</span><span class="n">value</span>
+
+  <span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="n">related</span><span class="p">.</span><span class="n">possibilities</span><span class="w"> </span>为空<span class="p">:</span>
+
+  <span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="nb">false</span><span class="w">  </span><span class="o">//</span><span class="w"> </span>矛盾！
+
+  <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">true</span>
+
+  </code></pre></div>
+
+
+  <h3>1.4 数独中已经包含了 WFC 的全部要素</h3>
+
+  <p>仔细看上面的算法，它包含了三个核心步骤：</p>
+
+  <table>
+
+  <thead>
+
+  <tr>
+
+  <th style="text-align: left;">步骤</th>
+
+  <th style="text-align: left;">数独中的含义</th>
+
+  <th style="text-align: left;">WFC 中的对应</th>
+
+  </tr>
+
+  </thead>
+
+  <tbody>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>初始化</strong></td>
+
+  <td style="text-align: left;">每个空格可以是 1-9 中的任何一个</td>
+
+  <td style="text-align: left;">每个格子可以是任何一个 tile</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>塌缩</strong></td>
+
+  <td style="text-align: left;">选择可能性最少的格子，填入一个数字</td>
+
+  <td style="text-align: left;">选择熵最低的格子，放上一个 tile</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>约束传播</strong></td>
+
+  <td style="text-align: left;">同行/列/宫的格子不能再填这个数字</td>
+
+  <td style="text-align: left;">相邻格子的允许 tile 被削减</td>
+
+  </tr>
+
+  </tbody>
+
+  </table>
+
+  <p><strong>WFC 本质上就是"数独的泛化"</strong>——把数独的"行/列/宫约束"替换为"相邻 tile 的匹配约束"，把"数字 1-9"替换为"图像小块（tiles）"，就得到了 WFC。</p>
+
+  <hr />
+
+  <h2>2. WFC：从数独到图像生成</h2>
+
+  <h3>2.1 从数字到图像</h3>
+
+  <p>数独中每个格子填的是一个<strong>数字</strong>，相邻格子的约束是"不能重复"。</p>
+
+  <p>WFC 中每个格子放的是一个<strong>图像小块（tile）</strong>，相邻格子的约束是"<strong>边缘像素必须匹配</strong>"。</p>
+
+  <p>$$\boxed{\text{数独：格子} \to \text{数字，约束} \to \text{不重复}} \xrightarrow{\text{泛化}} \boxed{\text{WFC：格子} \to \text{tile，约束} \to \text{边缘匹配}}$$</p>
+
+  <h3>2.2 量子力学的类比</h3>
+
+  <p>WFC 的命名来源于量子力学的类比：</p>
+
+  <ul>
+
+  <li><strong>"波函数"</strong>：每个格子处于所有可能 tile 的<strong>叠加态</strong>（就像薛定谔的猫"既是活的又是死的"）</li>
+
+  <li><strong>"观测/塌缩"</strong>：选择一个格子，将其固定为某个确定 tile（就像"打开盒子观测猫"）</li>
+
+  <li><strong>"约束传播"</strong>：一次塌缩会影响相邻格子的可能性，像波纹一样扩散</li>
+
+  </ul>
+
+  <p>这个类比虽然形象，但本质上是<strong>约束满足 + 启发式搜索</strong>——和数独求解的数学本质完全一样。</p>
+
+  <h3>2.3 核心思想</h3>
+
+  <blockquote>
+
+  <p><strong>从小的样本图像生成更大的图像，保证局部连续性。</strong></p>
+
+  </blockquote>
+
+  <p>与数独不同的是：数独的约束规则是人为规定的（行/列/宫不重复），而 WFC 的约束规则是<strong>从样本图像中自动提取的</strong>。</p>
+
+  <hr />
+
+  <h2>3. WFC 的完整流程</h2>
+
+  <h3>3.1 样例展示</h3>
+
+  <p>样本图：</p>
+
+  <p><img alt="circuit" src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/circuit.png" /></p>
+
+  <p>生成结果：</p>
+
+  <p><img alt="circuit_9_9" src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/circuit_9_9.png" /></p>
+
+  <p>样本图 2：</p>
+
+  <p><img alt="greek" src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/greek.png" /></p>
+
+  <p>生成结果：</p>
+
+  <p><img alt="greek_9_9" src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/greek_9_9.png" /></p>
+
+  <h3>3.2 步骤一：图片切分</h3>
+
+  <p>将输入图像切分成 $N \times N$ 个小块（tiles），作为基本单元。</p>
+
+  <div class="codehilite"><pre><span></span><code><span class="n">imgList</span><span class="p">{</span><span class="n">N</span><span class="o">*</span><span class="n">N</span><span class="p">}</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">[];</span>
+
+  <span class="n">pixNum</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">size</span><span class="p">(</span><span class="n">img</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">N</span><span class="p">;</span>
+
+  <span class="k">for</span><span class="w"> </span><span class="nb">i</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1</span><span class="p">:</span><span class="n">N</span>
+
+  <span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nb">j</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1</span><span class="p">:</span><span class="n">N</span>
+
+  <span class="w">        </span><span class="n">imgList</span><span class="p">{</span><span class="nb">sub2ind</span><span class="p">([</span><span class="n">N</span><span class="p">,</span><span class="n">N</span><span class="p">],</span><span class="nb">i</span><span class="p">,</span><span class="nb">j</span><span class="p">)}</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">...</span>
+
+  <span class="w">            </span><span class="n">img</span><span class="p">(((</span><span class="nb">i</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">pixNum</span><span class="o">+</span><span class="mi">1</span><span class="p">):(</span><span class="nb">i</span><span class="o">*</span><span class="n">pixNum</span><span class="p">),</span><span class="w"> </span><span class="k">...</span>
+
+  <span class="w">                </span><span class="p">((</span><span class="nb">j</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">pixNum</span><span class="o">+</span><span class="mi">1</span><span class="p">):(</span><span class="nb">j</span><span class="o">*</span><span class="n">pixNum</span><span class="p">),</span><span class="w"> </span><span class="p">:);</span>
+
+  <span class="w">    </span><span class="k">end</span>
+
+  <span class="k">end</span>
+
+  </code></pre></div>
+
+
+  <p>每个 tile 被赋予一个<strong>权重</strong>（通常就是它在样本中出现的频率）。权重越高，该 tile 在随机选择时被选中的概率越大。</p>
+
+  <blockquote>
+
+  <p><strong>类比数独</strong>：这一步相当于确定"每个格子可以填哪些数字"——在数独中是 ${1, 2, \ldots, 9}$，在 WFC 中是 ${\text{tile}<em>1, \text{tile}_2, \ldots, \text{tile}</em>{N^2}}$。</p>
+
+  </blockquote>
+
+  <h3>3.3 步骤二：构建邻接表（Adjacency Rules）</h3>
+
+  <p>计算哪些 tile 可以在上下左右四个方向相邻。这是 WFC 的<strong>核心数据</strong>——相当于数独中"同行/列/宫不能重复"的规则。</p>
+
+  <p><strong>判定标准</strong>：使用<strong>边缘像素的均方根误差（RMSE）</strong>：</p>
+
+  <p>$$\text{RMSE} = \sqrt{\frac{1}{k} \sum_{i=1}^{k} (p_i^{\text{left}} - p_i^{\text{right}})^2}$$</p>
+
+  <p>其中 $k$ 是边缘像素数量。RMSE &lt; 阈值（如 40）则认为可以连接。</p>
+
+  <div class="codehilite"><pre><span></span><code><span class="k">for</span><span class="w"> </span><span class="nb">i</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1</span><span class="p">:</span><span class="n">N</span><span class="o">*</span><span class="n">N</span>
+
+  <span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nb">j</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1</span><span class="p">:</span><span class="n">N</span><span class="o">*</span><span class="n">N</span>
+
+  <span class="w">        </span><span class="c">% 检测右连接：i 的右边缘 vs j 的左边缘</span>
+
+  <span class="w">        </span><span class="n">rErr</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">sqrt</span><span class="p">(</span><span class="nb">mean</span><span class="p">((</span><span class="n">rImgC</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">rImgS</span><span class="p">)</span><span class="o">.^</span><span class="mi">2</span><span class="p">));</span>
+
+  <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">rErr</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">err</span>
+
+  <span class="w">            </span><span class="n">adjList</span><span class="p">(</span><span class="nb">i</span><span class="p">).</span><span class="n">right</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">[</span><span class="n">adjList</span><span class="p">(</span><span class="nb">i</span><span class="p">).</span><span class="n">right</span><span class="p">,</span><span class="w"> </span><span class="nb">j</span><span class="p">];</span>
+
+  <span class="w">        </span><span class="k">end</span>
+
+  <span class="w">        </span><span class="c">% 类似地检测左、上、下连接...</span>
+
+  <span class="w">    </span><span class="k">end</span>
+
+  <span class="k">end</span>
+
+  </code></pre></div>
+
+
+  <p><strong>结果</strong>：每条规则形如 "tile $i$ 的右边可以接 tile $j$"，存储在邻接表中。</p>
+
+  <blockquote>
+
+  <p><strong>类比数独</strong>：邻接表相当于数独的约束规则——数独中"同行不能有相同数字"是一种约束，WFC 中"tile $i$ 的右边必须能接 tile $j$"也是一种约束。区别在于数独的约束是人为规定的，WFC 的约束是从样本中<strong>自动学习</strong>的。</p>
+
+  </blockquote>
+
+  <h3>3.4 步骤三：波函数塌缩生成</h3>
+
+  <p>这是 WFC 算法的核心——与数独的 MRV 启发式完全一致：<strong>优先处理可能性最少的格子</strong>。</p>
+
+  <h4>初始化</h4>
+
+  <p>创建一个 $R \times C$ 的网格，每个格子初始状态为<strong>所有 tile 的叠加态</strong>：</p>
+
+  <p>$$\text{cell}(i,j).\text{possibilities} = {1, 2, \ldots, N^2}$$</p>
+
+  <h4>主循环</h4>
+
+  <div class="codehilite"><pre><span></span><code><span class="k">function</span><span class="w"> </span><span class="nf">WFC</span><span class="p">(</span>rows, cols, adjList, weights<span class="p">):</span>
+
+  <span class="w">    </span><span class="o">//</span><span class="w"> </span>初始化：每个格子可以是任何<span class="w"> </span><span class="n">tile</span>
+
+  <span class="w">    </span><span class="nb">grid</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">Grid</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span><span class="w"> </span><span class="n">cols</span><span class="p">)</span>
+
+  <span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">each</span><span class="w"> </span><span class="nb">cell</span><span class="w"> </span><span class="n">in</span><span class="w"> </span><span class="nb">grid</span><span class="p">:</span>
+
+  <span class="w">        </span><span class="nb">cell</span><span class="p">.</span><span class="n">possibilities</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">{</span><span class="n">ALL_TILES</span><span class="p">}</span>
+
+
+  <span class="w">    </span><span class="k">while</span><span class="w"> </span>存在未塌缩的格子<span class="p">:</span>
+
+  <span class="w">        </span><span class="o">//</span><span class="w"> </span><span class="mf">1.</span><span class="w"> </span>选择熵最低的未塌缩格子（类比数独的<span class="w"> </span><span class="n">MRV</span>）
+
+  <span class="w">        </span><span class="nb">cell</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">FindLowestEntropyCell</span><span class="p">(</span><span class="nb">grid</span><span class="p">)</span>
+
+
+  <span class="w">        </span><span class="o">//</span><span class="w"> </span><span class="mf">2.</span><span class="w"> </span>塌缩：根据权重随机选择一个<span class="w"> </span><span class="n">tile</span>
+
+  <span class="w">        </span><span class="n">chosen</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">WeightedRandom</span><span class="p">(</span><span class="nb">cell</span><span class="p">.</span><span class="n">possibilities</span><span class="p">,</span><span class="w"> </span><span class="n">weights</span><span class="p">)</span>
+
+  <span class="w">        </span><span class="nb">cell</span><span class="p">.</span><span class="n">possibilities</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">{</span><span class="n">chosen</span><span class="p">}</span><span class="w">  </span><span class="o">//</span><span class="w"> </span>塌缩为单态
+
+
+  <span class="w">        </span><span class="o">//</span><span class="w"> </span><span class="mf">3.</span><span class="w"> </span>约束传播（类比数独中更新同行<span class="o">/</span>列<span class="o">/</span>宫）
+
+  <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">NOT</span><span class="w"> </span><span class="n">Propagate</span><span class="p">(</span><span class="nb">cell</span><span class="p">,</span><span class="w"> </span><span class="nb">grid</span><span class="p">,</span><span class="w"> </span><span class="n">adjList</span><span class="p">):</span>
+
+  <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">FAILURE</span><span class="w">  </span><span class="o">//</span><span class="w"> </span>矛盾！某格子可能性清零
+
+
+  <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">grid</span><span class="w">  </span><span class="o">//</span><span class="w"> </span>成功！
+
+  </code></pre></div>
+
+
+  <h4>熵的计算</h4>
+
+  <p>WFC 使用<strong>加权香农熵</strong>来选择塌缩顺序：</p>
+
+  <p>$$H = \log\left(\sum_{i} w_i\right) - \frac{\sum_{i} w_i \log w_i}{\sum_{i} w_i}$$</p>
+
+  <p>其中 $w_i$ 是 tile $i$ 的权重（频率），求和遍历该格子当前所有可能 tile。</p>
+
+  <p><strong>为什么选熵最低的格子？</strong> 熵最低意味着可能性最少，约束最强。优先塌缩最受限的格子可以<strong>尽早发现矛盾</strong>——这和数独中"先填只剩 1 种可能的格子"是完全一样的策略。</p>
+
+  <p>为避免熵相同的格子产生随机性，实际中通常加一个微小的随机扰动：$H'' = H + \epsilon \cdot \text{random}()$。</p>
+
+  <h4>约束传播（Constraint Propagation）</h4>
+
+  <p>这是 WFC 的<strong>精髓</strong>，也是数独求解器中的核心机制。</p>
+
+  <div class="codehilite"><pre><span></span><code><span class="k">function</span><span class="w"> </span><span class="nf">Propagate</span><span class="p">(</span>startCell, grid, adjList<span class="p">):</span>
+
+  <span class="w">    </span><span class="nb">stack</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">[</span><span class="n">startCell</span><span class="p">]</span>
+
+
+  <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nb">stack</span><span class="w"> </span>非空<span class="p">:</span>
+
+  <span class="w">        </span><span class="nb">cell</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">stack</span><span class="p">.</span><span class="n">pop</span><span class="p">()</span>
+
+
+  <span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="n">each</span><span class="w"> </span><span class="n">neighbor</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="nb">cell</span><span class="w"> </span><span class="p">(</span>上下左右<span class="p">):</span>
+
+  <span class="w">            </span><span class="o">//</span><span class="w"> </span>获取<span class="w"> </span><span class="n">neighbor</span><span class="w"> </span>在<span class="w"> </span><span class="nb">cell</span><span class="w"> </span>方向上允许的<span class="w"> </span><span class="n">tile</span>
+
+  <span class="w">            </span><span class="n">allowed</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">GetAllowedTiles</span><span class="p">(</span><span class="nb">cell</span><span class="p">,</span><span class="w"> </span><span class="n">neighbor</span><span class="p">,</span><span class="w"> </span><span class="n">adjList</span><span class="p">)</span>
+
+
+  <span class="w">            </span><span class="o">//</span><span class="w"> </span>从<span class="w"> </span><span class="n">neighbor</span><span class="w"> </span>的可能性中剔除不允许的<span class="w"> </span><span class="n">tile</span>
+
+  <span class="w">            </span><span class="n">removed</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">neighbor</span><span class="p">.</span><span class="n">possibilities</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">allowed</span>
+
+
+  <span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="n">removed</span><span class="w"> </span>非空<span class="p">:</span>
+
+  <span class="w">                </span><span class="n">neighbor</span><span class="p">.</span><span class="n">possibilities</span><span class="w"> </span><span class="o">-</span><span class="p">=</span><span class="w"> </span><span class="n">removed</span>
+
+  <span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="n">neighbor</span><span class="p">.</span><span class="n">possibilities</span><span class="w"> </span>为空<span class="p">:</span>
+
+  <span class="w">                    </span><span class="k">return</span><span class="w"> </span><span class="nb">false</span><span class="w">  </span><span class="o">//</span><span class="w"> </span>矛盾！
+
+  <span class="w">                </span><span class="nb">stack</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">neighbor</span><span class="p">)</span><span class="w">  </span><span class="o">//</span><span class="w"> </span>继续传播
+
+
+  <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">true</span>
+
+  </code></pre></div>
+
+
+  <blockquote>
+
+  <p><strong>类比数独</strong>：<br />
+
+  - 数独中：格子填了 5 → 同行/列/宫的格子不能再填 5<br />
+
+  - WFC 中：格子放了 tile $A$ → 右边格子只能放 $A$ 的允许邻居（比如 tile $B$ 或 tile $D$）</p>
+
+  <p>传播机制完全相同——都是"确定一个格子的状态后，削减相关格子的可能性"。</p>
+
+  </blockquote>
+
+  <h3>3.5 步骤四：图像合成</h3>
+
+  <p>根据最终塌缩结果，将 tile 拼接为输出图像。</p>
+
+  <div class="codehilite"><pre><span></span><code><span class="n">newImg</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">zeros</span><span class="p">([</span><span class="n">rows</span><span class="o">*</span><span class="n">pixNum</span><span class="p">,</span><span class="w"> </span><span class="n">cols</span><span class="o">*</span><span class="n">pixNum</span><span class="p">,</span><span class="w"> </span><span class="nb">size</span><span class="p">(</span><span class="n">img</span><span class="p">,</span><span class="mi">3</span><span class="p">)]);</span>
+
+  <span class="k">for</span><span class="w"> </span><span class="nb">i</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1</span><span class="p">:</span><span class="n">rows</span>
+
+  <span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nb">j</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1</span><span class="p">:</span><span class="n">cols</span>
+
+  <span class="w">        </span><span class="n">newImg</span><span class="p">(((</span><span class="nb">i</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">pixNum</span><span class="o">+</span><span class="mi">1</span><span class="p">):(</span><span class="nb">i</span><span class="o">*</span><span class="n">pixNum</span><span class="p">),</span><span class="w"> </span><span class="k">...</span>
+
+  <span class="w">               </span><span class="p">((</span><span class="nb">j</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">pixNum</span><span class="o">+</span><span class="mi">1</span><span class="p">):(</span><span class="nb">j</span><span class="o">*</span><span class="n">pixNum</span><span class="p">),</span><span class="w"> </span><span class="p">:)</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">...</span>
+
+  <span class="w">            </span><span class="n">imgList</span><span class="p">{</span><span class="n">indMat</span><span class="p">(</span><span class="nb">i</span><span class="p">,</span><span class="nb">j</span><span class="p">)};</span>
+
+  <span class="w">    </span><span class="k">end</span>
+
+  <span class="k">end</span>
+
+  </code></pre></div>
+
+
+  <hr />
+
+  <h2>4. 数独 vs WFC：一张表看懂本质</h2>
+
+  <table>
+
+  <thead>
+
+  <tr>
+
+  <th style="text-align: left;">维度</th>
+
+  <th style="text-align: left;">数独</th>
+
+  <th style="text-align: left;">WFC（Tiled Model）</th>
+
+  </tr>
+
+  </thead>
+
+  <tbody>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>格子状态</strong></td>
+
+  <td style="text-align: left;">数字 ${1, \ldots, 9}$</td>
+
+  <td style="text-align: left;">图像 tile ${\text{tile}_1, \ldots, \text{tile}_k}$</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>约束类型</strong></td>
+
+  <td style="text-align: left;">同行/列/宫不重复</td>
+
+  <td style="text-align: left;">相邻 tile 边缘像素匹配</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>约束来源</strong></td>
+
+  <td style="text-align: left;">人为规定</td>
+
+  <td style="text-align: left;">从样本图像自动提取</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>塌缩策略</strong></td>
+
+  <td style="text-align: left;">选可能性最少的格子</td>
+
+  <td style="text-align: left;">选熵最低的格子</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>约束传播</strong></td>
+
+  <td style="text-align: left;">削减同行/列/宫的可能性</td>
+
+  <td style="text-align: left;">削减相邻格子的可能性</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>矛盾处理</strong></td>
+
+  <td style="text-align: left;">回溯或重启</td>
+
+  <td style="text-align: left;">回溯或重启</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>输出</strong></td>
+
+  <td style="text-align: left;">唯一解（有解数独）</td>
+
+  <td style="text-align: left;">多种可能（随机性生成）</td>
+
+  </tr>
+
+  </tbody>
+
+  </table>
+
+  <p>核心观察：<strong>WFC 的算法骨架与数独求解器几乎完全相同</strong>，只是把"数字 + 行列宫约束"泛化为了"tile + 邻接约束"，并加入了权重随机性以产生多样化的输出。</p>
+
+  <hr />
+
+  <h2>5. 两种模型</h2>
+
+  <h3>5.1 Tiled Model（拼贴模型）</h3>
+
+  <p>将样本图像切分为若干个小块（tiles），分析它们之间的邻接关系，然后基于这些关系生成新图像。</p>
+
+  <ul>
+
+  <li><strong>输入</strong>：一张样本图像 + tiles 的切分信息</li>
+
+  <li><strong>规则来源</strong>：手工指定或自动提取 tiles 之间的邻接关系</li>
+
+  <li><strong>优点</strong>：概念简单，可控性强</li>
+
+  <li><strong>缺点</strong>：需要预先定义 tiles 和邻接规则</li>
+
+  </ul>
+
+  <h3>5.2 Overlapping Model（重叠模型）</h3>
+
+  <p>不预定义 tiles，而是从样本图像中提取 $N \times N$ 的<strong>像素模式（patterns）</strong>，分析这些模式之间的重叠关系。</p>
+
+  <ul>
+
+  <li><strong>输入</strong>：仅一张样本图像</li>
+
+  <li><strong>规则来源</strong>：自动从样本中提取模式及其允许的重叠方式</li>
+
+  <li><strong>优点</strong>：完全自动化，不需要手工定义规则</li>
+
+  <li><strong>缺点</strong>：模式数量可能很多，计算开销更大</li>
+
+  </ul>
+
+  <hr />
+
+  <h2>6. 矛盾处理：回溯 vs 重启</h2>
+
+  <p>当约束传播导致某个格子的可能性清零时，算法遇到了<strong>矛盾</strong>——就像数独中某个格子没有任何合法数字可填。</p>
+
+  <table>
+
+  <thead>
+
+  <tr>
+
+  <th style="text-align: left;">策略</th>
+
+  <th style="text-align: left;">方法</th>
+
+  <th style="text-align: left;">优点</th>
+
+  <th style="text-align: left;">缺点</th>
+
+  </tr>
+
+  </thead>
+
+  <tbody>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>重启（Restart）</strong></td>
+
+  <td style="text-align: left;">放弃当前结果，从头开始</td>
+
+  <td style="text-align: left;">实现简单</td>
+
+  <td style="text-align: left;">可能多次失败，浪费计算</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>回溯（Backtracking）</strong></td>
+
+  <td style="text-align: left;">撤销上一次塌缩决策，尝试其他 tile</td>
+
+  <td style="text-align: left;">更高成功率</td>
+
+  <td style="text-align: left;">实现复杂，可能指数级回溯</td>
+
+  </tr>
+
+  </tbody>
+
+  </table>
+
+  <p>原始 WFC 实现使用<strong>重启策略</strong>。实践表明，对于合理设计的邻接规则，重启几次后几乎总能成功。但对于约束很紧的问题（类似于数独中的"极难数独"），回溯更可靠。</p>
+
+  <hr />
+
+  <h2>7. WFC 与其他程序化生成方法的对比</h2>
+
+  <table>
+
+  <thead>
+
+  <tr>
+
+  <th style="text-align: left;">方法</th>
+
+  <th style="text-align: left;">原理</th>
+
+  <th style="text-align: left;">输入</th>
+
+  <th style="text-align: left;">优点</th>
+
+  <th style="text-align: left;">缺点</th>
+
+  </tr>
+
+  </thead>
+
+  <tbody>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>WFC</strong></td>
+
+  <td style="text-align: left;">约束传播 + 熵塌缩</td>
+
+  <td style="text-align: left;">一张样本图</td>
+
+  <td style="text-align: left;">自动学习规则，局部连续性好</td>
+
+  <td style="text-align: left;">全局结构不可控</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>L-System</strong></td>
+
+  <td style="text-align: left;">字符串重写规则</td>
+
+  <td style="text-align: left;">产生式规则</td>
+
+  <td style="text-align: left;">适合植物/分形结构</td>
+
+  <td style="text-align: left;">规则需手工设计</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>噪声函数（Perlin/Simplex）</strong></td>
+
+  <td style="text-align: left;">梯度噪声插值</td>
+
+  <td style="text-align: left;">参数</td>
+
+  <td style="text-align: left;">连续平滑，计算快</td>
+
+  <td style="text-align: left;">不适合结构化内容</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>Cellular Automata</strong></td>
+
+  <td style="text-align: left;">局部邻域规则</td>
+
+  <td style="text-align: left;">规则 + 初始状态</td>
+
+  <td style="text-align: left;">简单直观，适合洞穴生成</td>
+
+  <td style="text-align: left;">规则需手工设计</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>Voronoi 图</strong></td>
+
+  <td style="text-align: left;">最近邻划分</td>
+
+  <td style="text-align: left;">种子点</td>
+
+  <td style="text-align: left;">天然分区效果</td>
+
+  <td style="text-align: left;">生成结果模式单一</td>
+
+  </tr>
+
+  </tbody>
+
+  </table>
+
+  <p>WFC 的独特优势在于<strong>数据驱动</strong>——只需提供一张样本，算法自动提取规则。不需要手工编写规则，也不需要机器学习训练。</p>
+
+  <hr />
+
+  <h2>8. 应用场景</h2>
+
+  <table>
+
+  <thead>
+
+  <tr>
+
+  <th style="text-align: left;">领域</th>
+
+  <th style="text-align: left;">用途</th>
+
+  <th style="text-align: left;">示例</th>
+
+  </tr>
+
+  </thead>
+
+  <tbody>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>游戏关卡设计</strong></td>
+
+  <td style="text-align: left;">生成城市布局、地牢、平台关卡</td>
+
+  <td style="text-align: left;">Caves of Qud, Townscaper</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>纹理合成</strong></td>
+
+  <td style="text-align: left;">从小样本生成大纹理贴图</td>
+
+  <td style="text-align: left;">砖墙、地板、布料纹理</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>3D 场景生成</strong></td>
+
+  <td style="text-align: left;">生成建筑群、城市街道</td>
+
+  <td style="text-align: left;">城市天际线生成</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>像素艺术</strong></td>
+
+  <td style="text-align: left;">扩展精灵图（sprite sheet）</td>
+
+  <td style="text-align: left;">角色动画帧生成</td>
+
+  </tr>
+
+  <tr>
+
+  <td style="text-align: left;"><strong>音乐生成</strong></td>
+
+  <td style="text-align: left;">基于模式的音乐序列生成</td>
+
+  <td style="text-align: left;">—</td>
+
+  </tr>
+
+  </tbody>
+
+  </table>
+
+  <hr />
+
+  <h2>9. 实现/代码资源</h2>
+
+  <ul>
+
+  <li><strong>原始实现（C#）</strong>：<a href="https://github.com/mxgmn/WaveFunctionCollapse">mxgmn/WaveFunctionCollapse</a></li>
+
+  <li><strong>Python 实现</strong>：<a href="https://github.com/eyalrd/WaveFunctionCollapse">eyalrd/WaveFunctionCollapse</a></li>
+
+  <li><strong>Web 在线演示</strong>：<a href="https://wavefunctioncollapse.com/">wavefunctioncollapse.com</a></li>
+
+  </ul>
+
+  <h2>参考</h2>
+
+  <ul>
+
+  <li>Gumin, M. (2016). <em>WaveFunctionCollapse</em>. GitHub repository.</li>
+
+  <li>Karth, I., &amp; Smith, A. M. (2017). "WaveFunctionCollapse is constraint solving in the wild." <em>Proceedings of the 12th International Conference on the Foundations of Digital Games</em>.</li>
+
+  <li>Heaton, R. (2018). "The Wavefunction Collapse Algorithm explained very clearly." <a href="https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/">Blog post</a>.</li>
+
+  <li>Russell, S., &amp; Norvig, P. (2020). <em>Artificial Intelligence: A Modern Approach</em>. Chapter 6: Constraint Satisfaction Problems.</li>
+
+  </ul>'
