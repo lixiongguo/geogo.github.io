@@ -174,7 +174,6 @@ MLS 的核心是：对图像中每个像素，基于附近控制点的位移，�
 
 $$
 \sum_i w_i \,\bigl\lVert l_v(p_i) - q_i \bigr\rVert^2.
-\qquad (1)
 $$
 
 权重（距离越近越大，$\alpha$ 为参数）：
@@ -187,7 +186,6 @@ $$
 
 $$
 l_v(x) = x M + T.
-\qquad (2)
 $$
 
 对式 (1) 关于 $T$ 求极小，可得
@@ -207,14 +205,12 @@ $$
 
 $$
 l_v(x) = (x - p_*) M + q_*.
-\qquad (3)
 $$
 
 于是式 (1) 等价于只关于 $M$ 的最小二乘：
 
 $$
 \sum_i w_i \,\bigl\lVert \hat{p}_i M - \hat{q}_i \bigr\rVert^2,
-\qquad (4)
 $$
 
 其中

@@ -46,7 +46,6 @@ $$
 \min_{\mathbf{Q},\{\mathbf{P}_i\}}\;
 \sum_i \frac{w_i}{2}\|\mathbf{A}_i\mathbf{Q}-\mathbf{P}_i\|_F^2 + \sigma_i(\mathbf{P}_i)
 \;}
-\tag{2}
 $$
 
 Laplacian 公平性可视为 $\mathcal{C}_i=\{\mathbf{0}\}$、$\mathbf{A}_i$ 为 Laplacian 一行的特例。
@@ -71,7 +70,6 @@ $$
 \left(\sum_i w_i\,\mathbf{A}_i^{\mathsf T}\mathbf{A}_i\right)\mathbf{Q}
 = \sum_i w_i\,\mathbf{A}_i^{\mathsf T}\mathbf{P}_i
 \;}
-\tag{3}
 $$
 
 **性质**：

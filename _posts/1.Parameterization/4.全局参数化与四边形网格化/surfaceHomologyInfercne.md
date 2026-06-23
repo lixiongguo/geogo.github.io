@@ -82,7 +82,6 @@ $$
 
 $$
 \boxed{\;\Omega_A = M^{\mathsf T}\,\Omega_B\, M\;}
-\tag{8}
 $$
 
 当两曲面基具有相同相交图案（$\Omega_A = \Omega_B$）时，这正是 $\mathrm{Sp}(2g,\mathbb{Z})$ 的定义。该条件对同胚诱导映射**必要且充分**（Farkas–Kra、Magnus 等经典结果）。
@@ -91,7 +90,6 @@ $$
 
 $$
 \boxed{\;\bar M\,\Omega_A\,\bar M^{\mathsf T} = \Omega_B\;}
-\tag{10}
 $$
 
 ---
@@ -141,7 +139,6 @@ $$
 
 $$
 M_{ij} = \int_{b_i} \tilde f(a^j), \quad \text{即 } \bar M = B^B{}^{\mathsf T}\,\tilde f(B^A).
-\tag{16}
 $$
 
 对高质量稠密映射，(16) 直接成立。但对有缺陷的 $\tilde f$，插值后的 1-形式可能非闭、线性相关或落入错误的类。
@@ -151,7 +148,6 @@ $$
 $$
 \min_{\bar M \in \mathbb{Z}^{2g \times 2g}} \;\big\| B^B \bar M - \tilde f(B^A) \big\|_F^2
 \quad \text{s.t.}\quad \bar M\,\Omega_A\,\bar M^{\mathsf T} = \Omega_B.
-\tag{18}
 $$
 
 这是带二次等式约束的**整数二次规划**（IQP），变量数 $(2g)^2$，规模 $O(g^2)$，可用 Gurobi 等分支定界求解。辛约束将搜索空间限制在"某同胚所能诱导"的映射上，从全局正则化拓扑。

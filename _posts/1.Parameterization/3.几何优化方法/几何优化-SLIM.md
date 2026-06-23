@@ -80,7 +80,7 @@ SLIM 通过 **log-barrier 风格的防翻转能量**（能量在翻转时趋于 
 对三角网格 $M = (V, F)$，参数化 $\Phi: M \to \mathbb{R}^{|V| \times 2}$ 为分段仿射映射。每个三角形 $f$ 的 Jacobian $J_f(x) = \nabla \varphi_f$ 为顶点坐标的线性函数。最小化：
 
 $$
-\min_x \; E(x) = \sum_{f \in F} A_f \, \mathcal{D}(J_f(x)) \tag{1}
+\min_x \; E(x) = \sum_{f \in F} A_f \, \mathcal{D}(J_f(x))
 $$
 
 其中 $A_f$ 为面积权重，$\mathcal{D}$ 为畸变度量。
@@ -88,7 +88,7 @@ $$
 ### 5.1 ARAP 能量（有翻转风险）
 
 $$
-\mathcal{D}_{\text{ARAP}}(J_f(x)) = \|J_f(x) - R(J_f(x))\|_F^2 \tag{2}
+\mathcal{D}_{\text{ARAP}}(J_f(x)) = \|J_f(x) - R(J_f(x))\|_F^2
 $$
 
 $R(J)$ 为 Frobenius 范数下最近的旋转矩阵（SVD 得 $J = USV^T$，取 $R = UV^T$）。
@@ -108,7 +108,7 @@ $$
 \mathcal{D}(J_f(x)) = \begin{cases}
 \|J_f(x)\|_F^2 + \|J_f^{-1}(x)\|_F^2 & \text{if } \det(J_f(x)) \geq 0 \\
 \infty & \text{if } \det(J_f(x)) < 0
-\end{cases} \tag{3}
+\end{cases}
 $$
 
 翻转时能量为 $\infty$，保证优化过程中三角形保持正向。
@@ -122,7 +122,7 @@ $$
 将 local/global 重写为代理函数最小化：
 
 $$
-P_R(J) = \|J - R\|_F^2 \tag{7}
+P_R(J) = \|J - R\|_F^2
 $$
 
 满足三条性质：
@@ -140,7 +140,7 @@ $$
 对称 Dirichlet 在退化/翻转时取 $\infty$，**不存在**满足 Majorizer 性质的全局二次代理。退而求其次，只要求梯度匹配 (12) 和最近极小点 (13)：
 
 $$
-P_{R,W}(J) = \|W(J - R)\|_F^2 \tag{17}
+P_{R,W}(J) = \|W(J - R)\|_F^2
 $$
 
 给定当前 $J^k$ 和 $R^k$，求权重矩阵 $W^k$ 使：
@@ -152,13 +152,13 @@ $$
 推导得（设 $J - R$ 可逆，否则用伪逆）：
 
 $$
-W^T W + W W^T = \nabla_J \mathcal{D}(J)\,(J - R)^{-1} \tag{19}
+W^T W + W W^T = \nabla_J \mathcal{D}(J)\,(J - R)^{-1}
 $$
 
 唯一解（矩阵主平方根）：
 
 $$
-W = \left(\frac{1}{2}\,\nabla_J \mathcal{D}(J)\,(J - R)^{-1}\right)^{1/2} \tag{20}
+W = \left(\frac{1}{2}\,\nabla_J \mathcal{D}(J)\,(J - R)^{-1}\right)^{1/2}
 $$
 
 对 ARAP：$\nabla_J \mathcal{D}_{\text{ARAP}}(J) = 2(J - R)$，得 $W = I$，退化为标准 local/global。
@@ -175,7 +175,7 @@ $$
 3. **Global**：求解加权代理
 
 $$
-p^k = \arg\min_x \sum_f A_f \|W_f^k(J_f(x) - R_f^k)\|_F^2 + \lambda \|x - x^{k-1}\|^2 \tag{21}
+p^k = \arg\min_x \sum_f A_f \|W_f^k(J_f(x) - R_f^k)\|_F^2 + \lambda \|x - x^{k-1}\|^2
 $$
 
 4. **搜索方向**：$d^k = p^k - x^{k-1}$（式 22）

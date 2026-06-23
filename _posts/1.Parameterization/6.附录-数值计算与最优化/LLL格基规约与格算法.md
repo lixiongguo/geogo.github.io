@@ -42,7 +42,6 @@ $$
 \min_{\boldsymbol{x}\in\mathbb{Z}^n}\;\boldsymbol{c}^T\boldsymbol{x}
 \quad\text{s.t.}\quad
 \boldsymbol{A}\boldsymbol{x}\le\boldsymbol{b}
-\qquad (9)
 $$
 
 **核心结论**：当整数变量维数 $n$ **固定**时，(9) 可在**关于输入规模（约束数、系数位数）的多项式时间**内精确求解；时间复杂度中 $n$ 出现在指数上（Kannan 后续改进了该指数）。

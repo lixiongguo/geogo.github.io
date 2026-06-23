@@ -20,19 +20,19 @@ AQP（Accelerated Quadratic Proxy）是一种针对大规模几何优化的一�
 **1. Majorizer（上界）**：
 
 $$
-\mathcal{P}^{R_f^k}(J) \geq \mathcal{D}(J), \quad \forall J \tag{11}
+\mathcal{P}^{R_f^k}(J) \geq \mathcal{D}(J), \quad \forall J
 $$
 
 **2. Matching gradients（梯度匹配）**：
 
 $$
-\nabla_J \mathcal{P}^{R_f^k}(J_f^k) = \nabla_J \mathcal{D}(J_f^k) \tag{12}
+\nabla_J \mathcal{P}^{R_f^k}(J_f^k) = \nabla_J \mathcal{D}(J_f^k)
 $$
 
 **3. Closest minimizer（最近极小点）**：
 
 $$
-\arg\min_J \mathcal{P}^{R_f^k}(J) = \mathrm{Proj}_{\mathcal{D}}(J_f^k) \tag{13}
+\arg\min_J \mathcal{P}^{R_f^k}(J) = \mathrm{Proj}_{\mathcal{D}}(J_f^k)
 $$
 
 AQP 的全局做法是：将能量分解为 $f(x) = h(x) + g(x)$，其中 $h(x) = \frac{1}{2}x^T H x$ 为以 Laplacian 为 Hessian 的严格凸二次项，$g(x)$ 为光滑非线性余项。每步在 $y_n$ 处最小化代理问题 $\min_p h(y_n + p) + g(y_n) + \nabla g(y_n)^T p$，等价于求解以 $H$ 为左端矩阵的 KKT 系统——$H$ 稀疏且**与迭代无关**，可预分解。
@@ -80,7 +80,7 @@ $$
 **一阶迭代形式**：算法仅使用前两步的目标值与梯度：
 
 $$
-x_n = \mathcal{A}_\theta(x_{n-1}, x_{n-2}) \tag{1}
+x_n = \mathcal{A}_\theta(x_{n-1}, x_{n-2})
 $$
 
 类似 GD（用一步历史）和 L-BFGS（用多步历史），AQP 固定只用两步。
@@ -196,7 +196,7 @@ $$
 $$
 \begin{bmatrix} H & A^T \\ A & 0 \end{bmatrix}
 \begin{bmatrix} p_n \\ \lambda \end{bmatrix} =
-\begin{bmatrix} -\nabla f(y_n) \\ 0 \end{bmatrix} \tag{7}
+\begin{bmatrix} -\nabla f(y_n) \\ 0 \end{bmatrix}
 $$
 
 $H$ 为 Laplacian 矩阵，稀疏且**恒定**——预处理阶段 LU 分解一次，每步仅回代。

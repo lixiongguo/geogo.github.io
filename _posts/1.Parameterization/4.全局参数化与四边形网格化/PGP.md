@@ -64,7 +64,7 @@ $$
 
 $$
 \binom{\theta_j^T}{\phi_j^T}-\binom{\theta_j^{T'}}{\phi_j^{T'}}
-=\binom{\theta_k^T}{\phi_k^T}-\binom{\theta_k^{T'}}{\phi_k^{T'}}.\tag{1}
+=\binom{\theta_k^T}{\phi_k^T}-\binom{\theta_k^{T'}}{\phi_k^{T'}}.
 $$
 
 **加 $2\pi$ 平移约束**：限制平移向量坐标为 $2\pi$ 整数倍，则三角函数值在公共顶点上一致：
@@ -72,7 +72,7 @@ $$
 $$
 \binom{\cos\theta_j^T}{\sin\theta_j^T}
 =\binom{\cos(\theta_j^{T'}+2s\pi)}{\sin(\theta_j^{T'}+2s\pi)}
-=\binom{\cos\theta_j^{T'}}{\sin\theta_j^{T'}},\quad(\phi \text{ 同理}).\tag{2}
+=\binom{\cos\theta_j^{T'}}{\sin\theta_j^{T'}},\quad(\phi \text{ 同理}).
 $$
 
 于是对顶点 $i$，所有入射三角形给出的 $\cos\theta_i^T,\sin\theta_i^T$ 都相同——可**把它们提升为顶点变量**
@@ -87,7 +87,7 @@ $$
 
 $$
 \binom{\cos\theta_j^T}{\sin\theta_j^T}
-=\begin{pmatrix}0&-1\\ 1&0\end{pmatrix}^{r}\binom{\cos\theta_j^{T'}}{\sin\theta_j^{T'}},\quad(\phi \text{ 同理}).\tag{3}
+=\begin{pmatrix}0&-1\\ 1&0\end{pmatrix}^{r}\binom{\cos\theta_j^{T'}}{\sin\theta_j^{T'}},\quad(\phi \text{ 同理}).
 $$
 
 即顶点处的 $U_i$（resp. $\phi$）在不同三角形间至多相差**符号变化 + sin/cos 交换**。**奇数次旋转差会把 $\theta$ 与 $\phi$ 耦合（交换 $U$ 与 $V$）**——这是后面必须把 $U,V$ 合并成 4 维变量的原因。
@@ -101,7 +101,7 @@ $$
 输入：定义在顶点、面内线性插值的正交向量场 $\vec K,\vec K^\perp$；chart 尺寸参数 $\omega$。目标是构造复流形 $\{\phi^T\}=\{(\theta^T,\phi^T)\}$ 使每面梯度对齐：
 
 $$
-\nabla\theta^T=\omega\vec K,\qquad \nabla\phi^T=\omega\vec K^\perp.\tag{4}
+\nabla\theta^T=\omega\vec K,\qquad \nabla\phi^T=\omega\vec K^\perp.
 $$
 
 - **归一化**：梯度不应依赖输入场的幅值。求**拟等距**时取 $\|\vec K\|=\|\vec K^\perp\|=1$；若要减少奇异点，则先归一化再按 §4.1 的 curl 校正缩放（结果不再等距但仍**共形**）。
@@ -110,7 +110,7 @@ $$
 由于对任意标量场 $\rho$ 有 $\operatorname{curl}(\nabla\rho)=0$，式 (4) 有解仅当 $\operatorname{curl}\vec K=\operatorname{curl}\vec K^\perp=0$。一般输入未必无旋，故弱化为**最小化能量**：
 
 $$
-F=\int_S\Big(\|\nabla\theta^T-\omega\vec K\|^2+\|\nabla\phi^T-\omega\vec K^\perp\|^2\Big)\,dS.\tag{5}
+F=\int_S\Big(\|\nabla\theta^T-\omega\vec K\|^2+\|\nabla\phi^T-\omega\vec K^\perp\|^2\Big)\,dS.
 $$
 
 难点在于：如何在**不显式处理平移/旋转自由度**的前提下表达这种对齐。下面先引入平移不变（§2.2），再加旋转不变（§2.3）。
@@ -120,32 +120,32 @@ $$
 由附录 A，可用 $F^*$ 替代 $F$（同极小点），其中把每面 $\vec K$ 换成面均值 $\vec K_T$，并因 $\nabla\theta^T,\nabla\phi^T$ 面内常值而写成面求和：
 
 $$
-F^*=\sum_T\Big(\|\nabla\theta^T-\omega\vec K_T\|^2+\|\nabla\phi^T-\omega\vec K_T^\perp\|^2\Big)A_T.\tag{6,7}
+F^*=\sum_T\Big(\|\nabla\theta^T-\omega\vec K_T\|^2+\|\nabla\phi^T-\omega\vec K_T^\perp\|^2\Big)A_T.
 $$
 
 直接对 $F_T$ 引入平移不变较难，故先看**沿边 $\vec e_i$** 的能量（以 $\theta$ 为例，$i\in\{1,2,3\}$，$\oplus$ 表示模 3 加）。沿边梯度为 $(\theta_{i\oplus2}-\theta_{i\oplus1})/\|\vec e_i\|$，$\vec K$ 沿边投影为 $\vec K\cdot\vec e_i/\|\vec e_i\|$：
 
 $$
-F^\theta_{e_i}=\int_{\vec e_i}\big(\theta_{i\oplus2}-\theta_{i\oplus1}-\vec K\cdot\vec e_i\big)^2/\|\vec e_i\|^2\,ds.\tag{9}
+F^\theta_{e_i}=\int_{\vec e_i}\big(\theta_{i\oplus2}-\theta_{i\oplus1}-\vec K\cdot\vec e_i\big)^2/\|\vec e_i\|^2\,ds.
 $$
 
 因 $\vec K$ 沿边线性，可用边均值 $\vec K_i=(\vec K_{i\oplus2}+\vec K_{i\oplus1})/2$ 并按 $\|\vec e_i\|$ 缩放（不改极小点）：
 
 $$
-F^\theta_{T,i}=\big((\theta_{i\oplus2}-\theta_{i\oplus1})-\omega\vec K_i\cdot\vec e_i\big)^2.\tag{10}
+F^\theta_{T,i}=\big((\theta_{i\oplus2}-\theta_{i\oplus1})-\omega\vec K_i\cdot\vec e_i\big)^2.
 $$
 
 此形式下**引入平移不变**只需把差换成模 $2\pi$ 的差：
 
 $$
-F^\theta_{T,i}=\min_s\big\{\big((2s\pi+\theta_{i\oplus2}-\theta_{i\oplus1})-\omega\vec K_i\cdot\vec e_i\big)^2\big\}.\tag{11}
+F^\theta_{T,i}=\min_s\big\{\big((2s\pi+\theta_{i\oplus2}-\theta_{i\oplus1})-\omega\vec K_i\cdot\vec e_i\big)^2\big\}.
 $$
 
 用一阶 Taylor 把"角度差"近似为"sin/cos 向量差的模"，整数 $s$ 被消去（周期性内建于 $\sin/\cos$）：
 
 $$
 F^\theta_{T,i}\simeq\left\|\,U_{i\oplus2}-R(\omega\vec K_i\cdot\vec e_i)\,U_{i\oplus1}\right\|^2,
-\qquad R(\alpha)=\begin{pmatrix}\cos\alpha&-\sin\alpha\\ \sin\alpha&\cos\alpha\end{pmatrix}.\tag{12}
+\qquad R(\alpha)=\begin{pmatrix}\cos\alpha&-\sin\alpha\\ \sin\alpha&\cos\alpha\end{pmatrix}.
 $$
 
 ### 2.3 旋转不变能量
@@ -154,7 +154,7 @@ $$
 
 $$
 F_{T,i}=\min_{s,t}\left\|J^{r_{i\oplus2}}\binom{\theta_{i\oplus2}}{\phi_{i\oplus2}}-J^{r_{i\oplus1}}\binom{\theta_{i\oplus1}+2s\pi}{\phi_{i\oplus1}+2t\pi}-\binom{\delta_i}{\delta_i^\perp}\right\|^2,
-\quad J=\begin{pmatrix}0&-1\\1&0\end{pmatrix},\tag{13}
+\quad J=\begin{pmatrix}0&-1\\1&0\end{pmatrix},
 $$
 
 其中
@@ -171,7 +171,7 @@ $$
 
 $$
 F_{T,i}\simeq\left\|\,M^{r_{i\oplus2}}X_{i\oplus2}-
-\begin{pmatrix}\cos\delta_i&-\sin\delta_i&0&0\\ \sin\delta_i&\cos\delta_i&0&0\\ 0&0&\cos\delta_i^\perp&-\sin\delta_i^\perp\\ 0&0&\sin\delta_i^\perp&\cos\delta_i^\perp\end{pmatrix}M^{r_{i\oplus1}}X_{i\oplus1}\right\|^2,\tag{14}
+\begin{pmatrix}\cos\delta_i&-\sin\delta_i&0&0\\ \sin\delta_i&\cos\delta_i&0&0\\ 0&0&\cos\delta_i^\perp&-\sin\delta_i^\perp\\ 0&0&\sin\delta_i^\perp&\cos\delta_i^\perp\end{pmatrix}M^{r_{i\oplus1}}X_{i\oplus1}\right\|^2,
 $$
 
 $$
@@ -185,7 +185,7 @@ $$
 可直接取边能量之和 $\sum_{T,i}(F^\theta_{T,i}+F^\phi_{T,i})$（**边版本**），对规则采样有效，但**对各向异性网格敏感**。论文（附录 B）改用**面积分版本**，把面能量写成边能量的线性组合：
 
 $$
-F^*=\sum_T F_T=\sum_T\sum_{i=1}^3\lambda_i^T\big(F^\theta_{T,i}+F^\phi_{T,i}\big),\tag{15}
+F^*=\sum_T F_T=\sum_T\sum_{i=1}^3\lambda_i^T\big(F^\theta_{T,i}+F^\phi_{T,i}\big),
 $$
 
 权重 $(\lambda_1^T,\lambda_2^T,\lambda_3^T)$ 由附录 B 的 $3\times3$ 线性系统 (24) 求得，**只依赖三角形几何**，从而让参数化只随几何变化而不被网格各向异性带偏。
@@ -252,7 +252,7 @@ chart 边界取 $\theta=2k\pi$ 与 $\phi=2k\pi$ 的等值线。**关键不变性
 
 $$
 \tau_s=s_i^{T_1}-s_i^{T_2},\quad \tau_t=t_i^{T_1}-t_i^{T_2},\quad \tau_r=r_e^{T_1}-r_e^{T_2},\qquad
-\tau(p)=R^{\tau_r}p+(\tau_s,\tau_t),\tag{16}
+\tau(p)=R^{\tau_r}p+(\tau_s,\tau_t),
 $$
 
 $R$ 为 $\pi/2$ 旋转——满足上述不变性，故 iso 线端点匹配。**Algorithm 2** 据此构造 chart 边界：逐三角形求与 $\theta=2k\pi$、$\phi=2k\pi$ 的交线段并存到边上 → 沿边合并相同 3D 位置的端点 → 求三角形内线段交点 → **递归剥除所有悬挂段**（价为 1 的端点逐一"啃掉"直到遇到价 $>2$）。无奇异 chart 用经典贪心拼合三角形得到参数化。
@@ -280,20 +280,20 @@ $R$ 为 $\pi/2$ 旋转——满足上述不变性，故 iso 线端点匹配。**
 为得线性公式，curl 校正里另设 $\vec K$ 方向在面内**线性变化**：取面局部正交标架 $(x,y)$，$\vec K=(\cos\gamma,\sin\gamma)$，$\gamma=ax+by+c$。零旋要求（逐面）：
 
 $$
-\operatorname{curl}(v\vec K)\cdot\vec N=\Big(-\tfrac{\partial v}{\partial y}+va\Big)\cos\gamma+\Big(\tfrac{\partial v}{\partial x}+vb\Big)\sin\gamma=0.\tag{17}
+\operatorname{curl}(v\vec K)\cdot\vec N=\Big(-\tfrac{\partial v}{\partial y}+va\Big)\cos\gamma+\Big(\tfrac{\partial v}{\partial x}+vb\Big)\sin\gamma=0.
 $$
 
 求与旋转常数 $c$ 无关的解，即满足
 
 $$
--\partial v/\partial y+va=0,\qquad \partial v/\partial x+vb=0,\tag{18}
+-\partial v/\partial y+va=0,\qquad \partial v/\partial x+vb=0,
 $$
 
 其解形如 $v=Ce^{ay-bx}$。取对数后 $\nabla\log v=(-b,\ a)$。由于全局零旋未必存在，对 $\tilde v_i=\log v_i$ 做最小二乘：
 
 $$
 G(\tilde v)=\sum_T A_T\left\|J_T\begin{pmatrix}\tilde v_1\\ \tilde v_2\\ \tilde v_3\end{pmatrix}-J\,J_T\begin{pmatrix}\gamma_1\\ \gamma_2\\ \gamma_3\end{pmatrix}\right\|^2,\quad
-J_T=\frac{1}{2A_T}\begin{pmatrix}y_2-y_3&y_3-y_1&y_1-y_2\\ x_3-x_2&x_1-x_3&x_2-x_1\end{pmatrix},\tag{20}
+J_T=\frac{1}{2A_T}\begin{pmatrix}y_2-y_3&y_3-y_1&y_1-y_2\\ x_3-x_2&x_1-x_3&x_2-x_1\end{pmatrix},
 $$
 
 （$J=\big(\begin{smallmatrix}0&-1\\1&0\end{smallmatrix}\big)$，$J_T$ 是面上分片线性梯度算子）。设 $\tilde v_1=0$ 解出其余，取 $v_i=\exp(\tilde v_i)$ 并按 $\max v_i$ 归一。最后把 $v$ 代回能量：
@@ -312,14 +312,14 @@ $$
 
 $$
 R=(1-\rho)\underbrace{\sum_i\big|k_{\max i}/k_{\min i}\big|\,\big\|(\cos\alpha_i,\sin\alpha_i)-(\cos\alpha_i^0,\sin\alpha_i^0)\big\|^2}_{\text{拟合项（按各向异性加权）}}
-+\rho\underbrace{\sum_T R_T}_{\text{平滑项}},\tag{21}
++\rho\underbrace{\sum_T R_T}_{\text{平滑项}},
 $$
 
 平滑项 $R_T=\sum_i\lambda_i^T R_{T,i}$（$\lambda_i^T$ 同附录 B），其边项
 
 $$
 R_{T,i}=\left\|\binom{\cos\alpha_{i\oplus2}}{\sin\alpha_{i\oplus2}}-\begin{pmatrix}\cos\beta_i&\sin\beta_i\\ -\sin\beta_i&\cos\beta_i\end{pmatrix}\binom{\cos\alpha_{i\oplus1}}{\sin\alpha_{i\oplus1}}\right\|^2,\quad
-\begin{cases}\cos\beta_i=\vec H_{i\oplus1}\cdot\vec H_{i\oplus2}\\ \sin\beta_i=(\vec H_{i\oplus1}\times\vec H_{i\oplus2})\cdot\vec N_T\end{cases}\tag{22}
+\begin{cases}\cos\beta_i=\vec H_{i\oplus1}\cdot\vec H_{i\oplus2}\\ \sin\beta_i=(\vec H_{i\oplus1}\times\vec H_{i\oplus2})\cdot\vec N_T\end{cases}
 $$
 
 $\beta_i$ 是两参考方向夹角。用 §2.5 同样的 Newton + 罚项求解（$\rho=0.8$），罚项同样把奇异点均匀分布。解出后 $\vec K_i=\cos\alpha_i\,\vec H_i+\sin\alpha_i\,\vec H_i\times\vec N_i$，$\vec K_i^\perp=\vec N_i\times\vec K_i$。
@@ -399,7 +399,7 @@ $$
 
 $$
 \begin{pmatrix}e_{1,x}^2&e_{2,x}^2&e_{3,x}^2\\ e_{1,y}^2&e_{2,y}^2&e_{3,y}^2\\ 2e_{1,x}e_{1,y}&2e_{2,x}e_{2,y}&2e_{3,x}e_{3,y}\end{pmatrix}
-\begin{pmatrix}\lambda_1^T\\ \lambda_2^T\\ \lambda_3^T\end{pmatrix}=\begin{pmatrix}1\\1\\0\end{pmatrix}.\tag{24}
+\begin{pmatrix}\lambda_1^T\\ \lambda_2^T\\ \lambda_3^T\end{pmatrix}=\begin{pmatrix}1\\1\\0\end{pmatrix}.
 $$
 
 由展开并令两端相等得到。面积分版本相比边版本，对网格各向异性更鲁棒（图 16）。

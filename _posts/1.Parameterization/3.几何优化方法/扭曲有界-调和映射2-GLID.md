@@ -18,7 +18,7 @@ BDHM 假设单连通域。GLID 把它推广到**带洞的多连通域**，并改
 > 外边界 $\gamma_0$ 逆时针、内边界 $\gamma_1\cdots\gamma_N$ 顺时针。$f$ 全域有界失真且局部单射的**充要条件**为：
 >
 > $$
-> \oint_{\gamma_0}\frac{f_z'(w)}{f_z(w)}dw+\sum_{i=1}^N\oint_{\gamma_i}\frac{f_z'(w)}{f_z(w)}dw=0, \tag{4a}
+> \oint_{\gamma_0}\frac{f_z'(w)}{f_z(w)}dw+\sum_{i=1}^N\oint_{\gamma_i}\frac{f_z'(w)}{f_z(w)}dw=0,
 > $$
 > 以及边界上的 $k\le\bar k$、$\sigma_1\le\bar\sigma_1$、$\sigma_2\ge\underline\sigma_2$。
 

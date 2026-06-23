@@ -53,7 +53,6 @@ $$
 
 $$
 \boxed{\; m_f(z_k)-m_f(z_i)=z_{ik}\, X_{f,i}\, X_{f,k} \;}
-\tag{1}
 $$
 
 - 分子 $(a,b)$ 控制平移；边变换只依赖分母，故**一个顶点位置 + 全部 $X$** 即可定整个面变换；
@@ -68,7 +67,6 @@ $$
 
 $$
 \boxed{\; w_k-w_i = z_{ik}\, X_{f,i} X_{f,k} = z_{ik}\, X_{g,i} X_{g,k} \;}
-\tag{2}
 $$
 
 满足 (2) 的角倒数集合称为 **可积（integrable）**，确定变形网格 $w$（差全局平移）。
@@ -92,7 +90,6 @@ Möbius 变换保 $\mathrm{cr}$。四边形共圆 $\Leftrightarrow$ $\mathrm{cr}
 $$
 \frac{X_{f,i}}{X_{g,i}}=\frac{X_{g,k}}{X_{f,k}},\qquad
 \mathrm{cr}_w = \mathrm{cr}_z \left(\frac{X_{f,k}}{X_{g,k}}\right)^2.
-\tag{5}
 $$
 
 两邻面为**同一** Möbius 变换 $\Leftrightarrow$ $(X_{g,k},X_{g,i})=(X_{f,k},X_{f,i})$。
@@ -123,14 +120,12 @@ $$
 
 $$
 a\bar{c}\in\mathrm{Im}\,\mathbb{H},\quad b\bar{d}\in\mathrm{Im}\,\mathbb{H},\quad a\bar{d}-\bar{b}c\in\mathbb{R}.
-\tag{6}
 $$
 
 10 个实自由度（对比复平面 6 个）。**三点不能唯一定** 3D Möbius：第四点落在三点确定的**球面 pencil** 上，每面有一族变换——实践中直接用角倒数 $X_{f,i|k}=(c_f q_i+d_f)^{-1}$，边相容：
 
 $$
 m(q_k)-m(q_i)=X_{f,i}\,q_{ik}\,X_{f,k}.
-\tag{7}
 $$
 
 四元数交比在 Möbius 下共轭而非不变，但 **MC**（$|X|$ 匹配）与 **IAP**（$X_{g,i}^{-1}X_{f,i}\in\mathbb{R}$）仍可用；3D 中 IAP 过强，论文**主要用 MC / AMAP**。
@@ -174,7 +169,6 @@ $$
 
 $$
 \boxed{\;\Gamma_{ik}=X_{g,k}X_{f,k}^{-1}=(c_g q_k+d_g)^{-1}(c_f q_k+d_f)\;}
-\tag{8}
 $$
 
 $\Gamma_{ik}=1$ 表示两边为同一 Möbius；$|\Gamma|$、$\arg\Gamma$ 分别为**长度/相位交比商**（MC/IAP 误差）。

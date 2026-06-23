@@ -169,7 +169,7 @@ $$
 一大类参数化格式都能写成 1-邻域线性组合：
 
 $$
-(u_i,v_i)=\sum_{j\in\text{1-ring}(i)} c_{ij}\,(u_j,v_j) \tag{1}
+(u_i,v_i)=\sum_{j\in\text{1-ring}(i)} c_{ij}\,(u_j,v_j)
 $$
 
 系数 $c_{ij}$ 由原网格几何决定。本文选 **mean value 参数化** [Floater 2003]，因为它**总产生正权 $c_{ij}$**（有利于单射）。
@@ -177,7 +177,7 @@ $$
 但 (1) 的麻烦在于：邻居参数可能属于**不同 patch**，直接线性组合无意义。于是引入过渡函数 $\tau_{\alpha\beta}$ 把一个 patch 的重心坐标表达到邻接 patch，得到**全局参数化系统**：
 
 $$
-\boxed{\ (u_i,v_i,\alpha_i)=\sum_{j\in\text{1-ring}(i)} c_{ij}\,\tau_{ij}(u_j,v_j,\alpha_j)\ } \tag{2}
+\boxed{\ (u_i,v_i,\alpha_i)=\sum_{j\in\text{1-ring}(i)} c_{ij}\,\tau_{ij}(u_j,v_j,\alpha_j)\ }
 $$
 
 对边 $e(i,j)$，$\tau_{ij}$ 把 $v_j$ 在 $P_{\alpha_j}$ 中的参数值表达到含 $v_i$ 的 $P_{\alpha_i}$：
