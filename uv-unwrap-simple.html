@@ -1,0 +1,2196 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UV展开（精简）- Tutte / LSCM / SCP / ARAP</title>
+  <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
+  
+  <script src="assets/js/wasm-loader.js"></script>
+  <script src="assets/wasm/uv_unwrap_simple.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      overflow: hidden;
+      background: #070b14;
+      color: #d8def7;
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    /*
+    .timing-display {
+      display: none;
+      padding: 10px 18px;
+      background: linear-gradient(90deg, rgba(16, 30, 61, 0.95), rgba(26, 46, 91, 0.95));
+      border-bottom: 2px solid rgba(106, 132, 255, 0.35);
+      text-align: center;
+    }
+    .timing-display.visible {
+      display: block;
+    }
+    .timing-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+    }
+    .timing-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .timing-sep {
+      width: 1px;
+      height: 40px;
+      background: rgba(106, 132, 255, 0.25);
+    }
+    .timing-display .timing-label {
+      font-size: 11px;
+      color: #8a9dd4;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 2px;
+    }
+    .timing-display .timing-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #ffd700;
+      text-shadow: 0 0 16px rgba(255, 215, 0, 0.45), 0 0 32px rgba(255, 215, 0, 0.2);
+      font-family: "SF Mono", "Consolas", monospace;
+    }
+    .timing-display .timing-unit {
+      font-size: 14px;
+      font-weight: 400;
+      color: #c9a227;
+      margin-left: 3px;
+    }
+    .timing-display .timing-details {
+      font-size: 11px;
+      color: #6a7db5;
+      margin-top: 6px;
+    }
+    #flip-value {
+      color: #52d681;
+      text-shadow: 0 0 16px rgba(82, 214, 129, 0.4), 0 0 32px rgba(82, 214, 129, 0.2);
+    }
+    #flip-value.has-flip {
+      color: #ff5252;
+      text-shadow: 0 0 18px rgba(255, 82, 82, 0.55), 0 0 36px rgba(255, 82, 82, 0.3);
+      animation: flipPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes flipPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px;
+      background: rgba(9, 15, 28, 0.96);
+      border-bottom: 1px solid rgba(106, 132, 255, 0.18);
+    }
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    input[type="radio"] { accent-color: #6a84ff; }
+    select, button {
+      border: 1px solid rgba(106, 132, 255, 0.25);
+      background: #121b31;
+      color: #eef2ff;
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-size: 14px;
+    }
+    button {
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    button:hover {
+      background: #172546;
+    }
+    .hidden-input {
+      display: none;
+    }
+    .status {
+      min-width: 240px;
+      color: #8cc4ff;
+      font-size: 13px;
+      text-align: right;
+    }
+    .main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      background: #11192b;
+      min-height: 0;
+    }
+    .panel {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      background: #0b1220;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(106, 132, 255, 0.16);
+      color: #c6d1f4;
+      font-size: 14px;
+    }
+    .panel-header span:last-child {
+      color: #8292bd;
+      font-size: 12px;
+    }
+    .canvas-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+    }
+    .colorbar {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      width: 128px;
+      padding: 10px 10px 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(120,220,170,0.22);
+      background: rgba(9, 16, 29, 0.72);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    .colorbar.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .colorbar-title {
+      font-size: 11px;
+      color: #bff4de;
+      margin-bottom: 6px;
+      letter-spacing: .3px;
+    }
+    .colorbar-row {
+      display: grid;
+      grid-template-columns: 1fr 38px;
+      gap: 8px;
+      align-items: center;
+    }
+    .colorbar-bar {
+      height: 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(90deg, #2b65ff 0%, #ffffff 50%, #ff2b2b 100%);
+    }
+    .colorbar-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+      font-size: 10px;
+      color: rgba(198, 209, 244, 0.82);
+    }
+    .colorbar-axis {
+      font-size: 10px;
+      color: rgba(198, 209, 244, 0.82);
+      text-align: right;
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .footer-note {
+      padding: 10px 16px;
+      border-top: 1px solid rgba(106, 132, 255, 0.16);
+      color: #7e8db5;
+      font-size: 12px;
+    }
+    @media (max-width: 900px) {
+      .toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .status {
+        text-align: left;
+      }
+      .main {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+      }
+    }
+      #reload-btn {
+        padding: 9px 22px;
+        background: linear-gradient(135deg, #ff6b35 0%, #ff8f5e 100%);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 3px 10px rgba(255, 107, 53, 0.4);
+        letter-spacing: 1px;
+      }
+      #reload-btn .btn-text {
+        display: inline-block;
+      }
+      #reload-btn .btn-excl {
+        color: #ffd700;
+        margin-left: 3px;
+        font-size: 17px;
+        filter: drop-shadow(0 0 2px rgba(255,215,0,0.6));
+      }
+      #reload-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none !important;
+      }
+      #reload-btn:not(:disabled):hover {
+        transform: translateY(-2px) scale(1.04);
+        box-shadow: 0 6px 18px rgba(255, 107, 53, 0.6);
+      }
+      #reload-btn:not(:disabled):active {
+        transform: translateY(0) scale(0.97);
+        box-shadow: 0 2px 6px rgba(255, 107, 53, 0.4);
+      }
+      #clear-btn {
+        padding: 9px 18px;
+        background: linear-gradient(135deg, #2a3a5a 0%, #3a4a6a 100%);
+        color: #c6d1f4;
+        border: 1px solid rgba(106,132,255,0.25);
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      #clear-btn:not(:disabled):hover {
+        background: linear-gradient(135deg, #3a4a6a 0%, #4a5a7a 100%);
+        color: #fff;
+        border-color: rgba(106,132,255,0.5);
+      }
+      #clear-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      #fold-sim-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        flex-direction: column;
+        background: rgba(7, 11, 20, 0.96);
+      }
+      #fold-sim-overlay.open {
+        display: flex;
+      }
+      .fold-sim-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 10px 16px;
+        border-bottom: 1px solid rgba(106, 132, 255, 0.2);
+        background: rgba(9, 15, 28, 0.98);
+        flex-shrink: 0;
+      }
+      .fold-sim-header > span:first-child {
+        font-weight: 600;
+        color: #c6d1f4;
+      }
+      .fold-sim-hint {
+        flex: 1;
+        font-size: 11px;
+        color: #8292bd;
+      }
+      #fold-sim-close {
+        padding: 6px 14px;
+        background: #2a3a5a;
+        color: #c6d1f4;
+        border: 1px solid rgba(106, 132, 255, 0.25);
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      #fold-sim-close:hover {
+        background: #3a4a6a;
+      }
+      .fold-sim-loading {
+        display: none;
+        padding: 8px 16px;
+        font-size: 12px;
+        color: #8cc8ff;
+        background: rgba(26, 58, 90, 0.5);
+      }
+      .fold-sim-loading.visible {
+        display: block;
+      }
+      #fold-sim-iframe {
+        flex: 1;
+        width: 100%;
+        border: none;
+        min-height: 0;
+        background: #fff;
+      }
+      #change-pin-btn {
+        padding: 4px 10px;
+        font-size: 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        border: 1px solid rgba(106, 132, 255, 0.3);
+        background: #111b31;
+        color: #c6d1f4;
+        transition: background 0.2s ease;
+      }
+      #change-pin-btn:hover {
+        background: #1a2a4a;
+        border-color: rgba(106, 132, 255, 0.55);
+      }
+      #change-pin-btn:active {
+        background: #0f1a30;
+      }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- 计算耗时 / 翻转面数面板（已关闭显示）
+    <div class="timing-display" id="timing-display">
+      <div class="timing-row">
+        <div class="timing-block">
+          <div class="timing-label">计算耗时</div>
+          <div class="timing-value"><span id="timing-ms">0</span><span class="timing-unit">ms</span></div>
+        </div>
+        <div class="timing-sep"></div>
+        <div class="timing-block" id="flip-block">
+          <div class="timing-label">翻转三角面</div>
+          <div class="timing-value" id="flip-value"><span id="flip-count">0</span><span class="timing-unit" id="flip-unit">个</span></div>
+        </div>
+      </div>
+      <div class="timing-details" id="timing-details"></div>
+    </div>
+    -->
+    <div class="toolbar">
+      <div class="toolbar-right">
+        <select id="model-select" title="Models" style="width:180px;font-size:15px;padding:10px 14px;"></select>
+        <fieldset id="method-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:8px 12px;margin:0;">
+          <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开计算</legend>
+          <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte" checked> Tutte</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="lscm"> LSCM</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Spectral Conformal Parameterization (Mullen et al.)"><input type="radio" name="method" value="scp"> SCP</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="As-Rigid-As-Possible，Tutte 圆边界初始化"><input type="radio" name="method" value="arap"> ARAP</label>
+          </div>
+        </fieldset>
+
+        <!-- 固定算法参数区（始终可见） -->
+        <fieldset id="param-panel" style="border:1px solid rgba(255,180,70,0.35);border-radius:10px;padding:8px 12px;margin:0;background:rgba(20,25,45,0.7);">
+          <legend style="color:#ffb446;font-size:11px;padding:0 6px;">算法参数</legend>
+          <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;">
+            <span id="param-none" style="font-size:12px;color:#5a6791;">无参数</span>
+            <!-- LSCM 改pin点 -->
+            <span id="param-lscm-pin" style="display:none;font-size:12px;color:#c6d1f4;">
+              <button id="change-pin-btn" type="button">改pin点</button>
+            </span>
+            <!-- Tutte 边界选择 -->
+            <span id="param-tutte-boundary" style="display:none;font-size:12px;color:#c6d1f4;">
+              边界:
+              <label style="cursor:pointer;margin:0 4px;" title="映射到圆形边界"><input type="radio" name="tutte-boundary" value="circle" checked> 圆</label>
+              <label style="cursor:pointer;margin:0 4px;" title="映射到正方形边界"><input type="radio" name="tutte-boundary" value="square"> 方</label>
+              <label style="cursor:pointer;margin:0 4px;" title="自由边界：仅 pin 2 个顶点，边界形状由能量决定"><input type="radio" name="tutte-boundary" value="free"> 自由</label>
+            </span>
+            <!-- Tutte Laplace 权重（uniform 图 Laplace / cot-Laplace） -->
+            <span id="param-tutte-weight" style="display:none;font-size:12px;color:#c6d1f4;">
+              权重:
+              <label style="cursor:pointer;margin:0 4px;" title="均匀权重：Δf(v_i)=1/|N_i| Σ(f_j−f_i)，见 Tutte 参数化"><input type="radio" name="tutte-weight" value="uniform" checked> uniform</label>
+              <label style="cursor:pointer;margin:0 4px;" title="余切权重：cot-Laplace 调和映射"><input type="radio" name="tutte-weight" value="cot"> cot-Laplace</label>
+            </span>
+            <!-- ARAP 迭代次数 -->
+            <span id="param-arap-iters" style="display:none;font-size:12px;color:#c6d1f4;">
+              迭代:
+              <input type="range" id="arap-iters-slider" min="1" max="100" value="30" style="width:80px;vertical-align:middle;margin:0 4px;">
+              <span id="arap-iters-val" style="min-width:24px;display:inline-block;">30</span>
+            </span>
+          </div>
+        </fieldset>
+        <button id="reload-btn"><span class="btn-text">展开</span><span class="btn-excl">!</span></button>
+        <button id="clear-btn">清除</button>
+        <fieldset id="texture-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:6px 10px;margin:0;display:flex;gap:12px;align-items:center;">
+          <legend style="color:#8a9dd4;font-size:11px;padding:0 4px;">纹理显示</legend>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;">
+            <input type="radio" name="texture-display" value="checkerboard" id="radio-checkerboard" disabled> 棋盘格
+          </label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;">
+            <input type="radio" name="texture-display" value="dots" id="radio-dots" disabled> 圆点贴图
+          </label>
+        </fieldset>
+        <div class="status" id="status-text">正在加载模型...</div>
+      </div>
+    </div>
+
+    <div class="main">
+      <section class="panel">
+        <div class="panel-header">
+          <span>3D 模型</span>
+          <span>拖拽旋转 / 滚轮缩放</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="model-canvas"></canvas>
+        </div>
+        <div class="footer-note">左侧显示原始三角网格与自动选择的约束点。</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <span id="uv-panel-label">UV 网格</span>
+          <span>边界归一化到 0..1</span>
+        </div>
+
+        <div class="canvas-wrap">
+          <canvas id="uv-canvas"></canvas>
+        </div>
+        <div class="footer-note">右侧展示展开后的线框 UV 结果。</div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      // Indexed from assets/Models/*.obj
+      const MODELS1 = {
+        beetle:        { label: "Beetle (2.1K)",          file: "beetle_F2052.obj" },
+        bunnyhead:     { label: "Bunny Head (3K)",        file: "bunnyhead_F3000.obj" },
+        camelhead:     { label: "Camel Head (22.7K)",     file: "camelhead_F22704.obj" },
+        cathead:       { label: "Cat Head (248)",          file: "cathead_F248.obj" },
+        hand:          { label: "Hand (3.8K)",             file: "hand_F3769.obj" },
+        hand1i:        { label: "Hand 1i (5K)",            file: "hand_1_i_F4999.obj" },
+        hemi:          { label: "Hemi",                    file: "hemi.obj" },
+        hencky:        { label: "Hencky (20K)",            file: "hencky_F20000.obj" },
+        max:           { label: "Max (3.6K)",              file: "max_F3599.obj" },
+        nefertiti:     { label: "Nefertiti Face",          file: "Nefertiti_face.obj" },
+        spot_cowhead:  { label: "Spot Cow Head (9K)",     file: "spot_cowhead_F9024.obj" },
+      };
+
+
+      const modelCanvas = document.getElementById("model-canvas");
+      const uvCanvas = document.getElementById("uv-canvas");
+      const modelSelect = document.getElementById("model-select");
+      const reloadBtn = document.getElementById("reload-btn");
+      const clearBtn = document.getElementById("clear-btn");
+      const radioCheckerboard = document.getElementById("radio-checkerboard");
+      const radioDots = document.getElementById("radio-dots");
+      const statusText = document.getElementById("status-text");
+      const objLoader = new THREE.OBJLoader();
+
+      const modelRenderer = new THREE.WebGLRenderer({ canvas: modelCanvas, antialias: true, alpha: true });
+      const uvRenderer = new THREE.WebGLRenderer({ canvas: uvCanvas, antialias: true, alpha: true });
+      modelRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      uvRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      const modelScene = new THREE.Scene();
+      const uvScene = new THREE.Scene();
+      modelScene.background = new THREE.Color(0x08101d);
+      uvScene.background = new THREE.Color(0x091120);
+
+      const modelCamera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
+      modelCamera.position.set(1.8, 1.5, 1.8);
+      const uvCamera = new THREE.OrthographicCamera(-1.15, 1.15, 1.15, -1.15, 0.1, 10);
+      uvCamera.position.set(0, 0, 2);
+
+      const controls = new THREE.OrbitControls(modelCamera, modelCanvas);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+
+      const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+      dirLight.position.set(2, 3, 4);
+      modelScene.add(ambient);
+      modelScene.add(dirLight);
+
+      let currentModelGroup = null;
+      let currentPins = null;
+      let currentUvLines = null;
+      let currentUvPins = null;
+      let currentHomologyLines = null;
+      let busy = false;
+      let currentMeshData = null;
+      let currentSourcePath = "";
+      let currentUnwrapUv = null;
+      let textureEnabled = false;
+      let currentTexturedMesh = null;
+      let checkerTexture = null;
+      let dotTexture = null;
+      let currentTextureMode = "checkerboard";
+      // let lastElapsedMs = 0;
+      let currentCustomAnchors = null;  // 用户手动选择的 pin 点
+
+      function setStatus(message, color) {
+        statusText.textContent = message;
+        statusText.style.color = color || "#8cc4ff";
+      }
+
+      function clearHomologyOverlay() {
+        if (currentHomologyLines && currentHomologyLines.parent) {
+          currentHomologyLines.parent.remove(currentHomologyLines);
+        }
+        currentHomologyLines = null;
+      }
+
+      function clearOtherOverlays() {}
+
+      /*
+      function showTiming(ms, details, flippedCount) {
+        const display = document.getElementById("timing-display");
+        const msSpan = document.getElementById("timing-ms");
+        const detailsSpan = document.getElementById("timing-details");
+        const flipCountSpan = document.getElementById("flip-count");
+        const flipValue = document.getElementById("flip-value");
+        display.classList.add("visible");
+        msSpan.textContent = ms.toFixed(1);
+        detailsSpan.textContent = details || "";
+        lastElapsedMs = ms;
+        const fc = typeof flippedCount === 'number' ? flippedCount : 0;
+        if (flipCountSpan) flipCountSpan.textContent = fc;
+        if (flipValue) {
+          flipValue.classList.toggle("has-flip", fc > 0);
+        }
+      }
+
+      function hideTiming() {
+        document.getElementById("timing-display").classList.remove("visible");
+        const flipCountSpan = document.getElementById("flip-count");
+        const flipValue = document.getElementById("flip-value");
+        if (flipCountSpan) flipCountSpan.textContent = "0";
+        if (flipValue) flipValue.classList.remove("has-flip");
+      }
+
+      function updateTimingProgress(current, total) {
+        const msSpan = document.getElementById("timing-ms");
+        msSpan.textContent = "计算中 " + current + "/" + total;
+      }
+      */
+
+      function setBusy(nextBusy) {
+        busy = nextBusy;
+        reloadBtn.disabled = nextBusy;
+        clearBtn.disabled = nextBusy;
+        modelSelect.disabled = nextBusy;
+        // 单选框在展开完成前保持禁用
+        if (!nextBusy && currentUnwrapUv) {
+          if (radioCheckerboard) radioCheckerboard.disabled = false;
+          if (radioDots) radioDots.disabled = false;
+        } else if (nextBusy) {
+          if (radioCheckerboard) radioCheckerboard.disabled = true;
+          if (radioDots) radioDots.disabled = true;
+        }
+      }
+
+      function populateSelect(sel, models) {
+        const keys = Object.keys(models);
+        sel.innerHTML = "";
+        for (let i = 0; i < keys.length; i++) {
+          const opt = document.createElement("option");
+          opt.value = keys[i];
+          opt.textContent = models[keys[i]].label;
+          sel.appendChild(opt);
+        }
+        if (keys.length > 0) sel.value = keys[0];
+      }
+      function initModelOptions() {
+        populateSelect(modelSelect, MODELS1);
+      }
+
+      function resize() {
+        const modelRect = modelCanvas.parentElement.getBoundingClientRect();
+        const uvRect = uvCanvas.parentElement.getBoundingClientRect();
+
+        modelRenderer.setSize(modelRect.width, modelRect.height, false);
+        uvRenderer.setSize(uvRect.width, uvRect.height, false);
+
+        modelCamera.aspect = modelRect.width / Math.max(modelRect.height, 1);
+        modelCamera.updateProjectionMatrix();
+
+        const aspect = uvRect.width / Math.max(uvRect.height, 1);
+        const scale = 1.15;
+        uvCamera.left = -scale * aspect;
+        uvCamera.right = scale * aspect;
+        uvCamera.top = scale;
+        uvCamera.bottom = -scale;
+        uvCamera.updateProjectionMatrix();
+      }
+
+      function normalizeObject(root) {
+        const box = new THREE.Box3().setFromObject(root);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z) || 1;
+        root.position.sub(center);
+        root.scale.setScalar(1 / maxDim);
+        root.updateMatrixWorld(true);
+      }
+
+      function loadOBJ(url) {
+        return new Promise(function (resolve, reject) {
+          objLoader.load(url, resolve, undefined, reject);
+        });
+      }
+
+      /**
+       * 从 OBJ 文本中解析原始面数据（保留四边形等多边形，不三角化）
+       */
+      function parseRawFaces(objText) {
+        const faces = [];
+        const lines = objText.split(/\r?\n/);
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line.startsWith('f ') && !line.startsWith('f\t')) continue;
+          const indices = [];
+          // 处理换行续行
+          let full = line;
+          while (i + 1 < lines.length && lines[i + 1].trim() && !lines[i + 1].trim().match(/^[vf#]/)) {
+            i++;
+            full += ' ' + lines[i].trim();
+          }
+          const parts = full.slice(1).trim().split(/\s+/);
+          for (let j = 0; j < parts.length; j++) {
+            const idx = parseInt(parts[j].split('/')[0], 10);
+            if (!isNaN(idx)) indices.push(idx - 1); // 转为 0-based
+          }
+          if (indices.length >= 3) faces.push(indices);
+        }
+        return faces;
+      }
+
+      /**
+       * 尝试多个路径加载原始 OBJ 文本
+       */
+      async function fetchObjText(urls) {
+        let lastError = null;
+        for (let i = 0; i < urls.length; i++) {
+          try {
+            const resp = await fetch(urls[i]);
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            return await resp.text();
+          } catch (e) { lastError = e; }
+        }
+        throw lastError || new Error('无法加载 OBJ 文本');
+      }
+
+      function getModelCandidateUrls(modelKey) {
+        const model = MODELS1[modelKey];
+        if (!model) return [];
+        return ["assets/Models/" + model.file, "./assets/Models/" + model.file, "../assets/Models/" + model.file];
+      }
+
+      async function loadBuiltinModel(modelKey) {
+        const candidateUrls = getModelCandidateUrls(modelKey);
+        let lastError = null;
+
+        // 先加载 Three.js 几何（和之前一样）
+        let root = null, loadedUrl = null;
+        for (let i = 0; i < candidateUrls.length; i++) {
+          try {
+            root = await loadOBJ(candidateUrls[i]);
+            loadedUrl = candidateUrls[i];
+            break;
+          } catch (error) { lastError = error; }
+        }
+        if (!root) {
+          const detail = lastError && lastError.message ? lastError.message : String(lastError || "unknown");
+          throw new Error("内置模型加载失败，尝试路径: " + candidateUrls.join(" | ") + "；最后错误: " + detail);
+        }
+
+        // 模型加载成功后，再获取原始 OBJ 文本解析四边形数据
+        let rawFaces = null;
+        try { rawFaces = parseRawFaces(await fetchObjText(candidateUrls)); }
+        catch (e) { /* 文本加载失败不影响渲染 */ }
+
+        return { root: root, sourcePath: loadedUrl, rawFaces: rawFaces };
+      }
+
+      let currentRawFaces = null; // 原始 OBJ 面数据（可能含 quad）
+      let isQuadMesh = false;     // 是否为四边形网格
+
+      function collectMeshData(root) {
+        root.updateMatrixWorld(true);
+        const positions = [];
+        const faces = [];
+        const vertexMap = new Map();
+        const temp = new THREE.Vector3();
+
+        function getVertexIndex(x, y, z) {
+          const key = [
+            Math.round(x * 100000),
+            Math.round(y * 100000),
+            Math.round(z * 100000)
+          ].join("_");
+          if (!vertexMap.has(key)) {
+            vertexMap.set(key, positions.length);
+            positions.push([x, y, z]);
+          }
+          return vertexMap.get(key);
+        }
+
+        root.traverse(function (child) {
+          if (!child.isMesh || !child.geometry || !child.geometry.attributes.position) {
+            return;
+          }
+
+          const geometry = child.geometry.clone();
+          const positionAttr = geometry.attributes.position;
+          const localToGlobal = new Array(positionAttr.count);
+
+          for (let i = 0; i < positionAttr.count; i++) {
+            temp.fromBufferAttribute(positionAttr, i).applyMatrix4(child.matrixWorld);
+            localToGlobal[i] = getVertexIndex(temp.x, temp.y, temp.z);
+          }
+
+          if (geometry.index) {
+            const index = geometry.index.array;
+            for (let i = 0; i < index.length; i += 3) {
+              faces.push([
+                localToGlobal[index[i]],
+                localToGlobal[index[i + 1]],
+                localToGlobal[index[i + 2]]
+              ]);
+            }
+          } else {
+            for (let i = 0; i < positionAttr.count; i += 3) {
+              faces.push([
+                localToGlobal[i],
+                localToGlobal[i + 1],
+                localToGlobal[i + 2]
+              ]);
+            }
+          }
+        });
+
+        return { positions: positions, faces: faces };
+      }
+
+      // Closed triangle mesh check: every undirected edge must have exactly 2 incident faces.
+      function isClosedTriangleMesh(meshData) {
+        if (!meshData || !meshData.positions || !meshData.faces) return false;
+        const nV = meshData.positions.length;
+        const edgeCount = new Map();
+        for (let fi = 0; fi < meshData.faces.length; fi++) {
+          const f = meshData.faces[fi];
+          if (!f || f.length !== 3) return false;
+          const a = f[0], b = f[1], c = f[2];
+          if (a < 0 || a >= nV || b < 0 || b >= nV || c < 0 || c >= nV) return false;
+          const es = [[a, b], [b, c], [c, a]];
+          for (const e of es) {
+            const u0 = e[0], v0 = e[1];
+            const u = Math.min(u0, v0), v = Math.max(u0, v0);
+            const key = u + "_" + v;
+            edgeCount.set(key, (edgeCount.get(key) || 0) + 1);
+          }
+        }
+        for (const cnt of edgeCount.values()) {
+          if (cnt !== 2) return false;
+        }
+        return true;
+      }
+
+      function meshDiagLength(meshData) {
+        if (!meshData || !meshData.positions || meshData.positions.length < 2) return 1;
+        let minX = Infinity, minY = Infinity, minZ = Infinity;
+        let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+        for (let i = 0; i < meshData.positions.length; i++) {
+          const p = meshData.positions[i];
+          minX = Math.min(minX, p[0]); minY = Math.min(minY, p[1]); minZ = Math.min(minZ, p[2]);
+          maxX = Math.max(maxX, p[0]); maxY = Math.max(maxY, p[1]); maxZ = Math.max(maxZ, p[2]);
+        }
+        const dx = maxX - minX, dy = maxY - minY, dz = maxZ - minZ;
+        const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        return d > 1e-12 ? d : 1;
+      }
+
+      function repairMeshForSolver(meshData) {
+        const data = {
+          positions: meshData.positions.map(function(p) { return [p[0], p[1], p[2]]; }),
+          faces: []
+        };
+        for (let i = 0; i < meshData.faces.length; i++) {
+          const f = meshData.faces[i];
+          if (f.length < 3) continue;
+          if (f[0] === f[1] || f[1] === f[2] || f[2] === f[0]) continue;
+          if (f[0] < 0 || f[1] < 0 || f[2] < 0) continue;
+          if (f[0] >= data.positions.length || f[1] >= data.positions.length || f[2] >= data.positions.length) continue;
+          data.faces.push([f[0], f[1], f[2]]);
+        }
+
+        let edgeSplits = 0, vertexSplits = 0;
+        function edgeKey(a, b) { return a < b ? a + "_" + b : b + "_" + a; }
+        function buildEdgeFaces() {
+          const edges = new Map();
+          for (let fi = 0; fi < data.faces.length; fi++) {
+            const f = data.faces[fi];
+            for (const e of [[f[0], f[1]], [f[1], f[2]], [f[2], f[0]]]) {
+              const k = edgeKey(e[0], e[1]);
+              if (!edges.has(k)) edges.set(k, { a: Math.min(e[0], e[1]), b: Math.max(e[0], e[1]), faces: [] });
+              edges.get(k).faces.push(fi);
+            }
+          }
+          return edges;
+        }
+        function splitNonManifoldEdges() {
+          let changed = false;
+          buildEdgeFaces().forEach(function(info) {
+            if (info.faces.length <= 2) return;
+            for (let i = 2; i < info.faces.length; i++) {
+              const fi = info.faces[i], f = data.faces[fi];
+              const na = data.positions.length;
+              data.positions.push(data.positions[info.a].slice());
+              const nb = data.positions.length;
+              data.positions.push(data.positions[info.b].slice());
+              data.faces[fi] = f.map(function(v) {
+                if (v === info.a) return na;
+                if (v === info.b) return nb;
+                return v;
+              });
+              edgeSplits++;
+              changed = true;
+            }
+          });
+          return changed;
+        }
+        function findNonManifoldVertex() {
+          for (let v = 0; v < data.positions.length; v++) {
+            const incident = [];
+            for (let fi = 0; fi < data.faces.length; fi++) {
+              const f = data.faces[fi];
+              if (f[0] === v || f[1] === v || f[2] === v) incident.push(fi);
+            }
+            if (incident.length <= 1) continue;
+            const adj = new Map();
+            for (const fi of incident) adj.set(fi, new Set());
+            for (let i = 0; i < incident.length; i++) {
+              const fi = incident[i], f = data.faces[fi], others = f.filter(function(x) { return x !== v; });
+              for (let j = i + 1; j < incident.length; j++) {
+                const fj = incident[j], f2 = data.faces[fj], shared = f2.filter(function(x) { return x !== v; });
+                if (others.some(function(u) { return shared.indexOf(u) >= 0; })) {
+                  adj.get(fi).add(fj); adj.get(fj).add(fi);
+                }
+              }
+            }
+            const seen = new Set([incident[0]]), stack = [incident[0]];
+            while (stack.length) {
+              const cur = stack.pop();
+              for (const nb of adj.get(cur)) {
+                if (!seen.has(nb)) { seen.add(nb); stack.push(nb); }
+              }
+            }
+            if (seen.size !== incident.length) return v;
+          }
+          return -1;
+        }
+        function splitNonManifoldVertex(v) {
+          const incident = [];
+          for (let fi = 0; fi < data.faces.length; fi++) {
+            const f = data.faces[fi];
+            if (f[0] === v || f[1] === v || f[2] === v) incident.push(fi);
+          }
+          const adj = new Map();
+          for (const fi of incident) adj.set(fi, new Set());
+          for (let i = 0; i < incident.length; i++) {
+            const fi = incident[i], f = data.faces[fi], others = f.filter(function(x) { return x !== v; });
+            for (let j = i + 1; j < incident.length; j++) {
+              const fj = incident[j], f2 = data.faces[fj], shared = f2.filter(function(x) { return x !== v; });
+              if (others.some(function(u) { return shared.indexOf(u) >= 0; })) {
+                adj.get(fi).add(fj); adj.get(fj).add(fi);
+              }
+            }
+          }
+          const components = [], visited = new Set();
+          for (const start of incident) {
+            if (visited.has(start)) continue;
+            const comp = [], stack = [start];
+            visited.add(start);
+            while (stack.length) {
+              const cur = stack.pop();
+              comp.push(cur);
+              for (const nb of adj.get(cur)) {
+                if (!visited.has(nb)) { visited.add(nb); stack.push(nb); }
+              }
+            }
+            components.push(comp);
+          }
+          if (components.length <= 1) return false;
+          for (let c = 1; c < components.length; c++) {
+            const nv = data.positions.length;
+            data.positions.push(data.positions[v].slice());
+            for (const fi of components[c]) {
+              data.faces[fi] = data.faces[fi].map(function(x) { return x === v ? nv : x; });
+            }
+            vertexSplits++;
+          }
+          return true;
+        }
+
+        for (let iter = 0; iter < 32; iter++) {
+          const changedEdges = splitNonManifoldEdges();
+          const v = findNonManifoldVertex();
+          const changedVertex = v >= 0 ? splitNonManifoldVertex(v) : false;
+          if (!changedEdges && !changedVertex) break;
+        }
+        return { meshData: data, edgeSplits: edgeSplits, vertexSplits: vertexSplits };
+      }
+
+      function getValidatedAnchors(vertices) {
+        const autoAnchors = chooseAnchorPair(vertices);
+        const anchors = currentCustomAnchors || autoAnchors;
+        if (!anchors || anchors.length < 2) return autoAnchors;
+        if (anchors[0] === anchors[1]) return autoAnchors;
+        if (anchors[0] < 0 || anchors[1] < 0 || anchors[0] >= vertices.length || anchors[1] >= vertices.length) {
+          currentCustomAnchors = null;
+          return autoAnchors;
+        }
+        return anchors;
+      }
+
+      function chooseAnchorPair(vertices) {
+        let bestA = 0;
+        let bestB = 1;
+        let bestDist2 = -1;
+        for (let i = 0; i < vertices.length; i++) {
+          for (let j = i + 1; j < vertices.length; j++) {
+            const dx = vertices[i][0] - vertices[j][0];
+            const dy = vertices[i][1] - vertices[j][1];
+            const dz = vertices[i][2] - vertices[j][2];
+            const dist2 = dx * dx + dy * dy + dz * dz;
+            if (dist2 > bestDist2) {
+              bestDist2 = dist2;
+              bestA = i;
+              bestB = j;
+            }
+          }
+        }
+        return [bestA, bestB];
+      }
+
+      function vertexDist2(vertices, a, b) {
+        const dx = vertices[a][0] - vertices[b][0];
+        const dy = vertices[a][1] - vertices[b][1];
+        const dz = vertices[a][2] - vertices[b][2];
+        return dx * dx + dy * dy + dz * dz;
+      }
+
+      function meshDiag2(vertices) {
+        let minX = Infinity, minY = Infinity, minZ = Infinity;
+        let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+        for (let i = 0; i < vertices.length; i++) {
+          const p = vertices[i];
+          if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
+          if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
+          if (p[2] < minZ) minZ = p[2]; if (p[2] > maxZ) maxZ = p[2];
+        }
+        const dx = maxX - minX, dy = maxY - minY, dz = maxZ - minZ;
+        return dx * dx + dy * dy + dz * dz;
+      }
+
+      /**
+       * 选取一对与 excludePair 空间位置明显不同、且彼此尽量远的 pin 点。
+       * 只排除同一无序对会经常选到原 pin 附近的顶点，因此这里要求新顶点
+       * 到旧两个 pin 都有足够距离；若模型太小或候选不足则逐步放宽阈值。
+       * @param {number[][]} vertices 顶点坐标数组
+       * @param {number[]} excludePair 要避开的顶点对 [a, b]
+       * @returns {number[]} 新的顶点对索引
+       */
+      function chooseAlternativeAnchorPair(vertices, excludePair) {
+        const exA = excludePair[0], exB = excludePair[1];
+        const diag2 = meshDiag2(vertices) || 1;
+        const thresholds = [0.25, 0.18, 0.12, 0.06, 0];
+        let candidates = [];
+        for (let ti = 0; ti < thresholds.length; ti++) {
+          const minSep2 = diag2 * thresholds[ti] * thresholds[ti];
+          candidates = [];
+          for (let i = 0; i < vertices.length; i++) {
+            if (i === exA || i === exB) continue;
+            const sep2 = Math.min(vertexDist2(vertices, i, exA), vertexDist2(vertices, i, exB));
+            if (sep2 >= minSep2) candidates.push({ index: i, sep2: sep2 });
+          }
+          if (candidates.length >= 2) break;
+        }
+
+        candidates.sort(function (a, b) { return b.sep2 - a.sep2; });
+        candidates = candidates.slice(0, Math.min(candidates.length, 512));
+
+        let bestA = candidates[0] ? candidates[0].index : (exA === 0 ? 1 : 0);
+        let bestB = candidates[1] ? candidates[1].index : (exB === 0 ? 1 : 0);
+        let bestScore = -Infinity;
+        for (let i = 0; i < candidates.length; i++) {
+          for (let j = i + 1; j < candidates.length; j++) {
+            const a = candidates[i], b = candidates[j];
+            const pairDist2 = vertexDist2(vertices, a.index, b.index);
+            const score = pairDist2 + 0.35 * (a.sep2 + b.sep2);
+            if (score > bestScore) {
+              bestScore = score;
+              bestA = a.index;
+              bestB = b.index;
+            }
+          }
+        }
+        return [bestA, bestB];
+      }
+
+      // ==================== WASM 求解器初始化 ====================
+      let simpleInstance = null;
+      let wasmReady = false;
+      let wasmLoadFailed = false;
+
+      async function initSimpleSolver() {
+        if (wasmReady) return true;
+        if (wasmLoadFailed) return false;
+
+        try {
+          if (typeof UvUnwrapSimpleSolver === 'undefined') {
+            throw new Error('WASM 胶水代码未加载，请确保 assets/wasm/uv_unwrap_simple.js 已部署');
+          }
+          simpleInstance = await UvUnwrapSimpleSolver();
+          wasmReady = true;
+          console.log('WASM uv_unwrap_simple (LSCM/Tutte/SCP/ARAP) 加载成功');
+          return true;
+        } catch (err) {
+          console.error('uv_unwrap_simple WASM 加载失败:', err);
+          wasmLoadFailed = true;
+          return false;
+        }
+      }
+
+      function getCurrentModelKey() { return modelSelect.value; }
+      function getCurrentModelObj() { return MODELS1[getCurrentModelKey()]; }
+
+      /** 当前选中的算法 */
+      function getCurrentMethod() {
+        const checked = document.querySelector('input[name="method"]:checked');
+        return checked ? checked.value : 'lscm';
+      }
+
+      function shouldShowPinPoints() {
+        return getCurrentMethod() === 'lscm';
+      }
+
+      /** 获取 ARAP 迭代次数 */
+      function getARAPIterations() {
+        const slider = document.getElementById('arap-iters-slider');
+        return slider ? parseInt(slider.value, 10) : 30;
+      }
+
+      /** 获取 Tutte 边界类型 */
+      function getTutteBoundary() {
+        const r = document.querySelector('input[name="tutte-boundary"]:checked');
+        return r ? r.value : 'circle';
+      }
+
+      function getTutteBoundaryLabel() {
+        const b = getTutteBoundary();
+        if (b === 'square') return '方';
+        if (b === 'free') return '自由';
+        return '圆';
+      }
+
+      /** 获取 Tutte Laplace 权重类型：uniform | cot */
+      function getTutteWeight() {
+        const r = document.querySelector('input[name="tutte-weight"]:checked');
+        return r ? r.value : 'uniform';
+      }
+
+      function getTutteWeightLabel() {
+        return getTutteWeight() === 'cot' ? 'cot-Laplace' : 'uniform';
+      }
+
+      /** 算法切换 + Tutte边界切换 → 统一更新参数面板 */
+      function onParamChange() {
+        const m = getCurrentMethod();
+        const hasParams = (m === 'tutte' || m === 'lscm' || m === 'arap');
+        document.getElementById('param-none').style.display = hasParams ? 'none' : '';
+        document.getElementById('param-tutte-boundary').style.display = (m === 'tutte') ? '' : 'none';
+        document.getElementById('param-tutte-weight').style.display = (m === 'tutte') ? '' : 'none';
+        document.getElementById('param-lscm-pin').style.display = (m === 'lscm') ? '' : 'none';
+        document.getElementById('param-arap-iters').style.display = (m === 'arap') ? '' : 'none';
+        if (m !== 'lscm') currentCustomAnchors = null;
+        if (currentMeshData) {
+          updateModelPinPoints(currentCustomAnchors || chooseAnchorPair(currentMeshData.positions));
+        }
+        if (!shouldShowPinPoints() && currentUvPins) {
+          clearGroup(uvScene, currentUvPins);
+          currentUvPins = null;
+        }
+        updateStartButtonState();
+      }
+
+      window.onParamChange = onParamChange;  // 暴露到全局以便 HTML onchange 调用
+
+      /**
+       * 更新按钮状态，显示 WASM 引擎加载状态
+       */
+      function updateStartButtonState() {
+        const btn = document.getElementById('reload-btn');
+        if (!btn) return;
+        const failed = wasmLoadFailed;
+        const ready = wasmReady;
+        if (failed) {
+          btn.textContent = '引擎加载失败';
+          btn.disabled = true;
+        } else if (!ready && !busy) {
+          btn.textContent = '展开!';
+          btn.disabled = false;
+        } else {
+          btn.textContent = '展开!';
+          btn.disabled = false;
+        }
+      }
+
+      // 方法切换 + Tutte / ARAP 参数变化时更新 UI
+      document.querySelectorAll('input[name="method"]').forEach(function(radio) {
+        radio.addEventListener('change', onParamChange);
+      });
+      document.querySelectorAll('input[name="tutte-boundary"], input[name="tutte-weight"]').forEach(function(radio) {
+        radio.addEventListener('change', onParamChange);
+      });
+      const arapSlider = document.getElementById('arap-iters-slider');
+      if (arapSlider) {
+        arapSlider.addEventListener('input', function() {
+          document.getElementById('arap-iters-val').textContent = this.value;
+        });
+      }
+      document.getElementById('change-pin-btn').addEventListener('click', onChangePinClick);
+      onParamChange();  // 初始显示"无参数"
+
+      // ==================== WASM 驱动的 LSCM 求解 ====================
+
+      async function solveLSCMAsync(meshData, onProgress) {
+        const repair = repairMeshForSolver(meshData);
+        if (repair.edgeSplits > 0 || repair.vertexSplits > 0) {
+          meshData = repair.meshData;
+          currentMeshData = meshData;
+          currentCustomAnchors = null;
+          setStatus("已修复非流形结构，继续执行 LSCM...", "#ffd38a");
+        }
+        const vertices = meshData.positions;
+        const faces = meshData.faces;
+        if (vertices.length < 3 || faces.length < 1) {
+          throw new Error("模型顶点或三角形数量不足");
+        }
+
+        const anchors = getValidatedAnchors(vertices);
+        const usingCustomAnchors = !!(currentCustomAnchors &&
+          currentCustomAnchors.length >= 2 &&
+          currentCustomAnchors[0] === anchors[0] &&
+          currentCustomAnchors[1] === anchors[1]);
+
+        if (!wasmReady) {
+          const loaded = await initSimpleSolver();
+          if (!loaded) throw new Error("WASM 求解器初始化失败");
+        }
+
+        if (onProgress) onProgress(0, faces.length);
+
+        const flatPositions = new Float64Array(vertices.length * 3);
+        for (let i = 0; i < vertices.length; i++) {
+          flatPositions[i * 3] = vertices[i][0];
+          flatPositions[i * 3 + 1] = vertices[i][1];
+          flatPositions[i * 3 + 2] = vertices[i][2];
+        }
+
+        const flatFaces = new Int32Array(faces.length * 3);
+        for (let i = 0; i < faces.length; i++) {
+          flatFaces[i * 3] = faces[i][0];
+          flatFaces[i * 3 + 1] = faces[i][1];
+          flatFaces[i * 3 + 2] = faces[i][2];
+        }
+
+        if (onProgress) onProgress(faces.length * 0.3, faces.length);
+
+        let result;
+        try {
+          const posPtr = simpleInstance._malloc(flatPositions.length * 8);
+          for (let i = 0; i < flatPositions.length; i++) {
+            simpleInstance.setValue(posPtr + i * 8, flatPositions[i], 'double');
+          }
+
+          const facePtr = simpleInstance._malloc(flatFaces.length * 4);
+          for (let i = 0; i < flatFaces.length; i++) {
+            simpleInstance.setValue(facePtr + i * 4, flatFaces[i], 'i32');
+          }
+
+          try {
+            const ret = simpleInstance.ccall('solve_lscm', 'number', 
+              ['number', 'number', 'number', 'number', 'number', 'number'],
+              [posPtr, flatPositions.length, facePtr, flatFaces.length, anchors[0], anchors[1]]
+            );
+
+            if (ret !== 0) throw new Error('solve_lscm 返回: ' + _wasmErrorHint(ret));
+
+            const uvSize = simpleInstance.ccall('get_uv_result_size', 'number', [], []);
+            if (uvSize !== vertices.length * 2) {
+              throw new Error("UV 结果长度异常: " + uvSize + "，期望 " + (vertices.length * 2));
+            }
+            const uvPtr = simpleInstance.ccall('get_uv_result', 'number', [], []);
+
+            const uvs = [];
+            for (let i = 0; i < uvSize; i++) {
+              uvs.push(simpleInstance.getValue(uvPtr + i * 8, 'double'));
+            }
+
+            simpleInstance.ccall('dispose', 'void', [], []);
+
+            result = { uv: uvs, time_ms: simpleInstance.ccall('get_last_time_ms', 'number', [], []) };
+          } finally {
+            simpleInstance._free(posPtr);
+            simpleInstance._free(facePtr);
+          }
+        } catch (err) {
+          const msg = err && err.message ? err.message : String(err);
+          if (msg.indexOf("memory access out of bounds") >= 0 || msg.indexOf("non manifold") >= 0 || msg.indexOf("nonmanifold") >= 0) {
+            throw err;
+          }
+          throw new Error("WASM LSCM 求解失败: " + msg);
+        }
+
+        if (onProgress) onProgress(faces.length * 0.9, faces.length);
+
+        const uvArray = result.uv;
+        const n = vertices.length;
+        const uv = new Array(n);
+        for (let i = 0; i < n; i++) {
+          uv[i] = [uvArray[i * 2], uvArray[i * 2 + 1]];
+        }
+
+        if (onProgress) onProgress(faces.length, faces.length);
+
+        return { uv: uv, anchors: anchors, flippedFaceCount: countFlippedFaces(uv, faces), timeMs: result.time_ms || 0, method: 'lscm', pinInfo: anchors[0] + " & " + anchors[1] };
+      }
+
+      // ==================== WASM 驱动的 Tutte 求解 ====================
+
+      function _wasmErrorHint(ret) {
+        if (ret === -2) return 'UV 结果退化';
+        if (ret === -3) return '需要带边界的网格';
+        return '错误码 ' + ret;
+      }
+
+      async function _solveTutteWasmAsync(meshData, onProgress, wasmFuncName, methodTag) {
+        const weightVal = (getTutteWeight() === 'uniform') ? 1 : 0;
+        if (!wasmReady) { const ok = await initSimpleSolver(); if (!ok) throw new Error("Tutte WASM 初始化失败"); }
+
+        const flatPositions = new Float64Array(meshData.positions.length * 3);
+        for (let i = 0; i < meshData.positions.length; i++) {
+          flatPositions[i*3]=meshData.positions[i][0]; flatPositions[i*3+1]=meshData.positions[i][1]; flatPositions[i*3+2]=meshData.positions[i][2];
+        }
+        const flatFaces = new Int32Array(meshData.faces.length * 3);
+        for (let i = 0; i < meshData.faces.length; i++) {
+          flatFaces[i*3]=meshData.faces[i][0]; flatFaces[i*3+1]=meshData.faces[i][1]; flatFaces[i*3+2]=meshData.faces[i][2];
+        }
+        if (onProgress) onProgress(0, 1);
+
+        const posPtr = simpleInstance._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) simpleInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
+        const facePtr = simpleInstance._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) simpleInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
+
+        try {
+          const ret = simpleInstance.ccall(wasmFuncName, 'number',
+            ['number','number','number','number','number'],[posPtr,flatPositions.length,facePtr,flatFaces.length,weightVal]);
+          if (ret !== 0) throw new Error(wasmFuncName + ' 返回: ' + _wasmErrorHint(ret));
+          const uvSize = simpleInstance.ccall('get_uv_result_size','number',[],[]);
+          const uvPtr = simpleInstance.ccall('get_uv_result','number',[],[]);
+          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(simpleInstance.getValue(uvPtr+i*8,'double'));
+          simpleInstance.ccall('dispose','void',[],[]);
+          const timeMs = simpleInstance.ccall('get_last_time_ms','number',[],[]);
+          if (onProgress) onProgress(1,1);
+          const n = meshData.positions.length;
+          const uv = []; for (let i=0;i<n;i++) uv.push([uvs[i*2],uvs[i*2+1]]);
+          const boundaryType = getTutteBoundary();
+          const boundaryText = boundaryType === 'square' ? '方形边界' : (boundaryType === 'free' ? '自由边界' : '圆形边界');
+          return {
+            uv,
+            anchors: chooseAnchorPair(meshData.positions),
+            flippedFaceCount: countFlippedFaces(uv, meshData.faces),
+            timeMs,
+            method: methodTag,
+            boundary: boundaryText,
+            weight: getTutteWeightLabel()
+          };
+        } finally { simpleInstance._free(posPtr); simpleInstance._free(facePtr); }
+      }
+
+      async function solveTutteCircleAsync(meshData, onProgress) {
+        return _solveTutteWasmAsync(meshData, onProgress, 'solve_tutte_circle', 'tutte_circle');
+      }
+
+      async function solveTutteSquareAsync(meshData, onProgress) {
+        return _solveTutteWasmAsync(meshData, onProgress, 'solve_tutte_square', 'tutte_square');
+      }
+
+      async function solveTutteFreeAsync(meshData, onProgress) {
+        return _solveTutteWasmAsync(meshData, onProgress, 'solve_tutte_free', 'tutte_free');
+      }
+
+      async function solveTutteAsync(meshData, onProgress) {
+        const boundaryType = getTutteBoundary();
+        if (boundaryType === 'square') return solveTutteSquareAsync(meshData, onProgress);
+        if (boundaryType === 'free') return solveTutteFreeAsync(meshData, onProgress);
+        return solveTutteCircleAsync(meshData, onProgress);
+      }
+
+      function countFlippedFaces(uv, faces) {
+        let count = 0;
+        const eps = 1e-12;
+        for (let i = 0; i < faces.length; i++) {
+          const t = faces[i];
+          const a = uv[t[0]], b = uv[t[1]], c = uv[t[2]];
+          if ((b[0]-a[0])*(c[1]-a[1]) - (c[0]-a[0])*(b[1]-a[1]) < -eps) count++;
+        }
+        return count;
+      }
+
+      function _normalizeUvBox(uv) {
+        let minU = Infinity, minV = Infinity, maxU = -Infinity, maxV = -Infinity;
+        for (let i = 0; i < uv.length; i++) {
+          const u = uv[i][0], v = uv[i][1];
+          if (u < minU) minU = u; if (u > maxU) maxU = u;
+          if (v < minV) minV = v; if (v > maxV) maxV = v;
+        }
+        const du = maxU - minU || 1, dv = maxV - minV || 1, s = 1 / Math.max(du, dv);
+        for (let i = 0; i < uv.length; i++) {
+          uv[i][0] = (uv[i][0] - minU) * s;
+          uv[i][1] = (uv[i][1] - minV) * s;
+        }
+        return uv;
+      }
+
+      async function solveSimpleWasmMethod(meshData, wasmFuncName, methodName, onProgress, optScheme, coneVertices) {
+        const vertices = meshData.positions, faces = meshData.faces;
+        if (!wasmReady) {
+          const loaded = await initSimpleSolver();
+          if (!loaded) throw new Error(methodName + " WASM 求解器初始化失败");
+        }
+        if (onProgress) onProgress(0, 1);
+
+        const flatPositions = new Float64Array(vertices.length * 3);
+        for (let i = 0; i < vertices.length; i++) {
+          flatPositions[i * 3] = vertices[i][0];
+          flatPositions[i * 3 + 1] = vertices[i][1];
+          flatPositions[i * 3 + 2] = vertices[i][2];
+        }
+        const flatFaces = new Int32Array(faces.length * 3);
+        for (let i = 0; i < faces.length; i++) {
+          flatFaces[i * 3] = faces[i][0];
+          flatFaces[i * 3 + 1] = faces[i][1];
+          flatFaces[i * 3 + 2] = faces[i][2];
+        }
+
+        const posPtr = simpleInstance._malloc(flatPositions.length * 8);
+        for (let i = 0; i < flatPositions.length; i++) simpleInstance.setValue(posPtr + i * 8, flatPositions[i], "double");
+        const facePtr = simpleInstance._malloc(flatFaces.length * 4);
+        for (let i = 0; i < flatFaces.length; i++) simpleInstance.setValue(facePtr + i * 4, flatFaces[i], "i32");
+
+        // Prepare cone singularity data if provided
+        let conePtr = 0, coneAnglesPtr = 0;
+        const hasCones = coneVertices && coneVertices.length > 0;
+        if (hasCones) {
+          const coneIdx = new Int32Array(coneVertices.length);
+          const coneAng = new Float64Array(coneVertices.length);
+          for (let i = 0; i < coneVertices.length; i++) {
+            coneIdx[i] = coneVertices[i].index;
+            coneAng[i] = coneVertices[i].angle || (4 * Math.PI);
+          }
+          conePtr = simpleInstance._malloc(coneIdx.length * 4);
+          for (let i = 0; i < coneIdx.length; i++) simpleInstance.setValue(conePtr + i * 4, coneIdx[i], "i32");
+          coneAnglesPtr = simpleInstance._malloc(coneAng.length * 8);
+          for (let i = 0; i < coneAng.length; i++) simpleInstance.setValue(coneAnglesPtr + i * 8, coneAng[i], "double");
+        }
+
+        try {
+          let ret;
+          if (hasCones) {
+            // Cone-enabled methods: 9 params (pos, posLen, faces, faceLen, optScheme, coneIdx, coneIdxLen, coneAngles, coneAnglesLen)
+            ret = simpleInstance.ccall(wasmFuncName, "number",
+              ["number", "number", "number", "number", "number",
+               "number", "number", "number", "number"],
+              [posPtr, flatPositions.length, facePtr, flatFaces.length, optScheme || 0,
+               conePtr, coneVertices.length, coneAnglesPtr, coneVertices.length]);
+          } else if (typeof optScheme === 'number') {
+            // Methods with optScheme but no cones (e.g. ARAP): 5 params
+            ret = simpleInstance.ccall(wasmFuncName, "number",
+              ["number", "number", "number", "number", "number"],
+              [posPtr, flatPositions.length, facePtr, flatFaces.length, optScheme]);
+          } else {
+            // Methods without optScheme or cones: 4 params
+            ret = simpleInstance.ccall(wasmFuncName, "number",
+              ["number", "number", "number", "number"],
+              [posPtr, flatPositions.length, facePtr, flatFaces.length]);
+          }
+          if (ret !== 0) {
+            throw new Error(wasmFuncName + ' 返回: ' + _wasmErrorHint(ret));
+          }
+
+          const uvSize = simpleInstance.ccall("get_uv_result_size", "number", [], []);
+          const uvPtr = simpleInstance.ccall("get_uv_result", "number", [], []);
+          const uvs = [];
+          for (let i = 0; i < uvSize; i++) uvs.push(simpleInstance.getValue(uvPtr + i * 8, "double"));
+
+          const timeMs = simpleInstance.ccall("get_last_time_ms", "number", [], []);
+          simpleInstance.ccall("dispose", "void", [], []);
+          if (onProgress) onProgress(1, 1);
+
+          const n = vertices.length;
+          const uv = [];
+          for (let i = 0; i < n; i++) uv.push([uvs[i * 2], uvs[i * 2 + 1]]);
+          return {
+            uv: uv,
+            anchors: chooseAnchorPair(vertices),
+            flippedFaceCount: countFlippedFaces(uv, faces),
+            timeMs: timeMs,
+            method: methodName
+          };
+        } finally {
+          simpleInstance._free(posPtr);
+          simpleInstance._free(facePtr);
+          if (conePtr) simpleInstance._free(conePtr);
+          if (coneAnglesPtr) simpleInstance._free(coneAnglesPtr);
+        }
+      }
+
+      async function solveSCPAsync(meshData, onProgress) {
+        return solveSimpleWasmMethod(meshData, "solve_scp", "scp", onProgress);
+      }
+
+      /** ARAP — Tutte 圆边界初始化，C++ local-global 迭代 */
+      async function solveARAPAsync(meshData, maxIter, onProgress) {
+        return solveSimpleWasmMethod(meshData, "solve_arap", "arap", onProgress, maxIter || 30);
+      }
+
+      function buildModelGroup(root, anchors, positions, showPins) {
+        const group = new THREE.Group();
+        const meshMaterial = new THREE.MeshStandardMaterial({
+          color: 0x7fa7ff,
+          roughness: 0.55,
+          metalness: 0.05,
+          flatShading: false,
+          side: THREE.DoubleSide
+        });
+
+        root.traverse(function (child) {
+          if (!child.isMesh || !child.geometry) return;
+          const geom = child.geometry;
+          const mesh = new THREE.Mesh(geom, meshMaterial);
+          mesh.matrixAutoUpdate = false;
+          mesh.matrix.copy(child.matrixWorld);
+          group.add(mesh);
+
+          // 四边形网格：用四边形边界渲染，不显示三角形对角线
+          if (isQuadMesh && currentRawFaces && currentRawFaces.length > 0) {
+            const posArr = geom.attributes.position;
+            const lineSegs = [];
+            const added = new Set();
+            function addEdge(a, b) {
+              const key = a < b ? a + '_' + b : b + '_' + a;
+              if (added.has(key)) return;
+              added.add(key);
+              lineSegs.push(posArr.getX(a), posArr.getY(a), posArr.getZ(a),
+                           posArr.getX(b), posArr.getY(b), posArr.getZ(b));
+            }
+            for (let i = 0; i < currentRawFaces.length; i++) {
+              const f = currentRawFaces[i];
+              // 画多边形的外部环（不画对角线）
+              for (let k = 0; k < f.length; k++) {
+                addEdge(f[k], f[(k + 1) % f.length]);
+              }
+            }
+            const lineGeom = new THREE.BufferGeometry();
+            lineGeom.setAttribute('position', new THREE.Float32BufferAttribute(lineSegs, 3));
+            const wire = new THREE.LineSegments(lineGeom,
+              new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent: true, opacity: 0.65 }));
+            wire.matrixAutoUpdate = false;
+            wire.matrix.copy(child.matrixWorld);
+            group.add(wire);
+          } else {
+            // 三角网格：用三角线框
+            const wire = new THREE.LineSegments(
+              new THREE.WireframeGeometry(geom),
+              new THREE.LineBasicMaterial({ color: 0x1f2f55, transparent: true, opacity: 0.65 })
+            );
+            wire.matrixAutoUpdate = false;
+            wire.matrix.copy(child.matrixWorld);
+            group.add(wire);
+          }
+        });
+
+        let points = null;
+        if (showPins) {
+          const pinPositions = [];
+          for (let i = 0; i < anchors.length; i++) {
+            const p = positions[anchors[i]];
+            pinPositions.push(p[0], p[1], p[2]);
+          }
+
+          points = new THREE.Points(
+            new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pinPositions, 3)),
+            new THREE.PointsMaterial({ color: 0xffb74d, size: 0.05, sizeAttenuation: true })
+          );
+          group.add(points);
+        }
+
+        return { group: group, pinPoints: points };
+      }
+
+      /**
+       * 更新 3D 模型视图中的 pin 点，不重建整个模型组
+       * @param {number[]} anchors 新的 pin 点顶点索引
+       */
+      function updateModelPinPoints(anchors) {
+        if (!currentModelGroup || !currentMeshData) return;
+
+        // 移除旧的 pin 点
+        if (currentPins && currentPins.parent) {
+          currentPins.parent.remove(currentPins);
+        }
+        currentPins = null;
+
+        if (!shouldShowPinPoints()) return;
+
+        const positions = currentMeshData.positions;
+        const pinPositions = [];
+        for (let i = 0; i < anchors.length; i++) {
+          const p = positions[anchors[i]];
+          pinPositions.push(p[0], p[1], p[2]);
+        }
+
+        const points = new THREE.Points(
+          new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pinPositions, 3)),
+          new THREE.PointsMaterial({ color: 0xffb74d, size: 0.05, sizeAttenuation: true })
+        );
+        currentModelGroup.add(points);
+        currentPins = points;
+      }
+
+      /**
+       * "改pin点"按钮点击处理：选择不同于当前 pin 点的另一对最远顶点
+       */
+      function onChangePinClick() {
+        if (!shouldShowPinPoints()) return;
+        if (!currentMeshData || !currentMeshData.positions || currentMeshData.positions.length < 2) return;
+
+        const vertices = currentMeshData.positions;
+        const currentAnchors = currentCustomAnchors || chooseAnchorPair(vertices);
+        const newAnchors = chooseAlternativeAnchorPair(vertices, currentAnchors);
+        currentCustomAnchors = newAnchors;
+        updateModelPinPoints(newAnchors);
+
+        const srcLabel = getCurrentSourceLabel();
+        setStatus(
+          "已更换 pin 点: " + newAnchors[0] + " & " + newAnchors[1] +
+          "（原: " + currentAnchors[0] + " & " + currentAnchors[1] + "），点击展开!" +
+          " / " + srcLabel,
+          "#89f0b6"
+        );
+      }
+
+
+      function buildUvMesh(uv, faces, anchors, showPins) {
+        const edgeSet = new Set();
+        const segments = [];
+        function toPlane(p) { return [(p[0] - 0.5) * 1.8, (p[1] - 0.5) * 1.8, 0]; }
+        function addEdge(a, b) {
+          const key = a < b ? a + '_' + b : b + '_' + a;
+          if (edgeSet.has(key)) return;
+          edgeSet.add(key);
+          const pa = toPlane(uv[a]), pb = toPlane(uv[b]);
+          segments.push(pa[0], pa[1], pa[2], pb[0], pb[1], pb[2]);
+        }
+        if (isQuadMesh && currentRawFaces && currentRawFaces.length > 0) {
+          for (let i = 0; i < currentRawFaces.length; i++) {
+            const f = currentRawFaces[i];
+            for (let k = 0; k < f.length; k++) addEdge(f[k], f[(k + 1) % f.length]);
+          }
+        } else {
+          for (let i = 0; i < faces.length; i++) {
+            addEdge(faces[i][0], faces[i][1]);
+            addEdge(faces[i][1], faces[i][2]);
+            addEdge(faces[i][2], faces[i][0]);
+          }
+        }
+        const lineGeom = new THREE.BufferGeometry();
+        lineGeom.setAttribute('position', new THREE.Float32BufferAttribute(segments, 3));
+        const lines = new THREE.LineSegments(lineGeom, new THREE.LineBasicMaterial({ color: 0x86b2ff, transparent: true, opacity: 0.95 }));
+        let pins = null;
+        if (showPins) {
+          const pinPositions = [];
+          for (let i = 0; i < anchors.length; i++) {
+            const p = toPlane(uv[anchors[i]]);
+            pinPositions.push(p[0], p[1], 0.01);
+          }
+          pins = new THREE.Points(
+            new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pinPositions, 3)),
+            new THREE.PointsMaterial({ color: 0xffa94d, size: 8, sizeAttenuation: false })
+          );
+        }
+        return { lines: lines, pins: pins };
+      }
+
+
+      function createCheckerTexture() {
+        const texSize = 512;
+        const cells = 16;
+        const cellSize = texSize / cells;
+        const canvas = document.createElement("canvas");
+        canvas.width = texSize;
+        canvas.height = texSize;
+        const ctx = canvas.getContext("2d");
+
+        for (let y = 0; y < cells; y++) {
+          for (let x = 0; x < cells; x++) {
+            const dark = ((x + y) & 1) === 0;
+            ctx.fillStyle = dark ? "#1f2f54" : "#e9f0ff";
+            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+          }
+        }
+
+        ctx.strokeStyle = "rgba(120,150,210,0.4)";
+        for (let i = 0; i <= cells; i++) {
+          const p = i * cellSize;
+          ctx.beginPath();
+          ctx.moveTo(p, 0);
+          ctx.lineTo(p, texSize);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, p);
+          ctx.lineTo(texSize, p);
+          ctx.stroke();
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(1, 1);
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      function createDotTexture() {
+        const texSize = 512;
+        const cells = 16;
+        const cellSize = texSize / cells;
+        const canvas = document.createElement("canvas");
+        canvas.width = texSize;
+        canvas.height = texSize;
+        const ctx = canvas.getContext("2d");
+
+        ctx.fillStyle = "#f4f8ff";
+        ctx.fillRect(0, 0, texSize, texSize);
+
+        for (let y = 0; y < cells; y++) {
+          for (let x = 0; x < cells; x++) {
+            const cx = (x + 0.5) * cellSize;
+            const cy = (y + 0.5) * cellSize;
+            const radius = cellSize * 0.27;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fillStyle = "#3f7cff";
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "rgba(17,39,84,0.45)";
+            ctx.stroke();
+          }
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(1, 1);
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      function getUvTexture(textureMode) {
+        if (textureMode === "dots") {
+          if (!dotTexture) {
+            dotTexture = createDotTexture();
+          }
+          return dotTexture;
+        }
+        if (!checkerTexture) {
+          checkerTexture = createCheckerTexture();
+        }
+        return checkerTexture;
+      }
+
+      function buildTexturedMesh(meshData, uv, textureMode) {
+        const positions = [];
+        for (let i = 0; i < meshData.positions.length; i++) {
+          positions.push(meshData.positions[i][0], meshData.positions[i][1], meshData.positions[i][2]);
+        }
+        const indices = [];
+        for (let i = 0; i < meshData.faces.length; i++) {
+          indices.push(meshData.faces[i][0], meshData.faces[i][1], meshData.faces[i][2]);
+        }
+        const uvFlat = [];
+        for (let i = 0; i < uv.length; i++) {
+          uvFlat.push(uv[i][0], uv[i][1]);
+        }
+
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+        geom.setAttribute("uv", new THREE.Float32BufferAttribute(uvFlat, 2));
+        geom.setIndex(indices);
+        geom.computeVertexNormals();
+
+        const material = new THREE.MeshStandardMaterial({
+          map: getUvTexture(textureMode),
+          metalness: 0.05,
+          roughness: 0.75,
+          side: THREE.DoubleSide
+        });
+
+        return new THREE.Mesh(geom, material);
+      }
+
+      function clearTexturedMesh() {
+        if (currentTexturedMesh && currentTexturedMesh.parent) {
+          currentTexturedMesh.parent.remove(currentTexturedMesh);
+        }
+        currentTexturedMesh = null;
+      }
+
+      /**
+       * 切换模型组的实心面显隐，线框始终可见
+       */
+      function setModelSolidVisible(visible) {
+        if (!currentModelGroup) return;
+        currentModelGroup.children.forEach(function(child) {
+          if (child.isMesh) child.visible = visible;
+        });
+      }
+
+      function setTextureDistortionEnabled(enabled, textureMode) {
+        if (enabled && (!currentMeshData || !currentUnwrapUv)) {
+          setStatus('请先点击"展开!"生成 UV，再开启纹理贴图', '#ffd38a');
+          if (radioCheckerboard) radioCheckerboard.checked = false;
+          if (radioDots) radioDots.checked = false;
+          return;
+        }
+
+        textureEnabled = enabled;
+        if (textureEnabled) {
+          currentTextureMode = textureMode || currentTextureMode || "checkerboard";
+          clearTexturedMesh();
+          currentTexturedMesh = buildTexturedMesh(currentMeshData, currentUnwrapUv, currentTextureMode);
+          modelScene.add(currentTexturedMesh);
+          setModelSolidVisible(false);
+          setStatus("已开启纹理贴图（" + (currentTextureMode === "dots" ? "圆点贴图" : "棋盘格贴图") + "）", "#89f0b6");
+        } else {
+          clearTexturedMesh();
+          setModelSolidVisible(true);
+          setStatus("已关闭纹理贴图", "#8cc4ff");
+        }
+      }
+
+      function rebuildUvGrid() {
+        const grid = new THREE.Group();
+        const gridMaterial = new THREE.LineBasicMaterial({ color: 0x1a2947, transparent: true, opacity: 0.85 });
+        const coords = [];
+        for (let i = -10; i <= 10; i++) {
+          const t = i / 10;
+          coords.push(-1, t, 0, 1, t, 0);
+          coords.push(t, -1, 0, t, 1, 0);
+        }
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.Float32BufferAttribute(coords, 3));
+        grid.add(new THREE.LineSegments(geom, gridMaterial));
+        uvScene.add(grid);
+      }
+
+      function clearGroup(scene, objectRef) {
+        if (objectRef && objectRef.parent) {
+          objectRef.parent.remove(objectRef);
+        }
+      }
+
+      async function resolveSourceObject() {
+        return loadBuiltinModel(getCurrentModelKey());
+      }
+
+      function getCurrentSourceLabel() {
+        const m = getCurrentModelObj();
+        return m ? m.label : "未知模型";
+      }
+
+      /**
+       * 清除当前展开结果并重新加载模型
+       */
+      async function clearAndReload() {
+        if (busy) return;
+        // 隐藏耗时信息
+        // hideTiming();
+        // 重新加载模型（内部已完成 UV/纹理/扭曲的清理和 pin 点重置）
+        await loadModelPreview();
+      }
+
+      async function loadModelPreview() {
+        if (busy) {
+          return;
+        }
+
+        setBusy(true);
+        setStatus("正在加载 OBJ 模型: " + getCurrentSourceLabel() + " ...");
+
+        try {
+          const resolved = await resolveSourceObject();
+          const root = resolved.root;
+          normalizeObject(root);
+
+          clearGroup(modelScene, currentModelGroup);
+          clearGroup(uvScene, currentUvLines);
+          clearGroup(uvScene, currentUvPins);
+          clearHomologyOverlay();
+          clearOtherOverlays();
+          clearTexturedMesh();
+          currentUvLines = null;
+          currentUvPins = null;
+          currentUnwrapUv = null;
+          pdfBtn.disabled = true;
+          textureEnabled = false;
+          if (radioCheckerboard) { radioCheckerboard.checked = false; radioCheckerboard.disabled = true; }
+          if (radioDots) { radioDots.checked = false; radioDots.disabled = true; }
+
+          setStatus("正在提取三角网格...");
+          let meshData = collectMeshData(root);
+          const repair = repairMeshForSolver(meshData);
+          meshData = repair.meshData;
+          currentCustomAnchors = null;
+          const anchors = chooseAnchorPair(meshData.positions);
+
+          const modelVisual = buildModelGroup(root, anchors, meshData.positions, shouldShowPinPoints());
+          currentModelGroup = modelVisual.group;
+          currentPins = modelVisual.pinPoints;
+          currentModelGroup.visible = true;
+          modelScene.add(currentModelGroup);
+          controls.target.set(0, 0, 0);
+          controls.update();
+
+          currentMeshData = meshData;
+          currentSourcePath = resolved.sourcePath;
+          currentRawFaces = resolved.rawFaces;
+
+          if (currentRawFaces && currentRawFaces.length > 0) {
+            let quadCount = 0;
+            for (let i = 0; i < currentRawFaces.length; i++) {
+              if (currentRawFaces[i].length === 4) quadCount++;
+            }
+            isQuadMesh = (quadCount >= currentRawFaces.length * 0.75);
+          } else {
+            isQuadMesh = false;
+          }
+
+          const faceType = isQuadMesh ? "四边面" : "三角形";
+
+          const faceCount = currentRawFaces ? currentRawFaces.length : meshData.faces.length;
+          const repairNote = (repair.edgeSplits > 0 || repair.vertexSplits > 0)
+            ? " / 已修复非流形结构"
+            : "";
+          setStatus(
+            "3D 预览: " + getCurrentSourceLabel() + " / " + meshData.positions.length + " 顶点 / " +
+            faceCount + " " + faceType + repairNote + "，点击「开始展开」执行 UV",
+            "#89f0b6"
+          );
+        } catch (error) {
+          console.error(error);
+          setStatus("模型加载失败: " + error.message, "#ff9d9d");
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      async function updateModel() {
+        if (busy) return;
+
+        if (!currentMeshData) {
+          await loadModelPreview();
+          if (!currentMeshData) return;
+        }
+
+        // UV 重算/更新前，先清理“其他计算”的覆盖层，避免与新模型/新网格混淆
+        clearOtherOverlays();
+
+        const method = getCurrentMethod();
+
+        let methodLabel;
+        if (method === 'lscm') methodLabel = 'LSCM';
+        else if (method === 'tutte') {
+          methodLabel = 'Tutte (' + getTutteWeightLabel() + ', ' + getTutteBoundaryLabel() + ')';
+        }
+        else if (method === 'scp') methodLabel = 'SCP (谱共形)';
+        else if (method === 'arap') methodLabel = 'ARAP (' + getARAPIterations() + ' iters, Tutte圆边界初始化)';
+        else methodLabel = 'LSCM';
+
+        setBusy(true);
+        setStatus("正在执行 " + methodLabel + " 求解...");
+        // hideTiming();
+
+        try {
+          // const startTime = performance.now();
+          let unwrapResult;
+          if (method === 'lscm') {
+            unwrapResult = await solveLSCMAsync(currentMeshData, function(/* progress, total */) {
+              // updateTimingProgress(progress, total);
+            });
+          } else if (method === 'tutte') {
+            unwrapResult = await solveTutteAsync(currentMeshData, function() {});
+          } else if (method === 'scp') {
+            unwrapResult = await solveSCPAsync(currentMeshData, function(/* p, t */) {
+              // updateTimingProgress(p, t);
+            });
+          } else if (method === 'arap') {
+            unwrapResult = await solveARAPAsync(currentMeshData, getARAPIterations(), function(/* p, t */) {
+              // updateTimingProgress(p, t);
+            });
+            unwrapResult.maxIter = getARAPIterations();
+          } else {
+            unwrapResult = await solveLSCMAsync(currentMeshData, function(/* progress, total */) {
+              // updateTimingProgress(progress, total);
+            });
+          }
+
+          // const elapsedMs = unwrapResult.timeMs > 0 ? unwrapResult.timeMs : (performance.now() - startTime);
+          currentUnwrapUv = unwrapResult.uv;
+          _normalizeUvBox(currentUnwrapUv);
+          pdfBtn.disabled = false;
+
+          if (radioCheckerboard && radioDots) {
+            radioCheckerboard.disabled = false;
+            radioDots.disabled = false;
+            radioCheckerboard.checked = true;
+            radioDots.checked = false;
+            setTextureDistortionEnabled(true, "checkerboard");
+          }
+
+          const methodNames = { lscm:'LSCM', tutte:'Tutte', scp:'SCP', arap:'ARAP' };
+          const uvPanelLabelEl = document.getElementById('uv-panel-label');
+          uvPanelLabelEl.textContent = (methodNames[unwrapResult.method] || unwrapResult.method) + ' UV 网格';
+          uvPanelLabelEl.style.color = '';
+
+          clearGroup(uvScene, currentUvLines);
+          clearGroup(uvScene, currentUvPins);
+          const uvVisual = buildUvMesh(unwrapResult.uv, currentMeshData.faces, unwrapResult.anchors, shouldShowPinPoints());
+          currentUvLines = uvVisual.lines;
+          currentUvPins = uvVisual.pins;
+          uvScene.add(currentUvLines);
+          if (currentUvPins) uvScene.add(currentUvPins);
+
+          /*
+          let details =
+            methodLabel +
+            " / " + getCurrentSourceLabel() +
+            " / " + currentMeshData.positions.length + " 顶点" +
+            " / " + currentMeshData.faces.length + " 三角形";
+          if (unwrapResult.C) details += " / C=" + unwrapResult.C.toFixed(1);
+          if (unwrapResult.maxIter) details += " / 迭代=" + unwrapResult.maxIter;
+          if (unwrapResult.optScheme) details += " / " + unwrapResult.optScheme;
+          if (unwrapResult.pinInfo) details += " / pin=" + unwrapResult.pinInfo;
+          if (unwrapResult.boundary) details += " / " + unwrapResult.boundary;
+          if (unwrapResult.weight) details += " / " + unwrapResult.weight;
+          if (typeof unwrapResult.cones === 'number') details += " / 锥奇异点 " + unwrapResult.cones + " 个";
+          showTiming(elapsedMs, details, unwrapResult.flippedFaceCount);
+          */
+
+          // const color = unwrapResult.flippedFaceCount === 0 ? "#89f0b6" : "#ffd38a";
+          setStatus(methodLabel + " 展开完成", "#89f0b6");
+          /*
+          setStatus(
+            methodLabel + " 展开完成，翻转面 " + unwrapResult.flippedFaceCount + " 个",
+            color
+          );
+          */
+        } catch (error) {
+          console.error('展开失败:', error.message, error.stack);
+          // hideTiming();
+          setStatus("展开失败: " + error.message, "#ff9d9d");
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        modelRenderer.render(modelScene, modelCamera);
+        uvRenderer.render(uvScene, uvCamera);
+      }
+
+      rebuildUvGrid();
+      initModelOptions();
+      resize();
+      setStatus("正在加载默认模型 3D 预览...", "#8cc4ff");
+      window.addEventListener("resize", resize);
+      modelSelect.addEventListener("change", loadModelPreview);
+      reloadBtn.addEventListener("click", updateModel);
+      clearBtn.addEventListener("click", clearAndReload);
+      pdfBtn.addEventListener("click", saveUVtoPDF);
+
+      /** Save current UV mesh to A4 PDF */
+      function saveUVtoPDF() {
+        if (!currentUnwrapUv || !currentMeshData) {
+          setStatus("No UV data to save", "#ffd38a");
+          return;
+        }
+        if (typeof window.jspdf === 'undefined' && typeof jspdf === 'undefined') {
+          setStatus("PDF library loading...", "#ffd38a");
+          return;
+        }
+        const { jsPDF } = window.jspdf || { jsPDF: jspdf };
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const pageW = 297, pageH = 210;
+        const margin = 10;
+        const drawW = pageW - 2 * margin;
+        const drawH = pageH - 2 * margin;
+
+        const uv = currentUnwrapUv;
+        const faces = currentMeshData.faces;
+
+        // Compute UV bounding box
+        let minU = Infinity, minV = Infinity, maxU = -Infinity, maxV = -Infinity;
+        for (let i = 0; i < uv.length; i++) {
+          if (uv[i][0] < minU) minU = uv[i][0];
+          if (uv[i][0] > maxU) maxU = uv[i][0];
+          if (uv[i][1] < minV) minV = uv[i][1];
+          if (uv[i][1] > maxV) maxV = uv[i][1];
+        }
+        const rangeU = maxU - minU || 1, rangeV = maxV - minV || 1;
+
+        // Uniform scale: preserve aspect ratio, fit within draw area
+        const scale = Math.min(drawW / rangeU, drawH / rangeV);
+        const uvW = rangeU * scale, uvH = rangeV * scale;
+
+        // Hi-res off-screen canvas
+        const res = 4;
+        const canvasW = Math.round(drawW * res), canvasH = Math.round(drawH * res);
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = canvasW;
+        offCanvas.height = canvasH;
+        const ctx = offCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvasW, canvasH);
+
+        // Map UV [0,1] coordinates to canvas, centered
+        const offX = (canvasW - uvW * res) / 2;
+        const offY = (canvasH - uvH * res) / 2;
+        function ux(u) { return offX + (u - minU) * scale * res; }
+        function uy(v) { return canvasH - offY - (v - minV) * scale * res; }
+
+        // 构建边去重集合（用于折痕分类和边界判定）
+        const intEdgeSet = new Set();  // 内部边
+        const bndEdgeSet = new Set();  // 边界边
+        for (let fi = 0; fi < faces.length; fi++) {
+          const f = faces[fi];
+          for (const [a, b] of [[f[0], f[1]], [f[1], f[2]], [f[2], f[0]]]) {
+            const key = Math.min(a, b) + '_' + Math.max(a, b);
+            if (intEdgeSet.has(key)) { intEdgeSet.delete(key); bndEdgeSet.delete(key); /* should not happen */ }
+            else if (bndEdgeSet.has(key)) { /* boundary edge appears 2+ times -> internal */ bndEdgeSet.delete(key); intEdgeSet.add(key); }
+            else { bndEdgeSet.add(key); }
+          }
+        }
+
+        // Fill triangles
+        ctx.fillStyle = '#f0f4ff';
+        for (let fi = 0; fi < faces.length; fi++) {
+          const f = faces[fi], p0 = uv[f[0]], p1 = uv[f[1]], p2 = uv[f[2]];
+          ctx.beginPath();
+          ctx.moveTo(ux(p0[0]), uy(p0[1]));
+          ctx.lineTo(ux(p1[0]), uy(p1[1]));
+          ctx.lineTo(ux(p2[0]), uy(p2[1]));
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        ctx.lineWidth = 0.8;
+        ctx.strokeStyle = '#334466';
+        ctx.beginPath();
+        for (const key of intEdgeSet) {
+          const [a, b] = key.split('_').map(Number);
+          ctx.moveTo(ux(uv[a][0]), uy(uv[a][1]));
+          ctx.lineTo(ux(uv[b][0]), uy(uv[b][1]));
+        }
+        ctx.stroke();
+
+        // 边界边加粗
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#cc4400';
+        ctx.beginPath();
+        for (const key of bndEdgeSet) {
+          const [a, b] = key.split('_').map(Number);
+          ctx.moveTo(ux(uv[a][0]), uy(uv[a][1]));
+          ctx.lineTo(ux(uv[b][0]), uy(uv[b][1]));
+        }
+        ctx.stroke();
+
+        // Add to PDF: center the image on the landscape page
+        const imgData = offCanvas.toDataURL('image/png');
+        doc.addImage(imgData, 'PNG', margin, margin, drawW, drawH);
+
+        // Footer
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(new Date().toISOString().slice(0, 10), margin, pageH - 6);
+
+        doc.save('uv_unwrap.pdf');
+        setStatus("PDF saved", "#89f0b6");
+      }
+
+      // 纹理显示单选框切换
+      if (radioCheckerboard) {
+        radioCheckerboard.addEventListener("change", function () {
+          if (this.checked) {
+            setTextureDistortionEnabled(true, "checkerboard");
+            if (radioDots) radioDots.checked = false;
+          }
+        });
+      }
+      if (radioDots) {
+        radioDots.addEventListener("change", function () {
+          if (this.checked) {
+            setTextureDistortionEnabled(true, "dots");
+            if (radioCheckerboard) radioCheckerboard.checked = false;
+          }
+        });
+      }
+      
+      // 页面启动时预加载 uv_unwrap_simple WASM
+      updateStartButtonState();
+      initSimpleSolver().then(function (simpleOk) {
+        updateStartButtonState();
+        if (!simpleOk) {
+          setStatus("WASM 引擎加载失败", "#ff9d9d");
+        }
+      });
+      
+      // 启动加载第一个模型
+      (function(){ loadModelPreview(); })();
+      animate();
+    })();
+  </script>
+</body>
+</html>

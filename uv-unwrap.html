@@ -442,6 +442,7 @@
               边界:
               <label style="cursor:pointer;margin:0 4px;" title="映射到圆形边界"><input type="radio" name="tutte-boundary" value="circle" checked> 圆</label>
               <label style="cursor:pointer;margin:0 4px;" title="映射到正方形边界"><input type="radio" name="tutte-boundary" value="square"> 方</label>
+              <label style="cursor:pointer;margin:0 4px;" title="自由边界：仅 pin 2 个顶点，边界形状由能量决定"><input type="radio" name="tutte-boundary" value="free"> 自由</label>
             </span>
             <!-- ABF 子类型选择 -->
             <span id="param-abf-type" style="display:none;font-size:12px;color:#c6d1f4;">
@@ -459,7 +460,7 @@
             <span id="param-tutte-weight" style="display:none;font-size:12px;color:#c6d1f4;">
               权重:
               <label style="cursor:pointer;margin:0 4px;" title="均匀权重：Δf(v_i)=1/|N_i| Σ(f_j−f_i)，见 Tutte 参数化"><input type="radio" name="tutte-weight" value="uniform" checked> uniform</label>
-              <label style="cursor:pointer;margin:0 4px;" title="余切权重：cot-Laplace 调和映射；边界仍按上面的圆/方固定"><input type="radio" name="tutte-weight" value="cot"> cot-Laplace</label>
+              <label style="cursor:pointer;margin:0 4px;" title="余切权重：cot-Laplace 调和映射"><input type="radio" name="tutte-weight" value="cot"> cot-Laplace</label>
             </span>
             <!-- 优化方法选择 -->
             <span id="param-opt-scheme" style="display:none;font-size:12px;color:#c6d1f4;">
@@ -1366,6 +1367,13 @@
         return r ? r.value : 'circle';
       }
 
+      function getTutteBoundaryLabel() {
+        const b = getTutteBoundary();
+        if (b === 'square') return '方';
+        if (b === 'free') return '自由';
+        return '圆';
+      }
+
       /** 获取 Tutte Laplace 权重类型：uniform | cot */
       function getTutteWeight() {
         const r = document.querySelector('input[name="tutte-weight"]:checked');
@@ -1692,19 +1700,20 @@
         const uv = tutteParameterizationJs(vertices, faces, boundaryType, weightType);
         const timeMs = performance.now() - t0;
         if (onProgress) onProgress(1, 1);
-        const bndLabel = boundaryType === 'square' ? 'square' : 'circle';
+        const bndLabel = boundaryType === 'square' ? 'square' : (boundaryType === 'free' ? 'free' : 'circle');
+        const boundaryText = boundaryType === 'square' ? '方形边界' : (boundaryType === 'free' ? '自由边界' : '圆形边界');
         return {
           uv: uv,
           anchors: chooseAnchorPair(vertices),
           flippedFaceCount: countFlippedFaces(uv, faces),
           timeMs: timeMs,
           method: 'tutte_' + weightType + '_' + bndLabel,
-          boundary: boundaryType === 'square' ? '方形边界' : '圆形边界',
+          boundary: boundaryText,
           weight: getTutteWeightLabel()
         };
       }
 
-      async function solveTutteCircleAsync(meshData, onProgress) {
+      async function _solveTutteWasmAsync(meshData, onProgress, wasmFuncName, methodTag) {
         const weightVal = (getTutteWeight() === 'uniform') ? 1 : 0;
         if (!wasmReady) { const ok = await initSimpleSolver(); if (!ok) throw new Error("Tutte WASM 初始化失败"); }
 
@@ -1724,9 +1733,9 @@
         for (let i = 0; i < flatFaces.length; i++) simpleInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
 
         try {
-          const ret = simpleInstance.ccall('solve_tutte_circle', 'number',
+          const ret = simpleInstance.ccall(wasmFuncName, 'number',
             ['number','number','number','number','number'],[posPtr,flatPositions.length,facePtr,flatFaces.length,weightVal]);
-          if (ret !== 0) throw new Error("solve_tutte_circle 返回错误码: " + ret);
+          if (ret !== 0) throw new Error(wasmFuncName + " 返回错误码: " + ret);
           const uvSize = simpleInstance.ccall('get_uv_result_size','number',[],[]);
           const uvPtr = simpleInstance.ccall('get_uv_result','number',[],[]);
           const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(simpleInstance.getValue(uvPtr+i*8,'double'));
@@ -1735,43 +1744,34 @@
           if (onProgress) onProgress(1,1);
           const n = meshData.positions.length;
           const uv = []; for (let i=0;i<n;i++) uv.push([uvs[i*2],uvs[i*2+1]]);
-          return { uv, anchors: chooseAnchorPair(meshData.positions), flippedFaceCount: countFlippedFaces(uv,meshData.faces), timeMs, method:'tutte_circle' };
+          return { uv, anchors: chooseAnchorPair(meshData.positions), flippedFaceCount: countFlippedFaces(uv,meshData.faces), timeMs, method: methodTag };
         } finally { simpleInstance._free(posPtr); simpleInstance._free(facePtr); }
       }
 
+      async function solveTutteCircleAsync(meshData, onProgress) {
+        return _solveTutteWasmAsync(meshData, onProgress, 'solve_tutte_circle', 'tutte_circle');
+      }
+
       async function solveTutteSquareAsync(meshData, onProgress) {
-        const weightVal = (getTutteWeight() === 'uniform') ? 1 : 0;
-        if (!wasmReady) { const ok = await initSimpleSolver(); if (!ok) throw new Error("Tutte WASM 初始化失败"); }
+        return _solveTutteWasmAsync(meshData, onProgress, 'solve_tutte_square', 'tutte_square');
+      }
 
-        const flatPositions = new Float64Array(meshData.positions.length * 3);
-        for (let i = 0; i < meshData.positions.length; i++) {
-          flatPositions[i*3]=meshData.positions[i][0]; flatPositions[i*3+1]=meshData.positions[i][1]; flatPositions[i*3+2]=meshData.positions[i][2];
-        }
-        const flatFaces = new Int32Array(meshData.faces.length * 3);
-        for (let i = 0; i < meshData.faces.length; i++) {
-          flatFaces[i*3]=meshData.faces[i][0]; flatFaces[i*3+1]=meshData.faces[i][1]; flatFaces[i*3+2]=meshData.faces[i][2];
-        }
-        if (onProgress) onProgress(0, 1);
-
-        const posPtr = simpleInstance._malloc(flatPositions.length * 8);
-        for (let i = 0; i < flatPositions.length; i++) simpleInstance.setValue(posPtr+i*8, flatPositions[i], 'double');
-        const facePtr = simpleInstance._malloc(flatFaces.length * 4);
-        for (let i = 0; i < flatFaces.length; i++) simpleInstance.setValue(facePtr+i*4, flatFaces[i], 'i32');
-
+      async function solveTutteFreeAsync(meshData, onProgress) {
         try {
-          const ret = simpleInstance.ccall('solve_tutte_square', 'number',
-            ['number','number','number','number','number'],[posPtr,flatPositions.length,facePtr,flatFaces.length,weightVal]);
-          if (ret !== 0) throw new Error("solve_tutte_square 返回错误码: " + ret);
-          const uvSize = simpleInstance.ccall('get_uv_result_size','number',[],[]);
-          const uvPtr = simpleInstance.ccall('get_uv_result','number',[],[]);
-          const uvs = []; for (let i=0;i<uvSize;i++) uvs.push(simpleInstance.getValue(uvPtr+i*8,'double'));
-          simpleInstance.ccall('dispose','void',[],[]);
-          const timeMs = simpleInstance.ccall('get_last_time_ms','number',[],[]);
-          if (onProgress) onProgress(1,1);
-          const n = meshData.positions.length;
-          const uv = []; for (let i=0;i<n;i++) uv.push([uvs[i*2],uvs[i*2+1]]);
-          return { uv, anchors: chooseAnchorPair(meshData.positions), flippedFaceCount: countFlippedFaces(uv,meshData.faces), timeMs, method:'tutte_square' };
-        } finally { simpleInstance._free(posPtr); simpleInstance._free(facePtr); }
+          const result = await _solveTutteWasmAsync(meshData, onProgress, 'solve_tutte_free', 'tutte_free');
+          result.boundary = '自由边界';
+          return result;
+        } catch (err) {
+          console.warn('solve_tutte_free WASM 不可用，回退到 JS 调和求解:', err);
+          return solveTutteHarmonicAsync(meshData, onProgress);
+        }
+      }
+
+      async function solveTutteAsync(meshData, onProgress) {
+        const boundaryType = getTutteBoundary();
+        if (boundaryType === 'square') return solveTutteSquareAsync(meshData, onProgress);
+        if (boundaryType === 'free') return solveTutteFreeAsync(meshData, onProgress);
+        return solveTutteCircleAsync(meshData, onProgress);
       }
 
       function countFlippedFaces(uv, faces) {
@@ -2123,25 +2123,16 @@
       }
 
       /** 固定凸边界的调和映射：L f = 0（内部），f|∂ = g（Dirichlet） */
-      function _harmonicParameterizationJs(vertices, faces, boundaryType, laplacianFn) {
+      function _harmonicSolveWithFixed(vertices, faces, fixedUv, laplacianFn) {
         const n = vertices.length;
-        const bd = _buildBoundaryData(faces, n);
-        if (bd.boundaryEdges.length === 0) {
-          throw new Error("需要带边界的网格；封闭曲面请先切开。");
-        }
-        const loops = _buildBoundaryLoops(bd.boundaryEdges);
-        if (loops.length !== 1) {
-          throw new Error("当前实现需要单一边界环，检测到 " + loops.length + " 个边界环。");
-        }
-        const boundaryUv = _mapBoundaryLoop(vertices, loops[0], boundaryType);
         const rowsL = laplacianFn(vertices, faces);
         const A = new Array(n);
         const bu = new Float64Array(n), bv = new Float64Array(n);
         for (let i = 0; i < n; i++) {
-          if (boundaryUv.has(i)) {
+          if (fixedUv.has(i)) {
             A[i] = [{ j: i, v: 1 }];
-            bu[i] = boundaryUv.get(i)[0];
-            bv[i] = boundaryUv.get(i)[1];
+            bu[i] = fixedUv.get(i)[0];
+            bv[i] = fixedUv.get(i)[1];
           } else {
             A[i] = rowsL[i].slice();
           }
@@ -2161,6 +2152,42 @@
         const uv = new Array(n);
         for (let i = 0; i < n; i++) uv[i] = [u[i], v[i]];
         return _normalizeUvBox(uv);
+      }
+
+      function _chooseBoundaryPinPair(vertices, loop) {
+        let bestA = loop[0], bestB = loop[1], bestDist2 = -1;
+        for (let i = 0; i < loop.length; i++) {
+          for (let j = i + 1; j < loop.length; j++) {
+            const a = loop[i], b = loop[j];
+            const dx = vertices[a][0] - vertices[b][0];
+            const dy = vertices[a][1] - vertices[b][1];
+            const dz = vertices[a][2] - vertices[b][2];
+            const d2 = dx * dx + dy * dy + dz * dz;
+            if (d2 > bestDist2) { bestDist2 = d2; bestA = a; bestB = b; }
+          }
+        }
+        const d = Math.sqrt(Math.max(bestDist2, 1e-24));
+        const fixedUv = new Map();
+        fixedUv.set(bestA, [0, 0]);
+        fixedUv.set(bestB, [d, 0]);
+        return fixedUv;
+      }
+
+      function _harmonicParameterizationJs(vertices, faces, boundaryType, laplacianFn) {
+        const n = vertices.length;
+        const bd = _buildBoundaryData(faces, n);
+        if (bd.boundaryEdges.length === 0) {
+          throw new Error("需要带边界的网格；封闭曲面请先切开。");
+        }
+        const loops = _buildBoundaryLoops(bd.boundaryEdges);
+        if (loops.length !== 1) {
+          throw new Error("当前实现需要单一边界环，检测到 " + loops.length + " 个边界环。");
+        }
+        if (boundaryType === 'free') {
+          return _harmonicSolveWithFixed(vertices, faces, _chooseBoundaryPinPair(vertices, loops[0]), laplacianFn);
+        }
+        const boundaryUv = _mapBoundaryLoop(vertices, loops[0], boundaryType);
+        return _harmonicSolveWithFixed(vertices, faces, boundaryUv, laplacianFn);
       }
 
       function tutteParameterizationJs(vertices, faces, boundaryType, weightType) {
@@ -3499,7 +3526,7 @@
         if (method === 'lscm') methodLabel = 'LSCM';
         else if (method === 'bd_lscm') methodLabel = 'BD-LSCM (有界失真)';
         else if (method === 'tutte') {
-          methodLabel = 'Tutte (' + getTutteWeightLabel() + ', ' + (getTutteBoundary() === 'circle' ? '圆' : '方') + ')';
+          methodLabel = 'Tutte (' + getTutteWeightLabel() + ', ' + getTutteBoundaryLabel() + ')';
         }
         else if (method === 'scp') methodLabel = 'SCP (谱共形)';
         else if (method === 'linabf') methodLabel = 'ABF (linABF)';
@@ -3533,9 +3560,7 @@
               updateTimingProgress(progress, total);
             });
           } else if (method === 'tutte') {
-            unwrapResult = (getTutteBoundary() === 'circle')
-              ? await solveTutteCircleAsync(currentMeshData, function() {})
-              : await solveTutteSquareAsync(currentMeshData, function() {});
+            unwrapResult = await solveTutteAsync(currentMeshData, function() {});
           } else if (method === 'scp') {
             unwrapResult = await solveSCPAsync(currentMeshData, function(p, t) {
               updateTimingProgress(p, t);

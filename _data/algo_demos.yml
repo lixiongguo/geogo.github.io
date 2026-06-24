@@ -1,0 +1,50 @@
+# 算法测试 Demo 发布配置
+# ready: true  — 侧边栏正常显示，公网可访问
+# ready: false — 侧边栏置灰；本地 jekyll serve 仍可打开调试；公网构建后该页面不可访问（404）
+#
+# 公网部署由 CI 设置 JEKYLL_ENV=production 触发 _plugins/algo_demo_gate.rb
+
+- id: uv-unwrap-simple
+  title: 曲面展开
+  url: /uv-unwrap-simple.html
+  ready: true
+
+- id: deformation-lab
+  title: 平面变形测试
+  url: /deformation-lab.html
+  ready: false
+
+- id: mesh-deformation
+  title: 网格变形
+  url: /mesh-deformation.html
+  ready: false
+
+- id: uv-unwrap
+  title: 曲面展开2
+  url: /uv-unwrap.html
+  ready: false
+
+- id: uv-unwrap-global
+  title: 全局参数化
+  url: /uv_unwrap_global.html
+  ready: false
+
+- id: semi-discrete-ot
+  title: 最优传输测试
+  url: /semi-discrete-ot.html
+  ready: false
+
+- id: bdhm-deformation
+  title: BDHM变形
+  url: /bdhm-deformation.html
+  ready: false
+
+- id: ruppert
+  title: 网格三角化
+  url: /ruppert.html
+  ready: false
+
+- id: non-euclidean-roam
+  title: 非欧曲面漫游
+  url: /non-euclidean-roam.html
+  ready: false

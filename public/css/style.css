@@ -790,6 +790,32 @@ a.nav-item:hover { color: #777; }
 	flex: 0 0 auto;
 }
 
+/* 算法测试：未 ready 的 Demo 置灰 */
+.algo-demo-not-ready .nav-item,
+.nav-item.algo-demo-disabled {
+	color: #666 !important;
+	opacity: 0.55;
+}
+
+a.nav-item.algo-demo-disabled {
+	cursor: default;
+	pointer-events: auto;
+}
+
+a.nav-item.algo-demo-disabled:hover {
+	color: #666 !important;
+}
+
+span.nav-item.algo-demo-disabled {
+	cursor: not-allowed;
+}
+
+.algo-demo-not-ready .algo-mini-icon,
+.algo-demo-disabled .algo-mini-icon {
+	background: #555;
+	box-shadow: none;
+}
+
 .badge { font-size: 70%; }
 .badge::before { content: "("; }
 .badge::after { content: ")"; }

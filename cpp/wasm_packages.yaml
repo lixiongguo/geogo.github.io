@@ -79,6 +79,7 @@ packages:
       - solve_scp
       - solve_tutte_circle
       - solve_tutte_square
+      - solve_tutte_free
       - solve_linabf
       - solve_abfpp
       - solve_arap
@@ -220,6 +221,10 @@ pages:
     packages:
       - { name: uv_unwrap_simple, load: eager }
       - { name: bd_lscm, load: lazy }
+
+  uv-unwrap-simple.html:
+    packages:
+      - { name: uv_unwrap_simple, load: eager }
 
   uv_unwrap_global.html:
     packages:

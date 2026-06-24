@@ -14,5 +14,5 @@
   <path d="M100,150 Q140,130 180,145" fill="none" stroke="rgba(255,240,180,0.4)" stroke-width="1.2" marker-end="url(#arr)"/>
   <path d="M220,120 Q260,100 300,115" fill="none" stroke="rgba(255,240,180,0.35)" stroke-width="1"/>
   <path d="M160,190 Q200,170 240,185" fill="none" stroke="rgba(255,240,180,0.3)" stroke-width="1"/>
-  <text x="200" y="220" text-anchor="middle" fill="#b8dff5" font-family="Segoe UI,sans-serif" font-size="14">'ÉQ<AS</text>
+  <text x="200" y="220" text-anchor="middle" fill="#b8dff5" font-family="Segoe UI,sans-serif" font-size="14">'ï¿½Q<AS</text>
 </svg>
