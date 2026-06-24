@@ -313,3 +313,110 @@ $$
 
 在 BDHM 的实现中，$$\theta$$ 的累积值通过相邻样本间的主值分支差计算（$$\Delta\theta_i = \operatorname{Arg}(f_z(w_i) / f_z(w_{i-1}))$$），避免了 $$\operatorname{arg}$$ 的分支跳跃问题。这可在约 15,000 个边界段上约 25ms 内完成验证。
 
+## 第三部分：BDHM — 单连通域的 SOCP 框架
+
+### 2.1 有界失真映射的定义
+
+**定义 (有界失真映射).** 连续可微的平面映射 $$f : \Omega \subset \mathbb{C} \to \mathbb{C}$$ 称为 $$(k,\sigma_1,\sigma_2)$$-有界失真映射，若对 $$\forall z \in \Omega$$：
+
+$$
+0 \le k(z) \le k < 1, \qquad
+\sigma_1(z) \le \sigma_1 < \infty, \qquad
+0 < \sigma_2 \le \sigma_2(z)
+$$
+
+其中 $$k(z) = |f_{\bar z}|/|f_z|$$ 是伸缩商 (dilatation)，$$\sigma_1(z),\sigma_2(z)$$ 是 Jacobi 矩阵的奇异值。$$k,\sigma_1,\sigma_2$$ 为预设的全局常数。
+
+**观察1.** $$(k,\sigma_1,\sigma_2)$$-有界失真映射必然是局部单射且保向的。
+
+> 证明：$$\sigma_2(z) > 0$$ 蕴含 $$\det J_f = \sigma_1\sigma_2 > 0$$，即 Jacobian 处处非零且保向。又 $$\det J_f = |f_z|^2 - |f_{\bar z}|^2 > 0$$，得到 $$|f_z| > |f_{\bar z}|$$。
+
+三个条件各司其职：
+
+| 条件                         | 控制         | 失效后果             |
+| ---------------------------- | ------------ | -------------------- |
+| $$k(z) \le k$$               | 共形扭曲上限 | 局部角度畸变过大     |
+| $$\sigma_1(z) \le \sigma_1$$ | 最大拉伸上限 | 局部面积过度放大     |
+| $$\sigma_2 \le \sigma_2(z)$$ | 最小拉伸下限 | 局部塌缩退化（折叠） |
+
+---
+
+### 2.2 边界条件定理—— 从全域到边界
+
+上述定义要求检查域中**每一个点**。以下定理将其简化为**仅需检查边界**：
+
+**定理4 (BDHM).** 定义在单连通域 $$\Omega$$ 上的复值调和映射 $$f$$ 是 $$(k,\sigma_1,\sigma_2)$$-有界失真的充要条件为：
+
+$$
+\begin{aligned}
+\oint_{\partial\Omega} \frac{f_z''(z)}{f_z(z)} \, dz &= 0  \\
+0 \le k(w) \le k < 1, \quad &\forall w \in \partial\Omega  \\
+\sigma_1(w) \le \sigma_1 < \infty, \quad &\forall w \in \partial\Omega  \\
+0 < \sigma_2 \le \sigma_2(w), \quad &\forall w \in \partial\Omega 
+\end{aligned}
+$$
+
+**积分为零条件的含义**：由 Cauchy 幅角原理，$$\frac{1}{2\pi i} \oint f_z''/f_z \, dz = N$$ 是 $$f_z$$ 在全域内的零点个数（计重数）。积分 = 0 等价于 $$f_z(z) \neq 0 \; \forall z \in \Omega$$，即共形部分处处非零。
+
+**其余三个条件**是原定义中 $$k \le k < 1$$, $$\sigma_1 \le \sigma_1 < \infty$$, $$0 < \sigma_2 \le \sigma_2$$ 限制到边界上的版本。
+
+**三个 Lemmas 的详细证明思路：**
+
+| Lemma | 从边界条件                                                | 推导全域条件                      | 数学支撑                                                     |
+| ----- | --------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------ |
+| **5** | 积分为零 + $$k \le k$$ 在边界                             | $$k(z) = |\nu_f| \le k$$ 全域     | 积分为零 ⇒ $$f_z \neq 0$$ ⇒ $$\nu_f = f_{\bar z}/f_z$$ 全纯 ⇒ $$|\nu_f|$$ 次调和 ⇒ 最大值在边界 |
+| **6** | $$\sigma_1 \le \sigma_1$$ 在边界                          | $$\sigma_1(z) \le \sigma_1$$ 全域 | $$f_z, f_{\bar z}$$ 全纯 ⇒ $$|f_z|, |f_{\bar z}|$$ 次调和 ⇒ $$\sigma_1 = |f_z|+|f_{\bar z}|$$ 次调和 ⇒ 最大值在边界 |
+| **7** | 积分为零 + $$k \le k$$ + $$\sigma_2 \le \sigma_2$$ 在边界 | $$\sigma_2 \le \sigma_2(z)$$ 全域 | 边界上 $$|f_z| > |f_{\bar z}|$$ ⇒ $$\sigma_2 = |f_z|-|f_{\bar z}|$$；构造 $$\varsigma(z) = \sigma_2/|f_z(z)| + k(z)$$；利用 $$k(z)$$ 次调和 + $$1/|f_z|$$ 次调和 ⇒ $$\varsigma$$ 次调和 ⇒ 边界下界传播到全域 |
+
+---
+
+### 2.3 约束凸化——SOCP 的数学基础
+
+定理4中 $$|f_{\bar z}| \le k |f_z|$$ 和 $$\sigma_2 \le |f_z| - |f_{\bar z}|$$ 都是**非凸**的（含变量在分母或非线性项 $$|f_z|$$）。
+
+采用 [Lipman 2012] 的方法：引入辅助函数 $$\theta(w) : \partial\Omega \to \mathbb{R}$$，将非凸约束替换为**极大凸子集**。
+
+**核心不等式：**
+
+对于任意复数 $$w$$，$$\operatorname{Re}[w e^{i\theta}] \le |w|$$（实部不大于模），且当且仅当 $$\theta = -\arg w$$ 时取等号。
+
+因此用 $$\operatorname{Re}[f_z e^{i\theta}]$$ 替代 $$|f_z|$$ 得到凸的（实际上是一个**二阶锥**）约束：
+
+| 原非凸约束                            | 凸化约束                                                     | 锥类型     | 来源   |
+| ------------------------------------- | ------------------------------------------------------------ | ---------- | ------ |
+| $$\sigma_2 \le |f_z| - |f_{\bar z}|$$ | $$|f_{\bar z}| \le \operatorname{Re}[f_z e^{i\theta}] - \sigma_2$$ | SOC        | 式(12) |
+| $$|f_{\bar z}| \le k \cdot |f_z|$$    | $$|f_{\bar z}| \le k \cdot \operatorname{Re}[f_z e^{i\theta}]$$ | SOC        | 式(15) |
+| $$|f_z| + |f_{\bar z}| \le \sigma_1$$ | 保持原约束（已凸）                                           | Linear+SOC | 式(10) |
+
+**推导第一个凸约束：**
+
+由 $$\operatorname{Re}[f_z e^{i\theta}] \le |f_z|$$，代入 $$\sigma_2 \le |f_z| - |f_{\bar z}|$$：
+
+$$
+|f_{\bar z}| \le |f_z| - \sigma_2 \le \operatorname{Re}[f_z e^{i\theta}] \; \Longleftarrow \text{不成立，方向反了！}
+$$
+
+正确推导：目标是用 $$\operatorname{Re}[f_z e^{i\theta}]$$ 替代 $$|f_z|$$ 的下界。原约束重排为 $$|f_{\bar z}| + \sigma_2 \le |f_z|$$，然后应用 $$\operatorname{Re}[f_z e^{i\theta}] \le |f_z|$$：
+
+$$
+|f_{\bar z}| + \sigma_2 \le \operatorname{Re}[f_z e^{i\theta}] \quad \Longrightarrow \quad |f_{\bar z}| \le \operatorname{Re}[f_z e^{i\theta}] - \sigma_2
+$$
+
+**极大性的含义**：凸化后约束定义的空间是所有满足原非凸约束的**极大凸子集**——没有其他严格更大的凸子集仍满足原约束。这保证了凸近似是"最优"的。
+
+**ARAP 能量的凸近似：**
+
+ARAP 能量定义为 $$E_{\text{ARAP}} = \frac12 \int (\sigma_1-1)^2 + (\sigma_2-1)^2 \, da$$。在局部单射保向条件下可展开为：
+
+$$
+E_{\text{ARAP}} = \frac12 \int \big[ (|f_z|+|f_{\bar z}|-1)^2 + (|f_z|-|f_{\bar z}|-1)^2 \big] da
+= \int (|f_z|-1)^2 + |f_{\bar z}|^2 \, da
+$$
+
+此能量含有非凸项 $$|f_z|$$，凸化近似为二次泛函：
+
+$$
+E_{\text{ARAP}}^{\text{convex}} = \int |f_z e^{i\theta} - 1|^2 + |f_{\bar z}|^2 \, da
+$$
+
+当 $$\theta = -\arg f_z$$ 时，$$f_z e^{i\theta} = |f_z|$$，凸化能量退化为原 ARAP。
