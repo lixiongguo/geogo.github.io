@@ -4,11 +4,11 @@
 
 CETM、Circle Patterns、Ricci 流等**同时求内部与边界**；BFF（Sawhney & Crane, 2017）**先边界、后内部**。
 
-<img src="/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260620212253121.png" alt="image-20260620212253121" style="zoom:50%;" />
+<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260620212253121.png" alt="image-20260620212253121" style="zoom:50%;" />
 
 ### 算法核心洞察
 
-<img src="/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260620211906353.png" alt="image-20260620211906353" style="zoom: 33%;" />
+<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260620211906353.png" alt="image-20260620211906353" style="zoom: 33%;" />
 
 共形映射 $f:M\to\mathbb{C}$ 写为 $f=a+b\mathrm{i}$，其中 $a,b$ 为共轭调和函数对；尺度因子 $e^u=|df|$ 由边界曲率/长度数据控制。
 

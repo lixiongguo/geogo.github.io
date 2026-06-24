@@ -32,9 +32,9 @@ $$
 \kappa = \left\| \frac{d\mathbf{T}}{ds} \right\| = \|\mathbf{r}''(s)\|
 $$
 
-![image-20260617115734728](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260617115734728.png)
+![image-20260617115734728](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617115734728.png)
 
-![image-20260617115832246](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260617115832246.png)
+![image-20260617115832246](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617115832246.png)
 
 若曲线以任意参数 $t$ 给出 $ \mathbf{r}(t) $，则曲率公式为：
 $$
@@ -88,7 +88,7 @@ $$
 $$
 即曲线的 Frenet 曲率 $ \kappa $ 是法曲率与测地曲率的平方和。
 
-![image-20260617121817778](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260617121817778.png)
+![image-20260617121817778](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617121817778.png)
 
 **开车类比**。想象你在山路上开车：
 
@@ -97,7 +97,7 @@ $$
 
 你身体感受到的总加速度满足 $\kappa^2 = \kappa_n^2 + \kappa_g^2$：最刺激的"发卡弯 + 盘山路"就是大 $\kappa_g$ 叠加大 $\kappa_n$——曲面的弯曲方式决定了加速度向"出曲面"（法曲率）和"在曲面内"（测地曲率）两个方向的分量分配。这正是 Weingarten 映射（$W = I^{-1} \cdot I\!I$）刻画的：形状算子 $W$ 编码了每个切方向上曲面偏离平面的法向加速度，而测地曲率则由度量 $g$ 单独给出。
 
-![image-20260617120550663](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260617120550663.png)
+![image-20260617120550663](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617120550663.png)
 
 ### 高斯映射（Gauss map）
 
@@ -115,11 +115,11 @@ $$
 $$
 
 
-![image-20260617121044362](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260617121044362.png)
+![image-20260617121044362](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617121044362.png)
 
-![image-20260617121329525](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260617121329525.png)
+![image-20260617121329525](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617121329525.png)
 
-![image-20260617122126496](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260617122126496.png)
+![image-20260617122126496](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617122126496.png)
 
 在局部坐标下，Weingarten 映射的矩阵表示为 $W = I^{-1} \cdot II$，其中 $I$ 是第一基本形式矩阵，$II$ 是第二基本形式矩阵。
 
@@ -144,13 +144,13 @@ $$
 
 ## 主曲率
 
-![image-20260617121246998](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260617121246998.png)
+![image-20260617121246998](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617121246998.png)
 
 
 
-![image-20260617123130700](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260617123130700.png)
+![image-20260617123130700](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617123130700.png)
 
-![image-20260617123316665](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260617123316665.png)
+![image-20260617123316665](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617123316665.png)
 
 ## 离散高斯曲率
 
