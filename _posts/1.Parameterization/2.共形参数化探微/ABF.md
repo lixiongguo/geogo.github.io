@@ -1,10 +1,3 @@
----
-layout: post
-title: "相似图形视角"
-category: Parameterization
-categories: ["Parameterization", "Parameterization-BasicParameterization"]
----
-
 如果两个三角网格的每对三角形都尽可能相似，那么两个三角网格也可以认为是"相似"的。因此，我们尝试让每个小三角形都尽可能保持相似从而保持整体的形状
 
 <img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260529124336866.png" style="zoom: 67%;" />
@@ -380,11 +373,3 @@ Newton 系统 $(D + \rho J^T J)\,\Delta\alpha = -\nabla L$ 是稀疏 SPD 的，�
 
 角度优化只给出每个三角形的**相似形状**。重建步骤（`AbfPlusPlus::angleToUv`）与式 (7) 一致：累加 cot 权 → 边界映射到圆 → 解 cot-Laplacian 得内部 UV。ABF++ 的改进在于**角度阶段**用增广拉格朗日精确满足线性角和，重建阶段只需一次稀疏 Cholesky。
 
-##### 四种 ABF 变体对照
-
-| | 正弦积 (3) | 约束类型 | 求解器 | 本仓库 |
-|---|:---:|:---:|:---:|---|
-| **原始 ABF** | 精确纳入 | 非线性 KKT | Newton + 稀疏 LU | — |
-| **LinABF**（理论） | 每步线性化 | 线性子问题 | KKT 最小二乘 (13) | — |
-| **`LinAbf`**（工程） | 不显式处理 | UV 加权 LS | 迭代重加权 | `LinAbf.cpp` |
-| **ABF++** | **省略** | 仅线性角和 | 增广拉格朗日 + Newton | `AbfPlusPlus.cpp` |
