@@ -1,239 +1,418 @@
 ---
 layout: post
-title: "曲面展开介绍 — 几何变形的特征值分析"
-category: Parameterization
+title: "解析 Eigensystem — 各向同性畸变能量的 Hessian 投影"
 categories: ["Parameterization", "Parameterization-GeometricOptimization"]
+mathjax: true
 ---
 
-> 现有许多方法优化各向同性扭曲能量，但实现牛顿方法（二阶）的收敛速度比较困难。本文通过对变形梯度的 Eigen System 进行解析，使 Hessian 投影到正定空间，从而实现二阶牛顿迭代优化——对于复杂网格，用 ARAP 等一阶方法收敛较慢，而二阶方法可显著加速。
+> **论文**：Breannan Smith, Fernando de Goes, Theodore Kim. [*Analytic Eigensystems for Isotropic Distortion Energies*](https://doi.org/10.1145/3241041). ACM Transactions on Graphics, 38(1), 2019.
 
-主要是将各向同性扭曲能量（**isotropic distortion energies**）的 Hessian 投影到半正定空间中，从而可以用牛顿方法来进行求解。
+## 概述
 
----
+各向同性畸变能量（ARAP、MIPS、Symmetric Dirichlet 等）的牛顿法常被 **Hessian 不定** 拖慢甚至发散。投影牛顿法（Projected Newton）在每个 quadrature 点将元素 Hessian 的负特征值钳制为零，但逐点数值特征分解是瓶颈。
 
-### 1.5.1 变形梯度与不变量
+本文方法（简称 **Analytic Eigensystem**）的核心：在**拉伸张量** $S$ 的三个不变量 $I_1,I_2,I_3$ 上，**闭式**写出 Hessian 的特征对；2D 下 **一半**、3D 下 **2/3** 特征对完全解析，其余至多解 $2\times 2$ / $3\times 3$ 小问题。特征向量与能量形式无关，仅特征值依赖 $\Psi$ 的导数。
 
-三角网格整体的扭曲能量等于组成三角面扭曲能量的聚合——在每个 quadrature point 上，变形梯度 F 所量化的扭曲可聚合为标量形式的扭曲能量：
-
-$$
-E(\mathbf{x}) = \sum_{q} \Psi_q(F_q) \cdot |q|
-$$
-
-其中 $$\Psi_q$$ 为 quadrature point q 处的能量密度，$$|q|$$ 为其体积权重。通过链式法则，可将能量对顶点位置 $$\mathbf{x}$$ 的一阶和二阶导数用 $$\mathbf{f} = \text{vec}(F)$$ 表达：
-
-$$
-\frac{\partial E}{\partial \mathbf{x}} = \sum_{q} |q| \left( \frac{\partial \Psi_q}{\partial \mathbf{f}} \right)^T \frac{\partial \mathbf{f}}{\partial \mathbf{x}}
-$$
-
-$$
-\frac{\partial^2 E}{\partial \mathbf{x}^2} = \sum_{q} |q| \left( \frac{\partial \mathbf{f}}{\partial \mathbf{x}} \right)^T \frac{\partial^2 \Psi_q}{\partial \mathbf{f}^2} \frac{\partial \mathbf{f}}{\partial \mathbf{x}}
-$$
-
-对于每个三角形，记其变形梯度为 $$F \in \mathbb{R}^{3 \times 2}$$（从三维到二维的映射），其 SVD 分解为：
-
-$$
-F = U\Sigma V^T,\quad \Sigma = \begin{pmatrix} \sigma_1 & 0 \\ 0 & \sigma_2 \\ 0 & 0 \end{pmatrix}
-$$
-
-其中 $$\sigma_1, \sigma_2 > 0$$ 为变形梯度的奇异值，U 和 V 为正交矩阵。各向同性扭曲能量定义为其奇异值的对称函数 $$W(\sigma_1, \sigma_2)$$，满足对称性 $$W(\sigma_1, \sigma_2) = W(\sigma_2, \sigma_1)$$。
-
-**变形梯度（deformation gradient）**：$$F = RS$$，由于 $$R$$ 是旋转矩阵，$$F$$ 的扭曲由 $$S$$ 产生。通过极分解 $$F = RS$$ 得到 stretch tensor 的不变量，并将 eigenvalues 与 eigenvectors 表示为这些不变量。为方便表达采用 **Tensor 表示法**，对每个 quadrature point 的能量累加得到总体能量。利用链式求导法对上式能量求导后，定义不变量 $$I_1, I_2, I_3$$，从而使能量可以表达成可以解析 Hessian 的 eigen structure 的形式。
-
-具体地，引入变形梯度不变量：
-
-**主要不变量**：
-
-$$
-I_1 = \sigma_1^2 + \sigma_2^2 = \|F\|_F^2 = \text{tr}(F^T F)
-$$
-
-$$
-I_2 = \sigma_1\sigma_2 = \det(F^T F)^{1/2}
-$$
-
-**辅助变量**（用于后续特征值表达的简化）：
-
-$$
-I_3 = \sigma_1^2 \sigma_2^2 = \det(F^T F) = I_2^2
-$$
-
-（注：在 2D 参数化中 $$I_3$$ 并非独立不变量，即 $$I_3 = I_2^2$$，但在某些场合为表达一致性仍沿用记号。）
-
-对于任意可表示为不变量函数的能量密度 $$\Psi(I_1, I_2)$$，总能量为：
-
-$$
-E = \sum_{t} A_t \cdot \Psi(I_1(F_t), I_2(F_t))
-$$
-
-对每个三角形 t 求能量对顶点位置的 Hessian，即可用于牛顿迭代。
+| 对比 | ARAP local-global | 数值投影牛顿 | **解析 Eigensystem** |
+| :--- | :--- | :--- | :--- |
+| 阶数 | 一阶（固定 Laplacian 代理） | 二阶 | 二阶 |
+| Hessian | 不直接用真 Hessian | 每点 $4\times 4$ / $6\times 6$ 数值分解 | **闭式**特征对 + 可选小矩阵 |
+| 典型用途 | 交互变形 | 通用 | 参数化、体积变形、仿真 |
 
 ---
 
-### 1.5.2 不变量的 Eigen Structure 分析
+## 1. 问题设置与记号
 
-将能量密度 $$\Psi(I_1, I_2)$$ 的 Hessian 记为 $$\mathbf{H}$$。通过链式法则：
+### 1.1 总能量与链式法则
 
-$$
-\frac{\partial \Psi}{\partial \mathbf{u}} = \frac{\partial \Psi}{\partial I_1} \frac{\partial I_1}{\partial \mathbf{u}} + \frac{\partial \Psi}{\partial I_2} \frac{\partial I_2}{\partial \mathbf{u}}
-$$
+三角网格上畸变能量
 
 $$
-\mathbf{H} = \frac{\partial^2 \Psi}{\partial \mathbf{u}^2} = \sum_{m,n \in \{1,2\}} \Psi_{mn} \left(\frac{\partial I_m}{\partial \mathbf{u}} \otimes \frac{\partial I_n}{\partial \mathbf{u}}\right) + \sum_{m \in \{1,2\}} \Psi_m \frac{\partial^2 I_m}{\partial \mathbf{u}^2}
+\Psi(\mathbf{x}) = \sum_q \Psi_q(F_q)\,|q|,
 $$
 
-其中 $$\Psi_m = \frac{\partial \Psi}{\partial I_m}$$，$$\Psi_{mn} = \frac{\partial^2 \Psi}{\partial I_m \partial I_n}$$。
+$F_q\in\mathbb{R}^{d\times d}$ 为 quadrature 点 $q$ 处的**变形梯度**（$d=2$ 参数化，$d=3$ 体积变形），$|q|$ 为体积权重。
 
-**核心技巧**：$$\mathbf{H}$$ 的 eigen structure 可以从 $$I_1, I_2$$ 的梯度与 Hessian 的特征系统组合得到，而非对整个 Hessian 数值求解。
-
-#### 1.5.2.1 $$I_1$$ 的 Eigen Structure
-
-$$I_1 = \|F\|_F^2$$，由 F 的六个分量组成 $$(f_{11}, f_{21}, f_{31}, f_{12}, f_{22}, f_{32})$$，有：
+记 $\mathbf{f}=\mathrm{vec}(F)\in\mathbb{R}^{d^2}$（按列展平）。对顶点位置 $\mathbf{x}$：
 
 $$
-\frac{\partial I_1}{\partial F} = 2F,\quad \frac{\partial^2 I_1}{\partial F^2} = 2\mathbf{I}_6
+\frac{\partial \Psi}{\partial \mathbf{x}}
+= \sum_q |q|\,\frac{\partial F_q}{\partial \mathbf{x}}^\top \frac{\partial \Psi_q}{\partial \mathbf{f}_q},
+\qquad
+\frac{\partial^2 \Psi}{\partial \mathbf{x}^2}
+= \sum_q |q|\,\frac{\partial F_q}{\partial \mathbf{x}}^\top
+\frac{\partial^2 \Psi_q}{\partial \mathbf{f}_q^2}
+\frac{\partial F_q}{\partial \mathbf{x}}.
+\tag{1}
 $$
 
-其中 $$\mathbf{I}_6$$ 是 $$6 \times 6$$ 单位矩阵。于是 Hessian 的 eigen system 为：**全部特征值均为 2**，任意方向均为特征向量。这是一个高度简并的结构。
+**关键观察**（Smith et al.）：$\partial^2\Psi_q/\partial\mathbf{f}_q^2$ 若半正定，则组装后的 $\partial^2\Psi/\partial\mathbf{x}^2$ 亦半正定。故可在 **$F$-空间** 逐元素投影 Hessian，再装配——与离散化、基函数无关。
 
-#### 1.5.2.2 $$I_2$$ 的 Eigen Structure
+### 1.2 极分解与主拉伸
 
-$$I_2 = \sigma_1\sigma_2 = \sqrt{I_3}$$，其中 $$I_3 = \det(F^T F)$$。
+SVD：$F=U\Sigma V^\top$，$\Sigma=\mathrm{diag}(\sigma_1,\ldots,\sigma_d)$。极分解 $F=RS$，$R=UV^\top$，$S=V\Sigma V^\top$。
 
-$$I_2$$ 的梯度在变形梯度空间中的表达式为（可通过 $$F$$ 的伴随矩阵给出）：
+各向同性能量 $\Psi_q(F)$ 只依赖 $\{\sigma_i\}$，等价地依赖**拉伸张量** $S$ 的标量不变量。
+
+### 1.3 $S$-不变量（论文采用的标准记号）
 
 $$
-\frac{\partial I_2}{\partial F} = \frac{1}{2I_2} \frac{\partial I_3}{\partial F}
+\boxed{
+I_1 = \mathrm{tr}(S)=\sum_i \sigma_i,\quad
+I_2 = \|S\|_F^2 = \|F\|_F^2 = \sum_i \sigma_i^2,\quad
+I_3 = \det(S)=\prod_i \sigma_i
+}
+\tag{2}
 $$
 
-而 $$\frac{\partial I_3}{\partial F}$$ 的形式可通过 $$F^T F$$ 的余子式求得。在局部坐标系（对齐到奇异向量方向）下，特征模式分为两组：
+| 不变量 | 含义 | 典型能量中的角色 |
+| :--- | :--- | :--- |
+| $I_1$ | 拉伸之和 | ARAP、Co-rotational 的 **线性项** $\mathrm{tr}(S)$ |
+| $I_2$ | Frobenius 范数平方 | Dirichlet $\frac12\|F\|^2$、最小二乘畸变 |
+| $I_3$ | 体积（有符号） | 行列式、MIPS 分母 |
 
-- **拉伸方向**（$$\sigma_1, \sigma_2$$ 方向）：对应特征值为 $$\frac{\sigma_2^2}{I_2}, \frac{\sigma_1^2}{I_2}$$
-- **剪切方向**（$$\sigma_1 \leftrightarrow \sigma_2$$ 耦合方向）：对应特征值为 $$-\frac{I_2}{2}$$
+2D 约束：$I_2 = I_1^2 - 2I_3$，但推导中仍保留三个不变量以统一 2D/3D。
 
-#### 1.5.2.3 $$I_3$$ 的 Eigen Structure
+主拉伸满足特征多项式（2D）：
 
-$$I_3 = \sigma_1^2 \sigma_2^2 = \det(F^T F)$$ 的 eigen structure 与 $$I_2$$ 类似，在局部坐标系下其 Hessian 模式为：
+$$
+\sigma^2 - I_1\sigma + I_3 = 0.
+$$
 
-- **拉伸方向**：特征值为 $$2\sigma_2^2$$, $$2\sigma_1^2$$
-- **剪切方向**：特征值为 $$-2I_2$$
-
-综上，三个不变量的特征系统可直接解析写出，这是将总 Hessian 投影到半正定空间的基础。
+> **记号对照**：部分旧笔记用 $I_1^{\mathrm{CG}}=\|F\|^2$、$I_2^{\mathrm{CG}}=\sigma_1\sigma_2$（Cauchy–Green 风格）。本文一律采用上式 **$S$-不变量**（Smith et al. 2019）。
 
 ---
 
-### 1.5.3 特征向量求解
+## 2. 能量 Hessian 的链式展开
 
-有了特征值后求解特征向量，对于 2D 的情况。
+设 $\Psi=\Psi(I_1,I_2,I_3)$，记 $\Psi_i=\partial\Psi/\partial I_i$，$\Psi_{ij}=\partial^2\Psi/\partial I_i\partial I_j$。
 
-在变形梯度 F 的 SVD 坐标系下，记 $$U = [\mathbf{u}_1, \mathbf{u}_2, \mathbf{u}_3]$$，$$V = [\mathbf{v}_1, \mathbf{v}_2]$$。
-
-Hessian 的特征向量可分类为以下模式（各模式之间正交）：
-
-**模式 1** — 拉伸模式（stretch，对应 $$\sigma_1$$）：
+**梯度**（对 $\mathbf{f}=\mathrm{vec}(F)$）：
 
 $$
-\mathbf{e}_{\text{stretch},1} = \mathbf{v}_1 \otimes \mathbf{u}_1
+\frac{\partial \Psi}{\partial \mathbf{f}}
+= \Psi_1 \frac{\partial I_1}{\partial \mathbf{f}}
++ \Psi_2 \frac{\partial I_2}{\partial \mathbf{f}}
++ \Psi_3 \frac{\partial I_3}{\partial \mathbf{f}}.
+\tag{3}
 $$
 
-**模式 2** — 拉伸模式（stretch，对应 $$\sigma_2$$）：
+**Hessian**：
 
 $$
-\mathbf{e}_{\text{stretch},2} = \mathbf{v}_2 \otimes \mathbf{u}_2
+\boxed{
+\frac{\partial^2 \Psi}{\partial \mathbf{f}^2}
+= \underbrace{\sum_{i} \Psi_i \frac{\partial^2 I_i}{\partial \mathbf{f}^2}}_{\text{不变量 Hessian 的线性组合}}
++ \underbrace{\sum_{i,j} \Psi_{ij}
+\frac{\partial I_i}{\partial \mathbf{f}}
+\frac{\partial I_j}{\partial \mathbf{f}}^\top}_{\text{外积项（``蓝色''项）}}
+}
+\tag{4}
 $$
 
-**模式 3** — 剪切模式（shear，$$\sigma_1 \leftrightarrow \sigma_2$$ 耦合）：
-
-$$
-\mathbf{e}_{\text{shear}} = \frac{1}{\sqrt{2}}\left( \mathbf{v}_2 \otimes \mathbf{u}_1 + \mathbf{v}_1 \otimes \mathbf{u}_2 \right)
-$$
-
-**模式 4** — 垂直于映射平面的旋转模式（只存在于 R³→R² 映射中）：
-
-$$
-\mathbf{e}_{\text{null}} = \mathbf{v}_1 \otimes \mathbf{u}_3,\quad \mathbf{v}_2 \otimes \mathbf{u}_3
-$$
-
-这些零特征值方向对应于不影响映射平面的三维旋转——在参数化问题中它们自然对应 Hessian 的零空间。
+策略：先对 $I_1,I_2,I_3$ 各自求**闭式**特征系统，再对 twist / flip / scaling 模式组合得到 $\partial^2\Psi/\partial\mathbf{f}^2$ 的特征对。
 
 ---
 
-### 1.5.4 不同能量的解析
+## 3. 不变量的解析 Eigensystem
 
-将上述框架应用于常见各向同性扭曲能量。
+在 $F=U\Sigma V^\top$ 的 SVD 坐标系下，引入**正交**变形模式（2D 下 $\mathbf{f}\in\mathbb{R}^4$）：
 
-#### 1.5.4.1 ARAP 能量
+| 符号 | 矩阵形式 | 几何意义 |
+| :--- | :--- | :--- |
+| $\mathbf{r}$ | $\mathrm{vec}(R)$，$R=UV^\top$ | **纯旋转**（2D 下 $\mathbf{r}/\sqrt{2}$ 归一化） |
+| $\mathbf{t}$ | $\mathrm{vec}(T)$，$T=\frac{1}{\sqrt{2}}U\begin{pmatrix}0&-1\\1&0\end{pmatrix}V^\top$ | **twist**（绕法向扭转 $\sigma_1\leftrightarrow\sigma_2$） |
+| $\mathbf{l}$ | $\mathrm{vec}(L)$，$L=\frac{1}{\sqrt{2}}U\begin{pmatrix}0&1\\1&0\end{pmatrix}V^\top$ | **flip**（反射型剪切） |
+| $\mathbf{d}_i$ | $\mathrm{vec}(D_i)$，$D_1=U\begin{pmatrix}1&0\\0&0\end{pmatrix}V^\top$ 等 | **scaling**（沿 $\sigma_i$ 拉伸） |
 
-ARAP（As-Rigid-As-Possible）能量通常表述为 $$\Psi_{\text{ARAP}} = \|F - R\|_F^2$$（见 Chao et al., 2010），用不变量表达为：
+2D 下 $\{\mathbf{r},\mathbf{p},\mathbf{l},\mathbf{t}\}$（及 pinch $\mathbf{p}$）构成正交基；twist / flip / scaling 与旋转梯度正交（附录 B）。
 
-$$
-\Psi_{\text{ARAP}} = \|F\|_F^2 - 2\,\text{tr}(S) + \|R\|_F^2 = I_1 - 2\sqrt{I_1 + 2I_2} + d
-$$
+### 3.1 $I_1 = \mathrm{tr}(S)$
 
-其中 $$R = \arg\min_{Q \in SO(3)} \|F - Q\|_F^2$$ 为最优旋转矩阵（由 Procrustes 分析，$$R = U V^T$$），d 为维度（2D 情况下 d = 2）。注意 $$\sigma_1 + \sigma_2 = \sqrt{(\sigma_1 + \sigma_2)^2} = \sqrt{\sigma_1^2 + \sigma_2^2 + 2\sigma_1\sigma_2} = \sqrt{I_1 + 2I_2}$$。
-
-将前述链式法则应用于此能量，在 **2D** 下 ARAP 能量的 **Hessian 前两个特征对**为：
-
-$$
-\lambda_1 = 2 - \frac{4}{\sigma_1 + \sigma_2},\quad \lambda_2 = 2
-$$
-
-在 $$\sigma_1 = \sigma_2 = 1$$（即无扭曲的理想位置）处，$$\lambda_1 = \lambda_2 = 2 > 0$$，Hessian 正定——因此靠近解时牛顿法有超线性收敛速度。
-
-#### 1.5.4.2 MIPS 能量
-
-MIPS（Most Isometric ParameterizationS）能量定义为奇异值比的对称形式：
+**梯度**：
 
 $$
-\Psi_{\text{MIPS}} = \frac{\sigma_1}{\sigma_2} + \frac{\sigma_2}{\sigma_1} = \frac{\sigma_1^2 + \sigma_2^2}{\sigma_1 \sigma_2} = \frac{I_1}{I_2}
+\frac{\partial I_1}{\partial \mathbf{f}} = \mathrm{vec}(R) = \mathbf{r}.
+\tag{5}
 $$
 
-MIPS 能量完全由不变量比值表达，这使得其导数形式简洁：
+即 $I_1$ 对 $F$ 的梯度恰为极分解中的**旋转矩阵**（展平）——这也是 ARAP 中 $\mathrm{tr}(S)$ 项难处理的原因；论文给出旋转梯度的闭式，无需 SVD 数值微分。
+
+**Hessian**（2D）：
 
 $$
-\Psi_1 = \frac{1}{I_2},\quad \Psi_2 = -\frac{I_1}{I_2^2}
+\frac{\partial^2 I_1}{\partial \mathbf{f}^2}
+= \frac{\partial \mathbf{r}}{\partial \mathbf{f}}
+= \frac{2}{\sigma_1+\sigma_2}\,\mathbf{t}\mathbf{t}^\top.
+\tag{6}
 $$
 
-$$
-\Psi_{11} = 0,\quad \Psi_{12} = -\frac{1}{I_2^2},\quad \Psi_{22} = \frac{2I_1}{I_2^3}
-$$
+秩一矩阵：唯一非零特征值 $\lambda=\dfrac{2}{\sigma_1+\sigma_2}=\dfrac{2}{I_1}$，特征向量 $\mathbf{t}$。
 
-MIPS 的特殊之处在于能量仅依赖于 $$\sigma_1/\sigma_2$$ 这一比值，因此当 $$\sigma_1 = \sigma_2$$ 时能量达到最小值 2。但 $$I_2 \to 0$$ 时能量趋向无穷，天然惩罚翻转。
+3D：三个 twist $\mathbf{t}_i$，特征值 $2/(\sigma_j+\sigma_k)$（$(i,j,k)$ 轮换）。
 
-**半正定投影（PSD Projection）**：
+### 3.2 $I_2 = \|F\|_F^2$
 
-对于 ARAP、MIPS 等能量，Hessian 在其定义域内的某些区域可能为**不定矩阵**（有负特征值），导致牛顿步方向不是下降方向。解决方法是：利用前文的 eigen system 将负特征值**钳制为零**（或一个小的正数）：
+$\partial I_2/\partial \mathbf{f} = 2\mathbf{f}$，故
 
 $$
-\mathbf{H}_{\text{PSD}} = \sum_{i} \max(\lambda_i, \varepsilon) \cdot \mathbf{e}_i \mathbf{e}_i^T
+\frac{\partial^2 I_2}{\partial \mathbf{f}^2} = 2\mathbf{I}_{d^2}.
+\tag{7}
 $$
 
-其中 $$\lambda_i, \mathbf{e}_i$$ 为 $$\mathbf{H}$$ 的特征值与特征向量，$$\varepsilon > 0$$ 为一个小的正则项。这等价于将 Hessian 投影到半正定锥上。
+**所有方向特征值均为 $2$**（高度简并）。在投影牛顿中，$I_2$ 项等价于对 $F$-Hessian 加 **$2\Psi_2$ 的恒等正则**；装配到 $\mathbf{x}$ 空间时对应 **Laplacian 型**正则（与 cotan 矩阵的联系见 Botsch et al.）。
+
+### 3.3 $I_3 = \det(S)$
+
+**梯度**（2D）：
+
+$$
+\frac{\partial I_3}{\partial \mathbf{f}} = \mathbf{g}
+= \mathrm{vec}\!\left(U\begin{pmatrix}\sigma_2&0\\0&\sigma_1\end{pmatrix}V^\top\right).
+\tag{8}
+$$
+
+**Hessian**（2D）可写为四个秩一投影之差：
+
+$$
+\frac{\partial^2 I_3}{\partial \mathbf{f}^2}
+= \mathbf{r}\mathbf{r}^\top + \mathbf{t}\mathbf{t}^\top
+- \mathbf{p}\mathbf{p}^\top - \mathbf{l}\mathbf{l}^\top,
+\tag{9}
+$$
+
+特征值：$\mathbf{r},\mathbf{t}$ 上为 $+1$；$\mathbf{p},\mathbf{l}$ 上为 $-1$（子空间内基可任意选取，但此分解几何意义清晰）。
 
 ---
 
-### 1.5.5 算法流程
+## 4. 任意各向同性能量的组合公式
 
-综上所述，基于特征值分析的牛顿方法流程如下：
+### 4.1 Twist 与 Flip 模式（2D 闭式特征对）
+
+附录 B 证明：对任意不变量 $I_i$，
+
+$$
+\frac{\partial I_i}{\partial \mathbf{f}}^\top \mathbf{t} = 0,
+\qquad
+\frac{\partial I_i}{\partial \mathbf{f}}^\top \mathbf{l} = 0.
+$$
+
+故式 (4) 中**外积项**在 $\mathbf{t},\mathbf{l}$ 上无贡献；twist / flip 仅为 $\sum_i \Psi_i \partial^2 I_i/\partial\mathbf{f}^2$ 的组合。
+
+**Twist 特征对**（式 22a）：
+
+$$
+\boxed{
+\lambda_{\mathrm{twist}}
+= \frac{2}{\sigma_1+\sigma_2}\,\Psi_1 + 2\Psi_2 + \Psi_3,
+\qquad
+\mathbf{e}_{\mathrm{twist}} = \mathbf{t}.
+}
+\tag{10}
+$$
+
+**Flip 特征对**（式 22b）：
+
+$$
+\boxed{
+\lambda_{\mathrm{flip}} = 2\Psi_2 - \Psi_3,
+\qquad
+\mathbf{e}_{\mathrm{flip}} = \mathbf{l}.
+}
+\tag{11}
+$$
+
+> 推导要点：将 (6)(7)(9) 分别乘以 $\Psi_1,\Psi_2,\Psi_3$ 后作用于 $\mathbf{t}$ 或 $\mathbf{l}$，利用正交性消去外积项。
+
+3D 有六个此类对（三 twist + 三 flip），特征值由式 (23) 给出（用 $\sigma_j+\sigma_k$ 等替换 $I_1$ 中平均拉伸）。
+
+### 4.2 Scaling 模式与矩阵 $\mathbf{A}$
+
+剩余 2D 两个特征对来自外积项 $\sum_{i,j}\Psi_{ij}(\partial I_i/\partial\mathbf{f})(\partial I_j/\partial\mathbf{f})^\top$ 在 scaling 子空间上的限制。
+
+定义 scaling 矩阵 $D_i = U\,\mathrm{diag}(\ldots,1,\ldots,0)\,V^\top$，$\mathbf{d}_i=\mathrm{vec}(D_i)$。构造
+
+$$
+a_{ij} = \mathbf{d}_i^\top \frac{\partial^2 \Psi}{\partial \mathbf{f}^2}\,\mathbf{d}_j.
+\tag{12}
+$$
+
+$\mathbf{A}=[a_{ij}]$ 为 $2\times 2$（3D 为 $3\times 3$）。**一般情形**下 $\mathbf{A}$ 非对角，需求解特征多项式（MIPS 即此例）。
+
+**解耦情形**（ARAP、Symmetric Dirichlet 等）：$a_{12}=a_{21}=0$，$\mathbf{d}_1,\mathbf{d}_2$ 即为特征向量。$\mathbf{d}_1$ 的特征值（式 26）：
+
+$$
+\boxed{
+\lambda_{\mathrm{scale},1}
+= 2\Psi_2 + \Psi_{11} + 4\sigma_1^2\Psi_{22} + \sigma_2^2\Psi_{33}
++ 4\sigma_1\Psi_{12} + 4I_3\Psi_{23} + 2\sigma_2\Psi_{31}.
+}
+\tag{13}
+$$
+
+$\mathbf{d}_2$ 的特征值将 $\sigma_1\leftrightarrow\sigma_2$ 互换即可。
+
+---
+
+## 5. 实例：ARAP 能量
+
+### 5.1 用 $S$-不变量重写
+
+$$
+\Psi_{\mathrm{ARAP}} = \|F-R\|_F^2
+= \|F\|_F^2 - 2\,\mathrm{tr}(S) + \|R\|_F^2
+= I_2 - 2I_1 + d^2,
+\quad d=2\ \text{（2D）}.
+\tag{14}
+$$
+
+其中 $\|R\|_F^2=d$ 为常数，不影响 Hessian。
+
+一阶导：$\Psi_1=-2$，$\Psi_2=1$，$\Psi_3=0$；二阶导全为零。
+
+### 5.2 代入组合公式
+
+**Twist**（式 10）：
+
+$$
+\lambda_1^{2D} = \frac{2}{\sigma_1+\sigma_2}(-2) + 2(1) + 0
+= 2 - \frac{4}{I_1}
+= 2 - \frac{4}{\sigma_1+\sigma_2},
+\quad \mathbf{e}_1=\mathbf{t}.
+\tag{15}
+$$
+
+**Flip**（式 11）：$\lambda_2^{2D}=2$，$\mathbf{e}_2=\mathbf{l}$。
+
+**Scaling**：ARAP 的 $\mathbf{A}$ 非对角元为零，式 (13) 在 $\Psi_{ij}=0$ 下给出 $\lambda_{3,4}^{2D}=2$，特征向量 $\mathbf{d}_1,\mathbf{d}_2$（子空间 $\{\mathbf{d}_1,\mathbf{d}_2\}$ 的基可任意，特征值均为 $2$）。
+
+### 5.3 物理含义与 PSD 投影
+
+- $\lambda_1$ 可为**负**（当 $\sigma_1+\sigma_2>2$ 时 $2-4/I_1<0$）→ Hessian 不定，牛顿步可能上升。
+- **投影**：$\lambda_1\leftarrow\max(\lambda_1,\varepsilon)$，其余 $\lambda\ge 2>0$，无需改动。
+- 恒等 $\sigma_1=\sigma_2=1$：$\lambda_1=0$，$\lambda_2=\lambda_{3,4}=2$——接近无扭曲时 twist 方向曲率趋零，与旋转零空间一致。
+
+3D（式 30）：三个 twist 特征值 $2-4/(\sigma_j+\sigma_k)$，其余为 $2$。
+
+---
+
+## 6. 实例：MIPS 能量
+
+### 6.1 不变量形式
+
+$$
+\Psi_{\mathrm{MIPS}} = \frac{\sigma_1}{\sigma_2}+\frac{\sigma_2}{\sigma_1}
+= \frac{\sigma_1^2+\sigma_2^2}{\sigma_1\sigma_2}
+= \frac{I_2}{I_3}.
+\tag{16}
+$$
+
+一阶导：
+
+$$
+\Psi_1=0,\quad
+\Psi_2=\frac{1}{I_3},\quad
+\Psi_3=-\frac{I_2}{I_3^2}.
+$$
+
+二阶导：
+
+$$
+\Psi_{11}=0,\quad
+\Psi_{12}=-\frac{1}{I_3^2},\quad
+\Psi_{22}=\frac{2I_2}{I_3^3},\quad
+\Psi_{33}=\frac{6I_2^2-2I_2 I_3^2}{I_3^4}\ \text{（等）}.
+$$
+
+### 6.2 特征对
+
+**Twist / Flip**（代入式 10–11）：
+
+$$
+\lambda_1^{2D} = \frac{2}{I_3} - \frac{I_2}{I_3^2},\quad \mathbf{e}_1=\mathbf{t};
+\qquad
+\lambda_2^{2D} = \frac{2}{I_3} + \frac{I_2}{I_3^2},\quad \mathbf{e}_2=\mathbf{l}.
+\tag{17}
+$$
+
+**Scaling**（耦合）：$\mathbf{A}$ 非对角。记 $\alpha=I_2^2-3I_3^2$，则
+
+$$
+\lambda_{3,4}^{2D}
+= \frac{I_2\bigl(I_2 \pm \alpha\bigr)}{2I_3^2},
+\quad
+\mathbf{e}_{3,4} \propto \mathbf{d}_1 \pm \beta\mathbf{d}_2,
+\quad
+\beta = \frac{I_2}{\sigma_2^2-\sigma_1^2+\alpha}.
+\tag{18}
+$$
+
+$I_3\to 0$ 时 $\Psi\to\infty$，天然惩罚翻转——与 [SLIM](几何优化-SLIM.md) 中 flip-preventing 能量精神一致，但 MIPS 直接牛顿需 PSD 投影。
+
+---
+
+## 7. 实例：Symmetric Dirichlet（简述）
+
+$$
+\Psi_{\mathrm{SD}}^{2D} = \frac12\left(I_2 + \frac{I_2}{I_3^2}\right).
+$$
+
+Scaling 解耦，四个闭式特征对（论文式 31）：
+
+$$
+\lambda_1 = 1+\frac{3}{\sigma_1^4},\ \mathbf{e}_1=\mathbf{d}_1;\quad
+\lambda_2 = 1+\frac{3}{\sigma_2^4},\ \mathbf{e}_2=\mathbf{d}_2;
+$$
+
+$$
+\lambda_3 = 1+\frac{1}{I_3^2}+\frac{I_2}{I_3^3},\ \mathbf{e}_3=\mathbf{l};\quad
+\lambda_4 = 1+\frac{1}{I_3^2}-\frac{I_2}{I_3^3},\ \mathbf{e}_4=\mathbf{t}.
+$$
+
+论文 Fig. 3 用 Symmetric Dirichlet + 本方法做百万三角面参数化；与 [AQP](几何优化-AQP.md) 的加速策略不同，此处是**真二阶**曲率 + 解析投影。
+
+---
+
+## 8. 投影牛顿算法
 
 ```
-输入：三角网格 M，能量类型（ARAP / MIPS / ...），初始映射 u⁰
-输出：优化后的映射 u*
+输入：网格 M，能量 Ψ（ARAP / MIPS / SD / …），初值 u⁰（如 Tutte）
+输出：优化映射 u*
 
-1. 用 Tutte 或 DCP 初始化 u⁰
-
-2. for k = 0, 1, 2, ... (直到收敛):
-   a. 对每个三角形 t 计算变形梯度 F_t 及其 SVD 分解
-   b. 计算不变量 I1(F_t), I2(F_t)
-   c. 计算能量值 E 及其梯度 g（Ψ₁, Ψ₂ 的组合）
-   d. 计算 Hessian H 的 eigen system：
-      - 对各不变量按 1.5.2 节分解
-      - 组合得到总 Hessian 的特征值与特征向量
-   e. 将 Hessian 投影到半正定空间：λ_i ← max(λ_i, ε)
-   f. 求解 H_PSD · Δu = -g（稀疏线性系统）
-   g. 线搜索确定步长 α
-   h. 更新：u^{k+1} = u^k + α · Δu
-
-3. 返回映射 u*
+repeat until ‖∇Ψ‖ < tol:
+  for each quadrature point q:
+    1. 计算 F_q 的 SVD，σ_i，S-不变量 I_1,I_2,I_3
+    2. 计算 Ψ_i, Ψ_ij
+    3. 闭式组装 twist / flip 特征对（式 10–11）
+    4. 构造 scaling 矩阵 A（式 12）；若解耦用式 13，否则解 2×2/3×3
+    5. PSD 投影：λ_i ← max(λ_i, ε)
+    6. H_q^+ = Σ_i λ_i^+ e_i e_i^T
+  装配 H^+ = Σ_q |q| (∂F/∂x)^T H_q^+ (∂F/∂x)
+  解 H^+ Δu = −∇Ψ
+  线搜索（Symmetric Dirichlet 等需 backtracking 防翻转）
+  u ← u + α Δu
 ```
 
-**与 ARAP 对比**：ARAP 采用交替优化（Local + Global），全局步实质上是求解一个 **cot-Laplacian 线性系统**，这相当于使用固定近似 Hessian 的梯度下降——收敛较慢（通常需数百次迭代）。而对 Hessian 的解析投影使得牛顿法每次迭代利用了**真实的二阶曲率信息**，在解附近的收敛速度是 **超线性到二次**的，对于高扭曲网格可大幅减少迭代次数。
+**与 ARAP local-global 对比**：全局步仅解 cot-Laplacian，等价于固定代理 Hessian 的梯度法；解析投影牛顿在解附近具**超线性/二次**收敛，高畸变网格迭代次数显著减少（论文 Fig. 6：与 SLIM、composite majorization、数值投影牛顿对比）。
+
+---
+
+## 9. 小结
+
+| 步骤 | 内容 |
+| :--- | :--- |
+| 不变量 | $I_1=\mathrm{tr}(S)$，$I_2=\|F\|^2$，$I_3=\det(S)$ |
+| Hessian 展开 | 式 (4)：不变量 Hessian + 外积项 |
+| 闭式一半 | twist $\mathbf{t}$、flip $\mathbf{l}$ 及 $\lambda$（式 10–11） |
+| 剩余 | scaling 矩阵 $\mathbf{A}$；ARAP 解耦，MIPS 二次方程 |
+| 应用 | PSD 投影 + 牛顿；ARAP / MIPS / Symmetric Dirichlet 等 |
+
+---
+
+## 参考文献
+
+- Smith B., de Goes F., Kim T. *Analytic eigensystems for isotropic distortion energies*. ACM TOG, 2019.
+- Chao I., et al. *A simple geometric model for elastic deformations*. SIGGRAPH 2010.
+- Sorkine O., Alexa M. *As-rigid-as-possible surface modeling*. SGP 2007.
+- Rabinovich M., et al. *Scalable locally injective mappings*. SIGGRAPH 2017.
+- Kovalsky S., et al. *Accelerated quadratic proxy for geometric optimization*. SIGGRAPH 2016.

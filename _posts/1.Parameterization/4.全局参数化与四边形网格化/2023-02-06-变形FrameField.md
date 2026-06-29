@@ -1,354 +1,264 @@
 ---
 layout: post
-title: "四边形网格化-变形FrameField"
-categories: [Parameterization, TechOther]
+title: "四边形网格化 — 变形 Frame Field"
+category: Parameterization
+categories: ["Parameterization", "Parameterization-QuadRemeshing"]
+mathjax: true
 ---
 
-## 变形 Frame Field：通过几何变形来生成四边形网格
+> **论文**：Daniele Panozzo, Enrico Puppo, Marco Tarini, Olga Sorkine-Hornung. [*Frame Fields: Anisotropic and Non-Orthogonal Cross Fields*](https://doi.org/10.1145/2601097.2601179). ACM Transactions on Graphics (SIGGRAPH), 33(4), 2014.
 
-这篇方法的出发点和前面常见的 `cross field -> seamless parameterization -> quad mesh` 路线不太一样。  
-主流方法通常是在**固定曲面**上直接设计一个 cross field，再想办法把它变成参数化；  
-而这里的思路是：如果原曲面上的方向结构太复杂，不如先轻微地**变形曲面本身**，把一个一般的 frame field 变成更规则的 cross field，再在变形后的曲面上生成四边形网格，最后把网格映回原曲面。
+## 概述
 
-所以这篇方法的核心不是“在原曲面上硬求一个完美 cross field”，而是：
+**Frame field** 是 **cross field** 的推广：在每个切平面上给出一组四个方向 $\langle \mathbf{v}, \mathbf{w}, -\mathbf{v}, -\mathbf{w}\rangle$，但 $\mathbf{v}$ 与 $\mathbf{w}$ **不必正交、不必等长**，可编码各向异性、缩放与剪切。它表示切丛上光滑变化的线性变换。
 
-> 先在原曲面上给出一个想要跟随的 frame field，  
-> 再通过几何变形把这个 frame field 扭成一个更容易做 quad meshing 的 cross field。
+本文核心思路与主流 `cross field → seamless parameterization → quad mesh` 不同：
 
-## 1. 方法总览
+> 不在原曲面上硬把 frame field 投影成 cross field，而是**变形曲面本身**，使 frame field 在变形域中成为 cross field，再做规则四边形网格化，最后映回原曲面。
 
-下图给出了整篇方法的整体流程：
+| 对比项 | 主流 cross field 路线 | 变形 Frame Field |
+| :--- | :--- | :--- |
+| 几何 | 原曲面固定 | 允许辅助变形 |
+| 方向场 | 直接设计 cross | 设计更一般的 frame |
+| 拓扑 | 显式处理奇异点、matching | 变形后借用标准 MIQ |
+| 输出 | 无缝参数化 / 规则 quad | 服从设计场的各向异性 quad |
+
+---
+
+## 1. 方法总览（Figure 1）
 
 ![image-20250923104719017](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250923104719017.png)
 
-图中的流程可以概括为：
+论文 Figure 1 的五步流程（从左到右）：
 
-1. 在输入曲面上给定一组稀疏约束；
-2. 由这些稀疏约束插值得到一个稠密的 `frame field`；
-3. 通过对曲面做变形，把这个一般的 frame field 变成变形域上的 `cross field`；
-4. 用这个 cross field 引导生成一个规则的四边形网格；
-5. 最后把得到的 quad mesh 再变形回原始曲面。
+| 阶段 | 内容 | 性质 |
+| :--- | :--- | :--- |
+| **① 稀疏约束** | 用户在输入曲面上放置绿色约束块 | 指定局部方向、尺度、剪切 |
+| **② 稠密 frame field** | 由约束插值得到全场"毛发"状 frame | **非均匀、各向异性、非正交** |
+| **③ 曲面变形** | 将曲面形变，使 frame 在变形域中变为 cross | frame → cross 的"扭曲"被吸收进几何 |
+| **④ 均匀四边形化** | 在变形曲面上生成黄色规则 quad 网格 | **均匀、各向同性、正交** |
+| **⑤ 逆变形** | 将 quad 映回原曲面（热力图表示单元面积） | **非均匀、各向异性、非正交**，服从原 frame |
 
-最终得到的网格，一般会是：
+论文原话：*Given a sparse set of constraints … we interpolate a dense, non-uniform, anisotropic and non-orthogonal frame field. We then deform the surface to warp this frame field into a cross field … Finally, we deform the resulting quad mesh back onto the original surface.*
 
-- 在原曲面上**非均匀**的；
-- 各向异性的；
-- 不一定严格正交的；
-- 但它会更忠实地跟随用户给定的 frame field。
+最终网格**不追求最规则**，而追求**最服从用户给定的方向与尺寸设计**。
 
-因此，这个方法特别适合下面这类问题：
+---
 
-- 用户想在曲面上指定一些明显的方向趋势；
-- 这些方向趋势未必天然构成正交 cross field；
-- 但又希望最后得到的 quad mesh 尽量服从这些设计意图。
+## 2. 为何从 frame field 出发
 
-## 2. 为什么要从 frame field 出发，而不是直接从 cross field 出发
+**Cross field** 与四边形局部结构天然对应（两组正交、四重对称方向），但设计意图往往是更一般的方向框架：
 
-在普通的 quad meshing 方法里，常常直接设计 cross field，因为 cross field 与四边形网格的局部结构天然对应。  
-但这样做有一个限制：cross field 默认对应的是“局部正交、四重对称”的结构。
+- 两方向不必正交；
+- 长度可不等（各向异性）；
+- 可含明显剪切（skew）。
 
-而实际设计中，人们往往更容易先想到一组更一般的方向框架，也就是 `frame field`：
+这类结构用 **frame field** 表达更自然，却不能直接用于标准 quad meshing。
 
-- 两个方向不一定严格正交；
-- 长度不一定相等；
-- 甚至还可能包含明显的各向异性。
+关键洞见（Lemma 3.1）：任意 frame 可唯一分解为 **cross + SPD 线性映射**——不是丢掉 frame，而是把它解释为"某个 cross 经局部变形后的像"。于是问题变为：**找一个几何变形，使该 frame 在新几何里成为 cross field**。
 
-这类 frame 更贴近“设计意图”，但它并不能直接拿来做标准 quad meshing。  
-所以这里的方法没有强行在原曲面上把 frame field 投影成 cross field，而是走了一条更灵活的路：
+---
 
-> 找一个局部线性变换，把 frame field 看成某个 cross field 经过变形后的结果。
-
-也就是说，原始的 frame field 不是被丢掉，而是被解释为“变形后的 cross field 像”。
-
-## 3. frame field 与 cross field 的对应关系
-
-这一点由下面这个引理给出：
+## 3. Frame 与 Cross 的对应关系（Lemma 3.1）
 
 ![image-20250923105418255](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250923105418255.png)
 
-图中的结论可以直观理解为：
-
-对于切平面上的一个 frame
+**Lemma 3.1.** 设 $f_p = \langle \mathbf{v}, \mathbf{w}, -\mathbf{v}, -\mathbf{w}\rangle$ 为切平面 $\mathbf{T}_p\mathcal{S}$ 上的 frame。则存在唯一的 cross
 
 $$
-f_p=\langle v,w,-v,-w\rangle,
+\mathbf{x} = \langle \mathbf{u}, \mathbf{u}^\perp, -\mathbf{u}, -\mathbf{u}^\perp\rangle
 $$
 
-总存在唯一的：
-
-- 一个 cross field
-  $$
-  x=\langle u,u^\perp,-u,-u^\perp\rangle,
-  $$
-- 以及一个对称正定线性映射 `W`
-
-使得
+与唯一的 **SPD** 线性映射 $\mathbf{W}$，使得
 
 $$
-f_p = Wx.
+f_p = \mathbf{W}\mathbf{x} = \langle \mathbf{W}\mathbf{u}, \mathbf{W}\mathbf{u}^\perp, -\mathbf{W}\mathbf{u}, -\mathbf{W}\mathbf{u}^\perp\rangle
 $$
 
-这句话的几何意义非常重要：
+**几何含义**：
 
-- `cross field` 代表一个“理想的、正交的、局部规则的方向结构”；
-- `W` 代表局部的拉伸、缩放和剪切；
-- `frame field` 则可以看成这个理想结构在某种局部变形作用后的结果。
+| 对象 | 含义 |
+| :--- | :--- |
+| $\mathbf{x}$ | 理想的正交、四重对称方向结构 |
+| $\mathbf{W}$ | 局部拉伸、缩放、剪切 |
+| $f_p = \mathbf{W}\mathbf{x}$ | frame 是 cross 经 $\mathbf{W}$ 作用后的结果 |
 
-因此，方法的核心逻辑就变得很自然：
+**Definition 3.2**：frame field $\mathcal{F}$ 称为连续/光滑，若其分解得到的 cross 场 $\mathcal{X}$ 与 SPD 张量场 $\mathbf{W}$ **分别**连续/光滑。论文通过分别优化光滑 cross 与光滑 $\mathbf{W}$ 来生成光滑 frame field。
 
-1. 原曲面上我们有一个更一般的 frame field；
-2. 我们希望找到一个几何变形，使这个 frame field 在变形域中对应到一个真正的 cross field；
-3. 然后在变形域里做规则 quad meshing；
-4. 最后再拉回原曲面。
+### 3.1 离散表示
 
-换句话说，这个方法的关键洞见是：
+在三角网格 $M$ 上，frame field **逐三角形常值**（piecewise constant）。三角形 $t$ 上的 frame $f_t$ 用 Lemma 3.1 的两部分表示：
 
-> 不是把 frame field 直接硬改成 cross field，  
-> 而是寻找一个新几何，使它“在那个几何里”自然成为 cross field。
+- **Cross 部分** $\mathbf{x}_t$：相对三角形局部正交基 $\mathbf{B}_t$ 的一个角度（模 $\pi/2$ 等价类），同 [Ray et al. 2008]；
+- **SPD 部分** $\mathbf{W}_t$：相对同一基 $\mathbf{B}_t$ 的 $2\times 2$ SPD 矩阵。
 
-## 4. 什么叫一个 discrete cross field 是 smooth 的
+每个三角形基 $\mathbf{B}_t$ 不同，且除特殊情形外无法全局选一致光滑基（hairy ball theorem）——比较相邻三角形上的 frame 必须先**换到同一参考系**。
 
-一旦我们把问题转移到变形域上的 cross field，就需要定义“什么样的 cross field 是平滑的”。
+---
+
+## 4. 平滑 cross field 与换基（Figure 3 配图）
 
 ![image-20250923105930362](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250923105930362.png)
 
-这张图表达的核心是：  
-如果两个相邻三角形上的 cross 在统一参考系下差异很小，那么这个离散 cross field 就是 smooth 的。
+离散 **cross field** 称为 smooth，若它最小化 [Ray et al. 2008] 的平滑能量（其 Eq. 16），即相邻 cross 在统一参考系下差异小。
 
-这里的关键点不在于“每个三角形内部怎样”，而在于“相邻三角形之间怎样比较”。  
-因为相邻三角形各自有自己的局部基底，所以必须先把它们搬到同一个参考系里，才能讨论两个 cross 的差异。
+设共享边的两三角形 $t_1, t_2$，局部基为 $\mathbf{B}_1, \mathbf{B}_2$，对应 frame $f_1=\{\mathbf{x}_1, \mathbf{W}_1\}$、$f_2=\{\mathbf{x}_2, \mathbf{W}_2\}$。
 
-这和很多方向场平滑能量的精神是一致的：
+**Cross 部分的换基**为旋转
 
-- 先消除基底差异；
-- 再比较相邻面片上的方向是否一致；
-- 差异越小，场越平滑。
+$$
+\mathbf{R}_{12} = \mathbf{B}_1 \mathbf{B}_2^{-1}
+$$
 
-在这个方法中，平滑 cross field 的目标不是最终目的，而是后面几何变形优化的“理想状态”。  
-也就是说，我们希望通过对曲面做适当形变，让原始 frame field 在新几何中尽量表现成一个平滑的 cross field。
+（图中大弧线箭头）。**SPD 部分**用同一 $\mathbf{R}_{12}$ 传输：若 $\mathbf{W}_2 = \mathbf{U}_2 \mathbf{P}_2 \mathbf{U}_2^T$（极分解），则在 $\mathbf{B}_1$ 参考系下
 
-## 5. 通过几何变形来逼近理想结构
+$$
+\mathbf{W}_2^{\text{(在 }\mathbf{B}_1\text{ 下)}} = \mathbf{R}_{12}\, \mathbf{W}_2\, \mathbf{R}_{12}^T
+$$
 
-有了上面的对应关系之后，问题就从“直接优化方向场”变成了“优化变形后的顶点位置”。
+之后才能在同一参考系下比较 $\mathbf{x}_1$ 与 $\mathbf{x}_2$、$\mathbf{W}_1$ 与传输后的 $\mathbf{W}_2$，计算平滑能量。这与 [向量场介绍](2017-08-01-向量场介绍.md) 中 quarter-turn matching 的精神一致：先消除基底差异，再比较方向。
 
-下面这张图给出了核心能量：
+---
+
+## 5. Frame field 插值（稀疏约束 → 稠密场）
+
+论文 Section 5，对应流程图阶段 ②。给定稀疏约束 $\hat{f}_1,\ldots,\hat{f}_k$（在三角形 $t_1,\ldots,t_k$ 上）：
+
+1. 对每个约束做 Lemma 3.1 分解，得 cross 约束 $\hat{\mathbf{x}}_j$ 与 SPD 约束 $\hat{\mathbf{W}}_j$；
+2. **Cross 部分**：用 [Bommes et al. 2009]（MIQ）求满足约束的平滑离散 cross field $\mathcal{X}$；
+3. **$\mathbf{W}$ 部分**：系数不能直接在各自局部基下做普通 Laplacian 插值（基不一致）。构造面基 **离散 Laplacian $\mathbf{L}^B$**（编码相邻面基之间的旋转），求解
+
+$$
+\mathbf{L}^B (\mathbf{w}_1^T, \ldots, \mathbf{w}_n^T)^T = 0, \qquad \mathbf{w}_j = \hat{\mathbf{w}}_j,\; j \in \mathcal{C}
+\tag{4}
+$$
+
+其中 $\mathbf{w}_i \in \mathbb{R}^3$ 打包对称矩阵 $\mathbf{W}_i$ 的三个独立系数，$\mathcal{C}$ 为约束面集。**Lemma 5.1**：若所有约束 $\hat{\mathbf{W}}_j$ 为 SPD，则插值结果 $\mathbf{W}_i$ 仍为 SPD。
+
+Frame field 诱导的度量 $g_{\mathcal{F}} = \mathbf{W}^{-T}\mathbf{W}^{-1}$。变形的目标是让该度量在变形域中接近欧氏度量，等价于把 frame **扭成** cross。
+
+---
+
+## 6. 几何变形能量（Figure 5 / 式 (5)）
 
 ![image-20250923110416518](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250923110416518.png)
 
-这个能量的形式和 ARAP 一类形变能量非常接近。  
-其目标是让每个三角形的变形 Jacobian
+三角形 $t$ 上，$\mathbf{W}_t$ 把 cross $\mathbf{x}_t$ 变为 frame $f_t$，故**理想局部变形**为 $\mathbf{W}_t^{-1}$：把当前 frame "拉直"为 cross。闭网格上无法每个三角形精确达到理想形变，故最小化 ARAP 型能量：
 
 $$
-J_t(p')
+\mathcal{E}(\mathbf{p}') = \sum_{t \in \mathcal{M}} \min_{\mathbf{Q}_t \in SO(3)} A_t \left\| \mathbf{J}_t(\mathbf{p}') - \mathbf{Q}_t \tilde{\mathbf{W}}_t^{-1} \right\|_F^2
+\tag{5}
 $$
 
-尽量接近一个“理想变换”
+| 符号 | 含义 |
+| :--- | :--- |
+| $\mathbf{p}'$ | 变形后顶点位置（优化变量） |
+| $\mathbf{J}_t(\mathbf{p}')$ | 三角形 $t$ 的变形 Jacobian（$3\times 3$，嵌入 $\mathbb{R}^3$） |
+| $\tilde{\mathbf{W}}_t$ | $\mathbf{W}_t$ 在全局 3D 坐标系下的 $3\times 3$ 版本 |
+| $\mathbf{Q}_t \in SO(3)$ | 局部最优旋转，吸收刚体转动自由度 |
+| $A_t$ | 三角形面积权重 |
 
-$$
-Q_t \tilde W_t^{-1}.
-$$
+思想对比：
 
-这里可以这样理解：
+- **传统**：固定几何，优化方向场；
+- **本文**：固定 frame 设计意图，**优化几何**，使 $\mathbf{J}_t \approx \mathbf{Q}_t \tilde{\mathbf{W}}_t^{-1}$。
 
-- `\tilde W_t^{-1}` 负责把原始 frame field 中的非正交、非均匀部分“校正掉”；
-- `Q_t \in SO(3)` 负责吸收局部刚体旋转自由度；
-- `J_t(p')` 是真正由顶点位置决定的局部变形。
+论文在 $\mathbb{R}^3$ 中做嵌入（而非 Nash 定理所需的高维嵌入），实践中足够将各向异性度量近似为欧氏度量。
 
-于是，这个优化就在寻找一个新的几何，使每个三角形的局部变形尽可能实现“把 frame 拉直成 cross”的理想效果。
+---
 
-从思想上说，这是一种非常漂亮的重写：
-
-- 传统方法是在固定几何上优化场；
-- 这里是在固定场的设计意图下，优化几何。
-
-## 6. 为什么这种方法有效
-
-这种方法有效的根本原因在于，四边形网格最喜欢的是一个“规则、正交、均匀”的方向结构。  
-如果原曲面上的目标方向本身带着明显的剪切、拉伸和非正交性，那么在原几何上直接求 quad mesh 往往会很困难。
-
-而一旦允许曲面先做适度变形，就可以把那些“不规则”吸收到几何变化里去。  
-这样一来，在变形后的域中，问题就变得更像标准的 cross-field-guided meshing：
-
-- cross 更平滑；
-- 方向更正交；
-- 生成的 quad 更规则。
-
-最后再把网格变回原曲面，于是得到的就不再是“均匀正交的标准 quad mesh”，而是一个：
-
-- 适应原始设计场的；
-- 带各向异性；
-- 带非均匀尺寸；
-- 但结构上仍然有 quad connectivity 的网格。
-
-所以这个方法追求的不是“最规则的四边形”，而是“最服从设计目标的四边形”。
-
-## 7. 数值求解：用 BCD 交替优化
-
-这类能量通常不能一步直接解出，所以文中采用了 `BCD`，也就是 `block coordinate descent`。
+## 7. 数值求解：BCD 交替优化
 
 ![image-20250923110121214](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250923110121214.png)
 
-图中给出的意思是：
+式 (5) 与 [Sorkine & Alexa 2007; Liu et al. 2008] 的 ARAP 能量同型，用 **Block Coordinate Descent** 交替：
 
-1. 固定局部旋转 `Q`，优化变形后的顶点位置 `p'`；
-2. 固定 `p'`，再更新每个三角形对应的局部旋转 `Q`；
-3. 交替进行，直到能量收敛。
+1. **固定 $\mathbf{Q}$，优化 $\mathbf{p}'$** → 解稀疏线性系统；
+2. **固定 $\mathbf{p}'$，优化 $\mathbf{Q}$** → 各三角形局部 Procrustes（SVD）。
 
-这和 ARAP 形变的经典求解方式很像：
+固定 $\mathbf{Q}$ 时，能量对 $\mathbf{p}'$ 的梯度为（式 (6)(7)）：
 
-- 一个子问题是线性系统；
-- 另一个子问题是局部 Procrustes 对齐；
-- 反复交替后，通常能比较稳定地得到一个局部最优解。
+$$
+\nabla \mathcal{E}(\mathbf{p}') = -4(\mathbf{L}\mathbf{p}' - \mathbf{b})
+$$
 
-因此，从算法实现角度看，这篇方法的优点之一就是：
+$$
+\mathbf{b}_i = \sum_{j \in \mathcal{N}(i)} \frac{1}{2}\Bigl(
+\cot\theta_{ij}\, \mathbf{Q}_{t(i,j)} \tilde{\mathbf{W}}_{t(i,j)}^{-1}
++ \cot\theta_{ji}\, \mathbf{Q}_{t(j,i)} \tilde{\mathbf{W}}_{t(j,i)}^{-1}
+\Bigr)(p_j - p_i)
+$$
 
-> 它虽然有明确的几何含义，但数值上并不是完全陌生的问题，而是能借用成熟的形变优化工具。
+$\mathbf{L}$ 为标准 cotan Laplacian；$t(i,j)$ 为半边 $(p_j-p_i)$ 左侧的三角形；$\theta_{ij}$ 为该三角形中与此半边相对的角。令 $\nabla\mathcal{E}=0$ 即 $\mathbf{L}\mathbf{p}'=\mathbf{b}$——与 [AQP](../3.几何优化方法/几何优化-AQP.md) 中 QP 步的 Laplacian 结构同源。
 
-## 8. 这篇方法的整体思路总结
+**初始化**：$\mathbf{p}'$ 取原网格顶点；$\mathbf{Q}$ 取接近单位阵的小随机旋转（帮助零曲率区域避免坏局部极小）。变形中自交（如 Figure 1 耳朵）可接受，无需特殊处理。
 
-如果把整篇文章压缩成一句主线，可以概括为：
+---
 
-> 先用稀疏约束定义一个更符合设计意图的 frame field，  
-> 再通过形变把这个 frame field 解释为某个平滑 cross field 在新几何中的像，  
-> 然后在新几何上做更规则的 quad meshing，  
-> 最后把网格映回原始曲面。
+## 8. Frame-field 对齐四边形化（Section 7）
 
-它和传统方法相比，最大的特点就是把“方向场设计”和“几何变形”绑在了一起。  
-也正因为如此，它更适合处理那些目标方向本身带有明显各向异性、非正交性或非均匀性的任务。
+变形后 frame field **未必精确**为 cross field（问题过约束）。后续步骤：
 
-## 9. 方法补充：这篇文章里隐含但值得说清的几点
+1. **提取 cross**：对每个变形三角形 $t'$，用变形 Jacobian $\mathbf{J}_t$ 得变形后 frame $f_{t'} = \mathbf{J}_t f_t$，再极分解取最近 cross；
+2. **平滑 cross field**：在变形网格上用 MIQ [Bommes et al. 2009] 平滑并参数化；若 frame 来自约束插值，**约束在变形域上保持**；
+3. **均匀 remesh**：用 [Ebke et al. 2013] 在变形曲面生成均匀 quad 网格；
+4. **逆变形**：连通性不变，用重心坐标将 quad 顶点映回原曲面 → 得到服从**原 frame field** 的各向异性网格。
 
-### 9.1 这不是在原曲面上直接构造 quad parameterization
+**奇异点**：变形后 MIQ 可能出现新奇异点，对应原场上**密度过渡**所需拓扑（Figure 5 Cigar 例子：两端尺度比 10:1）。
 
-这篇方法和很多 seamless parameterization 路线不同，它并没有把重点放在原曲面上的 `u,v` 参数函数。  
-它的中间核心对象是**变形域**，而不是参数域。
+与 **Anisotropic MIQ** [Bommes et al. 2009] 对比：后者在 cross field 拓扑固定后用梯度缩放单元，**不能**为尺度突变引入新奇异点；本文通过先变形几何，把自适应细分问题转化为变形域上的均匀细分问题。
 
-因此它更像：
+---
 
-- 先找一个“更好铺网格”的几何版本；
-- 再在那个几何版本上做 quad meshing。
+## 9. 与主流路线的对比
 
-### 9.2 它默认允许几何有一定自由度
+### 9.1 相同点
 
-因为优化变量直接包含变形后的顶点位置 `p'`，所以这种方法成立的前提之一是：  
-我们允许几何先做一个辅助变形。
+- 四边形网格化离不开方向场；
+- 希望边沿局部主方向排列。
 
-如果问题要求严格保持原始几何不动，那么这种方法的自由度会明显受限。  
-但如果目标是生成一张尽量服从方向设计意图的网格，而不是严格做原曲面上的无缝参数化，那么这种自由度反而是优势。
+### 9.2 核心区别
 
-### 9.3 它更偏设计驱动，而不是拓扑驱动
+| | 变形 Frame Field | MIQ / QuadCover 等 |
+| :--- | :--- | :--- |
+| 策略 | **改几何**使问题变简单 | **在原几何上**建模拓扑与参数化 |
+| 中间对象 | 变形域 | 参数域 / branch cover |
+| 输出 | 各向异性 quad mesh | 无缝 UV / 规则 quad layout |
 
-从整篇结构看，这个方法更强调：
+### 9.3 适用场景
 
-- 用户输入少量设计约束；
-- 插值得到合理 field；
-- 再通过几何变形实现网格生成。
+**更适合本文**：
 
-它并没有像 `N-Symmetric` 或 `QuadCover` 那样，把奇异点 index、turning number、branch cover、matching 这些拓扑对象放在中心位置。  
-因此它的表达更偏几何设计和形变优化，而不是偏拓扑建模。
+- 用户有明确方向/尺度/剪切设计；
+- 允许辅助几何变形；
+- 关注网格是否跟随设计场，而非原曲面无缝参数化。
 
-## 10. 与“方向场设计 -> 无缝参数化 -> MIQ”路线的对比
+**更适合 MIQ 路线**：
 
-为了方便对照，可以把这篇方法和 `D.0 四边形网格化总览-从方向场到无缝参数化与MIQ.md` 总结的主流路线放在一起看。
+- 需系统控制奇异点与 matching；
+- 几何不能动；
+- 需要 seamless parameterization。
 
-### 10.1 相同点
+---
 
-两类方法都有一个共同出发点：
+## 10. 小结
 
-- 都承认四边形网格化离不开方向场；
-- 都希望网格边跟随某种局部主方向；
-- 都在处理“局部方向如何变成全局 quad 结构”这个问题。
+> 当原曲面上的方向场过于复杂、难以直接变成规则 cross field 时，不必在原几何上硬解——可通过**辅助变形**，把方向结构"搬运"到更适合 quad meshing 的几何域，再映回。
 
-所以它们并不是完全无关的方法，而是在不同层面上解同一个问题。
+与 `N-RoSy → QuadCover → MIQ` 形成互补：
 
-### 10.2 最大区别：一个改几何，一个不改几何
+- **变形 Frame Field**：改几何以适应场；
+- **主流路线**：在原几何上显式处理场与参数化的拓扑约束。
 
-这篇 `变形FrameField` 方法的核心是：
+后续工作 [Jiang et al. 2015] *Frame Field Generation through Metric Customization* 将类似思想推广到**自定义 Riemann 度量**下的 cross field，无需显式 $\mathbb{R}^3$ 变形，但"frame = 某度量下的 cross"这一观点一脉相承。
 
-- 给定 frame field；
-- 优化变形后的曲面几何；
-- 在新几何里把 frame 变成更规则的 cross；
-- 做网格，再映回原曲面。
+---
 
-而 `D.0` 总结的主流路线基本默认：
+## 参考文献
 
-- 原曲面固定不动；
-- 直接在原曲面上设计 cross field；
-- 显式处理奇异点、period jumps、matching、branch cover；
-- 再求 seamless parameterization 或 mixed-integer 优化。
-
-因此可以一句话概括为：
-
-- 这篇方法：**通过变形把问题变容易。**
-- `D.0` 路线：**在原几何上直接把问题建模清楚。**
-
-### 10.3 对拓扑的处理方式不同
-
-`D.0` 里的主线非常强调：
-
-- 奇异点 index；
-- turning number；
-- period jumps；
-- matching；
-- branch cover；
-- seamless global parameterization。
-
-也就是说，这条路线把方向场的多值性和拓扑复杂性当作核心对象，显式编码、显式求解。
-
-而这篇方法则更强调：
-
-- 稀疏设计约束；
-- frame 与 cross 的局部线性对应；
-- 通过几何变形降低 field 的复杂度；
-- 用变形域上的规则网格去间接实现目标。
-
-所以：
-
-- `D.0` 路线更偏拓扑与参数化理论；
-- 这篇方法更偏几何变形与设计优化。
-
-### 10.4 输出结果的性质不同
-
-`D.0` 路线的典型输出是：
-
-- 一个无缝参数化；
-- 或一个由参数线诱导出的 quad layout；
-- 强调跨 chart 的整格一致性与可积性。
-
-这篇方法的典型输出则是：
-
-- 一个服从给定 frame field 的四边形网格；
-- 可以是非均匀、各向异性、非正交的；
-- 更强调“跟随设计意图”，而不一定追求标准意义上的 seamless UV 结构。
-
-### 10.5 适用场景不同
-
-这篇 `变形FrameField` 方法更适合：
-
-- 用户有较强的方向设计意图；
-- 希望网格明显贴合这些方向；
-- 允许几何先做辅助变形；
-- 更关注网格是否顺着设计场，而不是严格求一张原曲面上的无缝参数化。
-
-`D.0` 总结的那条路线更适合：
-
-- 需要系统理解 quad meshing 的主流理论；
-- 需要显式控制奇异点与拓扑；
-- 需要 seamless parameterization；
-- 不希望修改原始几何。
-
-## 11. 小结
-
-这篇方法最值得记住的一点，不是某个具体公式，而是它的整体视角：
-
-> 当原曲面上的方向场过于复杂、难以直接变成规则 cross field 时，  
-> 不一定非要在原几何上硬解；  
-> 也可以通过一个辅助变形，把方向结构“搬运”到一个更适合做 quad meshing 的几何域中。
-
-这条思路和前面主流的 `N-Symmetric -> QuadCover -> MIQ` 路线形成了很好的互补：
-
-- 前者强调“改几何来适应场”；
-- 后者强调“在原几何上显式处理场与参数化的拓扑约束”。
-
-从理解四边形网格化全景的角度看，这两类方法都很重要。  
-一个告诉我们如何严谨地处理方向场和无缝参数化，另一个则提醒我们：**形状本身也可以成为优化自由度。**
+- Panozzo D., Puppo E., Tarini M., Sorkine-Hornung O. *Frame Fields: Anisotropic and Non-Orthogonal Cross Fields*. SIGGRAPH 2014.
+- Bommes M., et al. *Mixed-integer quadrangulation*. SIGGRAPH 2009.（MIQ）
+- Ray N., et al. *Periodic global parameterization*. SIGGRAPH 2008.（cross field 平滑能量）
+- Ebke M., et al. *QEx*. SIGGRAPH 2013.（均匀 quad remesh）
+- Sorkine O., Alexa M. *As-rigid-as-possible surface modeling*. SGP 2007.
+- Jiang Y., et al. *Frame field generation through metric customization*. SIGGRAPH 2015.
