@@ -28,9 +28,11 @@ mathjax: true
 | Gortler et al. 2006 | 圆盘/环面 index 定理 | 任意拓扑 + 锥点 |
 | Tong et al. 2006 | 多 patch，$\pi/2$ holonomy | 单 patch $S_c$，$2\pi/q$ 倍数 |
 
-**$q$-CCM**（$q$-**convex combination maps**）是对经典 **Tutte 参数化**与 **Gortler 凸组合 / index counting** 的推广：$q$ 约束角度为 $2\pi/q$ 的有理倍数；四边形网格化取 $q=4$。直接求带锥角与 seam 旋转的 $q$-CCM 是**线性**问题；**局部单射性**则通过 **$q$-fold 分支覆盖** $\tilde{S}_q$ 上的 **mostly harmonic 1-form** 与 **index counting**（Theorem 6.1）证明——覆盖用于**证明**，HGP 算法在切开曲面 $S_c$ 上求解，**不必**显式构造 $\tilde{S}_q$。
+**$q$-CCM**（$q$-**convex combination maps**）是对经典 **Tutte 参数化**与 **Gortler 凸组合 / index counting** 的推广：$q$ 约束角度为 $2\pi/q$ 的有理倍数；四边形网格化取 $q=4$。直接求带锥角与 seam 旋转的 $q$-CCM 是**线性**问题；
 
----
+**局部单射性**则通过 **$q$-fold 分支覆盖** $\tilde{S}_q$ 上的 **mostly harmonic 1-form** 与 **index counting**（Theorem 6.1）证明——覆盖用于**证明**，HGP 算法在切开曲面 $S_c$ 上求解，**不必**显式构造 $\tilde{S}_q$。
+
+
 
 ## 2. $q$-CCM：定义、几何直觉与 Tutte 退化
 
@@ -70,8 +72,6 @@ $$
 z_j^a - z_i^a = e^{i\frac{2\pi r_{ij}}{q}}\,(z_j^b - z_i^b), \quad r_{ij} \in \{0,\ldots,q-1\}.
 \tag{6}
 $$
-
-> **与旧笔记的修正**：$q$ **不是**「每个角都等于 $2\pi/q$」，而是有理角的**分母**；$k_c,l_j,r_{ij}$ 各自为整数指标。
 
 ### 2.3 与 Tutte 参数化的关系
 
@@ -204,9 +204,6 @@ $$
 \tag{8}
 $$
 
-![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251107101000576.png)
-
-第二项将扇区 1 的边差旋转到扇区 0 坐标系后参与调和平均。高 degree 见附录 (14)。
 
 ---
 
@@ -222,9 +219,9 @@ $$
 
 ### 7.1 构造（图 A/B/C）
 
-给定 $q$-CCM $f$，定义 $f_n := e^{2\pi n i/q} f$。复制 $q$ 份 $S_c^0,\ldots,S_c^{q-1}$，按 (6) 将 seam 边粘合（像平行同向），得 $\tilde{S}_q$，覆盖映射 $P_q:\tilde{S}_q\to S$。
+给定 $q$-CCM $f$，定义 $f_n := e^{2\pi n i/q} f$。**复制 $q$ 份** $S_c^0,\ldots,S_c^{q-1}$，按 (6) 将 seam 边粘合（像平行同向），得 $\tilde{S}_q$，覆盖映射 $P_q:\tilde{S}_q\to S$。
 
-![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250924184009210.png)
+
 
 - **图 A/B**：$q$ 份副本沿 seam 粘合；
 - **图 C**：覆盖上内部顶点常为 **wheel**，便于 index counting。
@@ -249,7 +246,10 @@ $$
 
 ### 7.3 Mostly harmonic 1-forms
 
-$q$-CCM 在 $\tilde{S}_q$ 上诱导 2 维实空间 $\tilde{\rho}^\alpha,\tilde{\rho}^\beta$；$\tilde{\rho}=a\tilde{\rho}^\alpha+b\tilde{\rho}^\beta$ 用于证明。
+$q$-CCM 在 $\tilde{S}_q$ 上诱导 **2 维实空间** $\tilde{\rho}^\alpha,\tilde{\rho}^\beta$；
+$$
+\tilde{\rho}=a\tilde{\rho}^\alpha+b\tilde{\rho}^\beta
+$$
 
 ### 7.4 锥点「展开」直觉（含修正说明）
 
@@ -263,7 +263,9 @@ $$
 
 > **修正**：这**不**意味着 $\tilde{S}_q$ 上「无锥点」或必为圆盘；分歧点仍在，$\chi(\tilde{S}_q)$ 由 (RH) 决定。旧笔记「锥点消除」应理解为**指标/bookkeeping 上的展开**，而非拓扑上变成无奇异圆盘。
 
----
+
+
+
 
 ## 8. Riemann–Hurwitz 与 Gauss–Bonnet
 
@@ -311,6 +313,8 @@ $$
 穿孔环面 $g=1,m=1$，$\chi(S)=-1$；两锥 $k=5,q=4$；边界 turning $l=-2$。$\tilde{S}_q$ 有 2 边界分量、2 分歧点各指数 4，得 $\chi(\tilde{S}_q)=-10$：亏格 5、双穿孔曲面——**远非圆盘**，但 Theorem 6.1 仍适用。
 
 ---
+
+
 
 ## 9. Theorem 6.1 与完整 index counting
 
@@ -379,7 +383,9 @@ $\mathrm{LHS}=\mathrm{RHS}$ 且 $s\le 0$、其余项由正向定向与角正确�
 
 设 $f$ 为 $S$ 上的 $q$-CCM，锥点与角度系数给定 seam 旋转约束。若锥三角形与边界三角形以**保持定向**的方式映射，且诱导度量实现了目标锥角与边界转角，则由 **Theorem 6.1**（覆盖上 index counting，而非一般情形的 Tutte 全局嵌入），**$f$ 是局部单射的**。
 
----
+
+
+
 
 ## 10. HGP 算法实现
 
@@ -443,29 +449,6 @@ $$
 
 Lipman 凸化约束及 **BDHM**（陈仁杰等，有界畸变调和映射）与 HGP 的 frame 形式精神相通；上式为论文实现的最小化核心。
 
-### 10.4 成功后检验
-
-检验锥角 $\approx 2\pi k_i/q$、边界转角 $\approx 2\pi l_j/q$、$F_{cb}$ 无翻转——线性解不自动保证度量角达标。
-
-### 10.5 FastHGP
-
-[FastHGP](扭曲有界-全局调和参数化2-FastHGP.md)：调和零空间维数 $\dim\approx 2(|\partial V|+|C|+n-1)$，KKT 矩阵 $K$、子空间基 $H$、**ATP** 初值、Projected Newton；Theorem 6.1 仍只需 $F_{cb}$。
-
----
-
-## 11. 小结
-
-| 概念 | 要点 |
-| :--- | :--- |
-| **$q$-CCM** | (6)(7)(14) 的解；$q$-convex **combination** |
-| **几何四条件** | 直觉，非独立定义 |
-| **$\tilde{S}_q$** | 证明用；旋转副本 + 粘合 |
-| **Lemma 5.2** | $\gcd(k_i,q)$ 点，$e_P=q/\gcd(k_i,q)$ |
-| **(GB)** | $\|C\|$=锥点个数 |
-| **Theorem 6.1** | (9)(10) ⟹ $s=0$ ⟹ 局部单射 |
-| **HGP** | 硬 (6) + 软调和 + $F_{cb}$ frames |
-
----
 
 ## 参考文献
 
