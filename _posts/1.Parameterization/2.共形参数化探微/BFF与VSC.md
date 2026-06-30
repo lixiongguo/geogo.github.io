@@ -191,15 +191,11 @@ $$
 
 用 Dirichlet 能量度量面积扭曲：
 
-![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251010143206213.png)
-
 $$
 E_D(\gamma):=\int_{M_\gamma}|\nabla u|^2\,dA.
 $$
 
 仅最小化 $E_D$ 为 ill-posed（延长 $\gamma$ 可无限降扭曲），需约束长度：
-
-![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251010143507440.png)
 
 $$
 E_L(\gamma):=\tfrac12\int_\gamma ds,\qquad

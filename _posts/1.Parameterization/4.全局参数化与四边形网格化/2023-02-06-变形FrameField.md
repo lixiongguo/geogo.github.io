@@ -61,8 +61,6 @@ mathjax: true
 
 ## 3. Frame 与 Cross 的对应关系（Lemma 3.1）
 
-![image-20250923105418255](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250923105418255.png)
-
 **Lemma 3.1.** 设 $f_p = \langle \mathbf{v}, \mathbf{w}, -\mathbf{v}, -\mathbf{w}\rangle$ 为切平面 $\mathbf{T}_p\mathcal{S}$ 上的 frame。则存在唯一的 cross
 
 $$
@@ -140,8 +138,6 @@ Frame field 诱导的度量 $g_{\mathcal{F}} = \mathbf{W}^{-T}\mathbf{W}^{-1}$�
 ---
 
 ## 6. 几何变形能量（Figure 5 / 式 (5)）
-
-![image-20250923110416518](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250923110416518.png)
 
 三角形 $t$ 上，$\mathbf{W}_t$ 把 cross $\mathbf{x}_t$ 变为 frame $f_t$，故**理想局部变形**为 $\mathbf{W}_t^{-1}$：把当前 frame "拉直"为 cross。闭网格上无法每个三角形精确达到理想形变，故最小化 ARAP 型能量：
 

@@ -42,7 +42,7 @@ $$
 \min_{\pi \in \Pi(\mu,\nu)} \int c \, d\pi \;=\; \sup_{(\phi,\psi)} \left\{ \int_X \phi \, d\mu + \int_Y \psi \, d\nu \;\mid\; \phi(x) + \psi(y) \leq c(x,y) \right\}
 $$
 
-其中满足不等式约束的函数对 $$(\phi,\psi)$$ 称为 （Kantorovich Potential）**,$\psi$ 可通过 $$c$$-变换由 $$\phi$$ 确定。
+其中满足不等式约束的函数对 $$(\phi,\psi)$$ 称为 （Kantorovich Potential）,$\psi$ 可通过 $$c$$-变换由 $$\phi$$ 确定。
 
 **Kantorovich 势**也称为"**影子价格**"：在最优传输的经济解释中，$$\phi(x)$$ 代表产地 $$x$$ 的资源"出厂价"，$$\psi(y)$$ 代表消费地 $$y$$ 的"收货价"。约束 $$\phi(x) + \psi(y) \leq c(x,y)$$ 意味着买入价与卖出价之差不高于运输成本，若差价高于运费，商人可倒卖牟利。当等号成立时，价格场 $$(\phi,\psi)$$ 达到均衡，此时对偶目标 $$\int \phi d\mu + \int \psi d\nu$$ 达到最大的社会总剩余，而最优传输计划正是由这些均衡价格导出的资源配置。
 
