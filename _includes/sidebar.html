@@ -132,35 +132,42 @@ function toggleSidebarGroup(el) {
 	</ul>
 </div>
 
-<!-- 
+<!-- 机器学习 - 文章目录树 -->
 <div class="sidebar-item sidebar-nav">
-  	<ul class="nav">
-			<li class="nav-title">机器学习</li>
-    {% assign ml_cats = "ProbabilityGraphModel|BasicGenerativeModel|DiffusionModel|DiffusionSupplement|ReinforcementLearning" | split: "|" %}
-    {% for category in site.categories %}
-    {% assign cat_name = category | first %}
-    {% assign cat_count = category | last | size %}
-    {% if ml_cats contains cat_name %}
-    {% case cat_name %}
-	      {% when 'ProbabilityGraphModel' %}{% assign cat_display = '1. 概率图模型' %}
-		  {% when 'BasicGenerativeModel' %}{% assign cat_display = '2. 基础生成模型' %}
-		  {% when 'DiffusionModel' %}{% assign cat_display = '3. 扩散模型' %}
-		  {% when 'DiffusionSupplement' %}{% assign cat_display = '4. 扩散模型补充' %}
-		  {% when 'ReinforcementLearning' %}{% assign cat_display = '5. 强化学习' %}
-		  {% else %}{% assign cat_display = cat_name %}
-    {% endcase %}
-	    <li>
-	    	<a class="nav-item algo-link-with-icon" href="{{ root_url }}/{{ site.category_dir }}#{{ cat_name }}">
-				<span class="algo-mini-icon" aria-hidden="true"></span>
-				<span class="name">{{ cat_display }}</span>
-				<span class="cat-count">({{ cat_count }})</span>
-	    	</a>
- 		</li>
-    {% endif %}
+  <ul class="nav">
+    <li class="nav-title">🤖 机器学习</li>
+    {% assign ml_cats = "ProbabilityGraphModel|DiffusionModel|DiffusionSupplement|ReinforcementLearning" | split: "|" %}
+    {% assign ml_displays = "概率图模型|扩散模型|扩散模型补充|强化学习" | split: "|" %}
+    {% for cat in ml_cats %}
+      {% assign cat_idx = forloop.index0 %}
+      {% assign cat_display = ml_displays[cat_idx] %}
+      {%- assign cat_posts = '' | split: '' -%}
+      {%- for post in site.posts -%}
+        {%- if post.categories contains cat -%}
+          {%- assign cat_posts = cat_posts | push: post -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {%- assign post_count = cat_posts | size -%}
+      {% if post_count > 0 %}
+      <li class="sidebar-post-group">
+        <a class="nav-item sidebar-cat-toggle" href="javascript:void(0)" onclick="toggleSidebarGroup(this)" title="展开/折叠">
+          <span class="toggle-icon">▾</span>
+          <span class="name">{{ cat_display }}</span>
+        </a>
+        <ul class="sidebar-post-list" style="display:block;">
+          {% for post in cat_posts reversed %}
+          <li class="sidebar-post-item">
+            <a href="{{ post.url | relative_url }}" class="sidebar-post-link" title="{{ post.title | escape }}">
+              {{ post.title | escape }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </li>
+      {% endif %}
     {% endfor %}
-	  </nav>
-	</ul>
-</div> -->
+  </ul>
+</div>
 
 <!-- 
 <div class="sidebar-item sidebar-nav">
