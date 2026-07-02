@@ -12,27 +12,26 @@ Flow Matching 是一个 **simulation-free** 的训练 CNF 方法，基于对**�
 
 ![image-20250731091244588](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250731091244588.png)
 
-$$p_t(x) = [\phi_t]_\sharp \, p_0(x), \quad \frac{\partial p_t(x)}{\partial t} = -\text{div}(v_t(x) p_t(x))$$
-
+$$
+p_t(x) = [\phi_t]_\sharp \, p_0(x), \quad \frac{\partial p_t(x)}{\partial t} = -\text{div}(v_t(x) p_t(x))
+$$
 即密度变化 = 概率质量的流入/流出。
 
 ![image-20250731091346094](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250731091346094.png)
 
 > 核心思路：不求解单个复杂的映射函数，而是用一个向量场（velocity field）驱动连续变换。密度变化由散度（divergence）刻画——散度为正表示概率质量流出，散度为负表示流入。由此将生成问题转化为学习一个"引导"概率流动的向量场。
 
-![image-20250709194547360](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250709194547360.png)
+
 
 > Flow Matching 兼容一族通用的高斯概率路径，用于在噪声和数据样本之间进行变换——这包含了现有的扩散路径作为特例。
 
 Flow Matching 也有更好的生成路径。非 diffusion probability paths 实现了更高效的 CNF 训练。
 
-![image-20250709195019956](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250709195019956.png)
+
 
 > Flow Matching 为训练扩散模型提供了一种替代方案。更重要的是，它为使用非扩散概率路径训练 CNF 打开了大门。
 
 OT（Optimal Transport）Displacement path 比 diffusion path 要更加高效：
-
-![image-20250709195115193](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250709195115193.png)
 
 > 特别值得关注的是使用最优传输（OT）位移插值来定义条件概率路径。这些路径比扩散路径更高效，提供更快的训练和采样，并具有更好的泛化能力。在 ImageNet 上使用 Flow Matching 训练 CNF 证明了这一点。
 
@@ -56,8 +55,6 @@ $$p_t(x) = p_0(\phi_t^{-1}(x)) \left|\det \frac{d\phi_t^{-1}(x)}{dx}\right|$$
 
 用神经网络建模向量场 $v_t$：
 
-![image-20250709202054578](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250709202054578.png)
-
 > 用神经网络来建模向量场 $v_t$：$v_t(x; \theta)$，其中 $\theta$ 为网络参数。
 
 ## 3. Flow Matching 训练目标
@@ -70,17 +67,15 @@ $$\mathcal{L}(\theta) = \text{KL}(p_{\text{data}}(x) \| p_1(x; \theta)) = -\math
 
 我们的目的是训练一个能回归出目标向量场的模型。事实上，我们可以通过 FM 构造 OT 路径：
 
-![image-20250709200244714](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250709200244714.png)
+
 
 > 我们提出 Flow Matching 目标，一个简单直观的训练目标：回归到能生成期望概率路径的目标向量场。
 
-![image-20250709200515486](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250709200515486.png)
+
 
 > 我们在 ImageNet 这一大规模高多样性的图像数据集上验证了 Flow Matching 及通过最优传输路径的构造。我们发现可以轻松训练模型以达到有竞争力的结果。
 
 对应的 Flow Matching 的训练目标如下，就是匹配一个向量场 $u_t(x)$：
-
-![image-20250709201535903](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250709201535903.png)
 
 $$\mathcal{L}_{\text{FM}}(\theta) = \mathbb{E}_{t, p_t(x)} \| v_t(x; \theta) - u_t(x) \|^2$$
 

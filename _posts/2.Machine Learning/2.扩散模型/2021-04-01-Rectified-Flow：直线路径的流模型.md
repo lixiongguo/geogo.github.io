@@ -66,12 +66,12 @@ $$T: \mathbb{R}^d \to \mathbb{R}^d, \quad Z_1 = T(Z_0) \sim \pi_1 \;\text{when}\
 
 非线性版：
 
-![image-20250711162245044](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250711162245044.png)
+设 $X = \{X_t: t \in [0,1]\}$ 为连接 $X_0$ 和 $X_1$ 的任意时间可微随机过程，$\dot{X}_t$ 为其时间导数。
 
-> 设 $X = \{X_t: t \in [0,1]\}$ 为连接 $X_0$ 和 $X_1$ 的任意时间可微随机过程，$\dot{X}_t$ 为其时间导数。非线性 rectified flow 定义为 $dZ_t = v^*(Z_t, t)dt$（$Z_0 = X_0$），其中 $v^*(z,t) = \mathbb{E}[\dot{X}_t | X_t = z]$ 可通过求解 $\min_v \int_0^1 \mathbb{E}\bigl[\|\dot{X}_t - v(X_t, t)\|^2\bigr] dt$ 来估计。
+非线性 rectified flow 定义为 $dZ_t = v^*(Z_t, t)dt$（$Z_0 = X_0$），其中 $v^*(z,t) = \mathbb{E}[\dot{X}_t | X_t = z]$ 
 
-$$v^*(z, t) = \mathbb{E}[\dot{X}_t \,|\, X_t = z], \quad \min_v \int_0^1 \mathbb{E}\bigl[\|\dot{X}_t - v(X_t, t)\|^2\bigr] \, dt$$
+可通过求解 $\min_v \int_0^1 \mathbb{E}\bigl[\|\dot{X}_t - v(X_t, t)\|^2\bigr] dt$ 来估计。
+$$
+v^*(z, t) = \mathbb{E}[\dot{X}_t \,|\, X_t = z], \quad \min_v \int_0^1 \mathbb{E}\bigl[\|\dot{X}_t - v(X_t, t)\|^2\bigr] \, dt
+$$
 
----
-
-> 至此，Flow Matching 系列四篇已全部完成。回顾整个体系：[第一篇]({% post_url 2.Machine Learning/3.扩散模型/2023-02-01-标准化流基础：从离散流到连续流 %})建立了流的基础数学框架；[第二篇]({% post_url 2.Machine Learning/3.扩散模型/2023-03-01-Flow-Matching：连续标准化流的仿真无关训练 %})提出了 FM 的仿真无关训练方案；[第三篇]({% post_url 2.Machine Learning/3.扩散模型/2023-04-01-条件流匹配：条件概率路径与边缘化 %})通过条件化与边缘化解决了 FM 的可解性问题；本篇的 Rectified Flow 则将流路径简化为直线，实现了单步生成。

@@ -96,7 +96,7 @@ $$
 
 ## 4. 平滑 cross field 与换基（Figure 3 配图）
 
-![image-20250923105930362](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250923105930362.png)
+<img src="/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260701213147667.png" alt="image-20260701213147667" style="zoom:50%;" />
 
 离散 **cross field** 称为 smooth，若它最小化 [Ray et al. 2008] 的平滑能量（其 Eq. 16），即相邻 cross 在统一参考系下差异小。
 
@@ -163,9 +163,9 @@ $$
 
 ---
 
-## 7. 数值求解：BCD 交替优化
 
-![image-20250923110121214](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20250923110121214.png)
+
+## 7. 数值求解：BCD 交替优化
 
 式 (5) 与 [Sorkine & Alexa 2007; Liu et al. 2008] 的 ARAP 能量同型，用 **Block Coordinate Descent** 交替：
 
@@ -235,20 +235,9 @@ $\mathbf{L}$ 为标准 cotan Laplacian；$t(i,j)$ 为半边 $(p_j-p_i)$ 左侧�
 - 几何不能动；
 - 需要 seamless parameterization。
 
----
 
-## 10. 小结
 
-> 当原曲面上的方向场过于复杂、难以直接变成规则 cross field 时，不必在原几何上硬解——可通过**辅助变形**，把方向结构"搬运"到更适合 quad meshing 的几何域，再映回。
 
-与 `N-RoSy → QuadCover → MIQ` 形成互补：
-
-- **变形 Frame Field**：改几何以适应场；
-- **主流路线**：在原几何上显式处理场与参数化的拓扑约束。
-
-后续工作 [Jiang et al. 2015] *Frame Field Generation through Metric Customization* 将类似思想推广到**自定义 Riemann 度量**下的 cross field，无需显式 $\mathbb{R}^3$ 变形，但"frame = 某度量下的 cross"这一观点一脉相承。
-
----
 
 ## 参考文献
 

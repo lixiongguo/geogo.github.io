@@ -30,7 +30,7 @@ $$
 
 其中 $\nabla_x \log p_t(x_t)$ 正是时刻 $t$ 边缘分布的得分函数。**如果知道所有时刻的得分函数，就能从纯噪声逆转扩散过程生成数据。**
 
----
+
 
 ## 2. 得分匹配（Score Matching）
 
@@ -64,17 +64,7 @@ $$
 
 ---
 
-## 3. 多噪声水平与噪声条件网络
 
-### 3.1 多尺度噪声
-
-单一噪声水平的得分匹配无法覆盖数据分布的全部结构：低噪声时得分估计精准但覆盖范围窄，高噪声时覆盖范围广但精度低。Song & Ermon（2019）提出用多个噪声水平 $\{\sigma_i\}_{i=1}^L$ 来训练：
-
-$$
-\mathcal{L}(\theta) = \frac{1}{L} \sum_{i=1}^L \lambda(\sigma_i) \mathbb{E}_{p_{\text{data}}(x)} \mathbb{E}_{q_{\sigma_i}(\tilde{x}|x)} \left[ \left\| s_\theta(\tilde{x}, \sigma_i) - \frac{x - \tilde{x}}{\sigma_i^2} \right\|^2 \right]
-$$
-
-其中 $\lambda(\sigma_i)$ 为各噪声水平的权重（常取 $\lambda(\sigma_i) = \sigma_i^2$）。
 
 ### 3.2 Langevin 动力学采样
 
@@ -90,25 +80,14 @@ $$
 8. **end for**
 9. **return** $x$
 
----
 
-## 4. Score Matching、DDPM 与 EDM 的统一
 
-| 方法 | 训练目标 | 噪声调度 | 采样方法 |
-|:---|:---|:---|:---|
-| **Score Matching (NCSN)** | $\|s_\theta(\tilde{x}, \sigma) - \nabla_{\tilde{x}} \log q_\sigma(\tilde{x}\|x)\|^2$ | 多离散 $\sigma_i$ | 退火 Langevin |
-| **DDPM** | $\|\epsilon_\theta(x_t, t) - \epsilon\|^2$ | $\beta_t$ 线性调度 | 逆向马尔可夫链 |
-| **Score-based SDE** | 同 Score Matching | 连续时间 | SDE / ODE 求解器 |
-| **EDM** | 统一上述所有形式 | $s(t), \sigma(t)$ | ODE + 二阶 Heun |
 
-关键联系：
 
+与DDPM关键联系：
 $$
 \epsilon_\theta(x_t, t) \approx -\sigma_t \cdot \nabla_x \log p_t(x_t) = -\sigma_t \cdot s_\theta(x_t, t)
 $$
 
 即 DDPM 的噪声预测网络 $\epsilon_\theta$ 实际上等价于缩放的得分网络。三种框架本质相同，只是参数化形式不同。
 
----
-
-> 更完整的统一框架参见 [EDM：扩散模型设计空间的统一框架]({% post_url 2.Machine Learning/4.扩散模型补充/2023-07-01-扩散模型补充：EDM统一框架 %})。
