@@ -1,8 +1,0 @@
----
-layout: post
-title: "扩散模型：借助最优传输OTFLOW"
-date: 2023-06-01
-categories: [DiffusionModel]
----
-关键是如何通过最优传输的方式约束流，从而使得FlowMatching更加高效
-
