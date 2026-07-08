@@ -46,62 +46,100 @@ $$
 
 
 
-## 除子与Riemann-Roch定理
+## 除子与 Riemann-Roch 定理
 
-设亚纯函数 $q$ 在 $p_i$ 处有零点或极点（阶 $n_i$，正为零点、负为极点），除子为：
+紧黎曼面上不能存在非常数全纯函数（Liouville 定理），因此要研究**亚纯**对象——允许孤立零极点的函数与微分形式。除子（divisor）统一记录这些零极点的位置与阶数。
 
-$$
-(q) = \sum_i n_i \, p_i
-$$
+### 亚纯函数的除子
 
-设 $D$ 是奇异点的除子（divisor），即每个奇异点的"度数"（degree = 4 - 价数）构成一个形式线性组合。四边形网格的存在性等价于：存在一个亚纯二次微分（meromorphic quadratic differential）$\omega$ 使得 $(\omega)$（$\omega$ 的除子）恰好是 $D$。
+设 $f$ 为紧黎曼面 $S$ 上的亚纯函数。在点 $p$ 处用局部坐标 $z$，写 $f(z)=(z-p)^k u(z)$，$u(p)\neq 0$，则**阶数** $\operatorname{ord}_p(f)=k$：
+- $k>0$：$k$ 阶零点；
+- $k<0$：$|k|$ 阶极点；
+- $k=0$：正则且非零。
 
-除子
-
-根据刘维尔定理，在紧黎曼面(封闭，有界的黎曼面)上，**有界全纯函数一定是常函数**，所以要研究紧黎曼面用**亚纯函数(meromorphic)**
-
-对于紧黎曼面 $S$ 上的亚纯函数 $f$，其在各点的零点/极点的加权和称为**主除子（principal divisor）**：
+**除子**（divisor）是形式线性组合
 
 $$
-\operatorname{div}(f) = \sum_{p \in S} \operatorname{ord}_p(f) \cdot p
+(f)=\operatorname{div}(f)=\sum_{p\in S}\operatorname{ord}_p(f)\,p,
 $$
 
-其中 $\operatorname{ord}_p(f)$ 是 $f$ 在点 $p$ 的阶数：
-- $\operatorname{ord}_p(f) = k > 0$：$f$ 在 $p$ 处有 $k$ 阶零点
-- $\operatorname{ord}_p(f) = -k < 0$：$f$ 在 $p$ 处有 $k$ 阶极点
-- $\operatorname{ord}_p(f) = 0$：$f$ 在 $p$ 处正则且非零
-
-展开写为：
+亦可写为 $(f)=\sum_i m_i P_i-\sum_j n_j Q_j$（零点减极点）。主除子（principal divisor）总度数恒为零：
 
 $$
-\operatorname{div}(f) = \sum_i m_i P_i - \sum_j n_j Q_j
+\deg(f)=\sum_p \operatorname{ord}_p(f)=0.
 $$
 
-其中 $\{P_i\}$ 是零点、$\{Q_j\}$ 是极点，$m_i,n_j$ 为相应的重数。主除子的总度数恒为零：$\deg(\operatorname{div}(f)) = \sum_p \operatorname{ord}_p(f) = 0$。
+### 亚纯微分形式的除子
 
-#### 奇异点与除子的对应
-
-对四边形网格，价数为 $k$ 的顶点 $v$ 对应除子中的点 $p_v$，其**度数**（degree）为
+除子不仅属于函数，也属于**亚纯微分形式**。设 $\omega$ 为 $S$ 上的亚纯 $k$-形式（$k\ge 1$）。在局部坐标 $z$ 下写成
 
 $$
-d_v = 4 - k.
+\omega = f(z)\,(dz)^k,
 $$
 
-3-价顶点为度 $+1$（零点），5-价顶点为度 $-1$（极点）。除子 $D = \sum_v d_v \cdot p_v$ 记录了所有奇异点的带符号重数。参数化中，同一顶点对应锥角 $k\pi/2$ 的锥奇异点；Gauss-Bonnet 给出
+其中 $f$ 为亚纯函数，定义
 
 $$
-\sum_v K_v = 2\pi\chi(M) \quad \Longleftrightarrow \quad \sum_{k \neq 4} (4-k)\, n_k = 4\chi(M),
+\operatorname{ord}_p(\omega):=\operatorname{ord}_p(f),
+\qquad
+(\omega)=\operatorname{div}(\omega)=\sum_{p\in S}\operatorname{ord}_p(\omega)\,p.
 $$
 
-两种表述通过整数等值线的拓扑结构完全同构。
+**与函数除子的关系**：$k=0$ 时 $\omega$ 就是亚纯函数，定义一致。$k\ge 1$ 时 $\omega$ 在坐标变换 $z\mapsto w$ 下按 $(dz)^k=(w'(z)\,dz)^k$ 变换，但 $\operatorname{ord}_p(\omega)$ 与坐标选取无关——零极点阶数是不变量。
+
+**直观**：在 $p$ 附近，$|\omega|$ 的行为像 $|z-p|^{\operatorname{ord}_p(\omega)}$；$\operatorname{ord}_p(\omega)>0$ 为零点，$<0$ 为极点。对 $k$-形式，零点/极点阶数按 $k$ 次幂体现在「体积元」$(dz)^k$ 的缩放中。
+
+**典范除子 $K$**：取一个**非零全纯** $1$-形式 $\omega_0$（紧曲面亏格 $g\ge 1$ 时存在），其除子
+
+$$
+K:=(\omega_0)=\sum_p \operatorname{ord}_p(\omega_0)\,p
+$$
+
+称为**典范除子**；$\omega_0$ 无极点，故 $K$ 仅含零点，且 $\deg K=2g-2$。任意两个非零全纯 $1$-形式相差一个非零常数，除子相同，故 $K$ 由曲面共形结构唯一确定。
+
+对亚纯 $k$-形式，若 $\omega=\omega_0^k$（$k$ 次幂）则 $(\omega)=k\,K$；一般亚纯 $k$-形式的除子度数满足 $\deg(\omega)=k(2g-2)$（在允许极点时，零点度数之和减极点度数之和）。
+
+**主除子与线性等价**（微分形式视角）：亚纯函数 $h$ 诱导 $k$-形式 $h\,\omega_0^k$，其除子
+
+$$
+(h\,\omega_0^k)=(h)+kK.
+$$
+
+两个除子 $D,D'$ **线性等价**（记 $D\sim D'$），若 $D-D'=(h)$ 对某个亚纯函数 $h$。对 $k$-形式而言，给定目标除子 $D$，问「是否存在亚纯 $k$-形式 $\omega$ 使 $(\omega)=D$」等价于问 $D$ 是否在 $kK$ 的线性等价类中——这正是 Riemann-Roch 所约束的。
+
+### 四边形网格与亚纯二次微分的除子
+
+设 $D$ 为奇异点除子：价数为 $k$ 的顶点 $v$ 对应点 $p_v$，系数
+
+$$
+d_v = 4-k
+$$
+
+（$3$-价为 $+1$ 零点，$5$-价为 $-1$ 极点），即 $D=\sum_v d_v\,p_v$。四边形网格的存在性（在共形结构已定的前提下）与下述问题等价：**是否存在亚纯二次微分** $\omega$（$2$-形式）使得
+
+$$
+(\omega)=D.
+$$
+
+局部上，共形坐标下 $\omega\sim (dz)^2$；在价数为 $k$ 的锥奇异点，坐标 $z\sim w^{2/k}$（$w$ 为欧氏展开），$(dz)^2$ 产生阶数 $k-2$ 的零/极点；换到四边形网格常用的 $k\pi/2$ 锥角标度，奇异点处 $\omega$ 的阶数为 $4-k$，与 $d_v$ 一致（见下文环面示例）。
+
+Gauss–Bonnet / Poincaré–Hopf 给出度数约束：
+
+$$
+\deg D = \sum_v d_v = \sum_{k\neq 4}(4-k)\,n_k = 4\chi(M),
+$$
+
+而亚纯 $2$-形式的除子度数恒为 $\deg(\omega)=2(2g-2)=4g-4$。在闭曲面上 $4\chi=4(2-2g)=4-4g$，与 $4g-4$ 相差符号与 $2$-形式的典范度数一致——奇点配置的**总数平衡**是 $(\omega)=D$ 有解的**必要条件**之一；Riemann-Roch 与 Abel 定理进一步给出充分性层面的约束。
 
 ### Riemann-Roch
 
+对除子 $D$，记 $\ell(D)$ 为以 $D$ 为除子的亚纯函数空间维数（含极点允许、零点强制）。Riemann-Roch：
+
 $$
-\ell(D) - \ell(K - D) = \deg(D) + 1 - g
+\ell(D) - \ell(K - D) = \deg(D) + 1 - g,
 $$
 
-其中 $K$ 是典范除子，$g$ 是亏格。这个公式限制了**在给定亏格下能配置多少以及何种奇异点**。
+其中 $K=(\omega_0)$ 为典范除子（某非零全纯 $1$-形式的除子），$g$ 为亏格。该式限制**在给定亏格下能配置多少、何种奇异点**；对 $k$-形式版本，将 $K$ 换为 $kK$ 可讨论亚纯 $k$-形式的除子实现问题。
 
 
 
@@ -231,9 +269,9 @@ dw_v = \frac{k}{6} (z_v)^{\frac{k-6}{6}} dz_v,
 (dw_v)^6 = \left(\frac{k}{6}\right)^6 (z_v)^{k-6} (dz_v)^6.
 $$
 
-因此 $\omega$ 是全局亚纯微分：5-价顶点 $q$ 为 $\omega$ 的极点（阶 $k-6=-1$），7-价顶点 $p$ 为零点（阶 $+1$）。
+因此 $\omega=(dz)^6$ 是全局亚纯 $6$-形式，其除子 $(\omega)$ 在 $5$-价顶点 $q$ 为 $-1$ 阶极点、$7$-价顶点 $p$ 为 $+1$ 阶零点（因 $k-6$：$5\mapsto -1$，$7\mapsto +1$）。
 
-取典范全纯 1-形式 $\omega_0$（无零极点），定义亚纯函数
+取典范全纯 $1$-形式 $\omega_0$（$(\omega_0)=K$，无额外极点），构造亚纯函数
 
 $$
 f = \frac{\omega}{(\omega_0)^6},  (f) = (\omega) - 6(\omega_0) = p - q.

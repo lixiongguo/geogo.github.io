@@ -96,7 +96,7 @@ $$
 
 ## 4. 平滑 cross field 与换基（Figure 3 配图）
 
-<img src="/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260701213147667.png" alt="image-20260701213147667" style="zoom:50%;" />
+<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260701213147667.png" alt="image-20260701213147667" style="zoom:50%;" />
 
 离散 **cross field** 称为 smooth，若它最小化 [Ray et al. 2008] 的平滑能量（其 Eq. 16），即相邻 cross 在统一参考系下差异小。
 

@@ -1,0 +1,209 @@
+---
+layout: post
+title: "Ricci流与参数化"
+category: Parameterization
+categories: ["Parameterization", "Parameterization-ConformalMapping"]
+---
+
+## 单值化定理
+
+任意紧致黎曼面 $S$（亏格 $g$）**共形等价**于以下三者之一：
+
+$$
+S \cong
+\begin{cases}
+\hat{\mathbb{C}} = \mathbb{C} \cup \{\infty\} & (g = 0) \\[4pt]
+\mathbb{C} / \Lambda,\quad \Lambda = \mathbb{Z} + \tau \mathbb{Z},\; \operatorname{Im}(\tau) > 0 & (g = 1) \\[4pt]
+\mathbb{H} / \Gamma & (g \ge 2)
+\end{cases}
+$$
+
+其中 $\hat{\mathbb{C}}$ 为 Riemann 球面，$g=1$ 的 $\mathbb{C}/\Lambda$ 为环面（torus），$\tau$ 为模参数（modular parameter）；$g\ge 2$ 的 $\mathbb{H}/\Gamma$ 为上半双曲平面模 Fuchsian 群的商空间。
+
+$S$ 上存在 Riemann 度量 $g$，使得 Gauss 曲率恒为常数：
+$$
+K \equiv +1\;(g=0), K \equiv 0\;(g=1), K \equiv -1\;(g\ge 2)
+$$
+
+![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/82fe661584b018e5d9ce7c83b32fc126.jpg)
+
+对于 $g\ge 2$ 的高亏格曲面，可以将其共形映射到双曲平面上。
+
+<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260527110446097.png" style="zoom:50%;" />
+
+单值化定理保证每个紧致黎曼面都存在常曲率度量，但并未给出如何从给定度量构造它。**Ricci 流**提供了一条共形路径：沿流演化，曲率在全曲面上均匀化，最终收敛到与亏格相应的常曲率度量。
+
+## 光滑 Ricci 流
+
+**里奇流（Ricci Flow）**本质上是一种通过演化度量来调整曲面曲率的方法。在光滑二维黎曼流形 $(S, \mathbf{g})$ 上，设 $\mathbf{g}(t)$ 为随时间 $t$ 演化的黎曼度量，**未归一化 Ricci 流**方程为：
+$$
+\frac{d\mathbf{g}_{ij}(t)}{dt} = -2K(t)\,\mathbf{g}_{ij}(t)
+$$
+
+其中 $K(t)$ 为当前高斯曲率。若用共形因子参数化 $\mathbf{g}(t) = e^{2u(t)}\mathbf{g}(0)$，代入得
+
+$$
+\frac{du}{dt} = -2K(t),
+$$
+
+表明度量按曲率缩放。为保持总面积稳定，可使用 **归一化 Ricci 流**：
+
+$$
+\frac{d\mathbf{g}_{ij}(t)}{dt} = (\bar{K} - K(t))\,\mathbf{g}_{ij}(t),
+$$
+
+其中 $\bar{K}$ 为目标常曲率（由 Gauss-Bonnet 定理决定）。该方程保持度量的共形类不变，且解始终可写为 $\mathbf{g}(t) = e^{2u(t)}\mathbf{g}_0$。代入归一化方程即得 $u$ 的演化（**Yamabe 流**）：
+
+$$
+\frac{du}{dt} = \bar{K} - K(t) = \bar{K} - e^{-2u}\bigl(K_0 - \Delta_{\mathbf{g}_0} u\bigr),
+$$
+
+其中 $K_0$ 和 $\Delta_{\mathbf{g}_0}$ 分别是背景度量下的高斯曲率和 Laplace-Beltrami 算子。
+
+**热传导类比**：设 $T(t)$ 为温度场，热扩散 $dT/dt = -\Delta_{\mathbf{g}} T$ 使温度趋于均匀。Ricci 流诱导的曲率演化恰有相同形式：
+
+$$
+\frac{dK(t)}{dt} = -\Delta_{\mathbf{g}(t)} K(t),
+$$
+
+即曲率通过扩散在全曲面上均匀化，最终达到常值——这正是单值化定理所保证的结果。在二维共形情形下，演化变量就是共形因子 $u$，核心目标是把曲率 $K$ 驱动到目标值 $\bar{K}$。
+
+
+
+## 圆填充度量（Circle Packing Metric）
+
+要在三角网格上实现 Ricci 流，首先需要一种用有限数据描述共形结构的**离散度量**。圆填充度量给出基本框架，反演距离将其推广以编码原始几何，由此导出离散角度与曲率。
+
+对于三角网格，离散共形结构可通过 **圆填充度量**来参数化。
+
+<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260508110516048.png" style="zoom:50%;" />
+
+设 $\Gamma: V \to \mathbb{R}^+$ 为每个顶点分配半径 $\gamma_i$，$\Phi: E \to [0, \frac{\pi}{2}]$ 为每条边 $e_{ij}$ 分配锐角 $\Phi(e_{ij})$，称为**边的权重**函数
+
+这样的顶点和边的配置$(\Gamma, \Phi)$ 称为网格上的 **circle packing metric**。
+
+
+
+在圆填充配置下，边长由半径和交角共同决定：
+
+$$
+l_{ij}^2 = \gamma_i^2 + \gamma_j^2 + 2\gamma_i \gamma_j \cos\Phi_{ij}
+$$
+
+注意到边长需要遵从三角不等式，两个 circle packing metric $(\Gamma_1, \Phi_1)$ 和 $(\Gamma_2, \Phi_2)$ **共形等价**当且仅当 $\Phi_1 \equiv \Phi_2$。
+
+**共形形变**即为**仅修改顶点半径$\gamma_i$而保持边交角$\Phi(e_{ij})$不变**。
+
+#### 圆图案度量
+
+<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260703211623382.png" alt="image-20260703211623382" style="zoom:50%;" />
+
+#### 反演距离
+
+纯圆填充（相邻圆相切，$\Phi_{ij}=0$）主要编码网格的拓扑连接，对原始三角网格的几何信息（边长、内角）利用不足，在三角化质量较差时尤为明显。**反演距离（inversive distance）** $I(c_i, c_j)$ 刻画两圆 $c_i, c_j$ 的相对位置，从而把原始边长信息编入圆配置：
+$$
+I(c_i, c_j) = \begin{cases}
+\dfrac{l_{ij}^2 - \gamma_i^2 - \gamma_j^2}{2\gamma_i\gamma_j} & \mathbb{E}^2 \\[10pt]
+\dfrac{\cosh l_{ij} - \cosh\gamma_i\cosh\gamma_j}{\sinh\gamma_i\sinh\gamma_j} & \mathbb{H}^2
+\end{cases}
+$$
+
+对 Andreev-Thurston 圆填充，$I(c_i, c_j) = \cos\phi_{ij}$。统一记号 $I_{ij} = \cos\Phi_{ij}$，则上节边长公式可写为
+
+$$
+l_{ij} = \begin{cases}
+\sqrt{\gamma_i^2 + \gamma_j^2 + 2 I_{ij}\,\gamma_i\gamma_j} & \mathbb{E}^2 \\[8pt]
+\cosh^{-1}\!\bigl(\cosh\gamma_i\cosh\gamma_j + I_{ij}\sinh\gamma_i\sinh\gamma_j\bigr) & \mathbb{H}^2
+\end{cases}
+$$
+
+由此定义**反演距离圆填充度量** $(\Gamma, I, M)$，其中 $\Gamma = \{\gamma_i\}$，$I = \{I_{ij}\}$。**离散共形形变**仅改变半径 $\gamma_i$，保持 $I_{ij}$ 不变。
+
+### 离散角度、曲率与能量梯度
+
+给定 $(\Gamma, I, M)$ 后，三角形内角由余弦定理给出，顶点曲率为角亏：
+
+$$
+\theta_i^{jk} = \arccos\frac{l_{ki}^2 + l_{ij}^2 - l_{jk}^2}{2\,l_{ki}\,l_{ij}}, \qquad K_i = 2\pi - \sum_{[v_i,v_j,v_k]} \theta_i^{jk}.
+$$
+
+![image-20260611212530255](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260611212530255.png)
+
+欧氏情形下，Ricci 能量 Hessian 的权重来自**角度对 $u$ 的偏导**。$\partial\theta_i^{jk}/\partial u_j$ 可用圆心到对边的垂距 $h_k$ 与边长 $l_k$ 表示：
+
+$$
+\frac{\partial \theta_i^{jk}}{\partial u_j} = \frac{h_k}{l_k}.
+$$
+
+这些量是后续数值迭代每步计算的基础。
+
+## 离散 Ricci 流
+
+在反演距离圆填充度量 $(\Gamma, I, M)$ 下，记共形因子 $\mathbf{u} = (u_1, u_2, \dots, u_n)$，$\mathbf{K} = (K_1, K_2, \dots, K_n)$，其中 $n = |V|$。**离散 Ricci 流**为
+
+$$
+\frac{du_i}{dt} = \bar{K}_i - K_i,
+$$
+
+其中 $\bar{K}_i$ 为顶点 $v_i$ 上的目标曲率，$u_i$ 与圆半径 $\gamma_i$ 的关系依背景几何而定：
+
+$$
+u_i = \begin{cases}
+\log \tan\dfrac{\gamma_i}{2} & \mathbb{S}^2 \;(g=0) \\[6pt]
+\log \gamma_i & \mathbb{E}^2 \;(g=1) \\[6pt]
+\log \tanh\dfrac{\gamma_i}{2} & \mathbb{H}^2 \;(g\ge 2)
+\end{cases}
+$$
+
+与单值化定理中按亏格选取的常曲率背景一致。固定反演距离后，所有使每个面上满足三角不等式的 $\mathbf{u}$ 构成 $M$ 的**容许度量空间**。该空间上的微分 $1$-形式 $\omega = \sum_i K_i\, du_i$ 是闭形式，从而**离散 Ricci 能量**
+
+$$
+E(\mathbf{u}) = \int_{\mathbf{u}_0}^{\mathbf{u}} \sum_i (\bar{K}_i - K_i)\, du_i, \quad \mathbf{u}_0 = (0, \dots, 0)
+$$
+
+良定义。离散 Ricci 流正是该能量的负梯度流。
+
+**收敛性**：在连续情形下，**Chow (1991)** 证明了对正 Euler 特征数的闭曲面，若保持总面积不变，Ricci 流将收敛到常 Gauss 曲率度量。在离散情形下，**陈-罗定理（Chow-Luo Theorem）**保证了**离散 Ricci 流的收敛性**，并能实现任意满足 Gauss-Bonnet 约束的目标曲率。
+
+> **关键结论**：在二维情形下，**Yamabe flow 等价于 Ricci flow**——两者都是通过演化共形因子 $u$ 来驱动曲率均匀化。光滑流形上的 Ricci 流本身并不需要圆填充；圆填充（Circle Packing）是定义和实现**离散**曲面上 Ricci 流的基本工具。
+
+## 数值算法与参数化展开
+
+Jin 等人将球面、欧氏、双曲三种几何空间下的 Ricci 流统一为可计算的数值框架：
+
+1. 确定目标曲率 $\bar{K}_i$ 和背景几何（与亏格 $g$ 对应）
+
+2. 计算初始 circle packing metric。对每个面 $[v_i, v_j, v_k]$，先算
+
+   $$
+   \gamma_i^{jk} = \frac{l_{ij} + l_{ki} - l_{jk}}{2}, \qquad \gamma_i = \min_{jk} \gamma_i^{jk},
+   $$
+
+   再按反演距离公式确定每条边 $[v_i, v_j]$ 的 $I_{ij}$。
+
+3. 用梯度下降与 Newton 法优化 Ricci 能量。每步迭代：
+
+   - 由当前 $\gamma_i$ 与 $I_{ij}$ 计算边长 $l_{ij}$；
+   - 由余弦定理计算角 $\theta_i^{jk}$，再得曲率 $K_i = 2\pi - \sum \theta_i^{jk}$；
+   - 构造 Hessian $\Delta = (h_{ij})$，其中
+
+     $$
+     h_{ij} = \begin{cases}
+     -w_{ij} & i \neq j,\; [v_i, v_j] \in E \\[4pt]
+     \displaystyle\sum_k w_{ik} & i = j,\; [v_i, v_k] \in E \\[4pt]
+     0 & \text{otherwise}
+     \end{cases}
+     $$
+
+     $$
+     w_{ij} = \frac{\partial \theta_i^{jk}}{\partial u_j} + \frac{\partial \theta_i^{jl}}{\partial u_j};
+     $$
+
+   - 解线性系统 $\Delta \boldsymbol{\mu} = \bar{\mathbf{K}} - \mathbf{K}$，更新 $u_i \leftarrow u_i + \mu_i$；
+   - 重复直至 $\max_i |\bar{K}_i - K_i| < \varepsilon$。
+
+4. 利用收敛后的 metric 计算 layout（展开坐标）
+
+按单值化定理，$g\ge 2$ 的曲面应在双曲空间 $\mathbb{H}^2$ 上展开；强行映射到欧氏平面 $\mathbb{E}^2$ 会引入更大畸变。下图左为双曲空间展开，右为欧氏空间展开，对比可见前者更贴合曲面内蕴几何。
+
+<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260508110336358.png" style="zoom:50%;" />
