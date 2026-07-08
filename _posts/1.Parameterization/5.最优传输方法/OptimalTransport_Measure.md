@@ -75,6 +75,22 @@ $$
 \tag{5}
 $$
 
+### 1.3 相关工作与应用背景
+
+问题 (1) 最早由 [Chauffert et al. 2017] 以**卷积核距离**形式提出；本文用 $W_2$ 重述并大幅扩展。同一框架覆盖：
+
+| 领域 | 典型 $\mathcal{M}$ | 文献线索 |
+| :--- | :--- | :--- |
+| 金融 | 离散支撑 | Pages & Wilbertz 2012 |
+| 计算机图形 | 点 / 曲线 / 线段 | stippling、stroke-based rendering |
+| 采样理论 | 有界速度/加速度轨迹 | MRI 压缩采样 [Boyer et al. 2016] |
+| 设施选址 / 网络 | 空间分布网络 | Gastner & Newman 2006 |
+| 3D 打印 / 雕刻 | 连续喷嘴/激光轨迹 | Chen et al. 2017 |
+
+**曲线逼近**在 NPR、TSP art、线雕 3D 打印中常见，但以往多无显式优化表述；本文将 curvling 纳入 (5)。
+
+**线段测度（dashing）**：用短线段密度表达明暗，是 stippling 的结构化推广。
+
 ---
 
 ## 2. 离散化与总算法框架
@@ -118,21 +134,37 @@ $$
 
 ### 2.2 Algorithm 1：交替投影梯度
 
-```
-Algorithm 1  交替投影梯度（最小化 F）
+**变度量投影**（论文 §2.2）：
 
-输入: 初始 (x₀, w₀), 迭代次数 N_it
-重复 k = 0, …, N_it−1:
-  w-step:  w_{k+1} ← argmin_{w∈W} F(x_k, w)        // 常可解析
+$$
+\Pi^{\Sigma_k}_{\mathbf{X}}(\mathbf{x}_0)
+:=\arg\min_{\mathbf{x}\in\mathbf{X}}\|\mathbf{x}-\mathbf{x}_0\|^2_{\Sigma_k},
+\qquad
+\|\mathbf{x}-\mathbf{x}_0\|^2_{\Sigma_k}
+=\langle\Sigma_k(\mathbf{x}-\mathbf{x}_0),(\mathbf{x}-\mathbf{x}_0)\rangle.
+$$
+
+$\mathbf{X}$ 非凸时 $\Pi$ 为**点集值**映射，故 $\mathbf{x}$-步写 $\mathbf{x}_{k+1}\in\Pi(\cdots)$ 而非 $=$。
+
+```
+Algorithm 1  交替投影梯度（最小化 (1) / (9)）
+
+Oracle: 给定 (x, w)，通过 ψ-step 计算 F(x,w)、∇_x F
+输入:  初始 x₀, 目标测度 μ, 迭代次数 N_it
+输出:  (x̂, ŵ) 近似 (9) 的解
+
+for k = 0, …, N_it−1:
+  w-step:  w_{k+1} ← argmin_{w∈W} F(x_k, w)              ▷ 解析
+  选正定矩阵 Σ_k、步长 s_k
   x-step:  y_{k+1} ← x_k − s_k Σ_k^{-1} ∇_x F(x_k, w_{k+1})
-  Π-step:  x_{k+1} ∈ Π^Σ_k_X(y_{k+1})     // 曲线约束时非平凡；stippling 时 x_{k+1}=y_{k+1}
-  // 每步计算 F、∇_x F 时需 ψ-step：给定 (x_k, w_{k+1})，解对偶 (13) 得 ψ*
-输出: (x̂, ŵ) = (x_{N_it}, w_{N_it})
+  Π-step:  x_{k+1} ∈ Π^{Σ_k}_X(y_{k+1})
+end for
+x̂ ← x_{N_it},  ŵ ← w_{N_it}
 ```
 
-**变度量投影** $\Pi^{\Sigma_k}_{\mathbf{X}}$：在度量 $\|\mathbf{x}-\mathbf{x}_0\|^2_{\Sigma_k}=\langle\Sigma_k(\mathbf{x}-\mathbf{x}_0),(\mathbf{x}-\mathbf{x}_0)\rangle$ 下投影到 $\mathbf{X}$。$\mathbf{X}$ 非凸时 $\Pi$ 为点集值映射，故 $\mathbf{x}_{k+1}\in\Pi(\cdots)$。
+**无约束 stippling / halftoning** 时 $\Pi$-步平凡：$\mathbf{x}_{k+1}=\mathbf{y}_{k+1}$。
 
-**四大实现难点** → 分别对应 §3–§6：
+**五大实现难点**：
 
 | 步骤 | 问题 |
 | :--- | :--- |
@@ -140,6 +172,7 @@ Algorithm 1  交替投影梯度（最小化 F）
 | $\mathbf{w}$ | 如何解 $\arg\min_{\mathbf{w}\in\mathbf{W}}F$？ |
 | $\mathbf{x}$ | 如何算 $\nabla_{\mathbf{x}}F$ 与度量 $\Sigma_k$？ |
 | $\Pi$ | 如何实现曲线空间投影？ |
+| 加速 | 多尺度、warm start 等 |
 
 ---
 
@@ -213,13 +246,35 @@ $$
 \tag{17}
 $$
 
-确定。Hessian 结构与 [Levy et al. 2015] 半离散 OT 笔记一致：相邻 Laguerre 面共享时非零。
+确定。Hessian 结构与 [Levy et al. 2015] 半离散 OT 笔记一致：相邻 Laguerre 面共享时非零。由 Gershgorin 圆盘定理，Hessian 最小特征值有下界 $-n\eta\|\rho\|_\infty\mathrm{diam}(\Omega)$，其中 $\eta=1/\min_{i\neq j}\|\mathbf{x}[i]-\mathbf{x}[j]\|$。
+
+**二阶可微性的证明要点**：若某 Laguerre 单元测度为零，则其为线段或点。在一般位置假设下，点 $x$ 满足至少 3 个等式
+
+$$
+\|x-\mathbf{x}[i]\|^2-\bm{\psi}[i]=\|x-\mathbf{x}[j_k]\|^2-\bm{\psi}[j_k],
+\tag{18}
+$$
+
+使 $\mathcal{L}_i$ 退化为单点；满足 (18) 的 $\bm{\psi}$ 集合余维 $\ge 1$，故几乎处处二阶可微。
+
+**Lipschitz 梯度界**（命题 1 证明）：Laguerre 边界随 $\bm{\psi}$ 线性移动，速率 $\le\eta$。对单位方向 $\Delta$，
+
+$$
+\bigl|\mu(\mathcal{L}_i(\bm{\psi}+t\Delta,\mathbf{x}))-\mu(\mathcal{L}_i(\bm{\psi},\mathbf{x}))\bigr|
+\le t(n-1)\|\rho\|_\infty\eta\,\mathrm{diam}(\Omega),
+$$
+
+求和得 $\|\nabla_{\bm{\psi}}g(\bm{\psi}+t\Delta)-\nabla_{\bm{\psi}}g(\bm{\psi})\|_2\le t n^{3/2}\|\rho\|_\infty\eta\,\mathrm{diam}(\Omega)$（偏悲观）。
 
 **Proposition 2**：若 $\min\rho>0$ 且站点两两不同，(13) 的极大化子在加常数意义下唯一；极大点附近 $g$ 强凹。
 
+**一阶 vs 二阶方法的困境** [Kitagawa et al.; Levy]：一阶法依赖梯度 Lipschitz 常数；二阶法依赖 $g$ 的 Hölder 正则性，且要求 Laguerre 单元质量不消失。故早期迭代宜一阶 + 好初值，接近最优解后切换二阶。LM / trust-region 的全局 $C^2$ 假设此处不满足。
+
 ### 3.3 正则化 Newton 法（稳定化）
 
-先前方法 [Aurenhammer et al. 1998; de Goes et al. 2012; Levy et al.] 的收敛常依赖梯度 Lipschitz 常数，而该常数在点共线、密度不均匀时可**任意大**（Remark 1：$n$ 个等距竖直排列点时，Hessian 最大特征值 $\sim 4n$）。
+先前方法 [Aurenhammer et al. 1998; de Goes et al. 2012; Levy et al.] 的收敛常依赖梯度 Lipschitz 常数，而该常数在点共线、密度不均匀时可**任意大**。
+
+**Remark 1（高 Lipschitz 常数）**：$\mu$ 为 $\Omega=[0,1]^2$ 上均匀测度，$n$ 个点等距竖直排列 $\mathbf{x}[i]=(\tfrac12,\tfrac{1+2i}{2n})$。Hessian 为 1D Neumann Laplacian 的倍数，最大特征值 $\sim 4n$，Lipschitz 常数随 $n$ 爆炸——**曲线逼近密度时典型**。
 
 本文采用**正则化 Newton**（类似 Levenberg–Marquardt，但正则参数自动选取）：
 
@@ -239,7 +294,9 @@ $$
 
 在**零均值**子空间上求解以保证唯一性。**Proposition 3**：Wolfe 线搜索下 (19) **全局收敛**到 (13) 的唯一极大点，且局部**二次收敛**——此前结果多为局部收敛 [Levy et al.]。
 
-实践上可结合 [Merigot & Mérigot 2018] 的多尺度初始化；亦可用标准 LM 替代。
+**设计 rationale**：去掉 $\|\nabla g\|\mathrm{Id}$ 则为纯 Newton；加入后，远离最优解时 $\|\nabla g\|$ 大 → 接近梯度下降；接近最优时 $\|\nabla g\|\to 0$ → 接近阻尼 Newton。
+
+实践上可结合 [Merigot 2011] 的多尺度初始化；亦可用标准 LM $\bm{\psi}_{k+1}=\bm{\psi}_k-(A+c_k\mathrm{Id})^{-1}\nabla g$，$c_k$ 由 Wolfe 准则调节，收敛率相近。
 
 ### 3.4 Green 公式加速积分
 
@@ -264,15 +321,28 @@ $$
 \tag{21}
 $$
 
-- **$\mathbf{W}=\{\mathbf{w}_0\}$**（固定权重，如 $1/n$）：$\mathbf{w}^*=\mathbf{w}_0$。
-- **$\mathbf{W}=\Delta_{n-1}$**（单纯形）：**Proposition 4** 给出闭式解
+#### 4.1.1 完全约束 $\mathbf{w}$
+
+$\mathbf{W}=\{\mathbf{w}_0\}$（singleton，如等权 $1/n$）：$\mathbf{w}^*=\mathbf{w}_0$。
+
+#### 4.1.2 单纯形上无约束极小化
+
+$\mathbf{W}=\Delta_{n-1}$：**Proposition 4** 给出闭式解
 
 $$
 \mathbf{w}^*[i]=\mu(\mathcal{L}_i(\mathbf{0},\mathbf{x})),
 \tag{22}
 $$
 
-即权重等于 **Voronoi 单元**（$\bm{\psi}=0$ 的 Laguerre 单元）内的 $\mu$-质量。直观上：$\bm{\psi}$ 在 (14) 中是质量约束 $\mu(T^{-1}(\mathbf{x}[i]))=\mathbf{w}[i]$ 的 Lagrange 乘子；对 $\mathbf{w}$ 极小化时该约束被拿掉，故 $\bm{\psi}=0$。
+即权重等于 **Voronoi 单元**（$\bm{\psi}=0$ 的 Laguerre 单元）内的 $\mu$-质量。
+
+**证明要点**：在 (14) 中 $\bm{\psi}$ 是质量约束
+
+$$
+\mu\bigl(T^{-1}(\mathbf{x}[i])\bigr)=\mathbf{w}[i]
+$$
+
+的 Lagrange 乘子；对 $\mathbf{w}$ 极小化时该约束被移除，故可取 $\bm{\psi}=\mathbf{0}$。
 
 ### 4.2 站点梯度与变度量
 
@@ -304,9 +374,9 @@ $$
 1. **Lloyd 算法**：无约束时 $\mathbf{x}_{k+1}=\mathbf{b}(\mathbf{x}_k)$——站点移向各自 Laguerre 单元重心。
 2. **交替方向**：固定传输计划（Laguerre 剖分）后，移重心是固定剖分下最优位置。
 3. **局部 1-Lipschitz**：临界点处 $\mathbf{x}\mapsto\mathbf{b}(\mathbf{x})$ 局部 1-Lipschitz [Du et al. 2010]，支持步长 $s_k=1$。
-4. **拟 Newton**：$\Sigma_k$ 近似 $F$ 对 $\mathbf{x}$ 的 Hessian 对角 [Lebrat et al.]。
+4. **拟 Newton**：$\Sigma_k$ 近似 $F$ 对 $\mathbf{x}$ 的 Hessian 对角 [Lebrat et al. / de Gournay et al. 2018]——$\Sigma_k$ 第 $i$ 对角元等于 $H_{\mathbf{x}\mathbf{x}}[F]$ 第 $i$ 行系数之和。
 
-实践取 $s_k=1$，无需线搜索即收敛良好。
+保证收敛的保守选取：$s_k$ 满足 **Wolfe 条件**。鉴于上述性质，实践取 $s_k=1$，无需线搜索即收敛良好（附录 A 给出局部理论支撑）。
 
 ---
 
@@ -325,14 +395,14 @@ $$
 
 ### 5.2 Blue noise through optimal transport [de Goes et al. 2012]
 
-等权 stippling：$\mathbf{W}=\{1/n\}$，$\mathbf{X}=\Omega^n$。Algorithm 1 的特例：
+等权 stippling：$\mathbf{W}=\{1/n\}$，$\mathbf{X}=\Omega^n$。Algorithm 1 的特例，度量
 
 $$
-\Sigma_k=\frac{1}{n}\,\mathrm{Id},
+\Sigma_k=\mathrm{diag}\bigl(\mu(\mathcal{L}_i(\bm{\phi}^*(\mathbf{x}),\mathbf{x}))\bigr)=\frac{1}{n}\,\mathrm{Id},
 \tag{27}
 $$
 
-并对 $\mathbf{x}$-步做线搜索。de Goes 将 **CCVT（容量约束 Voronoi）** 表述为最优传输 + Power 图上的凸约束极小化，容量约束**精确**满足。详见 [最优传输计算焦散透镜](2020-12-12-最优传输计算焦散透镜.md)。
+并对 $\mathbf{x}$-步做线搜索（每次 $F$ 求值需解 (13)，线搜索代价较高；本文经验上 $s_k=1$ 已足够）。de Goes 将 **CCVT（容量约束 Voronoi）** 表述为最优传输 + Power 图上的凸约束极小化，容量约束**精确**满足。详见 [最优传输计算焦散透镜](2020-12-12-最优传输计算焦散透镜.md)。
 
 ### 5.3 静电 halftoning（卷积距离）
 
@@ -343,7 +413,7 @@ D(\nu,\mu)=\tfrac{1}{2}\|h\star(\nu-\mu)\|_{L^2(\Omega)}^2,
 \tag{28}
 $$
 
-$h$ 为光滑核（Maximum Mean Discrepancy / 模糊 SSD）。优化为**一阶**方法 + FMM/NUFFT；高维 $d$ 上复杂度 $O(dn\log n)$，优于 Laguerre 图的 $O(n^{\lceil d/2\rceil})$。
+$h$ 为光滑核（Maximum Mean Discrepancy / 模糊 SSD）。在适当假设下 $W_2$ 与 (28) **强等价** [Peyré 2016]，但数值行为差异大。优化为**一阶**方法 + FMM/NUFFT；高维 $d$ 上复杂度 $O(dn\log n)$，优于 Laguerre 图的 $O(n^{\lceil d/2\rceil})$。
 
 | | 卷积 / 静电 | 最优传输（本文） |
 | :--- | :--- | :--- |
@@ -353,7 +423,31 @@ $h$ 为光滑核（Maximum Mean Discrepancy / 模糊 SSD）。优化为**一阶*
 | 2D 速度 | 慢（迭代多） | 快 1–2 个数量级 |
 | 视觉质量 | 相当 | 相当 |
 
-**Benchmark**（均匀密度，$2^{10}$–$2^{18}$ 点，31 dB 停止准则）：本文单核实现比 20 核静电 halftoning 快一个数量级以上；非均匀密度（$\rho=2$ 若 $x<0.5$ else $0$）时 ibnot 不收敛，本文仍稳定。
+#### 5.3.1 停止准则与 Benchmark
+
+**停止准则** [Schmaltz et al.]：原图与 stipple 图经高斯卷积后的 SNR；高斯标准差 $\sigma=1/\sqrt{n}$（典型点间距）。所有 benchmark 在 **31 dB** 停止。Fig. 3 展示 8 / 25 / 31 / 34 dB 的迭代演化。
+
+**Table 2**（均匀密度，$1024\times 1024$ 像素，Poisson 初始化；格式：秒 — 迭代次数）：
+
+| # pts | Electro 20核 | Electro BB 20核 | ibnot 1核 | 本文 1核 |
+| :---: | :---: | :---: | :---: | :---: |
+| $2^{10}$ | 130.3 — 317 | 34.4 — 84 | 131.47 — 15 | **4.03 — 19** |
+| $2^{12}$ | 293.9 — 637 | 47.8 — 104 | 267.59 — 22 | **10.86 — 19** |
+| $2^{14}$ | 783.5 — 1306 | 106.3 — 177 | 344.77 — 17 | **47.90 — 21** |
+| $2^{16}$ | 4568.5 — 3286 | 569.2 — 410 | 1208.45 — 20 | **252.24 — 26** |
+| $2^{18}$ | TL | 12125.2 — 1103 | 5633.68 — 23 | **1136.51 — 21** |
+
+ibnot 与本文迭代次数相近，但 Green 积分使**每步**更快（积分复杂度约从 $n_{\text{pix}}$ 降至 $\sqrt{n_{\text{pix}}}$）。
+
+**Table 3**（非均匀密度 $\rho=2$ 若 $x<0.5$ else $0$）：
+
+| # pts | Electro BB 20核 | ibnot 1核 | 本文 1核 |
+| :---: | :---: | :---: | :---: |
+| $2^{10}$ | 40.2 — 99 | NC | **4.34 — 24** |
+| $2^{14}$ | 177.7 — 282 | NC | **79.73 — 27** |
+| $2^{18}$ | 39546.1 — 2022 | NC | **1315.01 — 24** |
+
+ibnot 因 $\psi$-步 Hessian 不定常**不收敛**；本文正则 Newton 仍稳定。静电法迭代次数随点数增长，OT 法约恒定 $\sim 20$ 次。
 
 ---
 
@@ -363,22 +457,30 @@ Stippling 无约束时 $\Pi$ 平凡。对 **curvling / 路径规划**，$\mathbf
 
 ### 6.1 离散曲线算子
 
-离散曲线 $\mathbf{x}=(\mathbf{x}[1],\ldots,\mathbf{x}[n])\in\Omega^n$。一阶差分（开/闭曲线）：
+离散曲线 $\mathbf{x}=(\mathbf{x}[1],\ldots,\mathbf{x}[n])\in\Omega^n$。**一阶差分**算子（开/闭曲线）：
 
 $$
-(A_1\mathbf{x})[i]=\mathbf{x}[i+1]-\mathbf{x}[i].
+A_1^a:\mathbf{x}\mapsto
+\begin{pmatrix}\mathbf{x}[2]-\mathbf{x}[1]\\ \vdots\\ \mathbf{x}[n]-\mathbf{x}[n-1]\\ \mathbf{x}[1]-\mathbf{x}[n]\end{pmatrix},
+\qquad
+A_1^b:\mathbf{x}\mapsto
+\begin{pmatrix}\mathbf{x}[2]-\mathbf{x}[1]\\ \mathbf{x}[3]-\mathbf{x}[2]\\ \vdots\\ \mathbf{x}[n]-\mathbf{x}[n-1]\end{pmatrix}.
 $$
 
-二阶差分可取 $A_2=A_1^{\mathsf T}A_1$。
+下文 $A_1$ 泛指二者之一。**二阶差分**可取 $A_2=A_1^{\mathsf T}A_1$。
 
 #### 运动学约束（凸）
 
 有界**速度**与**加速度**（车辆模型）：
 
 $$
-\|(A_1\mathbf{x})[i]\|_2\le\alpha_1,\qquad
-\|(A_2\mathbf{x})[i]\|_2\le\alpha_2.
-\tag{29–30}
+\|(A_1\mathbf{x})[i]\|_2\le\alpha_1,\quad\forall i,
+\tag{29}
+$$
+
+$$
+\|(A_2\mathbf{x})[i]\|_2\le\alpha_2,\quad\forall i.
+\tag{30}
 $$
 
 $$
@@ -390,21 +492,42 @@ $\|\mathbf{y}\|_{\infty,p}=\sup_i\|\mathbf{y}[i]\|_p$。集合 (31) **凸**。
 
 #### 几何约束（非凸）
 
-**弧长均匀参数化**：$\|(A_1\mathbf{x})[i]\|_2=\alpha_1$，曲线总长 $(n-1)\alpha_1$。
+连续情形：弧长参数曲线 $s:[0,T]\to\mathbb{R}^2$，$\|\dot{s}\|=1$，长度 $T$，曲率 $\kappa(t)=\|\ddot{s}(t)\|$。
 
-**有界曲率**：在 (32) 成立时，
-
-$$
-\|(A_2\mathbf{x})[i]\|_2\le\alpha_2
-\quad\Rightarrow\quad
-|\theta_i|\le\arccos\!\Bigl(1-\frac{\alpha_2^2}{2\alpha_1^2}\Bigr),
-\tag{32–34}
-$$
-
-其中 $\theta_i$ 为相邻切向夹角。固定长度 + 有界曲率：
+**弧长均匀参数化**（离散）：
 
 $$
-\mathbf{X}=\{\mathbf{x}:\|(A_1\mathbf{x})[i]\|_2=\alpha_1,\;\|A_2\mathbf{x}\|_{\infty,2}\le\alpha_2\}.
+\|(A_1\mathbf{x})[i]\|_2=\alpha_1,\quad\forall i.
+\tag{32}
+$$
+
+曲线总长 $(n-1)\alpha_1$。
+
+**有界曲率**：
+
+$$
+\|(A_2\mathbf{x})[i]\|_2\le\alpha_2,\quad\forall i.
+\tag{33}
+$$
+
+在 (32) 成立时，对 $2\le i\le n-1$ 有推导
+
+$$
+\|(A_2\mathbf{x})[i]\|_2^2
+=2\alpha_1^2\bigl(1-\cos\theta_i\bigr),
+$$
+
+其中 $\theta_i=\angle(\mathbf{x}[i]-\mathbf{x}[i-1],\,\mathbf{x}[i+1]-\mathbf{x}[i])$。故 (32)+(33) 蕴含
+
+$$
+|\theta_i|\le\arccos\!\Bigl(1-\frac{\alpha_2^2}{2\alpha_1^2}\Bigr).
+\tag{34}
+$$
+
+固定长度 + 有界曲率：
+
+$$
+\mathbf{X}=\{\mathbf{x}\in\Omega^n:\|(A_1\mathbf{x})[i]\|_2=\alpha_1,\;\|A_2\mathbf{x}\|_{\infty,2}\le\alpha_2\}.
 \tag{35}
 $$
 
@@ -412,7 +535,13 @@ $$
 
 #### 线性附加约束
 
-闭曲线 $\mathbf{x}[1]=\mathbf{x}[n]$、过指定点、指定均值等：$B\mathbf{x}=\mathbf{b}$。
+闭曲线、过指定点、指定均值等：
+
+$$
+B\mathbf{x}=\mathbf{b},
+\qquad B\in\mathbb{R}^{p\times 2n},\;\mathbf{b}\in\mathbb{R}^p.
+\tag{36}
+$$
 
 **统一形式**：
 
@@ -421,23 +550,82 @@ $$
 \tag{37}
 $$
 
+例如有界速度 (29) 对应
+
+$$
+\mathbf{Y}_1=\{\mathbf{y}\in\mathbb{R}^{n\times 2}:\|\mathbf{y}[i]\|_2\le\alpha_1,\;\forall i\}.
+\tag{38}
+$$
+
 权重常取 $\mathbf{W}=\{1/n\}$ 或 $\Delta_{n-1}$。
 
 ### 6.2 ADMM 投影
 
-欧氏投影
+**欧氏投影**（Algorithm 1 的 $\Pi$-步在无变度量时，或 ADMM 子问题）：
 
 $$
-\Pi_{\mathbf{X}}(\mathbf{z})=\arg\min_{\mathbf{x}\in\mathbf{X}}\tfrac{1}{2}\|\mathbf{x}-\mathbf{z}\|_2^2
+\Pi_{\mathbf{X}}(\mathbf{z})
+=\arg\min_{\substack{A_k\mathbf{x}\in\mathbf{Y}_k\\ B\mathbf{x}=\mathbf{b}}}
+\tfrac{1}{2}\|\mathbf{x}-\mathbf{z}\|_2^2.
 \tag{39}
 $$
 
-化为分裂形式后用 **ADMM**（Algorithm 2–3）：$\mathbf{y}$-步为逐约束的欧氏投影（速度/加速度球、等长约束等），$\mathbf{x}$-步解带线性约束 $B\mathbf{x}=\mathbf{b}$ 的二次子问题（共轭梯度）。
+$\mathbf{X}$ 凸时解唯一；非凸时可能多解，算法求 (39) 的临界点。
 
-- **凸约束 (31)**：ADMM 线性收敛 [Boyd et al.]。
-- **非凸 (35)**：无完整理论，实践中收敛到 (39) 的临界点。
+**ADMM 分裂**：预条件 $\gamma_i>0$，堆叠
 
-**多分辨率**：曲线优化时先在下采样曲线上解 (9)，再二分上采样中点作 warm start，显著加速。
+$$
+A=\begin{pmatrix}\gamma_1 A_1\\ \vdots\\ \gamma_m A_m\end{pmatrix},\quad
+\mathbf{y}=\begin{pmatrix}\mathbf{y}_1\\ \vdots\\ \mathbf{y}_m\end{pmatrix},\quad
+\mathbf{Y}=\gamma_1\mathbf{Y}_1\times\cdots\times\gamma_m\mathbf{Y}_m.
+\tag{40–41}
+$$
+
+(39) 等价于
+
+$$
+\min_{\substack{B\mathbf{x}=\mathbf{b}\\ A\mathbf{x}=\mathbf{y}\\ \mathbf{y}\in\mathbf{Y}}}
+\tfrac{1}{2}\|\mathbf{x}-\mathbf{z}\|_2^2
+=\min_{A\mathbf{x}=\mathbf{y}} f_1(\mathbf{x})+f_2(\mathbf{y}),
+\tag{42}
+$$
+
+其中 $f_1(\mathbf{x})=\tfrac12\|\mathbf{x}-\mathbf{z}\|_2^2+\iota_{\mathbf{L}}(\mathbf{x})$，$\mathbf{L}=\{\mathbf{x}:B\mathbf{x}=\mathbf{b}\}$；$f_2(\mathbf{y})=\iota_{\mathbf{Y}}(\mathbf{y})$，
+
+$$
+\iota_{\mathbf{Y}}(\mathbf{y})=
+\begin{cases}0 & \mathbf{y}\in\mathbf{Y},\\ +\infty & \text{否则}.\end{cases}
+\tag{43}
+$$
+
+**Algorithm 2**（通用 ADMM）：交替更新 $\mathbf{y}$、$\mathbf{x}$、对偶 $\bm{\lambda}$，罚参数 $\beta>0$。
+
+**Algorithm 3**（专用于 (39)）：
+
+```
+输入: 待投影 z, 初值 (x₀, λ₀), 矩阵 A,B, 投影 Π_Y, β>0
+while 未收敛:
+  y_{k+1} ← Π_Y(A x_k + λ_k)
+  解线性系统:
+    [ β A^T A + I   B^T ] [ x_{k+1} ]   [ β A^T(y_{k+1}−λ_k) + z ]
+    [     B          0  ] [   μ     ] = [              b              ]
+  λ_{k+1} ← λ_k + A x_{k+1} − y_{k+1}
+```
+
+$\mathbf{x}$-步用**共轭梯度**求解。$\mathbf{y}$-步为逐约束欧氏投影（球约束、等长约束等）。
+
+- **凸 (31)**：ADMM 线性收敛 [Giselsson & Boyd]。
+- **非凸 (35)**：理论开放 [Li & Pong]，实践中收敛到临界点。
+
+**参数选取**：$\gamma_i=\|A_i\|_2$（谱范数）经验稳定；$\beta$ 手动调一次后固定。
+
+### 6.3 投影算例（Fig. 4）
+
+将猫轮廓（红）投影到蓝约束曲线集：中图——更短长度 + 有界曲率（简化变光滑）；右图——更长长度 + 有界曲率（加环保持形状）。
+
+### 6.4 多分辨率实现
+
+曲线优化时**不全点同时优化**：先在降采样曲线上解 (9)，再二分上采样中点作 warm start。实现用**二进尺度**：相邻采样间插中点；分辨率间权重除以 2。
 
 ---
 
@@ -451,15 +639,58 @@ $$
 | **Curvling** | 有界曲率/速度的曲线 | 单条或多条平滑曲线描绘图像 |
 | **Dashing** | 线段测度 | 短线段密度表达明暗 |
 
-Fig. 1 示例：$10^5$ 点 stippling $\approx 202''$；curvling $\approx 313''$；dashing $3.3\times 10^4$ 段 $\approx 237''$（单核）。
+Fig. 1：$10^5$ 点 stippling $\approx 202''$；curvling $\approx 313''$；dashing $3.3\times 10^4$ 段 $\approx 237''$（单核，随机均匀初始化）。
 
-### 7.2 高级采样理论
+#### 7.1.1 灰度 Curvling
+
+先 stippling 再曲线投影。Fig. 5：256k 点，$\approx 10'$；不同曲线长度 $l$、$l/3$、$l/12$ 控制细节层次。
+
+#### 7.1.2 彩色图像
+
+给定向量密度 $\rho=(\rho_R,\rho_G,\rho_B):\Omega\to[0,1]^3$：
+
+1. 构造灰度 $\bar{\rho}=(\rho_R+\rho_G+\rho_B)/3$；
+2. 用 Algorithm 1 将 $\bar{\rho}$ 投影到 $\mathcal{M}$，得站点 $\mathbf{x}$；
+3. 每点颜色取 $\rho(\mathbf{x}[i])/\bar{\rho}(\mathbf{x}[i])$（饱和色）。
+
+$$
+\bar{\rho}=\frac{\rho_R+\rho_G+\rho_B}{3}.
+\tag{44}
+$$
+
+Fig. 6：512k 点彩色 curvling，$\approx 24'$。
+
+#### 7.1.3 动态 / 视频
+
+首帧从任意初值投影；后续帧以前一帧结果为初值，保证帧间点/曲线连续性（补充材料含视频）。
+
+### 7.2 路径规划
+
+#### 7.2.1 无人机监视（Videodrone）
+
+费城犯罪数据 [OpenDataPhilly] 加权成密度 $\mu$（Fig. 7a）。在 (31) 运动学约束下最小化 (1)，轨迹更常经过高危区；附加**有界偏航角速度**、**指定时刻经过充电点**（ autonomy）。8k 离散点，30'' 优化。轨迹分色表示多次充电往返。
+
+#### 7.2.2 激光雕刻
+
+Fig. 8：激光沿连续轨迹灼烧木材复现风景。同一技术可推广至 3D 打印喷嘴与料流轨迹 [Chen et al.]。
+
+#### 7.2.3 MRI 压缩采样
+
+MRI 在 Fourier 域沿**有界速度、有界加速度**曲线采样 [Boyer et al. 2016]，恰为 (31) 约束集。理论建议按稀疏结构在 wavelet 域的分布 $\mu$ 随机采样，物理上不可行 → 用本文将 $\mu$ **投影**到可执行轨迹。
+
+采样得 $\mathbf{y}[i]=\hat{u}(\mathbf{x}[i])$，重建解
+
+$$
+\min_{v,\,v|_{\mathbf{x}}=\mathbf{y}}
+\tfrac{1}{2}\|\hat{v}(\mathbf{x})-\mathbf{y}\|_2^2+\lambda\|\Psi u\|_1,
+\tag{45}
+$$
+
+$\Psi$ 为冗余小波等稀疏变换。Fig. 9：目标密度、生成轨迹（约为全 Fourier 采样 1/4）、真图与重建图。
+
+### 7.3 高级采样理论
 
 将目标密度投影到满足几何约束的曲线点集，用于**结构化采样模式**设计 [de Gournay et al.]。
-
-### 7.3 路径规划
-
-运动学约束 (31) 直接对应有界速度/加速度的轨迹；在 OT 框架下同时逼近目标「占用」分布。
 
 ### 7.4 与焦散 / 透镜设计的联系
 
@@ -497,9 +728,30 @@ flowchart TD
 | Green 积分 | 2D 大规模 stippling 的关键加速 |
 | (22)(23)(25) | 权重闭式 + 站点移向 Laguerre 重心 |
 | (26)(27) | Lloyd 与 de Goes 蓝噪声为特例 |
-| (29)–(39) | 曲线速度/曲率约束 + ADMM 投影 |
+| (29)–(43) | 曲线约束、ADMM 分裂与投影 |
+| (44)(45) | 彩色 curvling、MRI 重建 |
+| (46) | Algorithm 1 局部收敛条件 |
 
 **局限**：主要针对 **2D**；高维 Laguerre 图代价高。非凸曲线约束下 $\Pi$-step 无全局最优保证。密度需在网格上离散，极非均匀时 $\psi$-step 可能需多尺度初始化。
+
+---
+
+## 10. 附录 A：Algorithm 1 的收敛性
+
+**Theorem 3** [Nesterov]：设 $\mathbf{X}\subset\mathbb{R}^n$ 闭凸，$\Sigma_k=\Sigma\succ 0$ 常数，$F\in C^1$ 且
+
+$$
+\forall(\mathbf{x}_1,\mathbf{x}_2),\quad
+\|\nabla F(\mathbf{x}_1)-\nabla F(\mathbf{x}_2)\|_{\Sigma^{-1}}
+\le L\|\mathbf{x}_1-\mathbf{x}_2\|_{\Sigma},
+\tag{46}
+$$
+
+且 $\mathbf{X}$ 紧或 $F$ 强制。则步长 $s_k=1/L$ 时 Algorithm 1 收敛到 $F$ 的临界点。
+
+**应用限制**：定理要求 $\Sigma_k$ 常数 → 权重 $\mathbf{w}$ 需预先固定。由 (23)，$\nabla_{\mathbf{x}}F$ 的 Lipschitz 常数含 $\min_{i\neq j}\|\mathbf{x}[i]-\mathbf{x}[j]\|^{-1}$，**不能**对 $\mathbf{x}$ 一致有界 → 仅有**局部**理论。
+
+**无 $\Pi$-步**（$\mathbf{X}=\Omega^n$）：临界点处梯度 1-Lipschitz（centroidal tessellation）[Du et al. Prop. 6.3]，故 $s_k=1$、$\Sigma_k$ 如 (25) 时可在 $\mathbf{x}^*$ 邻域内证明收敛。邻域大小依赖最优 Laguerre 剖分几何；数值上数百次随机初始化均收敛到视觉良好的驻点。
 
 ---
 
@@ -511,6 +763,13 @@ flowchart TD
 - Lévy B., Schwindt C., Steele E. *Laguerre–Minkowski diagrams and applications*. 2015.
 - Merigot Q., Mérigot J. *A multiscale approach to optimal transport*. Computer Graphics Forum, 2018.
 - Balzer M., Deussen O., et al. *Capacity-constrained point distributions*. CGF, 2009.
-- Gournay F., et al. *A projection method for the reconstruction of curves*. 2018.
+- Gournay F., et al. *A projection method on measures sets*. Constructive Approximation, 45(1), 2017. [Chauffert et al. — 卷积距离版 (1)]
+- Boyer C., Chauffert N., Ciuciu P., Kahn J., Weiss P. *On the generation of sampling schemes for MRI*. SIAM J. Imaging Sci., 9(4), 2016.
+- de Gournay F., Kahn J., Lebrat L. *Differentiation and regularity of semi-discrete optimal transport*. arXiv:1803.00827, 2018. [式 (23) 梯度来源]
+- Du Q., Faber V., Gunzburger M. *Centroidal Voronoi tessellations*. SIAM Review, 41(4), 1999.
+- Kitagawa J., Mérigot Q., Thibert B. *A Newton algorithm for semi-discrete optimal transport*. arXiv:1603.05579, 2016.
+- Merigot Q. *A multiscale approach to optimal transport*. CGF, 30(5), 2011.
+- Polyak R. A. *Regularized Newton method for unconstrained convex optimization*. Math. Program., 120(1), 2009.
+- Schmaltz C., Gwosdek P., Bruhn A., Weickert J. *Electrostatic halftoning*. CGF, 29, 2010.
 
 **相关笔记**：[最优传输介绍](2018-05-01-最优传输介绍.md) · [Monge/Kantorovich](2018-06-01-Monge问题与Kantorivch问题.md) · [半离散 OT](2020-05-01-基于凸几何的半离散最优传输.md) · [多尺度半离散 OT](2020-05-02-多尺度半离散最优传输.md) · [焦散透镜 / 蓝噪声 OT](2020-12-12-最优传输计算焦散透镜.md) · [Sinkhorn](2020-05-12-Sinkhorn算法与DSB.md)
