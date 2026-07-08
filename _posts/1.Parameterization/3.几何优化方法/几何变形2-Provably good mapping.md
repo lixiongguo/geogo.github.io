@@ -84,22 +84,30 @@ $$
 
 $D_{\text{conf}}=1$ $\Leftrightarrow$ $\Sigma=\sigma$（局部相似变换）。
 
-### 3.1 相似 / 反相似分解（凸约束的基础）
+### 3.1 相似 / 反相似分解（式 (19)(20)）
 
-将 $J_f$ 分解为**相似部分**与**反相似部分**（对 $\mathbf{C}$ 线性）：
-
-$$
-J_s f = \begin{pmatrix} \nabla u \\ \nabla v \end{pmatrix}^{\!\top}\!\cdot\!\text{（相似模板）},\quad
-J_a f = \begin{pmatrix} \nabla u \\ \nabla v \end{pmatrix}^{\!\top}\!\cdot\!\text{（反相似模板）}.
-$$
-
-（论文式 (19)：用逆时针旋转 $\frac{\pi}{2}$ 的矩阵把 $\nabla u,\nabla v$ 配对。）则有
+记 $I\in\mathbb{R}^{2\times 2}$ 为**逆时针旋转 $\pi/2$** 的矩阵。定义 Jacobian 的**相似部分**与**反相似部分**（对系数 $\mathbf{C}$ **线性**）：
 
 $$
-\Sigma = \|J_s\| + \|J_a\|,\qquad \sigma = \|J_s\| - \|J_a\|
+\mathbf{J}_S f(\mathbf{x})
+= \frac{\nabla u(\mathbf{x}) + I\,\nabla v(\mathbf{x})}{2},
+\qquad
+\mathbf{J}_A f(\mathbf{x})
+= \frac{\nabla u(\mathbf{x}) - I\,\nabla v(\mathbf{x})}{2}.
+\tag{19}
 $$
 
-（要求 $\|J_s\|\ge\|J_a\|$）。等距界 $\Sigma\le K$、$\sigma\ge K^{-1}$ 化为对 $\|J_s\|,\|J_a\|$ 的范数约束；$\sigma>0$ 与 $\det J_f>0$ 共同保证局部单射（§7）。
+（此处 $\nabla u,\nabla v\in\mathbb{R}^2$ 为列向量。）奇异值可写为（[Lehto & Virtanen 1973]）
+
+$$
+\Sigma(\mathbf{x}) = \bigl\|\mathbf{J}_S f(\mathbf{x})\bigr\| + \bigl\|\mathbf{J}_A f(\mathbf{x})\bigr\|,
+\qquad
+\sigma(\mathbf{x})
+= \Bigl|\bigl\|\mathbf{J}_S f(\mathbf{x})\bigr\| - \bigl\|\mathbf{J}_A f(\mathbf{x})\bigr\|\Bigr|.
+\tag{20}
+$$
+
+等距界 (10) 即 $\|\mathbf{J}_S\|+\|\mathbf{J}_A\|\le K$ 且 $\|\mathbf{J}_S\|-\|\mathbf{J}_A\|\ge K^{-1}$；后者非凸，§7 用 **frame** 凸化。该分解也是 **Lemma 2**（附录 B）与 SOCP 约束 (21)–(28) 的基础。
 
 ---
 
@@ -125,37 +133,80 @@ $$
 
 即 $\Omega$ 中离配准点**最远**的点到最近配准点的距离。$h$ 越小，离散采样越密。
 
-### 4.2 连续性模
+### 4.2 连续性模（式 (6)(7)）
 
-函数 $g:\mathbb{R}^2\to\mathbb{R}$ 具有连续性模 $\omega$（**$\omega$-连续**），若
+标量函数 $g:\mathbb{R}^2\to\mathbb{R}$ 具有连续性模 $\omega$（**$\omega$-连续**），若
 
 $$
 |g(\mathbf{x}) - g(\mathbf{y})| \leq \omega(\|\mathbf{x} - \mathbf{y}\|), \quad \forall \mathbf{x}, \mathbf{y} \in \Omega,
 \tag{6}
 $$
 
-其中 $\omega:\mathbb{R}^+\to\mathbb{R}^+$ 连续、严格单调且 $\omega(0)=0$。它上界函数随距离的变化速率。
+其中 $\omega:\mathbb{R}^+\to\mathbb{R}^+$ 连续、严格单调且 $\omega(0)=0$。向量值映射 $\mathbf{g}:\mathbb{R}^2\to\mathbb{R}^2$ 同理：
 
-**Lemma 2**：若 $\nabla u,\nabla v$ 均为 $\omega$-连续，则奇异值函数 $\Sigma,\sigma$ 为 $2\omega$-连续。对式 (1) 的映射，$\omega$ 由基函数梯度模 $\omega_{\nabla\varphi}$ 与系数 $\mathbf{C}$ 通过矩阵范数组合得到（论文式 (8)–(9)）。
+$$
+\|\mathbf{g}(\mathbf{x}) - \mathbf{g}(\mathbf{y})\| \leq \omega(\|\mathbf{x} - \mathbf{y}\|), \quad \forall \mathbf{x}, \mathbf{y} \in \Omega.
+\tag{7}
+$$
 
-| 基 | $\omega_{\nabla\varphi}(t)$（示意） |
+### 4.3 奇异值的连续性模（Lemma 2 与式 (8)(9)）
+
+**Lemma 2**：若 $\nabla u,\nabla v$ 均为 $\omega$-连续，则奇异值函数 $\Sigma,\sigma$ 为 **$2\omega$-连续**（证明见论文附录 B）。
+
+对式 (1) 的映射，先界 $\nabla u$。记 $\omega_{\nabla f_i}$ 为基梯度 $\nabla f_i$ 的连续性模，$\omega_{\nabla\mathcal{F}}(t)\ge \omega_{\nabla f_i}(t)$ 对所有 $f_i\in\mathcal{F}$ 成立；矩阵**最大范数**
+
+$$
+\|\!\|\mathbf{C}\|\!\| = \max_{\ell\in\{1,2\}} \sum_{i=1}^{n} \bigl|c_i^{(\ell)}\bigr|.
+$$
+
+则
+
+$$
+\|\nabla u(\mathbf{x}) - \nabla u(\mathbf{y})\|
+\leq \sum_{i=1}^{n} \bigl|c_i^{(u)}\bigr|\,\|\nabla f_i(\mathbf{x}) - \nabla f_i(\mathbf{y})\|
+\leq \|\!\|\mathbf{C}\|\!\|\,\omega_{\nabla\mathcal{F}}(\|\mathbf{x}-\mathbf{y}\|),
+\tag{8}
+$$
+
+故 $\omega_{\nabla u}=\omega_{\nabla v}=\|\!\|\mathbf{C}\|\!\|\,\omega_{\nabla\mathcal{F}}$。由 Lemma 2，奇异值函数的连续性模为
+
+$$
+\omega_{\Sigma,\sigma} = 2\,\|\!\|\mathbf{C}\|\!\|\,\omega_{\nabla\mathcal{F}}.
+\tag{9}
+$$
+
+**Table 1**（论文）给出各基的 $\omega_{\nabla\mathcal{F}}$：
+
+| 基 $f_i$ | $\omega_{\nabla\mathcal{F}}(t)$ |
 | :--- | :--- |
-| 三次 B-Spline | $4\delta t / (3\Delta^2)$，$\Delta$ 为网格间距 |
-| TPS | 局部 $O(t(5.8+5\log t))$ |
-| Gaussian | 与 $s$ 相关的 $O(t)$ 界 |
+| 三次均匀 B-Spline | $\dfrac{4}{3\Delta^2}\,t$，$\Delta$ 为网格间距 |
+| TPS $\tfrac{1}{2}\|\mathbf{x}-\mathbf{x}_i\|^2\log\|\mathbf{x}-\mathbf{x}_i\|^2$ | $t\bigl(5.8 + 5|\log t|\bigr)$（局部，$\|\mathbf{x}-\mathbf{y}\|\lesssim 0.29$） |
+| Gaussian $\exp\!\bigl(-\|\mathbf{x}-\mathbf{x}_i\|^2/(2s^2)\bigr)$ | $t/s^2$ |
 
 ---
 
 ## 5. 全局畸变界：Lemma 1 与三种策略
 
-设在所有 $\mathbf{z}\in\mathcal{Z}$ 上等距畸变受控 $D_{\text{iso}}(\mathbf{z})\le K$，即
+**Lemma 1**：设 $\Sigma,\sigma$ 为 $\omega$-连续，$\mathbf{z}\in\mathcal{Z}$ 为配准点。则对任意 $\mathbf{x}\in\Omega$，
+
+$$
+\sigma(\mathbf{z}) - \omega(\|\mathbf{x}-\mathbf{z}\|)
+\;\le\; \sigma(\mathbf{x}) \;\le\; \Sigma(\mathbf{x}) \;\le\;
+\Sigma(\mathbf{z}) + \omega(\|\mathbf{x}-\mathbf{z}\|).
+$$
+
+取 $\|\mathbf{x}-\mathbf{z}\|\le h(\mathcal{Z},\Omega)$ 即得全域界。
+
+### 5.1 等距界（式 (10)(11)）
+
+设在所有 $\mathbf{z}\in\mathcal{Z}$ 上 $D_{\text{iso}}(\mathbf{z})\le K$，等价于
 
 $$
 \Sigma(\mathbf{z}) \leq K, \qquad \sigma(\mathbf{z}) \geq \frac{1}{K}.
 \tag{10}
 $$
 
-记 $h=h(\mathcal{Z},\Omega)$，$\omega=\omega_{\Sigma,\sigma}$ 为奇异值的连续性模。由 **Lemma 1**，对任意 $\mathbf{x}\in\Omega$：
+记 $h=h(\mathcal{Z},\Omega)$，$\omega=\omega_{\Sigma,\sigma}$（由 (9) 计算）。则对任意 $\mathbf{x}\in\Omega$，
 
 $$
 D_{\text{iso}}(\mathbf{x}) \leq \max\left\{ K + \omega(h),\; \frac{1}{K^{-1} - \omega(h)} \right\},
@@ -163,23 +214,75 @@ D_{\text{iso}}(\mathbf{x}) \leq \max\left\{ K + \omega(h),\; \frac{1}{K^{-1} - \
 \tag{11}
 $$
 
-**共形**情形：若在配准点还有 $\Sigma(\mathbf{z})\le K_{\text{conf}}$、$\sigma(\mathbf{z})\ge\delta>0$（$\delta$ 防止 $\sigma\to 0$ 失去单射），则
+当 $K^{-1}>\omega(h)$ 时 $\sigma(\mathbf{x})>0$，映射局部单射。
+
+### 5.2 共形界（式 (12)(13)）
+
+配准点上的共形约束为
 
 $$
-D_{\text{conf}}(\mathbf{x}) \leq \frac{K_{\text{conf}} + \omega_{\text{co}}(h)}{\delta - \omega_{\text{co}}(h)},
-\qquad \delta > \omega_{\text{co}}(h).
+\Sigma(\mathbf{z}) \leq K\,\sigma(\mathbf{z}), \qquad \sigma(\mathbf{z}) \geq \delta > 0,
+\tag{12}
+$$
+
+其中 $\delta$ 防止 $\sigma\to 0$ 失去单射。则
+
+$$
+D_{\text{conf}}(\mathbf{x}) \leq K\,\frac{\delta + \omega(h)}{\delta - \omega(h)},
+\qquad
+\sigma(\mathbf{x}) \geq \delta - \omega(h),
+\qquad \delta > \omega(h).
 \tag{13}
 $$
 
-式 (11)(13) 把**离散配准点界 $K$**、**密度 $h$**、**基的光滑性 $\omega$** 三者联系起来——这就是 **provably** 的含义：交互时只在稀疏 active set 上解 SOCP，后处理可用更密网格**认证**全域界。
+### 5.3 三种畸变控制策略（式 (14)–(17)）
 
-### 5.1 三种畸变控制策略
+记目标**全域**畸变上界为 $K_{\max}$（论文记号 $K_{\max}>K$）。
 
 | 策略 | 已知 | 求 |
 | :--- | :--- | :--- |
-| **1. 认证** | $\mathcal{Z}$、配准点界 $K$ | 全域最大畸变 $\bar{K}$（由 (11) 直接算） |
-| **2. 加密网格** | 配准点界 $K$、目标全域界 $\bar{K}$ | 所需填充距离 $h$（反解 (14)(15)） |
-| **3. 反推约束** | $\mathcal{Z}$、目标全域界 $\bar{K}$ | 配准点上应施加的 $K$（式 (16)(17)） |
+| **1. 认证** | $\mathcal{Z}$、配准点界 $K$ | $K_{\max}$：由 (11)(13) 直接代入 $h,\omega$ |
+| **2. 加密网格** | $K$、目标 $K_{\max}$ | 所需填充距离 $h$ |
+| **3. 反推约束** | $\mathcal{Z}$（故已知 $h$）、目标 $K_{\max}$ | 配准点上应施加的 $K$ |
+
+**策略 2**——反解 (11)(13)（$\omega^{-1}$ 单调递增）：
+
+$$
+h_{\text{iso}} \leq \omega^{-1}\!\left(
+\min\left\{
+K_{\max} - K,\;
+\frac{1}{K} - \frac{1}{K_{\max}}
+\right\}
+\right),
+\tag{14}
+$$
+
+$$
+h_{\text{conf}} \leq \omega^{-1}\!\left(
+\frac{\delta K_{\max} - K}{K_{\max} + K}
+\right).
+\tag{15}
+$$
+
+共形情形下 (15) 还要求 $h_{\text{conf}}<\omega^{-1}(\delta)$，从而由 (13) 保证 $\sigma(\mathbf{x})>0$。
+
+**策略 3**——给定 $h$，反推配准点应施加的界：
+
+$$
+K_{\text{iso}} \leq \min\left\{
+K_{\max} - \omega(h),\;
+\frac{1}{\dfrac{1}{K_{\max}} + \omega(h)}
+\right\},
+\tag{16}
+$$
+
+$$
+K_{\text{conf}} \leq K_{\max}\,\frac{\delta - \omega(h)}{\delta + \omega(h)},
+\qquad \delta_{\text{conf}} > \omega(h).
+\tag{17}
+$$
+
+式 (11)(13) 与 (14)–(17) 把**离散配准点界 $K$**、**密度 $h$**、**基的光滑性 $\omega$** 三者联系起来——这就是 **provably** 的含义：交互时只在稀疏 active set 上解 SOCP，后处理可用更密网格**认证**全域界。
 
 交互阶段用粗网格（如 $200\times 200$ 配准点）实时求解；用户满意后切换到策略 2，用 $3000$–$6000$ 点网格**证明**单射与畸变界（论文实验）。
 
@@ -195,51 +298,209 @@ $$
 
 ---
 
-## 7. 配准点上的凸约束与 SOCP
+## 7. 配准点上的凸约束与 SOCP（式 (18)–(28)）
 
-在 active 配准点 $\mathbf{z}$ 上，等距约束 (10) 化为（论文式 (21)–(23)）：
-
-$$
-\|J_s f(\mathbf{z})\| \le t,\quad \|J_a f(\mathbf{z})\| \le s,\quad t+s \le K,
-$$
-
-其中 $t,s$ 为辅助变量——标准**二阶锥规划（SOCP）**形式。
-
-下界 $\sigma\ge K^{-1}$ 即 $\|J_s\|-\|J_a\|\ge K^{-1}$，涉及**锥的补集**，非凸。沿用 Lipman 2012 的 **frame** 技巧：引入单位向量 $\mathbf{d}$，用半空间
+§4 将连续问题 (1)(2) 离散为在配准点集 $\mathcal{Z}$ 上施加约束。论文 §5 的优化子问题为
 
 $$
-J_s f(\mathbf{z})^\top \mathbf{d} \ge r
+\min_{\mathbf{C}}\; E_{\mathrm{pos}}(f) + \lambda E_{\mathrm{reg}}(f)
+\quad\text{s.t.}\quad
+D(f;\mathbf{z}) \le K,\;\forall \mathbf{z}\in\mathcal{Z},
+\qquad
+f = \sum_{i=1}^{n} \mathbf{c}_i f_i.
+\tag{18}
 $$
 
-凸化内接于锥补（论文式 (25)(26)）；每步根据上一步 $J_s$ 更新 $\mathbf{d}$（式 (27)），使可行域尽量大。该约束同时迫使 $\det J_f>0$。
+其中 $D=D_{\text{iso}}$ 或 $D_{\text{conf}}$，$K\ge 1$ 为用户畸变界。对正确的 $K$ 与 $\mathcal{Z}$（§5 策略 2/3），可证 $f$ 在全域满足 $K_{\max}$ 界。下文把 active 配准点 $\mathbf{z}_i$ 上的畸变约束写成 **SOCP**。
 
-**共形**约束写为 frame 形式 (28)。**手柄**位置约束用软能量（式 (29)(30)）或硬约束；软约束保证交互时 SOCP 始终可行（畸变过紧时手柄暂时"拖不动"）。
+### 7.1 等距约束的锥形式（式 (21)–(26)）
+
+由 (10) 与 (19)(20)，等距约束等价于
+
+$$
+\bigl\|\mathbf{J}_S f(\mathbf{z}_i)\bigr\| + \bigl\|\mathbf{J}_A f(\mathbf{z}_i)\bigr\| \le K,
+\tag{21}
+$$
+
+$$
+\bigl\|\mathbf{J}_S f(\mathbf{z}_i)\bigr\| - \bigl\|\mathbf{J}_A f(\mathbf{z}_i)\bigr\| \ge \frac{1}{K}.
+\tag{22}
+$$
+
+**(21)** 化为标准二阶锥：引入辅助变量 $t_i,s_i$，
+
+$$
+\bigl\|\mathbf{J}_S f(\mathbf{z}_i)\bigr\| \le t_i,
+\qquad
+\bigl\|\mathbf{J}_A f(\mathbf{z}_i)\bigr\| \le s_i,
+\qquad
+t_i + s_i \le K.
+\tag{23}
+$$
+
+**(22)** 含**锥的补集** $\|\mathbf{J}_S\|\ge r_i$，非凸。引入辅助 $r_i$ 后写为
+
+$$
+\bigl\|\mathbf{J}_S f(\mathbf{z}_i)\bigr\| \ge r_i,
+\tag{24}
+$$
+
+沿用 [Lipman 2012] 的 **frame**：取单位向量 $\mathbf{d}_i$，用半空间
+
+$$
+\mathbf{J}_S f(\mathbf{z}_i)^\top \mathbf{d}_i \ge r_i
+\tag{25}
+$$
+
+凸化内接于 (24) 的锥补（见论文插图：$\mathbf{d}_i$ 张成的半平面落在锥补内）。将 (22) 替换为
+
+$$
+\mathbf{J}_S f(\mathbf{z}_i)^\top \mathbf{d}_i - s_i \ge \frac{1}{K}.
+\tag{26}
+$$
+
+（此处 $r_i$ 冗余。）该约束同时迫使 $\det J_f>0$。
+
+每步 SOCP 后，为让下一半平面尽可能远离当前 $\mathbf{J}_S$，更新
+
+$$
+\mathbf{d}_i = \frac{\mathbf{J}_S f(\mathbf{z}_i)}{\bigl\|\mathbf{J}_S f(\mathbf{z}_i)\bigr\|}.
+\tag{27}
+$$
+
+**初始化**：交互从静止姿态开始，各点 Jacobian 为恒等，取 $\mathbf{d}_i=(1,0)^\top$ 即可使平凡解可行；软手柄能量 (29) 保证 SOCP 始终有解。
+
+### 7.2 共形约束（式 (28)）
+
+共形情形用 frame 形式（与 Lipman 2012 同型，记号与本文一致）：
+
+$$
+\bigl\|\mathbf{J}_A f(\mathbf{z}_i)\bigr\|
+\le \frac{K-1}{K+1}\,\mathbf{J}_S f(\mathbf{z}_i)^\top \mathbf{d}_i,
+\tag{28a}
+$$
+
+$$
+\bigl\|\mathbf{J}_A f(\mathbf{z}_i)\bigr\|
+\le \mathbf{J}_S f(\mathbf{z}_i)^\top \mathbf{d}_i - \delta.
+\tag{28b}
+$$
+
+### 7.3 位置能量 $E_{\mathrm{pos}}$（式 (29)(30)）
+
+优化问题 (18) 的第一项是**位置能量** $E_{\mathrm{pos}}(f)$，使映射在**手柄点** $\{\mathbf{p}_\ell\}_{\ell=1}^{n_\ell}$ 上接近目标位置 $\{\mathbf{q}_\ell\}_{\ell=1}^{n_\ell}$。代入式 (1)：
+
+$$
+E_{\mathrm{pos}}(f)
+= \sum_{\ell=1}^{n_\ell} \bigl\|f(\mathbf{p}_\ell) - \mathbf{q}_\ell\bigr\|_2
+= \sum_{\ell=1}^{n_\ell} \left\|
+\sum_{i=1}^{n} \mathbf{c}_i\,\varphi_i(\mathbf{p}_\ell) - \mathbf{q}_\ell
+\right\|_2.
+\tag{29}
+$$
+
+这是对每个手柄的**欧氏距离**求和（$\mathbb{R}^2$ 上的 $\ell_2$ 范数再对 $\ell$ 求和），**不是**坐标分量上的 $\ell_1$ 范数。
+
+**为何用 (29) 而非常见的二次能量** $\sum_\ell \|f(\mathbf{p}_\ell)-\mathbf{q}_\ell\|_2^2$？
+
+| 能量 | 形式 | 与 SOCP 的关系 |
+| :--- | :--- | :--- |
+| **式 (29)** | $\sum_\ell \|\cdot\|_2$ | 引入辅助变量 $r_\ell$ 后，$\|f(\mathbf{p}_\ell)-\mathbf{q}_\ell\|_2\le r_\ell$ 是**标准二阶锥约束** |
+| **二次** | $\sum_\ell \|\cdot\|_2^2$ | 对 $\mathbf{C}$ 是**纯二次**目标（QP）；也可放进 SOCP（旋转锥 / 等价二次项），但不如 (29) 与畸变锥约束**同型** |
+
+最小化 (29) 等价于
+
+$$
+\min_{\mathbf{C},\,\{r_\ell\}} \;\sum_{\ell=1}^{n_\ell} r_\ell
+\quad\text{s.t.}\quad
+\left\|
+\sum_{i=1}^{n} \mathbf{c}_i\,\varphi_i(\mathbf{p}_\ell) - \mathbf{q}_\ell
+\right\|_2 \le r_\ell,\;\forall \ell.
+\tag{30}
+$$
+
+这是**线性目标 + 二阶锥约束** → 与 §7 中畸变约束一起构成**同一个 SOCP**。交互时手柄过紧、畸变界 $K$ 过小会导致 (30) 与畸变锥冲突——软约束 (29) 允许 SOCP **始终可行**（手柄暂时"拖不动"），优于硬等式 $f(\mathbf{p}_\ell)=\mathbf{q}_\ell$。
+
+**硬约束变体**：若要求 $f(\mathbf{p}_\ell)=\mathbf{q}_\ell$ 精确成立，对线性基这是 $\mathbf{C}$ 上的**线性等式**（每个手柄 2 个方程），可与 SOCP 不等式约束联立；交互中更常用软能量 (29)。
 
 ---
 
 ## 8. 优化问题与 Active Set 算法
 
-原无限维问题
+原无限维问题 (1)(2) 在 §7 离散为 **(18)**。交互实现中，每轮只在 **active set** $\bar{\mathcal{Z}}\subseteq\mathcal{Z}$ 上施加畸变锥 (23)(26) 或 (28)，而非全体配准点。正则项 $E_{\mathrm{reg}}$ 取双调和与 ARAP 的凸组合（论文默认）：
 
 $$
-\min_f\; E_{\text{pos}}(f) + \lambda E_{\text{reg}}(f)
-\quad\text{s.t.}\quad D(f;\mathbf{x})\le K,\;\forall \mathbf{x}\in\Omega
+E_{\mathrm{reg}}(f) = E_{\mathrm{bh}}(f) + \lambda\, E_{\mathrm{arap}}(f).
 $$
 
-离散为（论文式 (18)）：
+### 8.1 双调和能量 $E_{\mathrm{bh}}$（式 (31)）
+
+**双调和能量**惩罚 Hessian 的 Frobenius 范数，使映射尽量**光滑**（类似薄板样条 / 双调和插值的平面版）：
 
 $$
-\min_{\mathbf{C}}\; E_{\text{pos}}(f) + \lambda E_{\text{reg}}(f)
-\quad\text{s.t.}\quad D(f;\mathbf{z}) \le K,\;\forall \mathbf{z}\in\bar{\mathcal{Z}},
-\tag{18}
+E_{\mathrm{bh}}(f) = E_{\mathrm{bh}}(u,v)
+= \iint_{\Omega} \bigl(\|H_u(\mathbf{x})\|_F^2 + \|H_v(\mathbf{x})\|_F^2\bigr)\, dA,
+\tag{31}
 $$
 
-其中 $\bar{\mathcal{Z}}\subseteq\mathcal{Z}$ 为**active set**。正则项常用：
+其中 $H_u,H_v$ 为 $u,v$ 的 Hessian。对式 (1)，$u=\sum_i c_i^{(u)}\varphi_i$，故
 
-- **双调和能量** $E_{\text{bi}}$：$\int \|H_u\|_F^2+\|H_v\|_F^2$（对 $\mathbf{C}$ 二次）；
-- **ARAP 能量** $E_{\text{arap}}$：在预采样点 $\mathbf{r}_i$ 上 $\sum_i \|J_f(\mathbf{r}_i)-R_i\|_F^2$，经 frame 化为二次项 (33)。
+$$
+H_u = \sum_{i=1}^{n} c_i^{(u)}\, H_{\varphi_i},\qquad
+H_v = \sum_{i=1}^{n} c_i^{(v)}\, H_{\varphi_i},
+$$
 
-### 8.1 Active Set 更新（交互关键）
+$H_{\varphi_i}$ 可**预计算**（与 $\mathbf{C}$ 无关）。代入 (31) 后，被积函数对 $\mathbf{c}_i=(c_i^{(u)},c_i^{(v)})$ 是**二次型**；用数值求积（配准网格或高斯积分点）离散为
+
+$$
+E_{\mathrm{bh}}(f) \approx \mathbf{c}^\top A_{\mathrm{bh}}\,\mathbf{c},
+$$
+
+$\mathbf{c}$ 为所有系数拉成的向量，$A_{\mathrm{bh}}\succeq 0$。**纯二次、凸**，与 SOCP 目标线性项可合并为 SOCP 的二次锥部分或单独作为 QP 子项。
+
+### 8.2 ARAP 能量 $E_{\mathrm{arap}}$ 与 frame 二次化（式 (32)(33)）
+
+**ARAP（As-Rigid-As-Possible）** 在预采样点 $\{\mathbf{r}_s\}_{s=1}^{n_s}$ 上要求 Jacobian 接近**旋转矩阵**：
+
+$$
+E_{\mathrm{arap}}(f)
+= \sum_{s=1}^{n_s} \bigl\|J_f(\mathbf{r}_s) - Q(\mathbf{r}_s)\bigr\|_F^2,
+\tag{32}
+$$
+
+其中 $Q(\mathbf{r}_s)\in SO(2)$ 为 $J_f(\mathbf{r}_s)$ 的**最近旋转**（极分解去剪切部分）。因 $Q$ 依赖 $J_f$ 而 $J_f$ 又依赖 $\mathbf{C}$，(32) 对 $\mathbf{C}$ **非凸**；经典做法为 [Liu et al. 2008] / [Sorkine & Alexa 2007] 的 **local-global** 交替：
+
+1. **Local**：固定 $J_f$，更新 $Q_s\leftarrow \mathrm{polar}(J_f(\mathbf{r}_s))$；
+2. **Global**：固定 $\{Q_s\}$，对 $\mathbf{C}$ 解**二次**最小二乘。
+
+在 Provably Good 框架中，$Q_s$ 用与畸变约束相同的 **frame** $\mathbf{d}_s$ 构造（论文式 (27) 在采样点 $\mathbf{r}_s$ 上更新），使 (32) 在每一步 SOCP 内化为**对 $\mathbf{C}$ 的二次泛函**：
+
+$$
+E_{\mathrm{arap}}(f)
+= \sum_{s=1}^{n_s} \bigl\|J_f(\mathbf{r}_s) - F_s\bigr\|_F^2,
+\tag{33}
+$$
+
+其中 $F_s\in\mathbb{R}^{2\times 2}$ 由 frame $\mathbf{d}_s$ 确定的**固定**目标矩阵（相似 + 反相似模板的线性组合，与 §3.1 的 $J_s,J_a$ 分解一致）。展开：
+
+$$
+J_f(\mathbf{r}_s)=\sum_{i=1}^{n}\mathbf{c}_i\,\nabla\varphi_i(\mathbf{r}_s)^\top
+\quad\text{（按列堆叠梯度）},
+\qquad
+\|J_f-F_s\|_F^2 = \mathrm{tr}\bigl((J_f-F_s)^\top(J_f-F_s)\bigr),
+$$
+
+对 $\mathbf{C}$ 为 $\|\mathbf{C} G_s - F_s\|_F^2$ 型二次项（$G_s$ 为基梯度在 $\mathbf{r}_s$ 的矩阵）。故 **(33) 在固定 frame 下是凸二次能量**，可写入 SOCP 的二次目标或与双调和项共用 $A_{\mathrm{reg}}$。
+
+| 能量 | 对 $\mathbf{C}$ | 作用 |
+| :--- | :--- | :--- |
+| $E_{\mathrm{bh}}$ (31) | 二次、凸 | 整体光滑、抑制振荡 |
+| $E_{\mathrm{arap}}$ (32) | 非凸（若 $Q$ 自由） | 局部刚体、保形感 |
+| $E_{\mathrm{arap}}$ (33) | 二次（frame 固定） | 嵌入 SOCP 迭代，与 Lipman 2012 一脉 |
+
+$\lambda$ 权衡光滑（双调和）与局部刚性（ARAP）；交互变形常取较小 $\lambda$，以手柄 (29) 与畸变界 $K$ 为主。
+
+### 8.3 Active Set 更新（交互关键）
 
 配准点布在均匀矩形网格上。每步：
 
@@ -250,21 +511,55 @@ $$
 
 实践中每步仅激活少量孤立点（图 3A–3C：杆弯曲时激活点防止塌陷；去掉约束则出现奇点）。对 active 点解 SOCP（MOSEK 等内点法），复杂度随 $|\bar{\mathcal{Z}}|$ 近线性（论文图 7）。
 
-### 8.2 算法概要
+### 8.4 Algorithm 1：Provably Good Planar Mapping（论文流程）
 
-```
-输入：手柄 {(p_i, q_i)}，基函数 F，配准网格 Z，畸变界 K
-输出：变形 f
+下面把论文 Algorithm 1 用本文记号重写（$Z'$ 对应 active set，$Z''$ 对应常驻点；阈值采用 $K_{\text{high}},K_{\text{low}}$）。
 
-初始化：预计算 φ_k(z), ∇φ_k(z)；frame d←(1,0)；Z̄←∅；常驻点 Z^fix
-重复（用户拖动手柄）:
-  用当前 C 评估 D(z), z∈Z
-  按 K_on, K_off 更新 active set Z̄
-  解 SOCP (18)：手柄能量 + 正则 + 在 Z̄∪Z^fix 上的畸变锥约束
-  更新 frame d（式 27）
-后处理（可选）:
-  加密 Z，用策略 2 计算 h，认证全域畸变 < K̄
+```text
+Algorithm 1  Provably good planar mapping
+
+Input:
+  Positional constraints {p_l}_{l=1}^{n_l}, {q_l}_{l=1}^{n_l}
+  Basis functions ϕ_i ∈ 𝓕
+  Collocation grid Z = {z_j}_{j=1}^{m}
+  Distortion type (isometric / conformal) and bound K ≥ 1
+
+Output:
+  Deformation f
+
+Initialization:
+  if first step then
+    Precompute ϕ_i(z), ∇ϕ_i(z),  ∀z∈Z, ∀i
+    Set frame directions d_j ← (1, 0), ∀z_j∈Z
+    Initialize empty active set Z' ← ∅
+    Initialize persistent set Z'' by farthest-point sampling
+  end if
+
+Active-set update:
+  Evaluate distortion D(z),  ∀z∈Z
+  Find local maxima set Z_max of D(z)
+  for each z ∈ Z_max with D(z) > K_high do
+    Insert z into Z'
+  end for
+  for each z ∈ Z' with D(z) < K_low do
+    Remove z from Z'
+  end for
+
+Optimization:
+  Solve (18) (SOCP) for coefficients c on points Z' ∪ Z'':
+    - Isometric case: constraints (23) + (26)
+    - Conformal case: constraints (28a)(28b)
+    - Energies: (30), (31), and/or (33)
+
+Postprocessing:
+  Compute f from c and basis 𝓕
+  Update frames d_j using (27)
+
+Return:
+  Deformation f
 ```
+
+与 §8.3 的关系：$Z'$ 是随畸变峰值动态变化的约束点集，$Z''$ 是防止快速拖拽时约束退化的常驻点集；两者并集进入同一个 SOCP。
 
 ---
 
@@ -278,7 +573,7 @@ $$
 
 | 实验 | 设置 | 现象 |
 | :--- | :--- | :--- |
-| **B-Spline 杆**（图 5） | $6\times 6$ 均匀三次 B 样条，$E_{\text{bi}}+\lambda E_{\text{arap}}$ | 无约束时出现两个奇点；$K=2,3,4$ 时策略 3 用 $3000$ 网格认证全域畸变 |
+| **B-Spline 杆**（图 5） | $6\times 6$ 均匀三次 B 样条，$E_{\mathrm{bh}}+\lambda E_{\mathrm{arap}}$ | 无约束时出现两个奇点；$K=2,3,4$ 时策略 3 用 $3000$ 网格认证全域畸变 |
 | **TPS 方块**（图 8） | 25 基、中间两点旋转 | 无约束子方块 fold-over 消失；$K=5$ 需 $\approx 6000$ 点认证 |
 | **鸟图**（图 9） | meshless ARAP ± 畸变约束 | Photoshop ARAP 在手柄处尖点折叠；光滑基无约束仍 fold；加约束后双射 |
 | **圆盘**（图 10） | vs Schüller 2013、Lipman 2012 | 网格法保证单射但不够光滑；本文同样 $D_{\text{iso}}\le 5$ 且更光滑 |
@@ -292,9 +587,14 @@ $$
 | :--- | :--- |
 | 线性空间 (1) | B-Spline / TPS / Gaussian；$J_f$ 对系数仿射 |
 | 配准点 $\mathcal{Z}$、active set $\bar{\mathcal{Z}}$ | 稀疏凸约束；交互时可变 |
-| 奇异值 $\Sigma,\sigma$ | $D_{\text{iso}}, D_{\text{conf}}$；$J_s,J_a$ 分解 |
-| 连续性模 $\omega$、填充距离 $h$ | Lemma 1：离散 → 全域 |
-| SOCP + frame | Lipman 2012 凸化搬到 meshless |
+| 奇异值 $\Sigma,\sigma$；(19)(20) | $D_{\text{iso}}, D_{\text{conf}}$；$\mathbf{J}_S,\mathbf{J}_A$ 分解 |
+| 连续性模 (6)(7)、(8)(9) | Lemma 2：梯度模 → 奇异值 $2\omega$ |
+| 填充距离 $h$ (5)、全域界 (11)(13) | Lemma 1：离散 → 全域 |
+| 策略 (14)–(17) | 认证 / 加密 $h$ / 反推 $K$ |
+| SOCP (18)(23)(26)、frame (25)(27) | Lipman 2012 凸化搬到 meshless |
+| 共形锥 (28a)(28b) | 共形 active 约束 |
+| $E_{\mathrm{pos}}$ (29)(30) | 手柄：$\sum\|\cdot\|_2$ + 辅助 $r_\ell$，与畸变锥同型 |
+| $E_{\mathrm{bh}}, E_{\mathrm{arap}}$ (31)(33) | 正则：双调和二次 + frame 二次化 ARAP |
 | 策略 1–3 | 认证 / 加密 / 反推 $K$ |
 
 **局限**：基需已知 $\omega_{\nabla\varphi}$；非凸域可用欧氏距离版分析；3D 推广见 Lipman 后续工作（有界畸变调和映射、3D 单射映射等）。
@@ -310,4 +610,5 @@ $$
 - Lipman Y. *Bounded distortion mapping spaces for triangular meshes*. SIGGRAPH 2012. [DOI](https://doi.org/10.1145/2185520.2185604)
 - Schüller C., et al. *Locally injective mappings*. SGP 2013.
 - Solomon J., et al. *As-Killing-As-Possible vector fields for planar deformation*. SIGGRAPH 2011.
+- Liu S., et al. *A local-global approach to mesh parameterization*. SIGGRAPH 2008.
 - Sorkine O., Alexa M. *As-rigid-as-possible surface modeling*. SGP 2007.
