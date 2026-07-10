@@ -23,8 +23,6 @@ $$
 | **材料科学** | 晶体缺陷、位错 | 曲率驱动晶界迁移 |
 | **计算机图形学** | 曲面光滑、网格变形 | 平均曲率流 (MCF)、Willmore 流 |
 
-这些应用的共同数学语言正是下面要展开的**曲面的曲率理论**：从曲线的密切圆、到曲面的高斯曲率，再到参数化中的内蕴性（Theorema Egregium）。**高斯映射、拓扑度与 Gauss-Bonnet** 见专文：[高斯映射与 Gauss-Bonnet 定理](高斯映射与Gauss-Bonnet.md)。
-
 ## 高斯曲率
 
 如果要定义曲面的曲率首先就要先了解**曲线的曲率**。设曲线参数方程为 $ \mathbf{r}(s) $（$s$ 为弧长参数），则曲线在一点处的曲率 $ \kappa $ 定义为切向量 $ \mathbf{T} = \mathbf{r}'(s) $ 的转动速率：
@@ -32,7 +30,7 @@ $$
 \kappa = \left\| \frac{d\mathbf{T}}{ds} \right\| = \|\mathbf{r}''(s)\|
 $$
 
-![image-20260617115734728](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617115734728.png)
+<img src="../../../imgs/image-20260710140832329.png" alt="image-20260710140832329" style="zoom:33%;" />
 
 ![image-20260617115832246](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617115832246.png)
 
@@ -45,7 +43,7 @@ $$
 
 对于空间曲线，在每一点可定义由三个互相正交的单位向量构成的 **Frenet 标架**：
 
-![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251124200526683.png)
+<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251124200526683.png" style="zoom:150%;" />
 
 - $ \mathbf{T} $：单位切向量 (unit tangent)
 - $ \mathbf{N} $：主法向量 (principal normal)，指向曲线弯曲方向
@@ -96,13 +94,11 @@ $$
 
 ![image-20260617120550663](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617120550663.png)
 
-> **高斯映射、拓扑度、戴克公式与 Gauss-Bonnet** 已抽成专文：[高斯映射与 Gauss-Bonnet 定理](高斯映射与Gauss-Bonnet.md)。此处仅保留与曲率分解直接相关的衔接：Weingarten 映射把法曲率编码进形状算子，$K=\det(W)$。
 
----
 
 ## 主曲率
 
-![image-20260617121246998](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617121246998.png)
+<img src="https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617121246998.png" alt="image-20260617121246998" style="zoom: 33%;" />
 
 
 
@@ -110,7 +106,7 @@ $$
 
 ![image-20260617123316665](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617123316665.png)
 
-> 离散角亏与 Gauss-Bonnet（局部角盈 / 全局 $2\pi\chi$ / 离散求和）见专文：[高斯映射与 Gauss-Bonnet 定理](高斯映射与Gauss-Bonnet.md)。
+
 
 ## **高斯绝妙定理（Theorema Egregium）**
 
