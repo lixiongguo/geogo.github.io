@@ -23,7 +23,7 @@ $$
 | **材料科学** | 晶体缺陷、位错 | 曲率驱动晶界迁移 |
 | **计算机图形学** | 曲面光滑、网格变形 | 平均曲率流 (MCF)、Willmore 流 |
 
-这些应用的共同数学语言正是下面要展开的**曲面的曲率理论**：从曲线的密切圆、到曲面的高斯曲率与 Gauss-Bonnet 定理、再到离散三角网格上的角亏公式——它们构成了从连续到离散、从物理到计算的完整知识链。
+这些应用的共同数学语言正是下面要展开的**曲面的曲率理论**：从曲线的密切圆、到曲面的高斯曲率，再到参数化中的内蕴性（Theorema Egregium）。**高斯映射、拓扑度与 Gauss-Bonnet** 见专文：[高斯映射与 Gauss-Bonnet 定理](高斯映射与Gauss-Bonnet.md)。
 
 ## 高斯曲率
 
@@ -77,10 +77,7 @@ $$
   $$
   对给定方向，$\kappa_n$ 不依赖于曲线的具体形状，只取决于该方向的切向量——这是 **Meusnier 定理**。
 
-- **测地曲率（Geodesic Curvature）** $\kappa_g$：曲线在切平面内的弯曲分量。它是内蕴量——仅取决于曲面的度量（第一基本形式），与嵌入方式无关。测地线正是测地曲率处处为零的曲线（$\kappa_g\equiv 0$）：
-  $$
-  \int_{\partial M} \kappa_g\,ds \quad\text{出现在 Gauss-Bonnet 定理的边界项中}.
-  $$
+- **测地曲率（Geodesic Curvature）** $\kappa_g$：曲线在切平面内的弯曲分量。它是内蕴量——仅取决于曲面的度量（第一基本形式），与嵌入方式无关。测地线正是测地曲率处处为零的曲线（$\kappa_g\equiv 0$）。$\int_{\partial M}\kappa_g\,ds$ 出现在 [Gauss-Bonnet](高斯映射与Gauss-Bonnet.md) 的边界项中。
 
 **分量关系**。由正交分解得：
 $$
@@ -99,48 +96,9 @@ $$
 
 ![image-20260617120550663](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617120550663.png)
 
-### 高斯映射（Gauss map）
+> **高斯映射、拓扑度、戴克公式与 Gauss-Bonnet** 已抽成专文：[高斯映射与 Gauss-Bonnet 定理](高斯映射与Gauss-Bonnet.md)。此处仅保留与曲率分解直接相关的衔接：Weingarten 映射把法曲率编码进形状算子，$K=\det(W)$。
 
-曲面上每个点 $p \in S$ 存在唯一的单位法向量 $N(p)$，垂直于其切平面。将 $N(p)$ 平移到单位球面 $S^2$ 的对应位置，就得到了**高斯映射** 
-
-$$
-\varphi: p \to N(p)
-$$
-
-![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251124184622415.png)
-
-**高斯映射的微分（Weingarten 映射）**：$\mathrm{d}N(X)$ 称为 **Weingarten 映射**（形状算子），它量化了法向量随曲面弯曲的变化速率：
-$$
-\mathrm{d}g_p(v) = \frac{\partial N}{\partial v} = -W_p(v)
-$$
-
-
-![image-20260617121044362](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617121044362.png)
-
-![image-20260617121329525](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617121329525.png)
-
-![image-20260617122126496](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617122126496.png)
-
-在局部坐标下，Weingarten 映射的矩阵表示为 $W = I^{-1} \cdot II$，其中 $I$ 是第一基本形式矩阵，$II$ 是第二基本形式矩阵。
-
-**Gauss 曲率与 Gauss 映照的关系**：
-
-![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251125150744255.png)
-
-曲面上一点$p$高思曲率$K(p)$定义为该点高思映射面积放大率
-
-$$
-K(p) = \lim_{A \to 0} \frac{\text{Area}(\varphi(A))}{\text{Area}(A)}
-$$
-
-
-显然这等价于Weingarten 映射的行列式
-
-$$
-K = \frac{LN-M^2}{EG-F^2} = \det(W)
-$$
-
-
+---
 
 ## 主曲率
 
@@ -152,44 +110,7 @@ $$
 
 ![image-20260617123316665](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20260617123316665.png)
 
-## 离散高斯曲率
-
-对于三角网格上的内部顶点 $v_i$，其离散高斯曲率定义为**角亏**即 $2\pi$ 减去该顶点周围所有三角形的内角之和：
-
-$$
-K(v_i) = 2\pi - \sum_{v_j \in N_1(v_i)} \theta_j
-$$
-
-其中 $\theta_j$ 为顶点 $v_i$ 处各相邻三角形的内角（angle defect / 角度亏量）。
-
-对于带边界的离散曲面，**边界点测地曲率**：
-$$
-\kappa_g(v_i) = \pi - \sum \theta_j
-$$
-
-## Gauss-Bonnet 定理
-
-**曲率的总和只与曲面的"洞数"有关，与具体的弯曲方式无关。**
-
-Gauss-Bonnet 定理的完整形式为：
-$$
-\int_M K\,dA + \int_{\partial M} \kappa_g\,ds = 2\pi\chi(M)
-$$
-
-
-直接离散化可推导出三角网格的Gauss-Bonnet 定理：
-
-$$
-\sum_{v_i \in V} K(v_i) = 2\pi\chi(M) = 2\pi(V - E + F)
-$$
-
-其中 $ \chi = V - E + F $ 由 **Euler 多面体公式** 给出（$V$ 为顶点数，$E$ 为边数，$F$ 为面数）
-
-如下图，环面的总角度亏量趋近于 0（欧拉示性数$ \chi = 2 - 2g $（$g$ 为亏格）=0）。甜甜圈内部是负曲率、外部是正曲率，根据 Gauss-Bonnet 定理，两者之和为零。
-
-![](https://lgximgs.oss-cn-beijing.aliyuncs.com/images/image-20251028134522912.png)
-
-
+> 离散角亏与 Gauss-Bonnet（局部角盈 / 全局 $2\pi\chi$ / 离散求和）见专文：[高斯映射与 Gauss-Bonnet 定理](高斯映射与Gauss-Bonnet.md)。
 
 ## **高斯绝妙定理（Theorema Egregium）**
 
