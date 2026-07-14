@@ -17,9 +17,20 @@
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 </head>
 <body>
+  {% assign gallery_meta = site.data.gallery | where: "slug", page.slug | first %}
   <div class="container" id="gallery-container">
     <div class="canvas-panel" id="canvas-panel">
+      {% if gallery_meta.ready == false %}
+      <div class="gallery-not-ready">
+        <div class="gallery-not-ready-icon">🚧</div>
+        <h2 class="gallery-not-ready-title">{{ page.title }}</h2>
+        <p class="gallery-not-ready-desc">这个 Demo 还在开发中，尚未准备好展示。</p>
+        <p class="gallery-not-ready-desc">{{ gallery_meta.description }}</p>
+        <a class="gallery-not-ready-back" href="/gallery/">← 返回 Gallery</a>
+      </div>
+      {% else %}
       {{ content }}
+      {% endif %}
     </div>
     <div class="resize-handle" id="resize-handle"></div>
     <div class="help-panel" id="help-panel">

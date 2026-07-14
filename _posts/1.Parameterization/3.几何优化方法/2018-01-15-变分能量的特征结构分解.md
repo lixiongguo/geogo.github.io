@@ -5,10 +5,6 @@ categories: ["Parameterization", "Parameterization-GeometricOptimization"]
 mathjax: true
 ---
 
-> **论文**：Breannan Smith, Fernando de Goes, Theodore Kim. [*Analytic Eigensystems for Isotropic Distortion Energies*](https://doi.org/10.1145/3241041). ACM Transactions on Graphics, 38(1), 2019.
-
-## 概述
-
 各向同性畸变能量（ARAP、MIPS、Symmetric Dirichlet 等）的牛顿法常被 **Hessian 不定** 拖慢甚至发散。投影牛顿法（Projected Newton）在每个 quadrature 点将元素 Hessian 的负特征值钳制为零，但逐点数值特征分解是瓶颈。
 
 本文方法（简称 **Analytic Eigensystem**）的核心：在**拉伸张量** $S$ 的三个不变量 $I_1,I_2,I_3$ 上，**闭式**写出 Hessian 的特征对；2D 下 **一半**、3D 下 **2/3** 特征对完全解析，其余至多解 $2\times 2$ / $3\times 3$ 小问题。特征向量与能量形式无关，仅特征值依赖 $\Psi$ 的导数。
