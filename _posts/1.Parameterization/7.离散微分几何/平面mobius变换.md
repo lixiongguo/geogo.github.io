@@ -152,17 +152,6 @@ Le et al. 的 **Optimal Möbius Search** 在 $\mathbb{D}\to\mathbb{D}$ 上用分
 
 ---
 
-## 与其他笔记的关系
-
-| 笔记 | 联系 |
-| :--- | :--- |
-| `2016-07-14-共形映射介绍` | 黎曼定理与 $\mathbb{D}$ 自同构入门 |
-| `2016-08-01-共形映射初探-解析函数视角` | LSCM 等离散共形仍有 Möbius 等价类 |
-| `Mobius Registration` | 球面参数化的中心化 + 旋转配准算法 |
-| `2018-01-01-全局参数化-混合整数优化方法` | 接缝周期在 Möbius 等价类内变化 |
-
----
-
 ## 参考文献
 
 1. T. Needham, *Visual Complex Analysis* — 直观几何。
