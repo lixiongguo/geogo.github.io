@@ -1,0 +1,4637 @@
+[
+  {
+    "id": "p01_01",
+    "path": "vol1-pages_01-27/p01_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 32",
+    "number": "32",
+    "pl": "B",
+    "gc": "page=1 corner=BR grid=11x11 ocr='(32)'"
+  },
+  {
+    "id": "p01_02",
+    "path": "vol1-pages_01-27/p01_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 33",
+    "number": "33",
+    "pl": "B",
+    "gc": "page=1 corner=BR grid=11x11 ocr='(33)'"
+  },
+  {
+    "id": "p01_03",
+    "path": "vol1-pages_01-27/p01_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 34",
+    "number": "34",
+    "pl": "B",
+    "gc": "page=1 corner=BR grid=11x11 ocr='(34)'"
+  },
+  {
+    "id": "p01_04",
+    "path": "vol1-pages_01-27/p01_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 35",
+    "number": "35",
+    "pl": "B",
+    "gc": "page=1 corner=BR grid=11x11 ocr='(35)'"
+  },
+  {
+    "id": "p01_05",
+    "path": "vol1-pages_01-27/p01_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 36",
+    "number": "36",
+    "pl": "B",
+    "gc": "page=1 corner=BR grid=11x11 ocr='(36)'"
+  },
+  {
+    "id": "p01_06",
+    "path": "vol1-pages_01-27/p01_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 38",
+    "number": "38",
+    "pl": "B",
+    "gc": "page=1 corner=BR grid=11x11 ocr='(38)'"
+  },
+  {
+    "id": "p01_07",
+    "path": "vol1-pages_01-27/p01_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 39",
+    "number": "39",
+    "pl": "B",
+    "gc": "page=1 corner=BR grid=11x11 ocr='(39)'"
+  },
+  {
+    "id": "p01_08",
+    "path": "vol1-pages_01-27/p01_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 40",
+    "number": "40",
+    "pl": "B",
+    "gc": "page=1 corner=BR grid=11x11 ocr='(40)'"
+  },
+  {
+    "id": "p01_09",
+    "path": "vol1-pages_01-27/p01_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 42",
+    "number": "42",
+    "pl": "B",
+    "gc": "page=1 corner=BR grid=11x11 ocr='(42)'"
+  },
+  {
+    "id": "p01_10",
+    "path": "vol1-pages_01-27/p01_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 43",
+    "number": "43",
+    "pl": "B",
+    "gc": "page=1 corner=BR grid=11x11 ocr='(43)'"
+  },
+  {
+    "id": "p01_11",
+    "path": "vol1-pages_01-27/p01_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 44",
+    "number": "44",
+    "pl": "B",
+    "gc": "page=1 corner=BR grid=11x11 ocr='(44)'"
+  },
+  {
+    "id": "p02_01",
+    "path": "vol1-pages_01-27/p02_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 46",
+    "number": "46",
+    "pl": "B",
+    "gc": "page=2 corner=BR grid=11x11 ocr='(46)'"
+  },
+  {
+    "id": "p02_02",
+    "path": "vol1-pages_01-27/p02_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 48",
+    "number": "48",
+    "pl": "B",
+    "gc": "page=2 corner=BR grid=11x11 ocr='(48)'"
+  },
+  {
+    "id": "p02_03",
+    "path": "vol1-pages_01-27/p02_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 50",
+    "number": "50",
+    "pl": "B",
+    "gc": "page=2 corner=BR grid=11x11 ocr='(50)'"
+  },
+  {
+    "id": "p02_04",
+    "path": "vol1-pages_01-27/p02_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 52",
+    "number": "52",
+    "pl": "B",
+    "gc": "page=2 corner=BR grid=11x11 ocr='(52)'"
+  },
+  {
+    "id": "p02_05",
+    "path": "vol1-pages_01-27/p02_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 54",
+    "number": "54",
+    "pl": "B",
+    "gc": "page=2 corner=BR grid=11x11 ocr='(54)'"
+  },
+  {
+    "id": "p02_06",
+    "path": "vol1-pages_01-27/p02_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 55",
+    "number": "55",
+    "pl": "B",
+    "gc": "page=2 corner=BR grid=11x11 ocr='(55)'"
+  },
+  {
+    "id": "p02_07",
+    "path": "vol1-pages_01-27/p02_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 111",
+    "number": "111",
+    "pl": "B",
+    "gc": "page=2 corner=BR grid=11x11 ocr='【 1 1 1 _(矗亡) 1 f 】 a t'"
+  },
+  {
+    "id": "p02_08",
+    "path": "vol1-pages_01-27/p02_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 58",
+    "number": "58",
+    "pl": "B",
+    "gc": "page=2 corner=BR grid=11x11 ocr='(58)'"
+  },
+  {
+    "id": "p02_09",
+    "path": "vol1-pages_01-27/p02_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 60",
+    "number": "60",
+    "pl": "B",
+    "gc": "page=2 corner=BR grid=11x11 ocr='(60)'"
+  },
+  {
+    "id": "p02_10",
+    "path": "vol1-pages_01-27/p02_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 61",
+    "number": "61",
+    "pl": "B",
+    "gc": "page=2 corner=BR grid=11x11 ocr='(61)'"
+  },
+  {
+    "id": "p02_11",
+    "path": "vol1-pages_01-27/p02_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 62",
+    "number": "62",
+    "pl": "B",
+    "gc": "page=2 corner=BR grid=11x11 ocr='(62)'"
+  },
+  {
+    "id": "p02_12",
+    "path": "vol1-pages_01-27/p02_12.sgf",
+    "volume": "上册",
+    "title": "死活辞典 63",
+    "number": "63",
+    "pl": "B",
+    "gc": "page=2 corner=BR grid=11x11 ocr='(63)'"
+  },
+  {
+    "id": "p03_01",
+    "path": "vol1-pages_01-27/p03_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 64",
+    "number": "64",
+    "pl": "B",
+    "gc": "page=3 corner=BR grid=11x11 ocr='(64)'"
+  },
+  {
+    "id": "p03_02",
+    "path": "vol1-pages_01-27/p03_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 66",
+    "number": "66",
+    "pl": "B",
+    "gc": "page=3 corner=BR grid=11x11 ocr='(66)'"
+  },
+  {
+    "id": "p03_03",
+    "path": "vol1-pages_01-27/p03_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 1111",
+    "number": "1111",
+    "pl": "B",
+    "gc": "page=3 corner=BR grid=11x11 ocr='1 1 1 1 丨(晕). 1 4 1 a'"
+  },
+  {
+    "id": "p03_04",
+    "path": "vol1-pages_01-27/p03_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 6864",
+    "number": "6864",
+    "pl": "B",
+    "gc": "page=3 corner=BR grid=11x11 ocr='Q@686 4% a4 4 \" a oe F'"
+  },
+  {
+    "id": "p03_05",
+    "path": "vol1-pages_01-27/p03_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 72",
+    "number": "72",
+    "pl": "B",
+    "gc": "page=3 corner=BR grid=11x11 ocr='(72)'"
+  },
+  {
+    "id": "p03_06",
+    "path": "vol1-pages_01-27/p03_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 74",
+    "number": "74",
+    "pl": "B",
+    "gc": "page=3 corner=BR grid=11x11 ocr='(74)'"
+  },
+  {
+    "id": "p03_07",
+    "path": "vol1-pages_01-27/p03_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 76",
+    "number": "76",
+    "pl": "B",
+    "gc": "page=3 corner=BR grid=11x11 ocr='(76)'"
+  },
+  {
+    "id": "p03_08",
+    "path": "vol1-pages_01-27/p03_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 78",
+    "number": "78",
+    "pl": "B",
+    "gc": "page=3 corner=BR grid=11x11 ocr='(78)'"
+  },
+  {
+    "id": "p03_09",
+    "path": "vol1-pages_01-27/p03_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 80",
+    "number": "80",
+    "pl": "B",
+    "gc": "page=3 corner=BR grid=11x11 ocr='(80)'"
+  },
+  {
+    "id": "p03_10",
+    "path": "vol1-pages_01-27/p03_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 82",
+    "number": "82",
+    "pl": "B",
+    "gc": "page=3 corner=BR grid=11x11 ocr='(82)'"
+  },
+  {
+    "id": "p03_11",
+    "path": "vol1-pages_01-27/p03_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 83",
+    "number": "83",
+    "pl": "B",
+    "gc": "page=3 corner=BR grid=11x11 ocr='(83)'"
+  },
+  {
+    "id": "p04_01",
+    "path": "vol1-pages_01-27/p04_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 84",
+    "number": "84",
+    "pl": "B",
+    "gc": "page=4 corner=BR grid=11x11 ocr='(84)'"
+  },
+  {
+    "id": "p04_02",
+    "path": "vol1-pages_01-27/p04_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 86",
+    "number": "86",
+    "pl": "B",
+    "gc": "page=4 corner=BR grid=11x11 ocr='(86)'"
+  },
+  {
+    "id": "p04_03",
+    "path": "vol1-pages_01-27/p04_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 87",
+    "number": "87",
+    "pl": "B",
+    "gc": "page=4 corner=BR grid=11x11 ocr='(87)'"
+  },
+  {
+    "id": "p04_04",
+    "path": "vol1-pages_01-27/p04_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 99",
+    "number": "99",
+    "pl": "B",
+    "gc": "page=4 corner=BR grid=11x11 ocr='9 9 "
+  },
+  {
+    "id": "p04_05",
+    "path": "vol1-pages_01-27/p04_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 89",
+    "number": "89",
+    "pl": "B",
+    "gc": "page=4 corner=BR grid=11x11 ocr='(89)'"
+  },
+  {
+    "id": "p04_06",
+    "path": "vol1-pages_01-27/p04_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 155",
+    "number": "155",
+    "pl": "B",
+    "gc": "page=4 corner=BR grid=11x11 ocr='sp ft te i. 1 5 5 ee |'"
+  },
+  {
+    "id": "p04_07",
+    "path": "vol1-pages_01-27/p04_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 92",
+    "number": "92",
+    "pl": "B",
+    "gc": "page=4 corner=BR grid=11x11 ocr='(92)'"
+  },
+  {
+    "id": "p04_08",
+    "path": "vol1-pages_01-27/p04_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 94",
+    "number": "94",
+    "pl": "B",
+    "gc": "page=4 corner=BR grid=11x11 ocr='(94)'"
+  },
+  {
+    "id": "p04_09",
+    "path": "vol1-pages_01-27/p04_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 96",
+    "number": "96",
+    "pl": "B",
+    "gc": "page=4 corner=BR grid=11x11 ocr='(96)'"
+  },
+  {
+    "id": "p04_10",
+    "path": "vol1-pages_01-27/p04_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 98",
+    "number": "98",
+    "pl": "B",
+    "gc": "page=4 corner=BR grid=11x11 ocr='| (98)'"
+  },
+  {
+    "id": "p04_11",
+    "path": "vol1-pages_01-27/p04_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 100",
+    "number": "100",
+    "pl": "B",
+    "gc": "page=4 corner=BR grid=11x11 ocr='(100)'"
+  },
+  {
+    "id": "p04_12",
+    "path": "vol1-pages_01-27/p04_12.sgf",
+    "volume": "上册",
+    "title": "死活辞典 102",
+    "number": "102",
+    "pl": "B",
+    "gc": "page=4 corner=BR grid=11x11 ocr='(102)'"
+  },
+  {
+    "id": "p05_01",
+    "path": "vol1-pages_01-27/p05_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 104",
+    "number": "104",
+    "pl": "B",
+    "gc": "page=5 corner=BR grid=11x11 ocr='(104)'"
+  },
+  {
+    "id": "p05_02",
+    "path": "vol1-pages_01-27/p05_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 106",
+    "number": "106",
+    "pl": "B",
+    "gc": "page=5 corner=BR grid=11x11 ocr='(106)'"
+  },
+  {
+    "id": "p05_03",
+    "path": "vol1-pages_01-27/p05_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 108",
+    "number": "108",
+    "pl": "B",
+    "gc": "page=5 corner=BR grid=11x11 ocr='(108)'"
+  },
+  {
+    "id": "p05_04",
+    "path": "vol1-pages_01-27/p05_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 110",
+    "number": "110",
+    "pl": "B",
+    "gc": "page=5 corner=BR grid=11x11 ocr='(110)'"
+  },
+  {
+    "id": "p05_05",
+    "path": "vol1-pages_01-27/p05_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 112",
+    "number": "112",
+    "pl": "B",
+    "gc": "page=5 corner=BR grid=11x11 ocr='(112)'"
+  },
+  {
+    "id": "p05_06",
+    "path": "vol1-pages_01-27/p05_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 113",
+    "number": "113",
+    "pl": "B",
+    "gc": "page=5 corner=BR grid=11x11 ocr='(113)'"
+  },
+  {
+    "id": "p05_07",
+    "path": "vol1-pages_01-27/p05_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 117",
+    "number": "117",
+    "pl": "B",
+    "gc": "page=5 corner=BR grid=11x11 ocr='1 1 7 { 麦l了4菖 F l'"
+  },
+  {
+    "id": "p05_08",
+    "path": "vol1-pages_01-27/p05_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 116",
+    "number": "116",
+    "pl": "B",
+    "gc": "page=5 corner=BR grid=11x11 ocr='(116)'"
+  },
+  {
+    "id": "p05_09",
+    "path": "vol1-pages_01-27/p05_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 118",
+    "number": "118",
+    "pl": "B",
+    "gc": "page=5 corner=BR grid=11x11 ocr='(118)'"
+  },
+  {
+    "id": "p05_10",
+    "path": "vol1-pages_01-27/p05_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 120",
+    "number": "120",
+    "pl": "B",
+    "gc": "page=5 corner=BR grid=11x11 ocr='(120)'"
+  },
+  {
+    "id": "p05_11",
+    "path": "vol1-pages_01-27/p05_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 122",
+    "number": "122",
+    "pl": "B",
+    "gc": "page=5 corner=BR grid=11x11 ocr='(122)'"
+  },
+  {
+    "id": "p07_01",
+    "path": "vol1-pages_01-27/p07_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 142",
+    "number": "142",
+    "pl": "B",
+    "gc": "page=7 corner=BR grid=11x11 ocr='(142)'"
+  },
+  {
+    "id": "p07_02",
+    "path": "vol1-pages_01-27/p07_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 144",
+    "number": "144",
+    "pl": "B",
+    "gc": "page=7 corner=BL grid=11x11 ocr='(144)'"
+  },
+  {
+    "id": "p07_03",
+    "path": "vol1-pages_01-27/p07_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 146",
+    "number": "146",
+    "pl": "B",
+    "gc": "page=7 corner=BR grid=11x11 ocr='(146)'"
+  },
+  {
+    "id": "p07_04",
+    "path": "vol1-pages_01-27/p07_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 148",
+    "number": "148",
+    "pl": "B",
+    "gc": "page=7 corner=BR grid=11x11 ocr='(148)'"
+  },
+  {
+    "id": "p07_05",
+    "path": "vol1-pages_01-27/p07_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 19",
+    "number": "19",
+    "pl": "B",
+    "gc": "page=7 corner=BL grid=11x11 ocr='M 1 9 f 丁丨丁9了 1 4 1 ry'"
+  },
+  {
+    "id": "p07_06",
+    "path": "vol1-pages_01-27/p07_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 150",
+    "number": "150",
+    "pl": "B",
+    "gc": "page=7 corner=BR grid=11x11 ocr='(150)'"
+  },
+  {
+    "id": "p07_07",
+    "path": "vol1-pages_01-27/p07_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 151",
+    "number": "151",
+    "pl": "B",
+    "gc": "page=7 corner=BR grid=11x11 ocr='(151)'"
+  },
+  {
+    "id": "p07_08",
+    "path": "vol1-pages_01-27/p07_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 152",
+    "number": "152",
+    "pl": "B",
+    "gc": "page=7 corner=BL grid=11x11 ocr='(152)'"
+  },
+  {
+    "id": "p07_09",
+    "path": "vol1-pages_01-27/p07_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 141",
+    "number": "141",
+    "pl": "B",
+    "gc": "page=7 corner=BR grid=11x11 ocr='a 1 4 1 (了5贡)_ 1 1 1 l'"
+  },
+  {
+    "id": "p07_10",
+    "path": "vol1-pages_01-27/p07_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 154",
+    "number": "154",
+    "pl": "B",
+    "gc": "page=7 corner=BR grid=11x11 ocr='(154)'"
+  },
+  {
+    "id": "p07_11",
+    "path": "vol1-pages_01-27/p07_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 56",
+    "number": "56",
+    "pl": "B",
+    "gc": "page=7 corner=BL grid=11x11 ocr='56)'"
+  },
+  {
+    "id": "p07_12",
+    "path": "vol1-pages_01-27/p07_12.sgf",
+    "volume": "上册",
+    "title": "死活辞典 157",
+    "number": "157",
+    "pl": "B",
+    "gc": "page=7 corner=BR grid=11x11 ocr='(157)'"
+  },
+  {
+    "id": "p08_01",
+    "path": "vol1-pages_01-27/p08_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 158",
+    "number": "158",
+    "pl": "B",
+    "gc": "page=8 corner=BR grid=11x11 ocr='(158)'"
+  },
+  {
+    "id": "p08_02",
+    "path": "vol1-pages_01-27/p08_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 159",
+    "number": "159",
+    "pl": "B",
+    "gc": "page=8 corner=BR grid=11x11 ocr='(159)'"
+  },
+  {
+    "id": "p08_03",
+    "path": "vol1-pages_01-27/p08_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 160",
+    "number": "160",
+    "pl": "B",
+    "gc": "page=8 corner=BR grid=11x11 ocr='(160)'"
+  },
+  {
+    "id": "p08_04",
+    "path": "vol1-pages_01-27/p08_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 161",
+    "number": "161",
+    "pl": "B",
+    "gc": "page=8 corner=BR grid=11x11 ocr='(161)'"
+  },
+  {
+    "id": "p08_05",
+    "path": "vol1-pages_01-27/p08_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 162",
+    "number": "162",
+    "pl": "B",
+    "gc": "page=8 corner=BR grid=11x11 ocr='(162)'"
+  },
+  {
+    "id": "p08_06",
+    "path": "vol1-pages_01-27/p08_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 164",
+    "number": "164",
+    "pl": "B",
+    "gc": "page=8 corner=BR grid=11x11 ocr='(164)'"
+  },
+  {
+    "id": "p08_07",
+    "path": "vol1-pages_01-27/p08_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 166",
+    "number": "166",
+    "pl": "B",
+    "gc": "page=8 corner=BR grid=11x11 ocr='(166)'"
+  },
+  {
+    "id": "p08_08",
+    "path": "vol1-pages_01-27/p08_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 167",
+    "number": "167",
+    "pl": "B",
+    "gc": "page=8 corner=BR grid=11x11 ocr='(167)'"
+  },
+  {
+    "id": "p08_09",
+    "path": "vol1-pages_01-27/p08_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 168",
+    "number": "168",
+    "pl": "B",
+    "gc": "page=8 corner=BR grid=11x11 ocr='(168)'"
+  },
+  {
+    "id": "p08_10",
+    "path": "vol1-pages_01-27/p08_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 170",
+    "number": "170",
+    "pl": "B",
+    "gc": "page=8 corner=BR grid=11x11 ocr='(170)'"
+  },
+  {
+    "id": "p08_11",
+    "path": "vol1-pages_01-27/p08_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 171",
+    "number": "171",
+    "pl": "B",
+    "gc": "page=8 corner=BR grid=11x11 ocr='(171)'"
+  },
+  {
+    "id": "p08_12",
+    "path": "vol1-pages_01-27/p08_12.sgf",
+    "volume": "上册",
+    "title": "死活辞典 172",
+    "number": "172",
+    "pl": "B",
+    "gc": "page=8 corner=BR grid=11x11 ocr='(172)'"
+  },
+  {
+    "id": "p09_01",
+    "path": "vol1-pages_01-27/p09_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 174",
+    "number": "174",
+    "pl": "B",
+    "gc": "page=9 corner=BR grid=11x11 ocr='( 174)'"
+  },
+  {
+    "id": "p09_02",
+    "path": "vol1-pages_01-27/p09_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 175",
+    "number": "175",
+    "pl": "B",
+    "gc": "page=9 corner=BR grid=11x11 ocr='(175)'"
+  },
+  {
+    "id": "p09_03",
+    "path": "vol1-pages_01-27/p09_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 176",
+    "number": "176",
+    "pl": "B",
+    "gc": "page=9 corner=BR grid=11x11 ocr='(176)'"
+  },
+  {
+    "id": "p09_04",
+    "path": "vol1-pages_01-27/p09_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 177",
+    "number": "177",
+    "pl": "B",
+    "gc": "page=9 corner=BR grid=11x11 ocr='(177)'"
+  },
+  {
+    "id": "p09_05",
+    "path": "vol1-pages_01-27/p09_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 p09_05",
+    "number": "09",
+    "pl": "B",
+    "gc": "page=9 corner=BL grid=10x11 ocr=''"
+  },
+  {
+    "id": "p09_06",
+    "path": "vol1-pages_01-27/p09_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 1150",
+    "number": "1150",
+    "pl": "B",
+    "gc": "page=9 corner=BR grid=11x11 ocr='"
+  },
+  {
+    "id": "p09_07",
+    "path": "vol1-pages_01-27/p09_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 111",
+    "number": "111",
+    "pl": "B",
+    "gc": "page=9 corner=BR grid=11x11 ocr='ry 1 1 1 “ 1 4 1 a'"
+  },
+  {
+    "id": "p09_08",
+    "path": "vol1-pages_01-27/p09_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 183",
+    "number": "183",
+    "pl": "B",
+    "gc": "page=9 corner=BR grid=11x11 ocr='(183)'"
+  },
+  {
+    "id": "p09_09",
+    "path": "vol1-pages_01-27/p09_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 184",
+    "number": "184",
+    "pl": "B",
+    "gc": "page=9 corner=BR grid=11x11 ocr='(184)'"
+  },
+  {
+    "id": "p09_10",
+    "path": "vol1-pages_01-27/p09_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 185",
+    "number": "185",
+    "pl": "B",
+    "gc": "page=9 corner=BR grid=11x11 ocr='(185)'"
+  },
+  {
+    "id": "p09_11",
+    "path": "vol1-pages_01-27/p09_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 186",
+    "number": "186",
+    "pl": "B",
+    "gc": "page=9 corner=BR grid=11x11 ocr='(186)'"
+  },
+  {
+    "id": "p09_12",
+    "path": "vol1-pages_01-27/p09_12.sgf",
+    "volume": "上册",
+    "title": "死活辞典 188",
+    "number": "188",
+    "pl": "B",
+    "gc": "page=9 corner=BR grid=11x11 ocr='(188)'"
+  },
+  {
+    "id": "p10_01",
+    "path": "vol1-pages_01-27/p10_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 4954",
+    "number": "4954",
+    "pl": "B",
+    "gc": "page=10 corner=BR grid=11x11 ocr='t 49 5 4 i 1 T 1'"
+  },
+  {
+    "id": "p10_02",
+    "path": "vol1-pages_01-27/p10_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 14",
+    "number": "14",
+    "pl": "B",
+    "gc": "page=10 corner=BR grid=11x11 ocr='目 ry 1 4 蓄l卞丨了 1 f 1 9'"
+  },
+  {
+    "id": "p10_03",
+    "path": "vol1-pages_01-27/p10_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 192",
+    "number": "192",
+    "pl": "B",
+    "gc": "page=10 corner=BR grid=11x11 ocr='(192)'"
+  },
+  {
+    "id": "p10_04",
+    "path": "vol1-pages_01-27/p10_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 194",
+    "number": "194",
+    "pl": "B",
+    "gc": "page=10 corner=BR grid=11x11 ocr='(194)'"
+  },
+  {
+    "id": "p10_05",
+    "path": "vol1-pages_01-27/p10_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 196",
+    "number": "196",
+    "pl": "B",
+    "gc": "page=10 corner=BR grid=11x11 ocr='目 (196)'"
+  },
+  {
+    "id": "p10_06",
+    "path": "vol1-pages_01-27/p10_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 58",
+    "number": "58",
+    "pl": "B",
+    "gc": "page=10 corner=BR grid=11x11 ocr='1 @ 国 颂 4 . 吴 吴 5 8'"
+  },
+  {
+    "id": "p10_07",
+    "path": "vol1-pages_01-27/p10_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 14",
+    "number": "14",
+    "pl": "B",
+    "gc": "page=10 corner=BR grid=11x11 ocr='l 1 4 【 广l六贡 4 1 里 l'"
+  },
+  {
+    "id": "p10_08",
+    "path": "vol1-pages_01-27/p10_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 200",
+    "number": "200",
+    "pl": "B",
+    "gc": "page=10 corner=BR grid=11x11 ocr='(200)'"
+  },
+  {
+    "id": "p10_09",
+    "path": "vol1-pages_01-27/p10_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 201",
+    "number": "201",
+    "pl": "B",
+    "gc": "page=10 corner=BR grid=11x11 ocr='(201)'"
+  },
+  {
+    "id": "p10_10",
+    "path": "vol1-pages_01-27/p10_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 202",
+    "number": "202",
+    "pl": "B",
+    "gc": "page=10 corner=BR grid=11x11 ocr='(202)'"
+  },
+  {
+    "id": "p10_11",
+    "path": "vol1-pages_01-27/p10_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 203",
+    "number": "203",
+    "pl": "B",
+    "gc": "page=10 corner=BR grid=11x11 ocr='(203)'"
+  },
+  {
+    "id": "p10_12",
+    "path": "vol1-pages_01-27/p10_12.sgf",
+    "volume": "上册",
+    "title": "死活辞典 204",
+    "number": "204",
+    "pl": "B",
+    "gc": "page=10 corner=BR grid=11x11 ocr='(204)'"
+  },
+  {
+    "id": "p11_01",
+    "path": "vol1-pages_01-27/p11_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 206",
+    "number": "206",
+    "pl": "B",
+    "gc": "page=11 corner=BR grid=11x11 ocr='(206)'"
+  },
+  {
+    "id": "p11_02",
+    "path": "vol1-pages_01-27/p11_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 207",
+    "number": "207",
+    "pl": "B",
+    "gc": "page=11 corner=BR grid=11x11 ocr='(207)'"
+  },
+  {
+    "id": "p11_03",
+    "path": "vol1-pages_01-27/p11_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 208",
+    "number": "208",
+    "pl": "B",
+    "gc": "page=11 corner=BR grid=11x11 ocr='(208)'"
+  },
+  {
+    "id": "p11_04",
+    "path": "vol1-pages_01-27/p11_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 210",
+    "number": "210",
+    "pl": "B",
+    "gc": "page=11 corner=BR grid=11x11 ocr='(210)'"
+  },
+  {
+    "id": "p11_05",
+    "path": "vol1-pages_01-27/p11_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 212",
+    "number": "212",
+    "pl": "B",
+    "gc": "page=11 corner=BR grid=11x11 ocr='(212)'"
+  },
+  {
+    "id": "p11_06",
+    "path": "vol1-pages_01-27/p11_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 214",
+    "number": "214",
+    "pl": "B",
+    "gc": "page=11 corner=BR grid=11x11 ocr='(214)'"
+  },
+  {
+    "id": "p11_07",
+    "path": "vol1-pages_01-27/p11_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 215",
+    "number": "215",
+    "pl": "B",
+    "gc": "page=11 corner=BR grid=11x11 ocr='(215)'"
+  },
+  {
+    "id": "p11_08",
+    "path": "vol1-pages_01-27/p11_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 216",
+    "number": "216",
+    "pl": "B",
+    "gc": "page=11 corner=BR grid=11x11 ocr='(216)'"
+  },
+  {
+    "id": "p11_09",
+    "path": "vol1-pages_01-27/p11_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 217",
+    "number": "217",
+    "pl": "B",
+    "gc": "page=11 corner=BR grid=11x11 ocr='(217)'"
+  },
+  {
+    "id": "p11_10",
+    "path": "vol1-pages_01-27/p11_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 218",
+    "number": "218",
+    "pl": "B",
+    "gc": "page=11 corner=BR grid=11x11 ocr='(218)'"
+  },
+  {
+    "id": "p11_11",
+    "path": "vol1-pages_01-27/p11_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 220",
+    "number": "220",
+    "pl": "B",
+    "gc": "page=11 corner=BR grid=11x11 ocr='(220)'"
+  },
+  {
+    "id": "p11_12",
+    "path": "vol1-pages_01-27/p11_12.sgf",
+    "volume": "上册",
+    "title": "死活辞典 221",
+    "number": "221",
+    "pl": "B",
+    "gc": "page=11 corner=BR grid=11x11 ocr='(221)'"
+  },
+  {
+    "id": "p12_01",
+    "path": "vol1-pages_01-27/p12_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 222",
+    "number": "222",
+    "pl": "B",
+    "gc": "page=12 corner=BR grid=11x11 ocr='(222)'"
+  },
+  {
+    "id": "p12_02",
+    "path": "vol1-pages_01-27/p12_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 223",
+    "number": "223",
+    "pl": "B",
+    "gc": "page=12 corner=BR grid=11x11 ocr='(223)'"
+  },
+  {
+    "id": "p12_03",
+    "path": "vol1-pages_01-27/p12_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 224",
+    "number": "224",
+    "pl": "B",
+    "gc": "page=12 corner=BR grid=11x12 ocr='(224) 目'"
+  },
+  {
+    "id": "p12_04",
+    "path": "vol1-pages_01-27/p12_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 11",
+    "number": "11",
+    "pl": "B",
+    "gc": "page=12 corner=BR grid=11x11 ocr='1 ry 1 1 麦2蓄6了 1 【 1 a'"
+  },
+  {
+    "id": "p12_05",
+    "path": "vol1-pages_01-27/p12_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 227",
+    "number": "227",
+    "pl": "B",
+    "gc": "page=12 corner=BR grid=11x11 ocr='(227)'"
+  },
+  {
+    "id": "p12_06",
+    "path": "vol1-pages_01-27/p12_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 230",
+    "number": "230",
+    "pl": "B",
+    "gc": "page=12 corner=BR grid=11x11 ocr='(230) -'"
+  },
+  {
+    "id": "p12_07",
+    "path": "vol1-pages_01-27/p12_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 232",
+    "number": "232",
+    "pl": "B",
+    "gc": "page=12 corner=BR grid=11x11 ocr='(232) 目'"
+  },
+  {
+    "id": "p12_08",
+    "path": "vol1-pages_01-27/p12_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 234",
+    "number": "234",
+    "pl": "B",
+    "gc": "page=12 corner=BR grid=11x11 ocr='(234)'"
+  },
+  {
+    "id": "p12_09",
+    "path": "vol1-pages_01-27/p12_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 236",
+    "number": "236",
+    "pl": "B",
+    "gc": "page=12 corner=BR grid=11x11 ocr='(236)'"
+  },
+  {
+    "id": "p12_10",
+    "path": "vol1-pages_01-27/p12_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 238",
+    "number": "238",
+    "pl": "B",
+    "gc": "page=12 corner=BR grid=11x11 ocr='(238)'"
+  },
+  {
+    "id": "p12_11",
+    "path": "vol1-pages_01-27/p12_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 240",
+    "number": "240",
+    "pl": "B",
+    "gc": "page=12 corner=BR grid=11x11 ocr='(240)'"
+  },
+  {
+    "id": "p13_01",
+    "path": "vol1-pages_01-27/p13_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 242",
+    "number": "242",
+    "pl": "B",
+    "gc": "page=13 corner=BR grid=11x11 ocr='. ( 242)'"
+  },
+  {
+    "id": "p13_02",
+    "path": "vol1-pages_01-27/p13_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 243",
+    "number": "243",
+    "pl": "B",
+    "gc": "page=13 corner=BR grid=11x11 ocr='(243)'"
+  },
+  {
+    "id": "p13_03",
+    "path": "vol1-pages_01-27/p13_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 244",
+    "number": "244",
+    "pl": "B",
+    "gc": "page=13 corner=BR grid=11x11 ocr='(244)'"
+  },
+  {
+    "id": "p13_04",
+    "path": "vol1-pages_01-27/p13_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 245",
+    "number": "245",
+    "pl": "B",
+    "gc": "page=13 corner=BR grid=11x11 ocr='(245)'"
+  },
+  {
+    "id": "p13_05",
+    "path": "vol1-pages_01-27/p13_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 246",
+    "number": "246",
+    "pl": "B",
+    "gc": "page=13 corner=BR grid=11x11 ocr='(246)'"
+  },
+  {
+    "id": "p13_06",
+    "path": "vol1-pages_01-27/p13_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 248",
+    "number": "248",
+    "pl": "B",
+    "gc": "page=13 corner=BR grid=11x11 ocr='(248)'"
+  },
+  {
+    "id": "p13_07",
+    "path": "vol1-pages_01-27/p13_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 250",
+    "number": "250",
+    "pl": "B",
+    "gc": "page=13 corner=BR grid=11x11 ocr='(250)'"
+  },
+  {
+    "id": "p13_08",
+    "path": "vol1-pages_01-27/p13_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 251",
+    "number": "251",
+    "pl": "B",
+    "gc": "page=13 corner=BR grid=11x11 ocr='(251)'"
+  },
+  {
+    "id": "p13_09",
+    "path": "vol1-pages_01-27/p13_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 252",
+    "number": "252",
+    "pl": "B",
+    "gc": "page=13 corner=BR grid=11x11 ocr='(252)'"
+  },
+  {
+    "id": "p13_10",
+    "path": "vol1-pages_01-27/p13_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 253",
+    "number": "253",
+    "pl": "B",
+    "gc": "page=13 corner=BR grid=11x11 ocr='(253)'"
+  },
+  {
+    "id": "p13_11",
+    "path": "vol1-pages_01-27/p13_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 254",
+    "number": "254",
+    "pl": "B",
+    "gc": "page=13 corner=BR grid=11x11 ocr='(254)'"
+  },
+  {
+    "id": "p13_12",
+    "path": "vol1-pages_01-27/p13_12.sgf",
+    "volume": "上册",
+    "title": "死活辞典 255",
+    "number": "255",
+    "pl": "B",
+    "gc": "page=13 corner=BR grid=11x11 ocr='(255)'"
+  },
+  {
+    "id": "p14_01",
+    "path": "vol1-pages_01-27/p14_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 256",
+    "number": "256",
+    "pl": "B",
+    "gc": "page=14 corner=BR grid=11x11 ocr='(256)'"
+  },
+  {
+    "id": "p14_02",
+    "path": "vol1-pages_01-27/p14_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 257",
+    "number": "257",
+    "pl": "B",
+    "gc": "page=14 corner=BR grid=11x11 ocr='(257)'"
+  },
+  {
+    "id": "p14_03",
+    "path": "vol1-pages_01-27/p14_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 258",
+    "number": "258",
+    "pl": "B",
+    "gc": "page=14 corner=BR grid=11x11 ocr='(258)'"
+  },
+  {
+    "id": "p14_04",
+    "path": "vol1-pages_01-27/p14_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 259",
+    "number": "259",
+    "pl": "B",
+    "gc": "page=14 corner=BR grid=11x11 ocr='(259)'"
+  },
+  {
+    "id": "p14_05",
+    "path": "vol1-pages_01-27/p14_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 260",
+    "number": "260",
+    "pl": "B",
+    "gc": "page=14 corner=BR grid=11x11 ocr='(260)'"
+  },
+  {
+    "id": "p14_06",
+    "path": "vol1-pages_01-27/p14_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 261",
+    "number": "261",
+    "pl": "B",
+    "gc": "page=14 corner=BR grid=11x11 ocr='(261)'"
+  },
+  {
+    "id": "p14_07",
+    "path": "vol1-pages_01-27/p14_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 262",
+    "number": "262",
+    "pl": "B",
+    "gc": "page=14 corner=BR grid=11x11 ocr='(262)'"
+  },
+  {
+    "id": "p14_08",
+    "path": "vol1-pages_01-27/p14_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 263",
+    "number": "263",
+    "pl": "B",
+    "gc": "page=14 corner=BR grid=11x11 ocr='(263)'"
+  },
+  {
+    "id": "p14_09",
+    "path": "vol1-pages_01-27/p14_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 264",
+    "number": "264",
+    "pl": "B",
+    "gc": "page=14 corner=BR grid=11x11 ocr='(264)'"
+  },
+  {
+    "id": "p14_10",
+    "path": "vol1-pages_01-27/p14_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 266",
+    "number": "266",
+    "pl": "B",
+    "gc": "page=14 corner=BR grid=11x11 ocr='(266)'"
+  },
+  {
+    "id": "p14_11",
+    "path": "vol1-pages_01-27/p14_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 268",
+    "number": "268",
+    "pl": "B",
+    "gc": "page=14 corner=BR grid=11x11 ocr='(268)'"
+  },
+  {
+    "id": "p14_12",
+    "path": "vol1-pages_01-27/p14_12.sgf",
+    "volume": "上册",
+    "title": "死活辞典 269",
+    "number": "269",
+    "pl": "B",
+    "gc": "page=14 corner=BR grid=11x11 ocr='(269)'"
+  },
+  {
+    "id": "p15_01",
+    "path": "vol1-pages_01-27/p15_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 274",
+    "number": "274",
+    "pl": "B",
+    "gc": "page=15 corner=BR grid=11x11 ocr='(274)'"
+  },
+  {
+    "id": "p15_02",
+    "path": "vol1-pages_01-27/p15_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 275",
+    "number": "275",
+    "pl": "B",
+    "gc": "page=15 corner=BR grid=11x12 ocr='(275)'"
+  },
+  {
+    "id": "p15_03",
+    "path": "vol1-pages_01-27/p15_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 276",
+    "number": "276",
+    "pl": "B",
+    "gc": "page=15 corner=BR grid=11x12 ocr='(276)'"
+  },
+  {
+    "id": "p15_04",
+    "path": "vol1-pages_01-27/p15_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 4011",
+    "number": "4011",
+    "pl": "B",
+    "gc": "page=15 corner=BR grid=11x12 ocr='. 4 0 1 1 (责竟7)_ 1 ry 《 ry'"
+  },
+  {
+    "id": "p15_05",
+    "path": "vol1-pages_01-27/p15_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 278",
+    "number": "278",
+    "pl": "B",
+    "gc": "page=15 corner=BR grid=11x12 ocr='(278)'"
+  },
+  {
+    "id": "p15_06",
+    "path": "vol1-pages_01-27/p15_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 279",
+    "number": "279",
+    "pl": "B",
+    "gc": "page=15 corner=BR grid=11x12 ocr='(279)'"
+  },
+  {
+    "id": "p15_07",
+    "path": "vol1-pages_01-27/p15_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 280",
+    "number": "280",
+    "pl": "B",
+    "gc": "page=15 corner=BR grid=11x12 ocr='(280)'"
+  },
+  {
+    "id": "p15_08",
+    "path": "vol1-pages_01-27/p15_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 282",
+    "number": "282",
+    "pl": "B",
+    "gc": "page=15 corner=BR grid=11x12 ocr='(282)'"
+  },
+  {
+    "id": "p15_09",
+    "path": "vol1-pages_01-27/p15_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 283",
+    "number": "283",
+    "pl": "B",
+    "gc": "page=15 corner=BR grid=11x12 ocr='目 (283)'"
+  },
+  {
+    "id": "p15_10",
+    "path": "vol1-pages_01-27/p15_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 284",
+    "number": "284",
+    "pl": "B",
+    "gc": "page=15 corner=BR grid=11x12 ocr='(284)'"
+  },
+  {
+    "id": "p15_11",
+    "path": "vol1-pages_01-27/p15_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 285",
+    "number": "285",
+    "pl": "B",
+    "gc": "page=15 corner=BR grid=11x12 ocr='(285) 目'"
+  },
+  {
+    "id": "p16_01",
+    "path": "vol1-pages_01-27/p16_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 286",
+    "number": "286",
+    "pl": "B",
+    "gc": "page=16 corner=BR grid=11x12 ocr='(286)'"
+  },
+  {
+    "id": "p16_02",
+    "path": "vol1-pages_01-27/p16_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 1191",
+    "number": "1191",
+    "pl": "B",
+    "gc": "page=16 corner=BR grid=11x11 ocr='1 1 9 1 丁2亏8丁 f 1 1 g'"
+  },
+  {
+    "id": "p16_03",
+    "path": "vol1-pages_01-27/p16_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 114",
+    "number": "114",
+    "pl": "B",
+    "gc": "page=16 corner=BR grid=11x11 ocr='1 1 4 【 1 (亏8亏) 1 1 1 1 .'"
+  },
+  {
+    "id": "p16_04",
+    "path": "vol1-pages_01-27/p16_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 290",
+    "number": "290",
+    "pl": "B",
+    "gc": "page=16 corner=BR grid=11x11 ocr='(290)'"
+  },
+  {
+    "id": "p16_05",
+    "path": "vol1-pages_01-27/p16_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 291",
+    "number": "291",
+    "pl": "B",
+    "gc": "page=16 corner=BR grid=11x11 ocr='(291)'"
+  },
+  {
+    "id": "p16_06",
+    "path": "vol1-pages_01-27/p16_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 292",
+    "number": "292",
+    "pl": "B",
+    "gc": "page=16 corner=BR grid=11x12 ocr='(292)'"
+  },
+  {
+    "id": "p16_07",
+    "path": "vol1-pages_01-27/p16_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 293",
+    "number": "293",
+    "pl": "B",
+    "gc": "page=16 corner=BR grid=11x11 ocr='(293)'"
+  },
+  {
+    "id": "p16_08",
+    "path": "vol1-pages_01-27/p16_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 294",
+    "number": "294",
+    "pl": "B",
+    "gc": "page=16 corner=BR grid=11x11 ocr='(294)'"
+  },
+  {
+    "id": "p16_09",
+    "path": "vol1-pages_01-27/p16_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 295",
+    "number": "295",
+    "pl": "B",
+    "gc": "page=16 corner=BR grid=11x11 ocr='(295)'"
+  },
+  {
+    "id": "p16_10",
+    "path": "vol1-pages_01-27/p16_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 296",
+    "number": "296",
+    "pl": "B",
+    "gc": "page=16 corner=BR grid=11x11 ocr='(296)'"
+  },
+  {
+    "id": "p16_11",
+    "path": "vol1-pages_01-27/p16_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 298",
+    "number": "298",
+    "pl": "B",
+    "gc": "page=16 corner=BR grid=11x11 ocr='(298)'"
+  },
+  {
+    "id": "p16_12",
+    "path": "vol1-pages_01-27/p16_12.sgf",
+    "volume": "上册",
+    "title": "死活辞典 299",
+    "number": "299",
+    "pl": "B",
+    "gc": "page=16 corner=BR grid=11x11 ocr='(299)'"
+  },
+  {
+    "id": "p17_01",
+    "path": "vol1-pages_01-27/p17_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 300",
+    "number": "300",
+    "pl": "B",
+    "gc": "page=17 corner=BR grid=11x12 ocr='(300)'"
+  },
+  {
+    "id": "p17_02",
+    "path": "vol1-pages_01-27/p17_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 301",
+    "number": "301",
+    "pl": "B",
+    "gc": "page=17 corner=BR grid=11x11 ocr='(301)'"
+  },
+  {
+    "id": "p17_03",
+    "path": "vol1-pages_01-27/p17_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 302",
+    "number": "302",
+    "pl": "B",
+    "gc": "page=17 corner=BR grid=11x12 ocr='(302) -'"
+  },
+  {
+    "id": "p17_04",
+    "path": "vol1-pages_01-27/p17_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 p17_04",
+    "number": "17",
+    "pl": "B",
+    "gc": "page=17 corner=BR grid=12x9 ocr=''"
+  },
+  {
+    "id": "p17_05",
+    "path": "vol1-pages_01-27/p17_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 304",
+    "number": "304",
+    "pl": "B",
+    "gc": "page=17 corner=BR grid=11x11 ocr='(304)'"
+  },
+  {
+    "id": "p17_06",
+    "path": "vol1-pages_01-27/p17_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 111",
+    "number": "111",
+    "pl": "B",
+    "gc": "page=17 corner=BR grid=11x11 ocr='_ 1 1 1 _(耆亏) 1 1 1 1 1'"
+  },
+  {
+    "id": "p17_07",
+    "path": "vol1-pages_01-27/p17_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 306",
+    "number": "306",
+    "pl": "B",
+    "gc": "page=17 corner=BR grid=11x11 ocr='(306)'"
+  },
+  {
+    "id": "p17_08",
+    "path": "vol1-pages_01-27/p17_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 307",
+    "number": "307",
+    "pl": "B",
+    "gc": "page=17 corner=BR grid=11x11 ocr='(307)'"
+  },
+  {
+    "id": "p17_09",
+    "path": "vol1-pages_01-27/p17_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 111",
+    "number": "111",
+    "pl": "B",
+    "gc": "page=17 corner=BR grid=11x12 ocr='1 1 1 |(秉亏)_ 1 1 1 _'"
+  },
+  {
+    "id": "p17_10",
+    "path": "vol1-pages_01-27/p17_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 309",
+    "number": "309",
+    "pl": "B",
+    "gc": "page=17 corner=BR grid=11x11 ocr='(309)'"
+  },
+  {
+    "id": "p17_11",
+    "path": "vol1-pages_01-27/p17_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 310",
+    "number": "310",
+    "pl": "B",
+    "gc": "page=17 corner=BR grid=11x12 ocr='(310)'"
+  },
+  {
+    "id": "p17_12",
+    "path": "vol1-pages_01-27/p17_12.sgf",
+    "volume": "上册",
+    "title": "死活辞典 311",
+    "number": "311",
+    "pl": "B",
+    "gc": "page=17 corner=BR grid=11x11 ocr='(311)'"
+  },
+  {
+    "id": "p18_01",
+    "path": "vol1-pages_01-27/p18_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 00",
+    "number": "00",
+    "pl": "B",
+    "gc": "page=18 corner=BR grid=11x11 ocr='吴 吴 1 广3广2贡 0 0'"
+  },
+  {
+    "id": "p18_02",
+    "path": "vol1-pages_01-27/p18_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 313",
+    "number": "313",
+    "pl": "B",
+    "gc": "page=18 corner=BR grid=11x11 ocr='(313)'"
+  },
+  {
+    "id": "p18_03",
+    "path": "vol1-pages_01-27/p18_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 14",
+    "number": "14",
+    "pl": "B",
+    "gc": "page=18 corner=BR grid=11x12 ocr='〖 1 4 ry _ 6 1 1 f'"
+  },
+  {
+    "id": "p18_04",
+    "path": "vol1-pages_01-27/p18_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 316",
+    "number": "316",
+    "pl": "B",
+    "gc": "page=18 corner=BR grid=11x12 ocr='(316)'"
+  },
+  {
+    "id": "p18_05",
+    "path": "vol1-pages_01-27/p18_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 318",
+    "number": "318",
+    "pl": "B",
+    "gc": "page=18 corner=BR grid=11x11 ocr='(318)'"
+  },
+  {
+    "id": "p18_06",
+    "path": "vol1-pages_01-27/p18_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 320",
+    "number": "320",
+    "pl": "B",
+    "gc": "page=18 corner=BR grid=11x12 ocr='(320)'"
+  },
+  {
+    "id": "p18_07",
+    "path": "vol1-pages_01-27/p18_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 322",
+    "number": "322",
+    "pl": "B",
+    "gc": "page=18 corner=BR grid=11x12 ocr='(322) -'"
+  },
+  {
+    "id": "p18_08",
+    "path": "vol1-pages_01-27/p18_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 324",
+    "number": "324",
+    "pl": "B",
+    "gc": "page=18 corner=BR grid=11x12 ocr='| (324)'"
+  },
+  {
+    "id": "p18_09",
+    "path": "vol1-pages_01-27/p18_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 44",
+    "number": "44",
+    "pl": "B",
+    "gc": "page=18 corner=BR grid=11x12 ocr='44 Ff © i 1 5 55 5'"
+  },
+  {
+    "id": "p18_10",
+    "path": "vol1-pages_01-27/p18_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 326",
+    "number": "326",
+    "pl": "B",
+    "gc": "page=18 corner=BR grid=11x12 ocr='(326)'"
+  },
+  {
+    "id": "p18_11",
+    "path": "vol1-pages_01-27/p18_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 327",
+    "number": "327",
+    "pl": "B",
+    "gc": "page=18 corner=BR grid=11x12 ocr='(327)'"
+  },
+  {
+    "id": "p18_12",
+    "path": "vol1-pages_01-27/p18_12.sgf",
+    "volume": "上册",
+    "title": "死活辞典 328",
+    "number": "328",
+    "pl": "B",
+    "gc": "page=18 corner=BR grid=11x12 ocr='(328)'"
+  },
+  {
+    "id": "p19_01",
+    "path": "vol1-pages_01-27/p19_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 330",
+    "number": "330",
+    "pl": "B",
+    "gc": "page=19 corner=BR grid=11x11 ocr='(330)'"
+  },
+  {
+    "id": "p19_02",
+    "path": "vol1-pages_01-27/p19_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 331",
+    "number": "331",
+    "pl": "B",
+    "gc": "page=19 corner=TR grid=11x11 ocr='(331)'"
+  },
+  {
+    "id": "p19_03",
+    "path": "vol1-pages_01-27/p19_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 332",
+    "number": "332",
+    "pl": "B",
+    "gc": "page=19 corner=BR grid=11x11 ocr='(332)'"
+  },
+  {
+    "id": "p19_04",
+    "path": "vol1-pages_01-27/p19_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 333",
+    "number": "333",
+    "pl": "B",
+    "gc": "page=19 corner=BR grid=11x11 ocr='(333) .'"
+  },
+  {
+    "id": "p19_05",
+    "path": "vol1-pages_01-27/p19_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 334",
+    "number": "334",
+    "pl": "B",
+    "gc": "page=19 corner=BR grid=11x11 ocr='(334)'"
+  },
+  {
+    "id": "p19_06",
+    "path": "vol1-pages_01-27/p19_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 336",
+    "number": "336",
+    "pl": "B",
+    "gc": "page=19 corner=BR grid=11x12 ocr='(336)'"
+  },
+  {
+    "id": "p19_07",
+    "path": "vol1-pages_01-27/p19_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 338",
+    "number": "338",
+    "pl": "B",
+    "gc": "page=19 corner=BR grid=11x11 ocr='(338)'"
+  },
+  {
+    "id": "p19_08",
+    "path": "vol1-pages_01-27/p19_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 339",
+    "number": "339",
+    "pl": "B",
+    "gc": "page=19 corner=BR grid=11x11 ocr='目 (339)'"
+  },
+  {
+    "id": "p19_09",
+    "path": "vol1-pages_01-27/p19_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 340",
+    "number": "340",
+    "pl": "B",
+    "gc": "page=19 corner=BR grid=11x11 ocr='目 (340)'"
+  },
+  {
+    "id": "p19_10",
+    "path": "vol1-pages_01-27/p19_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 342",
+    "number": "342",
+    "pl": "B",
+    "gc": "page=19 corner=BR grid=11x11 ocr='(342)'"
+  },
+  {
+    "id": "p19_11",
+    "path": "vol1-pages_01-27/p19_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 344",
+    "number": "344",
+    "pl": "B",
+    "gc": "page=19 corner=BR grid=11x11 ocr='(344)'"
+  },
+  {
+    "id": "p20_01",
+    "path": "vol1-pages_01-27/p20_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 345",
+    "number": "345",
+    "pl": "B",
+    "gc": "page=20 corner=BR grid=11x11 ocr='(345)'"
+  },
+  {
+    "id": "p20_02",
+    "path": "vol1-pages_01-27/p20_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 346",
+    "number": "346",
+    "pl": "B",
+    "gc": "page=20 corner=BR grid=11x11 ocr='(346)'"
+  },
+  {
+    "id": "p20_03",
+    "path": "vol1-pages_01-27/p20_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 348",
+    "number": "348",
+    "pl": "B",
+    "gc": "page=20 corner=BR grid=11x11 ocr='(348)'"
+  },
+  {
+    "id": "p20_04",
+    "path": "vol1-pages_01-27/p20_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 349",
+    "number": "349",
+    "pl": "B",
+    "gc": "page=20 corner=BR grid=11x11 ocr='(349)'"
+  },
+  {
+    "id": "p20_05",
+    "path": "vol1-pages_01-27/p20_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 350",
+    "number": "350",
+    "pl": "B",
+    "gc": "page=20 corner=BR grid=11x11 ocr='(350)'"
+  },
+  {
+    "id": "p20_06",
+    "path": "vol1-pages_01-27/p20_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 352",
+    "number": "352",
+    "pl": "B",
+    "gc": "page=20 corner=BR grid=11x11 ocr='(352)'"
+  },
+  {
+    "id": "p20_07",
+    "path": "vol1-pages_01-27/p20_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 354",
+    "number": "354",
+    "pl": "B",
+    "gc": "page=20 corner=TR grid=11x11 ocr='(354)'"
+  },
+  {
+    "id": "p20_08",
+    "path": "vol1-pages_01-27/p20_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 356",
+    "number": "356",
+    "pl": "B",
+    "gc": "page=20 corner=BR grid=11x11 ocr='(356)'"
+  },
+  {
+    "id": "p20_09",
+    "path": "vol1-pages_01-27/p20_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 357",
+    "number": "357",
+    "pl": "B",
+    "gc": "page=20 corner=BR grid=11x11 ocr='(357)'"
+  },
+  {
+    "id": "p20_10",
+    "path": "vol1-pages_01-27/p20_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 358",
+    "number": "358",
+    "pl": "B",
+    "gc": "page=20 corner=BR grid=11x11 ocr='(358)'"
+  },
+  {
+    "id": "p20_11",
+    "path": "vol1-pages_01-27/p20_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 360",
+    "number": "360",
+    "pl": "B",
+    "gc": "page=20 corner=BR grid=11x11 ocr='(360)'"
+  },
+  {
+    "id": "p20_12",
+    "path": "vol1-pages_01-27/p20_12.sgf",
+    "volume": "上册",
+    "title": "死活辞典 p20_12",
+    "number": "20",
+    "pl": "B",
+    "gc": "page=20 corner=L grid=8x8 ocr=''"
+  },
+  {
+    "id": "p21_01",
+    "path": "vol1-pages_01-27/p21_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 364",
+    "number": "364",
+    "pl": "B",
+    "gc": "page=21 corner=BR grid=11x11 ocr='(364)'"
+  },
+  {
+    "id": "p21_02",
+    "path": "vol1-pages_01-27/p21_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 366",
+    "number": "366",
+    "pl": "B",
+    "gc": "page=21 corner=BR grid=11x11 ocr='(366)'"
+  },
+  {
+    "id": "p21_03",
+    "path": "vol1-pages_01-27/p21_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 368",
+    "number": "368",
+    "pl": "B",
+    "gc": "page=21 corner=BR grid=11x11 ocr='(368)'"
+  },
+  {
+    "id": "p21_04",
+    "path": "vol1-pages_01-27/p21_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 370",
+    "number": "370",
+    "pl": "B",
+    "gc": "page=21 corner=BR grid=11x11 ocr='(370)'"
+  },
+  {
+    "id": "p21_05",
+    "path": "vol1-pages_01-27/p21_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 372",
+    "number": "372",
+    "pl": "B",
+    "gc": "page=21 corner=BR grid=11x11 ocr='(372)'"
+  },
+  {
+    "id": "p21_06",
+    "path": "vol1-pages_01-27/p21_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 374",
+    "number": "374",
+    "pl": "B",
+    "gc": "page=21 corner=BR grid=11x11 ocr='(374) |'"
+  },
+  {
+    "id": "p21_07",
+    "path": "vol1-pages_01-27/p21_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 377",
+    "number": "377",
+    "pl": "B",
+    "gc": "page=21 corner=BR grid=11x11 ocr='(377)'"
+  },
+  {
+    "id": "p21_08",
+    "path": "vol1-pages_01-27/p21_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 380",
+    "number": "380",
+    "pl": "B",
+    "gc": "page=21 corner=BR grid=11x11 ocr='(380)'"
+  },
+  {
+    "id": "p21_09",
+    "path": "vol1-pages_01-27/p21_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 382",
+    "number": "382",
+    "pl": "B",
+    "gc": "page=21 corner=BR grid=11x11 ocr='(382)'"
+  },
+  {
+    "id": "p21_10",
+    "path": "vol1-pages_01-27/p21_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 384",
+    "number": "384",
+    "pl": "B",
+    "gc": "page=21 corner=BR grid=11x11 ocr='(384)'"
+  },
+  {
+    "id": "p21_11",
+    "path": "vol1-pages_01-27/p21_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 388",
+    "number": "388",
+    "pl": "B",
+    "gc": "page=21 corner=BR grid=11x11 ocr='(388)'"
+  },
+  {
+    "id": "p22_01",
+    "path": "vol1-pages_01-27/p22_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 38",
+    "number": "38",
+    "pl": "W",
+    "gc": "page=22 corner=BR grid=11x11 ocr='白 先 (38)'"
+  },
+  {
+    "id": "p22_02",
+    "path": "vol1-pages_01-27/p22_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 39",
+    "number": "39",
+    "pl": "B",
+    "gc": "page=22 corner=BR grid=11x11 ocr='黑 先 (39)'"
+  },
+  {
+    "id": "p22_03",
+    "path": "vol1-pages_01-27/p22_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 40",
+    "number": "40",
+    "pl": "W",
+    "gc": "page=22 corner=BR grid=11x11 ocr='白 先 (40)'"
+  },
+  {
+    "id": "p22_04",
+    "path": "vol1-pages_01-27/p22_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 41",
+    "number": "41",
+    "pl": "B",
+    "gc": "page=22 corner=BR grid=11x11 ocr='Fax (41) |'"
+  },
+  {
+    "id": "p22_05",
+    "path": "vol1-pages_01-27/p22_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 42",
+    "number": "42",
+    "pl": "W",
+    "gc": "page=22 corner=BR grid=11x11 ocr='白 先 (42)'"
+  },
+  {
+    "id": "p22_06",
+    "path": "vol1-pages_01-27/p22_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 43",
+    "number": "43",
+    "pl": "B",
+    "gc": "page=22 corner=BR grid=11x11 ocr='恩 先 (43)'"
+  },
+  {
+    "id": "p22_07",
+    "path": "vol1-pages_01-27/p22_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 44",
+    "number": "44",
+    "pl": "W",
+    "gc": "page=22 corner=BR grid=11x11 ocr='白 先 (44)'"
+  },
+  {
+    "id": "p22_08",
+    "path": "vol1-pages_01-27/p22_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 45",
+    "number": "45",
+    "pl": "W",
+    "gc": "page=22 corner=BR grid=11x12 ocr='白 先 (45)'"
+  },
+  {
+    "id": "p22_09",
+    "path": "vol1-pages_01-27/p22_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 46",
+    "number": "46",
+    "pl": "B",
+    "gc": "page=22 corner=BR grid=11x11 ocr='黑 先 (46)'"
+  },
+  {
+    "id": "p22_10",
+    "path": "vol1-pages_01-27/p22_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 47",
+    "number": "47",
+    "pl": "B",
+    "gc": "page=22 corner=BR grid=11x11 ocr='黑 先 (47)'"
+  },
+  {
+    "id": "p22_11",
+    "path": "vol1-pages_01-27/p22_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 48",
+    "number": "48",
+    "pl": "B",
+    "gc": "page=22 corner=BR grid=11x11 ocr='黑 先 (48) 目'"
+  },
+  {
+    "id": "p23_01",
+    "path": "vol1-pages_01-27/p23_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 49",
+    "number": "49",
+    "pl": "B",
+    "gc": "page=23 corner=BR grid=11x12 ocr='黑 先 (49)'"
+  },
+  {
+    "id": "p23_02",
+    "path": "vol1-pages_01-27/p23_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 50",
+    "number": "50",
+    "pl": "B",
+    "gc": "page=23 corner=BR grid=11x11 ocr='黑 先 (50)'"
+  },
+  {
+    "id": "p23_03",
+    "path": "vol1-pages_01-27/p23_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 51",
+    "number": "51",
+    "pl": "B",
+    "gc": "page=23 corner=BR grid=11x11 ocr='黑 先 (51)'"
+  },
+  {
+    "id": "p23_04",
+    "path": "vol1-pages_01-27/p23_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 52",
+    "number": "52",
+    "pl": "B",
+    "gc": "page=23 corner=BR grid=11x11 ocr='黑 先 (52)'"
+  },
+  {
+    "id": "p23_05",
+    "path": "vol1-pages_01-27/p23_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 53",
+    "number": "53",
+    "pl": "B",
+    "gc": "page=23 corner=BR grid=11x11 ocr='黑 先 (53)'"
+  },
+  {
+    "id": "p23_06",
+    "path": "vol1-pages_01-27/p23_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 54",
+    "number": "54",
+    "pl": "B",
+    "gc": "page=23 corner=BR grid=11x11 ocr='黑 先 (54)'"
+  },
+  {
+    "id": "p23_07",
+    "path": "vol1-pages_01-27/p23_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 55",
+    "number": "55",
+    "pl": "B",
+    "gc": "page=23 corner=BR grid=11x11 ocr='黑 先 (55)'"
+  },
+  {
+    "id": "p23_08",
+    "path": "vol1-pages_01-27/p23_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 56",
+    "number": "56",
+    "pl": "W",
+    "gc": "page=23 corner=BR grid=11x11 ocr='白 先 (56)'"
+  },
+  {
+    "id": "p23_09",
+    "path": "vol1-pages_01-27/p23_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 58",
+    "number": "58",
+    "pl": "W",
+    "gc": "page=23 corner=BR grid=11x11 ocr='白 先 (58)'"
+  },
+  {
+    "id": "p23_10",
+    "path": "vol1-pages_01-27/p23_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 60",
+    "number": "60",
+    "pl": "W",
+    "gc": "page=23 corner=BR grid=11x11 ocr='白 先 (60)'"
+  },
+  {
+    "id": "p23_11",
+    "path": "vol1-pages_01-27/p23_11.sgf",
+    "volume": "上册",
+    "title": "死活辞典 62",
+    "number": "62",
+    "pl": "B",
+    "gc": "page=23 corner=BR grid=11x11 ocr='白 夕_…霍(羹 (62)'"
+  },
+  {
+    "id": "p23_12",
+    "path": "vol1-pages_01-27/p23_12.sgf",
+    "volume": "上册",
+    "title": "死活辞典 64",
+    "number": "64",
+    "pl": "W",
+    "gc": "page=23 corner=BR grid=11x11 ocr='白 先 (64)'"
+  },
+  {
+    "id": "p24_01",
+    "path": "vol1-pages_01-27/p24_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 66",
+    "number": "66",
+    "pl": "B",
+    "gc": "page=24 corner=BR grid=11x11 ocr='心 先 (66)'"
+  },
+  {
+    "id": "p24_02",
+    "path": "vol1-pages_01-27/p24_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 111",
+    "number": "111",
+    "pl": "B",
+    "gc": "page=24 corner=BR grid=11x11 ocr='1 1 1 眷羲丨〈卞8亏 1 1 ry'"
+  },
+  {
+    "id": "p24_03",
+    "path": "vol1-pages_01-27/p24_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 70",
+    "number": "70",
+    "pl": "W",
+    "gc": "page=24 corner=BR grid=11x11 ocr='白 先 (70)'"
+  },
+  {
+    "id": "p24_04",
+    "path": "vol1-pages_01-27/p24_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 72",
+    "number": "72",
+    "pl": "B",
+    "gc": "page=24 corner=BR grid=11x11 ocr='黑 先 (72)'"
+  },
+  {
+    "id": "p24_05",
+    "path": "vol1-pages_01-27/p24_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 74",
+    "number": "74",
+    "pl": "W",
+    "gc": "page=24 corner=BR grid=11x11 ocr='白 先 (74)'"
+  },
+  {
+    "id": "p24_06",
+    "path": "vol1-pages_01-27/p24_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 75",
+    "number": "75",
+    "pl": "B",
+    "gc": "page=24 corner=BR grid=11x11 ocr='黑 先 (75)'"
+  },
+  {
+    "id": "p24_07",
+    "path": "vol1-pages_01-27/p24_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 76",
+    "number": "76",
+    "pl": "B",
+    "gc": "page=24 corner=BR grid=11x11 ocr='黑 先 (76)'"
+  },
+  {
+    "id": "p24_08",
+    "path": "vol1-pages_01-27/p24_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 78",
+    "number": "78",
+    "pl": "B",
+    "gc": "page=24 corner=BR grid=11x19 ocr='Ase (78)'"
+  },
+  {
+    "id": "p24_09",
+    "path": "vol1-pages_01-27/p24_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 79",
+    "number": "79",
+    "pl": "B",
+    "gc": "page=24 corner=BR grid=11x11 ocr='i (79)'"
+  },
+  {
+    "id": "p24_10",
+    "path": "vol1-pages_01-27/p24_10.sgf",
+    "volume": "上册",
+    "title": "死活辞典 80",
+    "number": "80",
+    "pl": "W",
+    "gc": "page=24 corner=BL grid=11x19 ocr='| 白 先 (80)'"
+  },
+  {
+    "id": "p25_01",
+    "path": "vol1-pages_01-27/p25_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 82",
+    "number": "82",
+    "pl": "B",
+    "gc": "page=25 corner=BR grid=11x17 ocr='黑 先 (82)'"
+  },
+  {
+    "id": "p25_02",
+    "path": "vol1-pages_01-27/p25_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 84",
+    "number": "84",
+    "pl": "B",
+    "gc": "page=25 corner=BR grid=11x17 ocr='- 黑 先 (84)'"
+  },
+  {
+    "id": "p25_03",
+    "path": "vol1-pages_01-27/p25_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 86",
+    "number": "86",
+    "pl": "W",
+    "gc": "page=25 corner=BR grid=11x16 ocr='白 先 (86)'"
+  },
+  {
+    "id": "p25_04",
+    "path": "vol1-pages_01-27/p25_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 88",
+    "number": "88",
+    "pl": "B",
+    "gc": "page=25 corner=BR grid=11x19 ocr='黑 先 (88)\\nJ 国 荣 | | 命 咤 fo tt tf t 吴 断 吊 葛 国 河 张 颂 诊 春 园 斧 吴 颂 许 国'"
+  },
+  {
+    "id": "p25_05",
+    "path": "vol1-pages_01-27/p25_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 89",
+    "number": "89",
+    "pl": "W",
+    "gc": "page=25 corner=BR grid=11x15 ocr='- 白 先 (89)'"
+  },
+  {
+    "id": "p25_06",
+    "path": "vol1-pages_01-27/p25_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 90",
+    "number": "90",
+    "pl": "B",
+    "gc": "page=25 corner=BR grid=11x17 ocr='黑 先 (90)\\n5 E 玖 命 国 荣 诊 命 国 葛 国 荣 国 故 国 贺 诊 荣 团 国 许 国 诊 斧 诊河 沥 国 许许 国'"
+  },
+  {
+    "id": "p25_07",
+    "path": "vol1-pages_01-27/p25_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 91",
+    "number": "91",
+    "pl": "B",
+    "gc": "page=25 corner=BR grid=11x17 ocr='黑 先 (91)'"
+  },
+  {
+    "id": "p25_08",
+    "path": "vol1-pages_01-27/p25_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 92",
+    "number": "92",
+    "pl": "W",
+    "gc": "page=25 corner=BR grid=11x17 ocr='白 先 (92)'"
+  },
+  {
+    "id": "p26_01",
+    "path": "vol1-pages_01-27/p26_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 93",
+    "number": "93",
+    "pl": "B",
+    "gc": "page=26 corner=BR grid=11x17 ocr='黑 先 (93)'"
+  },
+  {
+    "id": "p26_02",
+    "path": "vol1-pages_01-27/p26_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 94",
+    "number": "94",
+    "pl": "B",
+    "gc": "page=26 corner=BR grid=11x17 ocr='黑 先 (94) -'"
+  },
+  {
+    "id": "p26_03",
+    "path": "vol1-pages_01-27/p26_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 96",
+    "number": "96",
+    "pl": "W",
+    "gc": "page=26 corner=BR grid=11x17 ocr='白 先 (96)'"
+  },
+  {
+    "id": "p26_04",
+    "path": "vol1-pages_01-27/p26_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 97",
+    "number": "97",
+    "pl": "B",
+    "gc": "page=26 corner=BR grid=11x17 ocr='黑 先 (97)'"
+  },
+  {
+    "id": "p26_05",
+    "path": "vol1-pages_01-27/p26_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 98",
+    "number": "98",
+    "pl": "W",
+    "gc": "page=26 corner=BR grid=11x17 ocr='白 先 (98)'"
+  },
+  {
+    "id": "p26_06",
+    "path": "vol1-pages_01-27/p26_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 100",
+    "number": "100",
+    "pl": "B",
+    "gc": "page=26 corner=BR grid=11x17 ocr='黑 先 (100) 7'"
+  },
+  {
+    "id": "p26_07",
+    "path": "vol1-pages_01-27/p26_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 102",
+    "number": "102",
+    "pl": "B",
+    "gc": "page=26 corner=BR grid=11x11 ocr='Ae (102)'"
+  },
+  {
+    "id": "p26_08",
+    "path": "vol1-pages_01-27/p26_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 104",
+    "number": "104",
+    "pl": "W",
+    "gc": "page=26 corner=BR grid=11x11 ocr='白 先 (104)'"
+  },
+  {
+    "id": "p26_09",
+    "path": "vol1-pages_01-27/p26_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 106",
+    "number": "106",
+    "pl": "W",
+    "gc": "page=26 corner=BR grid=11x12 ocr='白 先 (106)'"
+  },
+  {
+    "id": "p27_01",
+    "path": "vol1-pages_01-27/p27_01.sgf",
+    "volume": "上册",
+    "title": "死活辞典 107",
+    "number": "107",
+    "pl": "W",
+    "gc": "page=27 corner=BR grid=11x11 ocr='白 先 (107)\\n一'"
+  },
+  {
+    "id": "p27_02",
+    "path": "vol1-pages_01-27/p27_02.sgf",
+    "volume": "上册",
+    "title": "死活辞典 108",
+    "number": "108",
+    "pl": "W",
+    "gc": "page=27 corner=BR grid=11x12 ocr='白 先 (108)'"
+  },
+  {
+    "id": "p27_03",
+    "path": "vol1-pages_01-27/p27_03.sgf",
+    "volume": "上册",
+    "title": "死活辞典 110",
+    "number": "110",
+    "pl": "W",
+    "gc": "page=27 corner=BR grid=11x12 ocr='白 先 (110)'"
+  },
+  {
+    "id": "p27_04",
+    "path": "vol1-pages_01-27/p27_04.sgf",
+    "volume": "上册",
+    "title": "死活辞典 111",
+    "number": "111",
+    "pl": "W",
+    "gc": "page=27 corner=BR grid=11x17 ocr='白 先 (111)'"
+  },
+  {
+    "id": "p27_05",
+    "path": "vol1-pages_01-27/p27_05.sgf",
+    "volume": "上册",
+    "title": "死活辞典 112",
+    "number": "112",
+    "pl": "W",
+    "gc": "page=27 corner=BR grid=11x17 ocr='白 先 (112)\\nat tf fF f 7 ¢ 3 诊 吴 园 国 国 荣 团 荣 园 荣 园 断 许 斧 诊 颂 砂 圆 许 国'"
+  },
+  {
+    "id": "p27_06",
+    "path": "vol1-pages_01-27/p27_06.sgf",
+    "volume": "上册",
+    "title": "死活辞典 113",
+    "number": "113",
+    "pl": "W",
+    "gc": "page=27 corner=BR grid=11x17 ocr='白 先 (113)'"
+  },
+  {
+    "id": "p27_07",
+    "path": "vol1-pages_01-27/p27_07.sgf",
+    "volume": "上册",
+    "title": "死活辞典 114",
+    "number": "114",
+    "pl": "B",
+    "gc": "page=27 corner=BR grid=11x17 ocr='咤 黑 先 (114)'"
+  },
+  {
+    "id": "p27_08",
+    "path": "vol1-pages_01-27/p27_08.sgf",
+    "volume": "上册",
+    "title": "死活辞典 115",
+    "number": "115",
+    "pl": "W",
+    "gc": "page=27 corner=BR grid=11x17 ocr='白 先 (115)'"
+  },
+  {
+    "id": "p27_09",
+    "path": "vol1-pages_01-27/p27_09.sgf",
+    "volume": "上册",
+    "title": "死活辞典 116",
+    "number": "116",
+    "pl": "B",
+    "gc": "page=27 corner=BR grid=11x17 ocr='(116)'"
+  },
+  {
+    "id": "p28_01",
+    "path": "vol2-pages_28-end/p28_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 118",
+    "number": "118",
+    "pl": "W",
+    "gc": "page=28 corner=BL grid=11x12 ocr='白 先 (118)'"
+  },
+  {
+    "id": "p28_02",
+    "path": "vol2-pages_28-end/p28_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 120",
+    "number": "120",
+    "pl": "W",
+    "gc": "page=28 corner=BR grid=11x12 ocr='目 白 先 (120)'"
+  },
+  {
+    "id": "p28_03",
+    "path": "vol2-pages_28-end/p28_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 123",
+    "number": "123",
+    "pl": "W",
+    "gc": "page=28 corner=BR grid=11x11 ocr='白 先 (123)'"
+  },
+  {
+    "id": "p28_04",
+    "path": "vol2-pages_28-end/p28_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 124",
+    "number": "124",
+    "pl": "W",
+    "gc": "page=28 corner=BR grid=11x12 ocr='白 先 (124)'"
+  },
+  {
+    "id": "p28_05",
+    "path": "vol2-pages_28-end/p28_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 126",
+    "number": "126",
+    "pl": "B",
+    "gc": "page=28 corner=BR grid=11x11 ocr=\"嬴叟、爹-'辜′ (126)\""
+  },
+  {
+    "id": "p28_06",
+    "path": "vol2-pages_28-end/p28_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 128",
+    "number": "128",
+    "pl": "W",
+    "gc": "page=28 corner=BR grid=11x11 ocr='白 先 (128)'"
+  },
+  {
+    "id": "p28_07",
+    "path": "vol2-pages_28-end/p28_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 130",
+    "number": "130",
+    "pl": "W",
+    "gc": "page=28 corner=BR grid=11x12 ocr='白 先 (130)'"
+  },
+  {
+    "id": "p28_08",
+    "path": "vol2-pages_28-end/p28_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 132",
+    "number": "132",
+    "pl": "B",
+    "gc": "page=28 corner=BR grid=11x11 ocr='[辜"
+  },
+  {
+    "id": "p28_09",
+    "path": "vol2-pages_28-end/p28_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 134",
+    "number": "134",
+    "pl": "W",
+    "gc": "page=28 corner=BR grid=11x17 ocr='白 先 (134)'"
+  },
+  {
+    "id": "p28_10",
+    "path": "vol2-pages_28-end/p28_10.sgf",
+    "volume": "下册",
+    "title": "死活辞典 135",
+    "number": "135",
+    "pl": "B",
+    "gc": "page=28 corner=BR grid=11x17 ocr='黑 先 (135)'"
+  },
+  {
+    "id": "p29_01",
+    "path": "vol2-pages_28-end/p29_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 136",
+    "number": "136",
+    "pl": "B",
+    "gc": "page=29 corner=BR grid=11x17 ocr='. 黑 先 (136)'"
+  },
+  {
+    "id": "p29_02",
+    "path": "vol2-pages_28-end/p29_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 138",
+    "number": "138",
+    "pl": "B",
+    "gc": "page=29 corner=BR grid=11x17 ocr='me (138) 目'"
+  },
+  {
+    "id": "p29_03",
+    "path": "vol2-pages_28-end/p29_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 140",
+    "number": "140",
+    "pl": "B",
+    "gc": "page=29 corner=BR grid=11x17 ocr='一 悠 先 (140) 目 目'"
+  },
+  {
+    "id": "p29_04",
+    "path": "vol2-pages_28-end/p29_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 42",
+    "number": "42",
+    "pl": "B",
+    "gc": "page=29 corner=BR grid=11x17 ocr='自 先 42)'"
+  },
+  {
+    "id": "p29_05",
+    "path": "vol2-pages_28-end/p29_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 146",
+    "number": "146",
+    "pl": "B",
+    "gc": "page=29 corner=BR grid=11x10 ocr='黑 先 (146)'"
+  },
+  {
+    "id": "p29_06",
+    "path": "vol2-pages_28-end/p29_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 147",
+    "number": "147",
+    "pl": "W",
+    "gc": "page=29 corner=BR grid=11x14 ocr='白 先 (147)'"
+  },
+  {
+    "id": "p29_07",
+    "path": "vol2-pages_28-end/p29_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 48",
+    "number": "48",
+    "pl": "W",
+    "gc": "page=29 corner=BR grid=11x11 ocr='白 先 ‖48)v'"
+  },
+  {
+    "id": "p29_08",
+    "path": "vol2-pages_28-end/p29_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 149",
+    "number": "149",
+    "pl": "W",
+    "gc": "page=29 corner=BR grid=11x11 ocr='白 先 〔149)'"
+  },
+  {
+    "id": "p29_09",
+    "path": "vol2-pages_28-end/p29_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 150",
+    "number": "150",
+    "pl": "W",
+    "gc": "page=29 corner=BR grid=11x11 ocr='白 先 (150)'"
+  },
+  {
+    "id": "p30_01",
+    "path": "vol2-pages_28-end/p30_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 151",
+    "number": "151",
+    "pl": "W",
+    "gc": "page=30 corner=BR grid=11x17 ocr='白 先 (151)'"
+  },
+  {
+    "id": "p30_02",
+    "path": "vol2-pages_28-end/p30_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 152",
+    "number": "152",
+    "pl": "W",
+    "gc": "page=30 corner=BR grid=11x17 ocr='白 先 (152)'"
+  },
+  {
+    "id": "p30_03",
+    "path": "vol2-pages_28-end/p30_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 153",
+    "number": "153",
+    "pl": "W",
+    "gc": "page=30 corner=BR grid=11x11 ocr='白 先 (153)'"
+  },
+  {
+    "id": "p30_04",
+    "path": "vol2-pages_28-end/p30_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 111",
+    "number": "111",
+    "pl": "B",
+    "gc": "page=30 corner=BR grid=11x11 ocr='【 1 _羞羞 _(l广气) 1 1 1'"
+  },
+  {
+    "id": "p30_05",
+    "path": "vol2-pages_28-end/p30_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 156",
+    "number": "156",
+    "pl": "W",
+    "gc": "page=30 corner=BR grid=11x11 ocr='白 先 (156)'"
+  },
+  {
+    "id": "p30_06",
+    "path": "vol2-pages_28-end/p30_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 157",
+    "number": "157",
+    "pl": "W",
+    "gc": "page=30 corner=BR grid=11x12 ocr='白 先 (157)'"
+  },
+  {
+    "id": "p30_07",
+    "path": "vol2-pages_28-end/p30_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 158",
+    "number": "158",
+    "pl": "B",
+    "gc": "page=30 corner=BR grid=11x12 ocr='At (158)'"
+  },
+  {
+    "id": "p30_08",
+    "path": "vol2-pages_28-end/p30_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 159",
+    "number": "159",
+    "pl": "B",
+    "gc": "page=30 corner=BR grid=11x11 ocr='黑 先 (159)'"
+  },
+  {
+    "id": "p30_09",
+    "path": "vol2-pages_28-end/p30_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 162",
+    "number": "162",
+    "pl": "W",
+    "gc": "page=30 corner=BR grid=11x11 ocr='白 先 (162)'"
+  },
+  {
+    "id": "p31_01",
+    "path": "vol2-pages_28-end/p31_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 164",
+    "number": "164",
+    "pl": "W",
+    "gc": "page=31 corner=BR grid=11x17 ocr='白 先 (164)'"
+  },
+  {
+    "id": "p31_02",
+    "path": "vol2-pages_28-end/p31_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 165",
+    "number": "165",
+    "pl": "W",
+    "gc": "page=31 corner=BR grid=11x17 ocr='白 先 (165)'"
+  },
+  {
+    "id": "p31_03",
+    "path": "vol2-pages_28-end/p31_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 166",
+    "number": "166",
+    "pl": "W",
+    "gc": "page=31 corner=BR grid=11x11 ocr='白 先 〔(166)'"
+  },
+  {
+    "id": "p31_04",
+    "path": "vol2-pages_28-end/p31_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 167",
+    "number": "167",
+    "pl": "B",
+    "gc": "page=31 corner=BR grid=11x10 ocr='- 「.夕仨 (167) -'"
+  },
+  {
+    "id": "p31_05",
+    "path": "vol2-pages_28-end/p31_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 168",
+    "number": "168",
+    "pl": "B",
+    "gc": "page=31 corner=BR grid=11x13 ocr='黑 先 (168)'"
+  },
+  {
+    "id": "p31_06",
+    "path": "vol2-pages_28-end/p31_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 170",
+    "number": "170",
+    "pl": "W",
+    "gc": "page=31 corner=BR grid=11x17 ocr='- 白 先 (170)'"
+  },
+  {
+    "id": "p31_07",
+    "path": "vol2-pages_28-end/p31_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 172",
+    "number": "172",
+    "pl": "W",
+    "gc": "page=31 corner=BR grid=11x17 ocr='白 先 (172)'"
+  },
+  {
+    "id": "p31_08",
+    "path": "vol2-pages_28-end/p31_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 173",
+    "number": "173",
+    "pl": "W",
+    "gc": "page=31 corner=BR grid=11x12 ocr='白 先 (173) 目'"
+  },
+  {
+    "id": "p31_09",
+    "path": "vol2-pages_28-end/p31_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 175",
+    "number": "175",
+    "pl": "W",
+    "gc": "page=31 corner=BR grid=11x11 ocr='白 先 (175)'"
+  },
+  {
+    "id": "p32_01",
+    "path": "vol2-pages_28-end/p32_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 176",
+    "number": "176",
+    "pl": "W",
+    "gc": "page=32 corner=BR grid=11x11 ocr='白 先 (176)'"
+  },
+  {
+    "id": "p32_02",
+    "path": "vol2-pages_28-end/p32_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 178",
+    "number": "178",
+    "pl": "W",
+    "gc": "page=32 corner=BR grid=11x11 ocr='白 先 (178)'"
+  },
+  {
+    "id": "p32_03",
+    "path": "vol2-pages_28-end/p32_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 180",
+    "number": "180",
+    "pl": "W",
+    "gc": "page=32 corner=BR grid=11x11 ocr='白 先 (180)'"
+  },
+  {
+    "id": "p32_04",
+    "path": "vol2-pages_28-end/p32_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 1447",
+    "number": "1447",
+    "pl": "B",
+    "gc": "page=32 corner=BR grid=11x11 ocr='F 14 474 ~ -_ a eae.'"
+  },
+  {
+    "id": "p32_05",
+    "path": "vol2-pages_28-end/p32_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 185",
+    "number": "185",
+    "pl": "W",
+    "gc": "page=32 corner=BR grid=11x11 ocr='白 先 (185)'"
+  },
+  {
+    "id": "p32_06",
+    "path": "vol2-pages_28-end/p32_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 186",
+    "number": "186",
+    "pl": "W",
+    "gc": "page=32 corner=BR grid=11x11 ocr='白 先 (186)'"
+  },
+  {
+    "id": "p32_07",
+    "path": "vol2-pages_28-end/p32_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 187",
+    "number": "187",
+    "pl": "B",
+    "gc": "page=32 corner=BR grid=11x11 ocr='黑 先 (187)'"
+  },
+  {
+    "id": "p32_08",
+    "path": "vol2-pages_28-end/p32_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 188",
+    "number": "188",
+    "pl": "W",
+    "gc": "page=32 corner=BR grid=11x19 ocr='白 先 (188)'"
+  },
+  {
+    "id": "p32_09",
+    "path": "vol2-pages_28-end/p32_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 190",
+    "number": "190",
+    "pl": "W",
+    "gc": "page=32 corner=BR grid=11x15 ocr='白 先 (190)'"
+  },
+  {
+    "id": "p33_01",
+    "path": "vol2-pages_28-end/p33_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 192",
+    "number": "192",
+    "pl": "B",
+    "gc": "page=33 corner=BR grid=11x11 ocr='黑 先 (192)'"
+  },
+  {
+    "id": "p33_02",
+    "path": "vol2-pages_28-end/p33_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 194",
+    "number": "194",
+    "pl": "B",
+    "gc": "page=33 corner=BR grid=11x12 ocr='黑 先 (194)'"
+  },
+  {
+    "id": "p33_03",
+    "path": "vol2-pages_28-end/p33_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 196",
+    "number": "196",
+    "pl": "B",
+    "gc": "page=33 corner=BR grid=11x12 ocr='黑 先 (196)'"
+  },
+  {
+    "id": "p33_04",
+    "path": "vol2-pages_28-end/p33_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 198",
+    "number": "198",
+    "pl": "B",
+    "gc": "page=33 corner=BR grid=11x14 ocr='臼 先 (198)'"
+  },
+  {
+    "id": "p33_05",
+    "path": "vol2-pages_28-end/p33_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 204",
+    "number": "204",
+    "pl": "W",
+    "gc": "page=33 corner=BR grid=11x11 ocr='白 先 (204)'"
+  },
+  {
+    "id": "p33_06",
+    "path": "vol2-pages_28-end/p33_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 205",
+    "number": "205",
+    "pl": "W",
+    "gc": "page=33 corner=BR grid=11x11 ocr='白 先 (205)'"
+  },
+  {
+    "id": "p33_07",
+    "path": "vol2-pages_28-end/p33_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 11",
+    "number": "11",
+    "pl": "B",
+    "gc": "page=33 corner=BR grid=11x11 ocr='1 1 _气髻 I(青(「) F 0'"
+  },
+  {
+    "id": "p33_08",
+    "path": "vol2-pages_28-end/p33_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 207",
+    "number": "207",
+    "pl": "W",
+    "gc": "page=33 corner=BR grid=11x11 ocr='白 先 (207)'"
+  },
+  {
+    "id": "p33_09",
+    "path": "vol2-pages_28-end/p33_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 208",
+    "number": "208",
+    "pl": "W",
+    "gc": "page=33 corner=BR grid=11x11 ocr='白 先 (208)'"
+  },
+  {
+    "id": "p33_10",
+    "path": "vol2-pages_28-end/p33_10.sgf",
+    "volume": "下册",
+    "title": "死活辞典 209",
+    "number": "209",
+    "pl": "W",
+    "gc": "page=33 corner=BR grid=11x11 ocr='白 先 (209)'"
+  },
+  {
+    "id": "p34_01",
+    "path": "vol2-pages_28-end/p34_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 11",
+    "number": "11",
+    "pl": "B",
+    "gc": "page=34 corner=BR grid=11x19 ocr='1 1 T 声薹 气 冒2 l_0) F 1 F'"
+  },
+  {
+    "id": "p34_02",
+    "path": "vol2-pages_28-end/p34_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 11",
+    "number": "11",
+    "pl": "B",
+    "gc": "page=34 corner=BR grid=11x15 ocr='i 【 1 气羞 _(青丨亡) 1 1 《 1 _'"
+  },
+  {
+    "id": "p34_03",
+    "path": "vol2-pages_28-end/p34_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 212",
+    "number": "212",
+    "pl": "W",
+    "gc": "page=34 corner=BR grid=11x11 ocr='白 先 (212)'"
+  },
+  {
+    "id": "p34_04",
+    "path": "vol2-pages_28-end/p34_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 213",
+    "number": "213",
+    "pl": "W",
+    "gc": "page=34 corner=BR grid=11x11 ocr='白 先 (213)'"
+  },
+  {
+    "id": "p34_05",
+    "path": "vol2-pages_28-end/p34_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 111",
+    "number": "111",
+    "pl": "B",
+    "gc": "page=34 corner=BR grid=11x11 ocr='1 1 1 气羞 _(亏l丁) 1 1 里'"
+  },
+  {
+    "id": "p34_06",
+    "path": "vol2-pages_28-end/p34_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 215",
+    "number": "215",
+    "pl": "W",
+    "gc": "page=34 corner=BR grid=11x11 ocr='白 先 (215)'"
+  },
+  {
+    "id": "p34_07",
+    "path": "vol2-pages_28-end/p34_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 216",
+    "number": "216",
+    "pl": "W",
+    "gc": "page=34 corner=BR grid=11x11 ocr='白 先 (216)'"
+  },
+  {
+    "id": "p34_08",
+    "path": "vol2-pages_28-end/p34_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 218",
+    "number": "218",
+    "pl": "W",
+    "gc": "page=34 corner=BR grid=11x11 ocr='白 先 (218)'"
+  },
+  {
+    "id": "p34_09",
+    "path": "vol2-pages_28-end/p34_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 219",
+    "number": "219",
+    "pl": "W",
+    "gc": "page=34 corner=BR grid=11x11 ocr='白 先 (219)'"
+  },
+  {
+    "id": "p34_10",
+    "path": "vol2-pages_28-end/p34_10.sgf",
+    "volume": "下册",
+    "title": "死活辞典 220",
+    "number": "220",
+    "pl": "W",
+    "gc": "page=34 corner=BR grid=11x11 ocr='白 先 (220)'"
+  },
+  {
+    "id": "p34_11",
+    "path": "vol2-pages_28-end/p34_11.sgf",
+    "volume": "下册",
+    "title": "死活辞典 221",
+    "number": "221",
+    "pl": "W",
+    "gc": "page=34 corner=BR grid=11x11 ocr='白 先 (221)'"
+  },
+  {
+    "id": "p35_01",
+    "path": "vol2-pages_28-end/p35_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 222",
+    "number": "222",
+    "pl": "W",
+    "gc": "page=35 corner=BR grid=11x11 ocr='白 先 (222)'"
+  },
+  {
+    "id": "p35_02",
+    "path": "vol2-pages_28-end/p35_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 223",
+    "number": "223",
+    "pl": "W",
+    "gc": "page=35 corner=BR grid=11x11 ocr='白 先 (223) 目'"
+  },
+  {
+    "id": "p35_03",
+    "path": "vol2-pages_28-end/p35_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 224",
+    "number": "224",
+    "pl": "W",
+    "gc": "page=35 corner=BR grid=11x11 ocr='白 先 (224)'"
+  },
+  {
+    "id": "p35_04",
+    "path": "vol2-pages_28-end/p35_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 226",
+    "number": "226",
+    "pl": "W",
+    "gc": "page=35 corner=BR grid=11x11 ocr='白 先 (226)'"
+  },
+  {
+    "id": "p35_05",
+    "path": "vol2-pages_28-end/p35_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 227",
+    "number": "227",
+    "pl": "W",
+    "gc": "page=35 corner=BR grid=11x11 ocr='白 先 (227)'"
+  },
+  {
+    "id": "p35_06",
+    "path": "vol2-pages_28-end/p35_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 228",
+    "number": "228",
+    "pl": "W",
+    "gc": "page=35 corner=BR grid=11x11 ocr='白 先 (228)'"
+  },
+  {
+    "id": "p35_07",
+    "path": "vol2-pages_28-end/p35_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 230",
+    "number": "230",
+    "pl": "W",
+    "gc": "page=35 corner=BR grid=11x11 ocr='白 先 (230)'"
+  },
+  {
+    "id": "p35_08",
+    "path": "vol2-pages_28-end/p35_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 230",
+    "number": "230",
+    "pl": "W",
+    "gc": "page=35 corner=BR grid=11x11 ocr='白 先 (230)'"
+  },
+  {
+    "id": "p35_09",
+    "path": "vol2-pages_28-end/p35_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 232",
+    "number": "232",
+    "pl": "W",
+    "gc": "page=35 corner=BR grid=11x17 ocr='白 先 (232)'"
+  },
+  {
+    "id": "p35_10",
+    "path": "vol2-pages_28-end/p35_10.sgf",
+    "volume": "下册",
+    "title": "死活辞典 233",
+    "number": "233",
+    "pl": "W",
+    "gc": "page=35 corner=BR grid=11x17 ocr='白 先 (233) 7'"
+  },
+  {
+    "id": "p36_01",
+    "path": "vol2-pages_28-end/p36_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 234",
+    "number": "234",
+    "pl": "W",
+    "gc": "page=36 corner=BR grid=11x17 ocr='白 先 (234)'"
+  },
+  {
+    "id": "p36_02",
+    "path": "vol2-pages_28-end/p36_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 235",
+    "number": "235",
+    "pl": "W",
+    "gc": "page=36 corner=BR grid=11x17 ocr='白 先 (235)'"
+  },
+  {
+    "id": "p36_03",
+    "path": "vol2-pages_28-end/p36_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 236",
+    "number": "236",
+    "pl": "W",
+    "gc": "page=36 corner=BR grid=11x11 ocr='白 先 (236)'"
+  },
+  {
+    "id": "p36_04",
+    "path": "vol2-pages_28-end/p36_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 237",
+    "number": "237",
+    "pl": "B",
+    "gc": "page=36 corner=TR grid=11x11 ocr='1 1 1 声先 (237)_ 【 1 1'"
+  },
+  {
+    "id": "p36_05",
+    "path": "vol2-pages_28-end/p36_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 238",
+    "number": "238",
+    "pl": "W",
+    "gc": "page=36 corner=BR grid=11x11 ocr='白 先 (238)'"
+  },
+  {
+    "id": "p36_06",
+    "path": "vol2-pages_28-end/p36_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 239",
+    "number": "239",
+    "pl": "W",
+    "gc": "page=36 corner=BR grid=11x17 ocr='白 先 (239) 目'"
+  },
+  {
+    "id": "p36_07",
+    "path": "vol2-pages_28-end/p36_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 240",
+    "number": "240",
+    "pl": "W",
+    "gc": "page=36 corner=BR grid=11x17 ocr='白 先 (240)'"
+  },
+  {
+    "id": "p36_08",
+    "path": "vol2-pages_28-end/p36_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 241",
+    "number": "241",
+    "pl": "W",
+    "gc": "page=36 corner=BR grid=11x11 ocr='白 先 (241)'"
+  },
+  {
+    "id": "p36_09",
+    "path": "vol2-pages_28-end/p36_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 242",
+    "number": "242",
+    "pl": "W",
+    "gc": "page=36 corner=BR grid=11x11 ocr='白 先 (242)'"
+  },
+  {
+    "id": "p36_10",
+    "path": "vol2-pages_28-end/p36_10.sgf",
+    "volume": "下册",
+    "title": "死活辞典 244",
+    "number": "244",
+    "pl": "W",
+    "gc": "page=36 corner=BR grid=11x11 ocr='白 先 (244)'"
+  },
+  {
+    "id": "p37_01",
+    "path": "vol2-pages_28-end/p37_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 111",
+    "number": "111",
+    "pl": "B",
+    "gc": "page=37 corner=BR grid=11x11 ocr='oq 1 羞羞 l(青弋) 1 1 1'"
+  },
+  {
+    "id": "p37_02",
+    "path": "vol2-pages_28-end/p37_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 248",
+    "number": "248",
+    "pl": "W",
+    "gc": "page=37 corner=BR grid=11x11 ocr='白 先 (248)'"
+  },
+  {
+    "id": "p37_03",
+    "path": "vol2-pages_28-end/p37_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 250",
+    "number": "250",
+    "pl": "W",
+    "gc": "page=37 corner=BR grid=11x11 ocr='白 先 (250)'"
+  },
+  {
+    "id": "p37_04",
+    "path": "vol2-pages_28-end/p37_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 252",
+    "number": "252",
+    "pl": "W",
+    "gc": "page=37 corner=BR grid=11x11 ocr='目 白 先 (252)'"
+  },
+  {
+    "id": "p37_05",
+    "path": "vol2-pages_28-end/p37_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 54",
+    "number": "54",
+    "pl": "B",
+    "gc": "page=37 corner=BR grid=10x11 ocr='T |气羞 (z54) 1 1'"
+  },
+  {
+    "id": "p37_06",
+    "path": "vol2-pages_28-end/p37_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 255",
+    "number": "255",
+    "pl": "W",
+    "gc": "page=37 corner=BR grid=11x11 ocr='白 先 (255)'"
+  },
+  {
+    "id": "p37_07",
+    "path": "vol2-pages_28-end/p37_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 256",
+    "number": "256",
+    "pl": "B",
+    "gc": "page=37 corner=BR grid=11x19 ocr='AS (256)'"
+  },
+  {
+    "id": "p37_08",
+    "path": "vol2-pages_28-end/p37_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 258",
+    "number": "258",
+    "pl": "W",
+    "gc": "page=37 corner=BR grid=11x15 ocr='白 先 (258)'"
+  },
+  {
+    "id": "p37_09",
+    "path": "vol2-pages_28-end/p37_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 260",
+    "number": "260",
+    "pl": "W",
+    "gc": "page=37 corner=BR grid=11x11 ocr='白 先 (260)'"
+  },
+  {
+    "id": "p37_10",
+    "path": "vol2-pages_28-end/p37_10.sgf",
+    "volume": "下册",
+    "title": "死活辞典 262",
+    "number": "262",
+    "pl": "W",
+    "gc": "page=37 corner=BR grid=11x12 ocr='白 先 (262)\\n力 八'"
+  },
+  {
+    "id": "p37_11",
+    "path": "vol2-pages_28-end/p37_11.sgf",
+    "volume": "下册",
+    "title": "死活辞典 264",
+    "number": "264",
+    "pl": "W",
+    "gc": "page=37 corner=BR grid=11x11 ocr='白 先 (264)'"
+  },
+  {
+    "id": "p38_01",
+    "path": "vol2-pages_28-end/p38_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 214",
+    "number": "214",
+    "pl": "B",
+    "gc": "page=38 corner=BR grid=11x17 ocr='214'"
+  },
+  {
+    "id": "p38_02",
+    "path": "vol2-pages_28-end/p38_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 268",
+    "number": "268",
+    "pl": "W",
+    "gc": "page=38 corner=BR grid=11x17 ocr='白 先 (268)'"
+  },
+  {
+    "id": "p38_03",
+    "path": "vol2-pages_28-end/p38_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 270",
+    "number": "270",
+    "pl": "W",
+    "gc": "page=38 corner=BR grid=11x17 ocr='白 先 (270)'"
+  },
+  {
+    "id": "p38_04",
+    "path": "vol2-pages_28-end/p38_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 272",
+    "number": "272",
+    "pl": "W",
+    "gc": "page=38 corner=BR grid=11x17 ocr='白 先 (272)'"
+  },
+  {
+    "id": "p38_05",
+    "path": "vol2-pages_28-end/p38_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 274",
+    "number": "274",
+    "pl": "W",
+    "gc": "page=38 corner=BR grid=11x11 ocr='白 先 (274)'"
+  },
+  {
+    "id": "p38_06",
+    "path": "vol2-pages_28-end/p38_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 276",
+    "number": "276",
+    "pl": "W",
+    "gc": "page=38 corner=BR grid=11x11 ocr='白 先 (276)'"
+  },
+  {
+    "id": "p38_07",
+    "path": "vol2-pages_28-end/p38_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 277",
+    "number": "277",
+    "pl": "B",
+    "gc": "page=38 corner=BR grid=11x11 ocr='旦 先 (277)'"
+  },
+  {
+    "id": "p38_08",
+    "path": "vol2-pages_28-end/p38_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 278",
+    "number": "278",
+    "pl": "W",
+    "gc": "page=38 corner=BR grid=11x12 ocr='白 先 -(278)'"
+  },
+  {
+    "id": "p38_09",
+    "path": "vol2-pages_28-end/p38_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 279",
+    "number": "279",
+    "pl": "W",
+    "gc": "page=38 corner=BR grid=11x12 ocr='白 先 (279)'"
+  },
+  {
+    "id": "p39_01",
+    "path": "vol2-pages_28-end/p39_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 280",
+    "number": "280",
+    "pl": "B",
+    "gc": "page=39 corner=BR grid=11x17 ocr='黑 先 (280)'"
+  },
+  {
+    "id": "p39_02",
+    "path": "vol2-pages_28-end/p39_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 281",
+    "number": "281",
+    "pl": "W",
+    "gc": "page=39 corner=BR grid=11x17 ocr='白 先 (281) 目'"
+  },
+  {
+    "id": "p39_03",
+    "path": "vol2-pages_28-end/p39_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 282",
+    "number": "282",
+    "pl": "B",
+    "gc": "page=39 corner=BR grid=11x11 ocr='黑 先 (282)'"
+  },
+  {
+    "id": "p39_04",
+    "path": "vol2-pages_28-end/p39_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 283",
+    "number": "283",
+    "pl": "W",
+    "gc": "page=39 corner=BR grid=11x11 ocr='白 先 (283)'"
+  },
+  {
+    "id": "p39_05",
+    "path": "vol2-pages_28-end/p39_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 284",
+    "number": "284",
+    "pl": "W",
+    "gc": "page=39 corner=BR grid=11x11 ocr='白 先 (284)'"
+  },
+  {
+    "id": "p39_06",
+    "path": "vol2-pages_28-end/p39_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 11",
+    "number": "11",
+    "pl": "B",
+    "gc": "page=39 corner=BR grid=11x11 ocr='1 1 _羞羞 ~ t @ 1'"
+  },
+  {
+    "id": "p39_07",
+    "path": "vol2-pages_28-end/p39_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 86",
+    "number": "86",
+    "pl": "B",
+    "gc": "page=39 corner=BR grid=11x11 ocr='【 l|羞|暨i…` 仡86)I 一'"
+  },
+  {
+    "id": "p39_08",
+    "path": "vol2-pages_28-end/p39_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 288",
+    "number": "288",
+    "pl": "W",
+    "gc": "page=39 corner=BR grid=11x17 ocr='白 先 (288) 7'"
+  },
+  {
+    "id": "p39_09",
+    "path": "vol2-pages_28-end/p39_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 289",
+    "number": "289",
+    "pl": "W",
+    "gc": "page=39 corner=BR grid=11x17 ocr='白 先 (289)'"
+  },
+  {
+    "id": "p40_01",
+    "path": "vol2-pages_28-end/p40_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 290",
+    "number": "290",
+    "pl": "W",
+    "gc": "page=40 corner=BR grid=11x11 ocr='白 先 (290)'"
+  },
+  {
+    "id": "p40_02",
+    "path": "vol2-pages_28-end/p40_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 291",
+    "number": "291",
+    "pl": "W",
+    "gc": "page=40 corner=BR grid=11x11 ocr='白 先 (291)'"
+  },
+  {
+    "id": "p40_03",
+    "path": "vol2-pages_28-end/p40_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 292",
+    "number": "292",
+    "pl": "W",
+    "gc": "page=40 corner=BR grid=11x11 ocr='白 先 (292)'"
+  },
+  {
+    "id": "p40_04",
+    "path": "vol2-pages_28-end/p40_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 293",
+    "number": "293",
+    "pl": "W",
+    "gc": "page=40 corner=BR grid=11x17 ocr='白 先 (293)'"
+  },
+  {
+    "id": "p40_05",
+    "path": "vol2-pages_28-end/p40_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 294",
+    "number": "294",
+    "pl": "W",
+    "gc": "page=40 corner=BR grid=11x17 ocr='白 先 (294)'"
+  },
+  {
+    "id": "p40_06",
+    "path": "vol2-pages_28-end/p40_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 295",
+    "number": "295",
+    "pl": "W",
+    "gc": "page=40 corner=BR grid=11x17 ocr='白 先 (295)'"
+  },
+  {
+    "id": "p40_07",
+    "path": "vol2-pages_28-end/p40_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 296",
+    "number": "296",
+    "pl": "W",
+    "gc": "page=40 corner=BR grid=11x17 ocr='白 先 (296)'"
+  },
+  {
+    "id": "p40_08",
+    "path": "vol2-pages_28-end/p40_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 297",
+    "number": "297",
+    "pl": "W",
+    "gc": "page=40 corner=BR grid=11x17 ocr='白 先 (297)'"
+  },
+  {
+    "id": "p40_09",
+    "path": "vol2-pages_28-end/p40_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 298",
+    "number": "298",
+    "pl": "W",
+    "gc": "page=40 corner=BR grid=11x17 ocr='白 先 (298)'"
+  },
+  {
+    "id": "p41_01",
+    "path": "vol2-pages_28-end/p41_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 299",
+    "number": "299",
+    "pl": "W",
+    "gc": "page=41 corner=BR grid=11x17 ocr='白 先 (299)'"
+  },
+  {
+    "id": "p41_02",
+    "path": "vol2-pages_28-end/p41_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 300",
+    "number": "300",
+    "pl": "W",
+    "gc": "page=41 corner=BR grid=11x17 ocr='白 先 (300)'"
+  },
+  {
+    "id": "p41_03",
+    "path": "vol2-pages_28-end/p41_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 302",
+    "number": "302",
+    "pl": "W",
+    "gc": "page=41 corner=BR grid=11x17 ocr='白 先 (302) 目'"
+  },
+  {
+    "id": "p41_04",
+    "path": "vol2-pages_28-end/p41_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 304",
+    "number": "304",
+    "pl": "W",
+    "gc": "page=41 corner=BR grid=11x17 ocr='白 先 (304)'"
+  },
+  {
+    "id": "p41_05",
+    "path": "vol2-pages_28-end/p41_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 306",
+    "number": "306",
+    "pl": "W",
+    "gc": "page=41 corner=BR grid=11x11 ocr='白 先 (306)'"
+  },
+  {
+    "id": "p41_06",
+    "path": "vol2-pages_28-end/p41_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 308",
+    "number": "308",
+    "pl": "W",
+    "gc": "page=41 corner=BR grid=11x11 ocr='白 先 (308)'"
+  },
+  {
+    "id": "p41_07",
+    "path": "vol2-pages_28-end/p41_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 312",
+    "number": "312",
+    "pl": "B",
+    "gc": "page=41 corner=BR grid=11x11 ocr='黑 先 (312)'"
+  },
+  {
+    "id": "p41_08",
+    "path": "vol2-pages_28-end/p41_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 313",
+    "number": "313",
+    "pl": "W",
+    "gc": "page=41 corner=BR grid=11x11 ocr='白 先 (313)'"
+  },
+  {
+    "id": "p41_09",
+    "path": "vol2-pages_28-end/p41_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 314",
+    "number": "314",
+    "pl": "W",
+    "gc": "page=41 corner=BR grid=11x11 ocr='白 先 (314)'"
+  },
+  {
+    "id": "p42_01",
+    "path": "vol2-pages_28-end/p42_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 315",
+    "number": "315",
+    "pl": "B",
+    "gc": "page=42 corner=BR grid=11x11 ocr='黑 先 (315)'"
+  },
+  {
+    "id": "p42_02",
+    "path": "vol2-pages_28-end/p42_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 316",
+    "number": "316",
+    "pl": "B",
+    "gc": "page=42 corner=BR grid=11x11 ocr='黑 先 (316)'"
+  },
+  {
+    "id": "p42_03",
+    "path": "vol2-pages_28-end/p42_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 317",
+    "number": "317",
+    "pl": "B",
+    "gc": "page=42 corner=BR grid=11x11 ocr='悟 先 (317)'"
+  },
+  {
+    "id": "p42_04",
+    "path": "vol2-pages_28-end/p42_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 318",
+    "number": "318",
+    "pl": "B",
+    "gc": "page=42 corner=BR grid=11x11 ocr='黑 先 (318)'"
+  },
+  {
+    "id": "p42_05",
+    "path": "vol2-pages_28-end/p42_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 319",
+    "number": "319",
+    "pl": "W",
+    "gc": "page=42 corner=BR grid=11x11 ocr='白 先 (319)'"
+  },
+  {
+    "id": "p42_06",
+    "path": "vol2-pages_28-end/p42_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 320",
+    "number": "320",
+    "pl": "W",
+    "gc": "page=42 corner=BR grid=11x11 ocr='白 先 (320)'"
+  },
+  {
+    "id": "p42_07",
+    "path": "vol2-pages_28-end/p42_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 321",
+    "number": "321",
+    "pl": "W",
+    "gc": "page=42 corner=BR grid=11x11 ocr='白 先 (321)'"
+  },
+  {
+    "id": "p42_08",
+    "path": "vol2-pages_28-end/p42_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 322",
+    "number": "322",
+    "pl": "W",
+    "gc": "page=42 corner=BR grid=11x11 ocr='白 先 (322)'"
+  },
+  {
+    "id": "p42_09",
+    "path": "vol2-pages_28-end/p42_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 323",
+    "number": "323",
+    "pl": "W",
+    "gc": "page=42 corner=BR grid=11x11 ocr='白 先 (323)'"
+  },
+  {
+    "id": "p42_10",
+    "path": "vol2-pages_28-end/p42_10.sgf",
+    "volume": "下册",
+    "title": "死活辞典 324",
+    "number": "324",
+    "pl": "W",
+    "gc": "page=42 corner=BR grid=11x11 ocr='白 先 (324)'"
+  },
+  {
+    "id": "p42_11",
+    "path": "vol2-pages_28-end/p42_11.sgf",
+    "volume": "下册",
+    "title": "死活辞典 325",
+    "number": "325",
+    "pl": "B",
+    "gc": "page=42 corner=BR grid=11x11 ocr='(325)'"
+  },
+  {
+    "id": "p42_12",
+    "path": "vol2-pages_28-end/p42_12.sgf",
+    "volume": "下册",
+    "title": "死活辞典 26",
+    "number": "26",
+    "pl": "B",
+    "gc": "page=42 corner=BR grid=11x11 ocr='黑 先 `乏:蔓26)'"
+  },
+  {
+    "id": "p43_01",
+    "path": "vol2-pages_28-end/p43_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 327",
+    "number": "327",
+    "pl": "B",
+    "gc": "page=43 corner=BR grid=11x11 ocr='黑 先 (327)'"
+  },
+  {
+    "id": "p43_02",
+    "path": "vol2-pages_28-end/p43_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 328",
+    "number": "328",
+    "pl": "W",
+    "gc": "page=43 corner=BR grid=11x11 ocr='白 先 (328)'"
+  },
+  {
+    "id": "p43_03",
+    "path": "vol2-pages_28-end/p43_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 329",
+    "number": "329",
+    "pl": "B",
+    "gc": "page=43 corner=BR grid=11x11 ocr='黑 先 (329)'"
+  },
+  {
+    "id": "p43_04",
+    "path": "vol2-pages_28-end/p43_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 330",
+    "number": "330",
+    "pl": "B",
+    "gc": "page=43 corner=BR grid=11x11 ocr='黑 先 (330)'"
+  },
+  {
+    "id": "p43_05",
+    "path": "vol2-pages_28-end/p43_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 331",
+    "number": "331",
+    "pl": "B",
+    "gc": "page=43 corner=BR grid=11x12 ocr='黑 先 (331)'"
+  },
+  {
+    "id": "p43_06",
+    "path": "vol2-pages_28-end/p43_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 332",
+    "number": "332",
+    "pl": "W",
+    "gc": "page=43 corner=BR grid=11x11 ocr='白 先 (332)'"
+  },
+  {
+    "id": "p43_07",
+    "path": "vol2-pages_28-end/p43_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 333",
+    "number": "333",
+    "pl": "B",
+    "gc": "page=43 corner=BR grid=11x11 ocr='黑 先 (333)'"
+  },
+  {
+    "id": "p43_08",
+    "path": "vol2-pages_28-end/p43_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 334",
+    "number": "334",
+    "pl": "B",
+    "gc": "page=43 corner=BR grid=11x11 ocr='黑 先 (334)'"
+  },
+  {
+    "id": "p43_09",
+    "path": "vol2-pages_28-end/p43_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 11",
+    "number": "11",
+    "pl": "B",
+    "gc": "page=43 corner=BR grid=11x11 ocr='1 1 - - 1 8 a'"
+  },
+  {
+    "id": "p43_10",
+    "path": "vol2-pages_28-end/p43_10.sgf",
+    "volume": "下册",
+    "title": "死活辞典 336",
+    "number": "336",
+    "pl": "B",
+    "gc": "page=43 corner=BR grid=11x11 ocr='黑 先 (336)'"
+  },
+  {
+    "id": "p43_11",
+    "path": "vol2-pages_28-end/p43_11.sgf",
+    "volume": "下册",
+    "title": "死活辞典 337",
+    "number": "337",
+    "pl": "W",
+    "gc": "page=43 corner=BR grid=11x11 ocr='白 先 (337)'"
+  },
+  {
+    "id": "p43_12",
+    "path": "vol2-pages_28-end/p43_12.sgf",
+    "volume": "下册",
+    "title": "死活辞典 338",
+    "number": "338",
+    "pl": "B",
+    "gc": "page=43 corner=BR grid=11x11 ocr='黑 先 (338)'"
+  },
+  {
+    "id": "p44_01",
+    "path": "vol2-pages_28-end/p44_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 339",
+    "number": "339",
+    "pl": "B",
+    "gc": "page=44 corner=BR grid=11x11 ocr='黑 先 (339)'"
+  },
+  {
+    "id": "p44_02",
+    "path": "vol2-pages_28-end/p44_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 340",
+    "number": "340",
+    "pl": "B",
+    "gc": "page=44 corner=BR grid=11x12 ocr='黑 先 (340)'"
+  },
+  {
+    "id": "p44_03",
+    "path": "vol2-pages_28-end/p44_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 341",
+    "number": "341",
+    "pl": "B",
+    "gc": "page=44 corner=BR grid=11x11 ocr='黑 先 (341)'"
+  },
+  {
+    "id": "p44_04",
+    "path": "vol2-pages_28-end/p44_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 342",
+    "number": "342",
+    "pl": "W",
+    "gc": "page=44 corner=BR grid=11x11 ocr='白 先 (342)'"
+  },
+  {
+    "id": "p44_05",
+    "path": "vol2-pages_28-end/p44_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 343",
+    "number": "343",
+    "pl": "B",
+    "gc": "page=44 corner=BR grid=11x11 ocr='黑 先 (343)'"
+  },
+  {
+    "id": "p44_06",
+    "path": "vol2-pages_28-end/p44_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 344",
+    "number": "344",
+    "pl": "W",
+    "gc": "page=44 corner=BR grid=11x12 ocr='白 先 (344)'"
+  },
+  {
+    "id": "p44_07",
+    "path": "vol2-pages_28-end/p44_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 345",
+    "number": "345",
+    "pl": "B",
+    "gc": "page=44 corner=BR grid=11x11 ocr='黑 先 (345)'"
+  },
+  {
+    "id": "p44_08",
+    "path": "vol2-pages_28-end/p44_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 346",
+    "number": "346",
+    "pl": "W",
+    "gc": "page=44 corner=BR grid=11x12 ocr='白 先 (346)'"
+  },
+  {
+    "id": "p44_09",
+    "path": "vol2-pages_28-end/p44_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 347",
+    "number": "347",
+    "pl": "W",
+    "gc": "page=44 corner=BR grid=11x11 ocr='白 先 (347)'"
+  },
+  {
+    "id": "p44_10",
+    "path": "vol2-pages_28-end/p44_10.sgf",
+    "volume": "下册",
+    "title": "死活辞典 348",
+    "number": "348",
+    "pl": "W",
+    "gc": "page=44 corner=BR grid=11x11 ocr='白 先 (348)'"
+  },
+  {
+    "id": "p44_11",
+    "path": "vol2-pages_28-end/p44_11.sgf",
+    "volume": "下册",
+    "title": "死活辞典 349",
+    "number": "349",
+    "pl": "W",
+    "gc": "page=44 corner=BR grid=11x11 ocr='白 先 (349) -'"
+  },
+  {
+    "id": "p44_12",
+    "path": "vol2-pages_28-end/p44_12.sgf",
+    "volume": "下册",
+    "title": "死活辞典 350",
+    "number": "350",
+    "pl": "B",
+    "gc": "page=44 corner=BR grid=11x11 ocr='黑 先 (350)'"
+  },
+  {
+    "id": "p45_01",
+    "path": "vol2-pages_28-end/p45_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 351",
+    "number": "351",
+    "pl": "W",
+    "gc": "page=45 corner=BR grid=11x11 ocr='白 先 (351)'"
+  },
+  {
+    "id": "p45_02",
+    "path": "vol2-pages_28-end/p45_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 111",
+    "number": "111",
+    "pl": "B",
+    "gc": "page=45 corner=BR grid=11x11 ocr='I 1 t - - ry 1 1 1'"
+  },
+  {
+    "id": "p45_03",
+    "path": "vol2-pages_28-end/p45_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 353",
+    "number": "353",
+    "pl": "B",
+    "gc": "page=45 corner=BR grid=11x11 ocr='黑 先 (353)'"
+  },
+  {
+    "id": "p45_04",
+    "path": "vol2-pages_28-end/p45_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 354",
+    "number": "354",
+    "pl": "W",
+    "gc": "page=45 corner=BR grid=11x17 ocr='白 先 (354)'"
+  },
+  {
+    "id": "p45_05",
+    "path": "vol2-pages_28-end/p45_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 355",
+    "number": "355",
+    "pl": "B",
+    "gc": "page=45 corner=BR grid=11x17 ocr='黑 先 (355)'"
+  },
+  {
+    "id": "p45_06",
+    "path": "vol2-pages_28-end/p45_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 356",
+    "number": "356",
+    "pl": "B",
+    "gc": "page=45 corner=BR grid=11x17 ocr='黑 先 (356)'"
+  },
+  {
+    "id": "p45_07",
+    "path": "vol2-pages_28-end/p45_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 357",
+    "number": "357",
+    "pl": "B",
+    "gc": "page=45 corner=BR grid=11x17 ocr='黑 先 (357)'"
+  },
+  {
+    "id": "p45_08",
+    "path": "vol2-pages_28-end/p45_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 358",
+    "number": "358",
+    "pl": "B",
+    "gc": "page=45 corner=BR grid=11x11 ocr='黑 先 (358)'"
+  },
+  {
+    "id": "p45_09",
+    "path": "vol2-pages_28-end/p45_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 360",
+    "number": "360",
+    "pl": "W",
+    "gc": "page=45 corner=BR grid=11x11 ocr='白 先 (360)'"
+  },
+  {
+    "id": "p46_01",
+    "path": "vol2-pages_28-end/p46_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 361",
+    "number": "361",
+    "pl": "W",
+    "gc": "page=46 corner=BR grid=11x11 ocr='白 先 (361)'"
+  },
+  {
+    "id": "p46_02",
+    "path": "vol2-pages_28-end/p46_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 362",
+    "number": "362",
+    "pl": "W",
+    "gc": "page=46 corner=BR grid=11x11 ocr='白 先 (362)'"
+  },
+  {
+    "id": "p46_03",
+    "path": "vol2-pages_28-end/p46_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 363",
+    "number": "363",
+    "pl": "W",
+    "gc": "page=46 corner=BR grid=11x11 ocr='白 先 (363)'"
+  },
+  {
+    "id": "p46_04",
+    "path": "vol2-pages_28-end/p46_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 364",
+    "number": "364",
+    "pl": "W",
+    "gc": "page=46 corner=BR grid=11x11 ocr='白 先 (364)'"
+  },
+  {
+    "id": "p46_05",
+    "path": "vol2-pages_28-end/p46_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 365",
+    "number": "365",
+    "pl": "B",
+    "gc": "page=46 corner=BR grid=11x11 ocr='黑 先 (365)'"
+  },
+  {
+    "id": "p46_06",
+    "path": "vol2-pages_28-end/p46_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 366",
+    "number": "366",
+    "pl": "W",
+    "gc": "page=46 corner=BR grid=11x12 ocr='白 先 (366)'"
+  },
+  {
+    "id": "p46_07",
+    "path": "vol2-pages_28-end/p46_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 367",
+    "number": "367",
+    "pl": "B",
+    "gc": "page=46 corner=BR grid=11x11 ocr='FASE (367)'"
+  },
+  {
+    "id": "p46_08",
+    "path": "vol2-pages_28-end/p46_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 368",
+    "number": "368",
+    "pl": "W",
+    "gc": "page=46 corner=BR grid=11x11 ocr='白 先 (368)'"
+  },
+  {
+    "id": "p46_09",
+    "path": "vol2-pages_28-end/p46_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 369",
+    "number": "369",
+    "pl": "B",
+    "gc": "page=46 corner=BR grid=11x11 ocr='(369)'"
+  },
+  {
+    "id": "p46_10",
+    "path": "vol2-pages_28-end/p46_10.sgf",
+    "volume": "下册",
+    "title": "死活辞典 370",
+    "number": "370",
+    "pl": "B",
+    "gc": "page=46 corner=BR grid=11x11 ocr='黑 先 (370)'"
+  },
+  {
+    "id": "p46_11",
+    "path": "vol2-pages_28-end/p46_11.sgf",
+    "volume": "下册",
+    "title": "死活辞典 37",
+    "number": "37",
+    "pl": "B",
+    "gc": "page=46 corner=BR grid=11x11 ocr='【…贲′(三_ 户37】)'"
+  },
+  {
+    "id": "p46_12",
+    "path": "vol2-pages_28-end/p46_12.sgf",
+    "volume": "下册",
+    "title": "死活辞典 372",
+    "number": "372",
+    "pl": "B",
+    "gc": "page=46 corner=BR grid=11x11 ocr='黑 先 (372) 目'"
+  },
+  {
+    "id": "p47_01",
+    "path": "vol2-pages_28-end/p47_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 373",
+    "number": "373",
+    "pl": "W",
+    "gc": "page=47 corner=BR grid=11x12 ocr='白 先 (373)'"
+  },
+  {
+    "id": "p47_02",
+    "path": "vol2-pages_28-end/p47_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 374",
+    "number": "374",
+    "pl": "W",
+    "gc": "page=47 corner=BR grid=11x11 ocr='白 先 (374)'"
+  },
+  {
+    "id": "p47_03",
+    "path": "vol2-pages_28-end/p47_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 375",
+    "number": "375",
+    "pl": "B",
+    "gc": "page=47 corner=BR grid=11x11 ocr='黑 先 (375)'"
+  },
+  {
+    "id": "p47_04",
+    "path": "vol2-pages_28-end/p47_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 376",
+    "number": "376",
+    "pl": "W",
+    "gc": "page=47 corner=BR grid=11x11 ocr='白 先 (376) 目'"
+  },
+  {
+    "id": "p47_05",
+    "path": "vol2-pages_28-end/p47_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 377",
+    "number": "377",
+    "pl": "B",
+    "gc": "page=47 corner=BR grid=11x11 ocr='0 声先 (377) 诊'"
+  },
+  {
+    "id": "p47_06",
+    "path": "vol2-pages_28-end/p47_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 378",
+    "number": "378",
+    "pl": "B",
+    "gc": "page=47 corner=BR grid=11x11 ocr='黑 先 (378)'"
+  },
+  {
+    "id": "p47_07",
+    "path": "vol2-pages_28-end/p47_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 11",
+    "number": "11",
+    "pl": "B",
+    "gc": "page=47 corner=BR grid=11x17 ocr='tea Lot 1 1 气薹羞 |(亏′′亏) a 8 ff'"
+  },
+  {
+    "id": "p47_08",
+    "path": "vol2-pages_28-end/p47_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 011",
+    "number": "011",
+    "pl": "B",
+    "gc": "page=47 corner=BR grid=11x17 ocr='0 1 1 \" ° ~ 1 1 1 F 1'"
+  },
+  {
+    "id": "p47_09",
+    "path": "vol2-pages_28-end/p47_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 381",
+    "number": "381",
+    "pl": "W",
+    "gc": "page=47 corner=BR grid=11x11 ocr='白 先 (381)'"
+  },
+  {
+    "id": "p47_10",
+    "path": "vol2-pages_28-end/p47_10.sgf",
+    "volume": "下册",
+    "title": "死活辞典 382",
+    "number": "382",
+    "pl": "B",
+    "gc": "page=47 corner=BR grid=11x11 ocr='黑 先 (382) ^'"
+  },
+  {
+    "id": "p47_11",
+    "path": "vol2-pages_28-end/p47_11.sgf",
+    "volume": "下册",
+    "title": "死活辞典 383",
+    "number": "383",
+    "pl": "B",
+    "gc": "page=47 corner=BR grid=11x11 ocr='黑 先 (383)'"
+  },
+  {
+    "id": "p48_01",
+    "path": "vol2-pages_28-end/p48_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 384",
+    "number": "384",
+    "pl": "W",
+    "gc": "page=48 corner=BR grid=11x11 ocr='白 先 (384)'"
+  },
+  {
+    "id": "p48_02",
+    "path": "vol2-pages_28-end/p48_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 385",
+    "number": "385",
+    "pl": "W",
+    "gc": "page=48 corner=BR grid=11x11 ocr='白 先 (385)'"
+  },
+  {
+    "id": "p48_03",
+    "path": "vol2-pages_28-end/p48_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 386",
+    "number": "386",
+    "pl": "B",
+    "gc": "page=48 corner=BR grid=11x11 ocr='黑 先 (386)'"
+  },
+  {
+    "id": "p48_04",
+    "path": "vol2-pages_28-end/p48_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 387",
+    "number": "387",
+    "pl": "W",
+    "gc": "page=48 corner=BR grid=11x11 ocr='白 先 (387)'"
+  },
+  {
+    "id": "p48_05",
+    "path": "vol2-pages_28-end/p48_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 388",
+    "number": "388",
+    "pl": "B",
+    "gc": "page=48 corner=BR grid=11x11 ocr='黑 先 (388)'"
+  },
+  {
+    "id": "p48_06",
+    "path": "vol2-pages_28-end/p48_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 389",
+    "number": "389",
+    "pl": "W",
+    "gc": "page=48 corner=BR grid=11x11 ocr='白 先 (389)'"
+  },
+  {
+    "id": "p48_07",
+    "path": "vol2-pages_28-end/p48_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 390",
+    "number": "390",
+    "pl": "W",
+    "gc": "page=48 corner=BR grid=11x11 ocr='白 先 (390)'"
+  },
+  {
+    "id": "p48_08",
+    "path": "vol2-pages_28-end/p48_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 391",
+    "number": "391",
+    "pl": "W",
+    "gc": "page=48 corner=BR grid=11x12 ocr='白 先 (391)'"
+  },
+  {
+    "id": "p48_09",
+    "path": "vol2-pages_28-end/p48_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 392",
+    "number": "392",
+    "pl": "B",
+    "gc": "page=48 corner=BR grid=11x11 ocr='E】燮E亡 (392)'"
+  },
+  {
+    "id": "p48_10",
+    "path": "vol2-pages_28-end/p48_10.sgf",
+    "volume": "下册",
+    "title": "死活辞典 393",
+    "number": "393",
+    "pl": "B",
+    "gc": "page=48 corner=BR grid=11x11 ocr='黑 先 (393) 、'"
+  },
+  {
+    "id": "p48_11",
+    "path": "vol2-pages_28-end/p48_11.sgf",
+    "volume": "下册",
+    "title": "死活辞典 394",
+    "number": "394",
+    "pl": "W",
+    "gc": "page=48 corner=BR grid=11x11 ocr='白 先 (394)'"
+  },
+  {
+    "id": "p48_12",
+    "path": "vol2-pages_28-end/p48_12.sgf",
+    "volume": "下册",
+    "title": "死活辞典 395",
+    "number": "395",
+    "pl": "W",
+    "gc": "page=48 corner=BR grid=11x11 ocr='白 先 (395)'"
+  },
+  {
+    "id": "p49_01",
+    "path": "vol2-pages_28-end/p49_01.sgf",
+    "volume": "下册",
+    "title": "死活辞典 396",
+    "number": "396",
+    "pl": "W",
+    "gc": "page=49 corner=BR grid=11x11 ocr='白 先 (396)'"
+  },
+  {
+    "id": "p49_02",
+    "path": "vol2-pages_28-end/p49_02.sgf",
+    "volume": "下册",
+    "title": "死活辞典 397",
+    "number": "397",
+    "pl": "B",
+    "gc": "page=49 corner=BR grid=11x11 ocr='黑 先 (397)'"
+  },
+  {
+    "id": "p49_03",
+    "path": "vol2-pages_28-end/p49_03.sgf",
+    "volume": "下册",
+    "title": "死活辞典 398",
+    "number": "398",
+    "pl": "B",
+    "gc": "page=49 corner=BR grid=11x11 ocr='黑 先 (398)'"
+  },
+  {
+    "id": "p49_04",
+    "path": "vol2-pages_28-end/p49_04.sgf",
+    "volume": "下册",
+    "title": "死活辞典 400",
+    "number": "400",
+    "pl": "B",
+    "gc": "page=49 corner=BR grid=11x11 ocr='黑 先 (400)'"
+  },
+  {
+    "id": "p49_05",
+    "path": "vol2-pages_28-end/p49_05.sgf",
+    "volume": "下册",
+    "title": "死活辞典 402",
+    "number": "402",
+    "pl": "W",
+    "gc": "page=49 corner=BR grid=11x11 ocr='白 先 (402)'"
+  },
+  {
+    "id": "p49_06",
+    "path": "vol2-pages_28-end/p49_06.sgf",
+    "volume": "下册",
+    "title": "死活辞典 404",
+    "number": "404",
+    "pl": "W",
+    "gc": "page=49 corner=BR grid=11x11 ocr='白 先 (404)'"
+  },
+  {
+    "id": "p49_07",
+    "path": "vol2-pages_28-end/p49_07.sgf",
+    "volume": "下册",
+    "title": "死活辞典 406",
+    "number": "406",
+    "pl": "B",
+    "gc": "page=49 corner=BR grid=11x17 ocr='国 黑 先 (406)'"
+  },
+  {
+    "id": "p49_08",
+    "path": "vol2-pages_28-end/p49_08.sgf",
+    "volume": "下册",
+    "title": "死活辞典 408",
+    "number": "408",
+    "pl": "W",
+    "gc": "page=49 corner=BR grid=11x17 ocr='白 先 (408)'"
+  },
+  {
+    "id": "p49_09",
+    "path": "vol2-pages_28-end/p49_09.sgf",
+    "volume": "下册",
+    "title": "死活辞典 410",
+    "number": "410",
+    "pl": "W",
+    "gc": "page=49 corner=BR grid=11x17 ocr='白 先 (410)'"
+  }
+]

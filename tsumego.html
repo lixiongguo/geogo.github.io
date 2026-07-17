@@ -1,0 +1,1001 @@
+---
+layout: page
+title: 每日死活题
+permalink: /tsumego/
+---
+
+<div id="tsumego-app">
+  <div class="tsumego-header">
+    <h2>每日死活题</h2>
+    <p class="tsumego-subtitle">选自《围棋死活辞典》· 每日一题 · 点击落子练习</p>
+    <div class="tsumego-date" id="problem-date"></div>
+  </div>
+
+  <div class="tsumego-layout">
+    <div class="tsumego-board-container">
+      <canvas id="go-board" width="480" height="480"></canvas>
+      <div class="tsumego-status" id="status-msg">加载中…</div>
+    </div>
+    <div class="tsumego-info">
+      <div class="tsumego-problem-info">
+        <div class="volume-badge" id="volume-badge">上册</div>
+        <h3 id="problem-title">问题</h3>
+        <p id="problem-desc"></p>
+      </div>
+      <div class="tsumego-controls">
+        <button onclick="undoMove()" class="btn-nav">↩ 悔棋</button>
+        <button onclick="resetProblem()" class="btn-reset">重置</button>
+        <button onclick="prevProblem()" class="btn-nav">◀ 上一题</button>
+        <button onclick="nextProblem()" class="btn-nav">下一题 ▶</button>
+        <button onclick="goDaily()" class="btn-hint">今日题目</button>
+        <button onclick="checkInToday()" class="btn-checkin" id="btn-checkin">今日打卡</button>
+      </div>
+      <div class="tsumego-stats">
+        <div class="stat-item">
+          <span class="stat-label">题号</span>
+          <span class="stat-value" id="stat-number">--/--</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">来源</span>
+          <span class="stat-value" id="stat-volume">--</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">今日</span>
+          <span class="stat-value" id="stat-today">未打卡</span>
+        </div>
+      </div>
+      <div class="hint-box" id="hint-box">
+        本题来自扫描识别，仅含初始局面，无收录正解。请自行思考后落子练习；落子或点击「今日打卡」即可记入日历。
+      </div>
+      <div class="error-box hidden" id="error-box" role="alert"></div>
+    </div>
+  </div>
+
+  <section class="checkin-calendar" aria-label="打卡日历">
+    <div class="cal-header">
+      <button type="button" class="cal-nav" onclick="shiftCalendarMonth(-1)" aria-label="上个月">◀</button>
+      <h3 class="cal-title" id="cal-title">2026年7月</h3>
+      <button type="button" class="cal-nav" onclick="shiftCalendarMonth(1)" aria-label="下个月">▶</button>
+    </div>
+    <div class="cal-summary">
+      <span>连续 <strong id="cal-streak">0</strong> 天</span>
+      <span>本月 <strong id="cal-month-count">0</strong> 天</span>
+      <span>累计 <strong id="cal-total">0</strong> 天</span>
+    </div>
+    <div class="cal-weekdays" aria-hidden="true">
+      <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <p class="cal-legend">
+      <span class="cal-dot checked"></span> 已打卡
+      <span class="cal-dot today"></span> 今天
+    </p>
+  </section>
+</div>
+
+<style>
+  #tsumego-app {
+    max-width: 920px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #333;
+  }
+
+  .tsumego-header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .tsumego-header h2 {
+    margin: 0 0 4px;
+    font-size: 28px;
+    color: #1a1a2e;
+  }
+
+  .tsumego-subtitle {
+    color: #666;
+    font-size: 14px;
+    margin: 0 0 8px;
+  }
+
+  .tsumego-date {
+    font-size: 13px;
+    color: #999;
+    background: #f5f5f5;
+    display: inline-block;
+    padding: 4px 16px;
+    border-radius: 12px;
+  }
+
+  .tsumego-layout {
+    display: flex;
+    gap: 28px;
+    align-items: flex-start;
+  }
+
+  .tsumego-board-container {
+    flex-shrink: 0;
+    text-align: center;
+  }
+
+  #go-board {
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    cursor: pointer;
+    background: #DEB887;
+  }
+
+  .tsumego-status {
+    margin-top: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    min-height: 28px;
+  }
+
+  .tsumego-status.correct { color: #16a34a; }
+  .tsumego-status.wrong { color: #dc2626; }
+  .tsumego-status.hint { color: #2563eb; }
+
+  .tsumego-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .tsumego-problem-info {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    position: relative;
+  }
+
+  .volume-badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+    letter-spacing: 0.04em;
+  }
+
+  .volume-badge.vol-upper {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+  .volume-badge.vol-lower {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .tsumego-problem-info h3 {
+    margin: 0 0 8px;
+    font-size: 18px;
+    color: #1a1a2e;
+  }
+
+  .tsumego-problem-info p {
+    margin: 0;
+    font-size: 14px;
+    color: #555;
+    line-height: 1.6;
+  }
+
+  .tsumego-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .tsumego-controls button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+
+  .btn-reset { background: #e5e7eb; color: #374151; }
+  .btn-reset:hover { background: #d1d5db; }
+  .btn-hint { background: #dbeafe; color: #1e40af; }
+  .btn-hint:hover { background: #bfdbfe; }
+  .btn-nav { background: #f3f4f6; color: #374151; }
+  .btn-nav:hover { background: #e5e7eb; }
+
+  .tsumego-stats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .stat-item {
+    flex: 1;
+    text-align: center;
+    background: #f0f0f0;
+    padding: 10px 8px;
+    border-radius: 8px;
+  }
+
+  .stat-label {
+    display: block;
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 4px;
+  }
+
+  .stat-value {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .hint-box {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.6;
+    background: #eff6ff;
+    border-left: 4px solid #2563eb;
+    color: #1e40af;
+  }
+
+  .error-box {
+    margin-top: 12px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.7;
+    background: #fef2f2;
+    border-left: 4px solid #dc2626;
+    color: #991b1b;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .hidden { display: none !important; }
+
+  .btn-checkin {
+    background: #1a1a2e;
+    color: #fff;
+  }
+  .btn-checkin:hover { background: #2d2d44; }
+  .btn-checkin.done {
+    background: #16a34a;
+    cursor: default;
+  }
+
+  .checkin-calendar {
+    margin-top: 36px;
+    padding-top: 28px;
+    border-top: 1px solid #e8e8e8;
+  }
+
+  .cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .cal-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a2e;
+    min-width: 8em;
+    text-align: center;
+  }
+
+  .cal-nav {
+    border: none;
+    background: #f3f4f6;
+    color: #374151;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .cal-nav:hover { background: #e5e7eb; }
+
+  .cal-summary {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #666;
+  }
+  .cal-summary strong {
+    color: #1a1a2e;
+    font-size: 16px;
+  }
+
+  .cal-weekdays,
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  .cal-weekdays span {
+    text-align: center;
+    font-size: 12px;
+    color: #999;
+    padding: 4px 0;
+  }
+
+  .cal-cell {
+    aspect-ratio: 1;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #555;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: default;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .cal-cell.empty { visibility: hidden; }
+
+  .cal-cell.checked {
+    background: #1a1a2e;
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .cal-cell.today {
+    box-shadow: inset 0 0 0 2px #2563eb;
+  }
+
+  .cal-cell.checked.today {
+    box-shadow: inset 0 0 0 2px #93c5fd;
+  }
+
+  .cal-cell.future {
+    color: #ccc;
+  }
+
+  .cal-legend {
+    text-align: center;
+    margin: 14px 0 0;
+    font-size: 12px;
+    color: #888;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .cal-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    margin-left: 12px;
+  }
+  .cal-dot.checked { background: #1a1a2e; margin-left: 0; }
+  .cal-dot.today {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px #2563eb;
+  }
+
+  @media (max-width: 768px) {
+    .tsumego-layout {
+      flex-direction: column;
+      align-items: center;
+    }
+    .tsumego-info { width: 100%; }
+    #go-board {
+      width: 100%;
+      max-width: 400px;
+      height: auto;
+    }
+    .cal-summary { gap: 16px; }
+  }
+</style>
+
+<script>
+const SGF_BASE = '{{ "/assets/sgf_tsumego/" | relative_url }}';
+const BOARD_PX = 480;
+const PADDING = 28;
+const SGF_LETTERS = 'abcdefghijklmnopqrs';
+
+const canvas = document.getElementById('go-board');
+const ctx = canvas.getContext('2d');
+
+let PROBLEMS = [];
+let currentIndex = 0;
+let currentMeta = null;
+let currentProblem = null; // parsed board data
+let currentBoard = [];     // 19x19, 0/1/2
+let playerMoves = [];
+let view = { r0: 0, c0: 0, size: 19 }; // viewport on full board
+
+function sgfCoordToRC(coord) {
+  const c = SGF_LETTERS.indexOf(coord[0]);
+  const r = SGF_LETTERS.indexOf(coord[1]);
+  return [r, c];
+}
+
+function parseSgf(text) {
+  const getAll = (prop) => {
+    const re = new RegExp(prop + '((?:\\[[^\\]]*\\])+)', 'g');
+    const coords = [];
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const inner = m[1].match(/\[([^\]]*)\]/g) || [];
+      inner.forEach(s => {
+        const v = s.slice(1, -1);
+        if (v.length === 2) coords.push(v);
+      });
+    }
+    return coords;
+  };
+
+  const gn = (text.match(/GN\[([^\]]*)\]/) || [])[1] || '';
+  const pl = (text.match(/PL\[([BW])\]/) || [])[1] || 'B';
+  const sz = parseInt((text.match(/SZ\[(\d+)\]/) || [])[1] || '19', 10);
+  const ab = getAll('AB').map(sgfCoordToRC);
+  const aw = getAll('AW').map(sgfCoordToRC);
+
+  const board = Array.from({ length: sz }, () => Array(sz).fill(0));
+  ab.forEach(([r, c]) => { if (r >= 0 && c >= 0) board[r][c] = 1; });
+  aw.forEach(([r, c]) => { if (r >= 0 && c >= 0) board[r][c] = 2; });
+
+  return { title: gn, pl, size: sz, board, black: ab, white: aw };
+}
+
+function computeViewport(board, size) {
+  let rMin = size, rMax = -1, cMin = size, cMax = -1;
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (board[r][c]) {
+        rMin = Math.min(rMin, r);
+        rMax = Math.max(rMax, r);
+        cMin = Math.min(cMin, c);
+        cMax = Math.max(cMax, c);
+      }
+    }
+  }
+  if (rMax < 0) return { r0: 0, c0: 0, size: Math.min(11, size) };
+
+  const margin = 2;
+  rMin = Math.max(0, rMin - margin);
+  cMin = Math.max(0, cMin - margin);
+  rMax = Math.min(size - 1, rMax + margin);
+  cMax = Math.min(size - 1, cMax + margin);
+
+  // Prefer keeping board edges if stones are near them
+  if (rMin <= 2) rMin = 0;
+  if (cMin <= 2) cMin = 0;
+  if (rMax >= size - 3) rMax = size - 1;
+  if (cMax >= size - 3) cMax = size - 1;
+
+  const h = rMax - rMin + 1;
+  const w = cMax - cMin + 1;
+  const side = Math.max(h, w, 7);
+  // Expand toward edges to make a square-ish crop
+  let r0 = rMin;
+  let c0 = cMin;
+  if (rMin === 0) {
+    // keep top edge, grow downward already done
+  } else if (rMax === size - 1) {
+    r0 = Math.max(0, size - side);
+  } else {
+    r0 = Math.max(0, Math.min(rMin, size - side));
+  }
+  if (cMin === 0) {
+    // keep left
+  } else if (cMax === size - 1) {
+    c0 = Math.max(0, size - side);
+  } else {
+    c0 = Math.max(0, Math.min(cMin, size - side));
+  }
+  // Ensure crop covers stones
+  r0 = Math.min(r0, rMin);
+  c0 = Math.min(c0, cMin);
+  const sizeR = Math.min(size, Math.max(side, rMax - r0 + 1));
+  const sizeC = Math.min(size, Math.max(side, cMax - c0 + 1));
+  const viewSize = Math.min(size, Math.max(sizeR, sizeC));
+  r0 = Math.min(r0, size - viewSize);
+  c0 = Math.min(c0, size - viewSize);
+  return { r0, c0, size: viewSize };
+}
+
+function getDailyIndex() {
+  const today = new Date();
+  const start = new Date(2026, 0, 1);
+  const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24));
+  return ((diff % PROBLEMS.length) + PROBLEMS.length) % PROBLEMS.length;
+}
+
+function assetUrl(relPath) {
+  // Encode each path segment (Chinese/spaces) but keep '/' separators
+  const base = SGF_BASE.endsWith('/') ? SGF_BASE : SGF_BASE + '/';
+  return base + String(relPath).split('/').map(encodeURIComponent).join('/');
+}
+
+function showLoadError(title, details) {
+  const status = document.getElementById('status-msg');
+  status.textContent = title;
+  status.className = 'tsumego-status wrong';
+  const box = document.getElementById('error-box');
+  if (box) {
+    box.textContent = details;
+    box.classList.remove('hidden');
+  }
+  console.error(title, details);
+}
+
+function clearLoadError() {
+  const box = document.getElementById('error-box');
+  if (box) {
+    box.textContent = '';
+    box.classList.add('hidden');
+  }
+}
+
+async function loadProblem(index) {
+  if (!PROBLEMS.length) {
+    showLoadError('题目加载失败', '题库列表为空：index.json 可能未加载成功。');
+    return;
+  }
+  currentIndex = ((index % PROBLEMS.length) + PROBLEMS.length) % PROBLEMS.length;
+  currentMeta = PROBLEMS[currentIndex];
+
+  const status = document.getElementById('status-msg');
+  status.textContent = '加载中…';
+  status.className = 'tsumego-status';
+  clearLoadError();
+
+  const url = assetUrl(currentMeta.path);
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      showLoadError('题目加载失败', [
+        `原因：HTTP ${res.status} ${res.statusText || ''}`.trim(),
+        `题目：${currentMeta.title || currentMeta.id}（${currentMeta.volume}）`,
+        `文件：${currentMeta.path}`,
+        `请求：${url}`,
+        '说明：题库文件缺失或路径不可访问。可尝试「下一题」，或刷新页面。',
+      ].join('\n'));
+      return;
+    }
+    const text = await res.text();
+    if (!text || (!text.includes('AB') && !text.includes('AW') && !text.includes(';'))) {
+      showLoadError('题目加载失败', [
+        '原因：返回内容不是有效 SGF。',
+        `题目：${currentMeta.title || currentMeta.id}（${currentMeta.volume}）`,
+        `请求：${url}`,
+        `内容预览：${String(text).slice(0, 120).replace(/\s+/g, ' ')}`,
+      ].join('\n'));
+      return;
+    }
+
+    currentProblem = parseSgf(text);
+    currentBoard = currentProblem.board.map(row => row.slice());
+    playerMoves = [];
+    view = computeViewport(currentBoard, currentProblem.size);
+
+    const plText = currentProblem.pl === 'W' ? '白先' : '黑先';
+    const vol = currentMeta.volume;
+    const badge = document.getElementById('volume-badge');
+    badge.textContent = vol;
+    badge.className = 'volume-badge ' + (vol === '上册' ? 'vol-upper' : 'vol-lower');
+
+    document.getElementById('problem-title').textContent =
+      `${currentMeta.title || currentProblem.title}`;
+    document.getElementById('problem-desc').textContent =
+      `来源：《围棋死活辞典》${vol}　·　${plText}　·　请自行思考后落子练习。`;
+    document.getElementById('stat-number').textContent =
+      `${currentIndex + 1}/${PROBLEMS.length}`;
+    document.getElementById('stat-volume').textContent = vol;
+    status.textContent = plText + '，请落子';
+    drawBoard();
+  } catch (err) {
+    showLoadError('题目加载失败', [
+      `原因：${err && err.message ? err.message : String(err)}`,
+      `题目：${currentMeta.title || currentMeta.id}（${currentMeta.volume}）`,
+      `文件：${currentMeta.path}`,
+      `请求：${url}`,
+      '说明：网络异常、路径编码问题或本地服务未就绪。请确认 Jekyll 已启动，并硬刷新页面。',
+    ].join('\n'));
+  }
+}
+
+function resetProblem() {
+  loadProblem(currentIndex);
+}
+
+function nextProblem() {
+  loadProblem(currentIndex + 1);
+}
+
+function prevProblem() {
+  loadProblem(currentIndex - 1);
+}
+
+function goDaily() {
+  loadProblem(getDailyIndex());
+}
+
+function undoMove() {
+  if (!playerMoves.length || !currentProblem) return;
+  const [r, c] = playerMoves.pop();
+  currentBoard[r][c] = 0;
+  document.getElementById('status-msg').textContent =
+    (currentProblem.pl === 'W' ? '白先' : '黑先') + '，请落子';
+  document.getElementById('status-msg').className = 'tsumego-status';
+  drawBoard();
+}
+
+function getCellSize() {
+  return (BOARD_PX - 2 * PADDING) / (view.size - 1);
+}
+
+function drawBoard() {
+  if (!currentProblem) return;
+  const size = view.size;
+  const cellSize = getCellSize();
+
+  ctx.clearRect(0, 0, BOARD_PX, BOARD_PX);
+
+  const gradient = ctx.createLinearGradient(0, 0, BOARD_PX, BOARD_PX);
+  gradient.addColorStop(0, '#DEB887');
+  gradient.addColorStop(0.3, '#D2A96A');
+  gradient.addColorStop(0.6, '#DEB887');
+  gradient.addColorStop(1, '#C89B5E');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, BOARD_PX, BOARD_PX);
+
+  ctx.strokeStyle = '#3a2a1a';
+  ctx.lineWidth = 1.2;
+  for (let i = 0; i < size; i++) {
+    ctx.beginPath();
+    ctx.moveTo(PADDING, PADDING + i * cellSize);
+    ctx.lineTo(PADDING + (size - 1) * cellSize, PADDING + i * cellSize);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(PADDING + i * cellSize, PADDING);
+    ctx.lineTo(PADDING + i * cellSize, PADDING + (size - 1) * cellSize);
+    ctx.stroke();
+  }
+
+  // Thicker outer border when viewport touches board edge
+  ctx.lineWidth = 2.5;
+  const x0 = PADDING, y0 = PADDING;
+  const x1 = PADDING + (size - 1) * cellSize;
+  const y1 = PADDING + (size - 1) * cellSize;
+  if (view.r0 === 0) {
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y0); ctx.stroke();
+  }
+  if (view.c0 === 0) {
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0, y1); ctx.stroke();
+  }
+  if (view.r0 + size === currentProblem.size) {
+    ctx.beginPath(); ctx.moveTo(x0, y1); ctx.lineTo(x1, y1); ctx.stroke();
+  }
+  if (view.c0 + size === currentProblem.size) {
+    ctx.beginPath(); ctx.moveTo(x1, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  }
+
+  // Hoshi on full 19x19: 3,9,15 (0-indexed)
+  const hoshi = [3, 9, 15];
+  hoshi.forEach(hr => {
+    hoshi.forEach(hc => {
+      const vr = hr - view.r0;
+      const vc = hc - view.c0;
+      if (vr >= 0 && vr < size && vc >= 0 && vc < size) {
+        ctx.beginPath();
+        ctx.arc(PADDING + vc * cellSize, PADDING + vr * cellSize, 3.2, 0, Math.PI * 2);
+        ctx.fillStyle = '#3a2a1a';
+        ctx.fill();
+      }
+    });
+  });
+
+  // Coordinate labels (board coords)
+  const colLabels = 'ABCDEFGHJKLMNOPQRST';
+  ctx.font = '11px sans-serif';
+  ctx.fillStyle = '#5a4a3a';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (let i = 0; i < size; i++) {
+    const absC = view.c0 + i;
+    ctx.fillText(colLabels[absC] || '', PADDING + i * cellSize, PADDING + (size - 1) * cellSize + 10);
+  }
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i < size; i++) {
+    const absR = view.r0 + i;
+    ctx.fillText(String(currentProblem.size - absR), PADDING - 10, PADDING + i * cellSize);
+  }
+
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      const stone = currentBoard[view.r0 + r][view.c0 + c];
+      if (stone === 1 || stone === 2) {
+        drawStone(PADDING + c * cellSize, PADDING + r * cellSize, cellSize * 0.43, stone);
+      }
+    }
+  }
+
+  if (playerMoves.length > 0) {
+    const last = playerMoves[playerMoves.length - 1];
+    const vr = last[0] - view.r0;
+    const vc = last[1] - view.c0;
+    if (vr >= 0 && vr < size && vc >= 0 && vc < size) {
+      const x = PADDING + vc * cellSize;
+      const y = PADDING + vr * cellSize;
+      const stoneColor = currentBoard[last[0]][last[1]];
+      ctx.beginPath();
+      ctx.arc(x, y, cellSize * 0.15, 0, Math.PI * 2);
+      ctx.strokeStyle = stoneColor === 1 ? '#fff' : '#000';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+}
+
+function drawStone(x, y, radius, color) {
+  ctx.beginPath();
+  ctx.arc(x + 2, y + 2, radius, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fill();
+
+  const gradient = ctx.createRadialGradient(
+    x - radius * 0.3, y - radius * 0.3, radius * 0.1, x, y, radius
+  );
+  if (color === 1) {
+    gradient.addColorStop(0, '#555');
+    gradient.addColorStop(0.5, '#222');
+    gradient.addColorStop(1, '#000');
+  } else {
+    gradient.addColorStop(0, '#fff');
+    gradient.addColorStop(0.5, '#eee');
+    gradient.addColorStop(1, '#ccc');
+  }
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = gradient;
+  ctx.fill();
+  ctx.strokeStyle = color === 1 ? '#000' : '#aaa';
+  ctx.lineWidth = 0.5;
+  ctx.stroke();
+}
+
+canvas.addEventListener('click', function (e) {
+  if (!currentProblem) return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = BOARD_PX / rect.width;
+  const scaleY = BOARD_PX / rect.height;
+  const mx = (e.clientX - rect.left) * scaleX;
+  const my = (e.clientY - rect.top) * scaleY;
+  const cellSize = getCellSize();
+  const vc = Math.round((mx - PADDING) / cellSize);
+  const vr = Math.round((my - PADDING) / cellSize);
+  if (vr < 0 || vr >= view.size || vc < 0 || vc >= view.size) return;
+
+  const row = view.r0 + vr;
+  const col = view.c0 + vc;
+  if (currentBoard[row][col] !== 0) return;
+
+  // Alternate colors starting from PL
+  const moveIndex = playerMoves.length;
+  const firstIsBlack = currentProblem.pl !== 'W';
+  const isBlack = firstIsBlack ? (moveIndex % 2 === 0) : (moveIndex % 2 === 1);
+  currentBoard[row][col] = isBlack ? 1 : 2;
+  playerMoves.push([row, col]);
+
+  document.getElementById('status-msg').textContent =
+    `已下 ${playerMoves.length} 手（${isBlack ? '黑' : '白'}）`;
+  document.getElementById('status-msg').className = 'tsumego-status hint';
+  checkInToday(false);
+  drawBoard();
+});
+
+const STATS_KEY = 'tsumego_stats';
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-11
+
+function localDateKey(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function loadStats() {
+  try {
+    return JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveStats(stats) {
+  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+}
+
+function checkInToday(showToast = true) {
+  const today = localDateKey();
+  const stats = loadStats();
+  const already = !!(stats[today] && stats[today].practiced);
+  stats[today] = {
+    practiced: true,
+    problemId: currentMeta && currentMeta.id,
+    at: new Date().toISOString(),
+  };
+  saveStats(stats);
+  refreshCheckInUI();
+  if (showToast && !already) {
+    const status = document.getElementById('status-msg');
+    status.textContent = '打卡成功';
+    status.className = 'tsumego-status correct';
+  } else if (showToast && already) {
+    const status = document.getElementById('status-msg');
+    status.textContent = '今日已打卡';
+    status.className = 'tsumego-status hint';
+  }
+}
+
+function getStreak(stats) {
+  let streak = 0;
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  // If today not checked, start from yesterday for "current streak" display
+  // but count consecutive days ending at most recent check-in day
+  let key = localDateKey(d);
+  if (!(stats[key] && stats[key].practiced)) {
+    d.setDate(d.getDate() - 1);
+    key = localDateKey(d);
+    if (!(stats[key] && stats[key].practiced)) return 0;
+  }
+  while (stats[key] && stats[key].practiced) {
+    streak++;
+    d.setDate(d.getDate() - 1);
+    key = localDateKey(d);
+  }
+  return streak;
+}
+
+function refreshCheckInUI() {
+  const stats = loadStats();
+  const today = localDateKey();
+  const checkedToday = !!(stats[today] && stats[today].practiced);
+  const el = document.getElementById('stat-today');
+  el.textContent = checkedToday ? '已打卡' : '未打卡';
+
+  const btn = document.getElementById('btn-checkin');
+  if (btn) {
+    btn.textContent = checkedToday ? '今日已打卡' : '今日打卡';
+    btn.classList.toggle('done', checkedToday);
+  }
+
+  const total = Object.values(stats).filter(s => s && s.practiced).length;
+  document.getElementById('cal-total').textContent = String(total);
+  document.getElementById('cal-streak').textContent = String(getStreak(stats));
+  renderCalendar();
+}
+
+function shiftCalendarMonth(delta) {
+  calMonth += delta;
+  if (calMonth < 0) {
+    calMonth = 11;
+    calYear--;
+  } else if (calMonth > 11) {
+    calMonth = 0;
+    calYear++;
+  }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const stats = loadStats();
+  const title = document.getElementById('cal-title');
+  title.textContent = `${calYear}年${calMonth + 1}月`;
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  const first = new Date(calYear, calMonth, 1);
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  // Monday-first: getDay() Sun=0 -> 6, Mon=1 -> 0
+  let startPad = first.getDay() - 1;
+  if (startPad < 0) startPad = 6;
+
+  const todayKey = localDateKey();
+  let monthCount = 0;
+
+  for (let i = 0; i < startPad; i++) {
+    const cell = document.createElement('span');
+    cell.className = 'cal-cell empty';
+    grid.appendChild(cell);
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const key = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'cal-cell';
+    cell.textContent = String(day);
+    cell.setAttribute('aria-label', key);
+
+    const isChecked = !!(stats[key] && stats[key].practiced);
+    const isToday = key === todayKey;
+    const isFuture = key > todayKey;
+
+    if (isChecked) {
+      cell.classList.add('checked');
+      monthCount++;
+      cell.title = '已打卡' + (stats[key].problemId ? ` · ${stats[key].problemId}` : '');
+      cell.addEventListener('click', () => {
+        if (stats[key].problemId && PROBLEMS.length) {
+          const idx = PROBLEMS.findIndex(p => p.id === stats[key].problemId);
+          if (idx >= 0) loadProblem(idx);
+        }
+      });
+    }
+    if (isToday) cell.classList.add('today');
+    if (isFuture) cell.classList.add('future');
+
+    grid.appendChild(cell);
+  }
+
+  document.getElementById('cal-month-count').textContent = String(monthCount);
+}
+
+async function init() {
+  const today = new Date();
+  calYear = today.getFullYear();
+  calMonth = today.getMonth();
+  document.getElementById('problem-date').textContent = today.toLocaleDateString('zh-CN', {
+    year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+  });
+  refreshCheckInUI();
+  clearLoadError();
+
+  const indexUrl = assetUrl('index.json');
+  try {
+    const res = await fetch(indexUrl);
+    if (!res.ok) {
+      showLoadError('题库索引加载失败', [
+        `原因：HTTP ${res.status} ${res.statusText || ''}`.trim(),
+        `请求：${indexUrl}`,
+        '说明：缺少 assets/sgf_tsumego/index.json，或站点未正确构建/部署该目录。',
+      ].join('\n'));
+      return;
+    }
+    PROBLEMS = await res.json();
+    if (!Array.isArray(PROBLEMS) || PROBLEMS.length === 0) {
+      showLoadError('题库索引加载失败', [
+        '原因：index.json 为空或格式不正确。',
+        `请求：${indexUrl}`,
+      ].join('\n'));
+      return;
+    }
+    await loadProblem(getDailyIndex());
+  } catch (err) {
+    showLoadError('题库索引加载失败', [
+      `原因：${err && err.message ? err.message : String(err)}`,
+      `请求：${indexUrl}`,
+      '说明：请确认本地已运行 jekyll serve，并用 http://localhost:4000/tsumego/ 访问（不要用 file:// 直接打开）。',
+    ].join('\n'));
+  }
+}
+
+init();
+</script>

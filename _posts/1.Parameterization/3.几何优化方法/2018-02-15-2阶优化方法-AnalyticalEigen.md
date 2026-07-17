@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "解析 Eigensystem — 各向同性畸变能量的 Hessian 投影"
+title: "2阶优化方法 — 各向同性畸变能量的 Hessian 投影"
 categories: ["Parameterization", "Parameterization-GeometricOptimization"]
 mathjax: true
 ---
