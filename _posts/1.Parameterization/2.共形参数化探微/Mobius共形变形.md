@@ -6,8 +6,6 @@ category: Parameterization
 categories: ["Parameterization", "Parameterization-ConformalMapping"]
 ---
 
-## 概述
-
 Vaxman、Müller、Weber 在 SIGGRAPH 2015 发表 [*Conformal Mesh Deformations with Möbius Transformations*](https://doi.org/10.1145/2766915)（ACM TOG 34(4), Article 55），从 **"曲面由圆构成"**（surfaces from circles）的视角，用**逐面、分片相容的 Möbius 变换**统一三角网格与**圆多边形网格**（circular meshes）的共形编辑与插值。
 
 - 不变量：**圆、交比（cross-ratio）、外接圆交角**
@@ -187,38 +185,6 @@ $\Gamma_{ik}=1$ 表示两边为同一 Möbius；$|\Gamma|$、$\arg\Gamma$ 分别
 ## 优化器
 
 全部采用 [Tang et al. 2014] 的 **guided projection Gauss–Newton**：能量 $E=\sum_k \alpha_k F_k^2$，二次等式约束 $C_l=0$，每步解 $J^{\mathsf T}J D=-J^{\mathsf T}F$ 并线搜索。$\alpha$ 逐迭代减半以优先满足约束；$\beta=10^{-6}$ 保持接近上一迭代。
-
----
-
-## 实验对比（论文 §9）
-
-| 对比 | 结论 |
-| :--- | :--- |
-| **LSCM 形变** | 相近 QC，本文更不易局部折叠 |
-| **BDMS** | 可比有界畸变，分布类似 |
-| **Springborn 度量共形** | MC 变形可复现共形等价类 |
-| **插值** | Möbius 误差插值使 MC 误差有界渐变（图 14–16） |
-
----
-
-## 与系列其他笔记的关系
-
-| 笔记 | 联系 |
-| :--- | :--- |
-| `Complex_mobius_Transform` | 全局 Möbius 代数；本文为**分片**版本 |
-| `2016-10-01-圆形填充视角` | Circle patterns、交比、Bobenko–Springborn 能量 |
-| `Mobius Registration` | 球面参数化对齐；本文是嵌入空间形变 |
-| `TinyAD` | 同类二次约束 GN 问题可用 AD 原型能量 |
-| Vaxman 后续 *Canonical Möbius subdivision* (2018) | 将 Möbius 等价类用于细分算子 |
-
----
-
-## 实现要点（MoebiusCode）
-
-- 2D：复数 AMAP / MC / IAP 形变与插值；
-- 3D：四元数 PCM，保相对共圆性；
-- 任意多边形面：每面一个 Möbius；
-- libhedra traits：`DEdgeDeviationTraits`、`CornerVarsTraits`。
 
 ---
 

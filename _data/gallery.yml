@@ -87,28 +87,28 @@
   description: 拉格朗日粒子流体：可切换 SPH 力积分或 PBF 位置约束，Poly6/Spiky 核，拖拽推动与注水交互。
   thumbnail: /assets/gallery/sph-water.svg
   detail_url: "/gallery/sph-water.html"
-  ready: true
+  ready: false
 
 - slug: water-euler
   title: 欧拉网格流体
   description: Stable Fluids 二维欧拉网格：半拉格朗日平流、压力投影与染料示踪，拖拽搅动水体，可显示速度场。
   thumbnail: /assets/gallery/water-euler.svg
   detail_url: "/gallery/water-euler.html"
-  ready: true
+  ready: false
 
 - slug: gaussian-splat
   title: 3D Gaussian Splatting
   description: 3DGS 高斯溅射渲染：加载中式居家住宅 SPZ 模型，数百万高斯椭球体实时渲染，自由旋转观察。
   thumbnail: /assets/gallery/gaussian-splat.png
   detail_url: "/gallery/gaussian-splat.html"
-  ready: true
+  ready: false
 
 - slug: gaussian-splat-ply
   title: 3DGS PLY 远程加载
   description: 从阿里云 OSS CDN 加载 330MB 中式居家住宅 PLY 模型，1.46M 高斯椭球体实时渲染，支持球谐光照。
   thumbnail: /assets/gallery/gaussian-splat.png
   detail_url: "/gallery/gaussian-splat-ply.html"
-  ready: true
+  ready: false
 
 - slug: little-tokyo
   title: Draco GLB 渲染
