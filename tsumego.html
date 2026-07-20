@@ -5,10 +5,32 @@ permalink: /tsumego/
 ---
 
 <div id="tsumego-app">
-  <div class="tsumego-header">
-    <h2>每日死活题</h2>
-    <p class="tsumego-subtitle">选自《围棋死活辞典》· 每日一题 · 点击落子练习</p>
-    <div class="tsumego-date" id="problem-date"></div>
+  <div class="tsumego-top-row">
+    <div class="tsumego-header">
+      <h2>每日死活题</h2>
+      <p class="tsumego-subtitle">选自《围棋死活辞典》· 每日一题 · Alpha-Beta 局部应手</p>
+      <div class="tsumego-date" id="problem-date"></div>
+    </div>
+    <section class="checkin-calendar" aria-label="打卡日历">
+      <div class="cal-header">
+        <button type="button" class="cal-nav" onclick="shiftCalendarMonth(-1)" aria-label="上个月">◀</button>
+        <h3 class="cal-title" id="cal-title">2026年7月</h3>
+        <button type="button" class="cal-nav" onclick="shiftCalendarMonth(1)" aria-label="下个月">▶</button>
+      </div>
+      <div class="cal-summary">
+        <span>连续 <strong id="cal-streak">0</strong></span>
+        <span>本月 <strong id="cal-month-count">0</strong></span>
+        <span>累计 <strong id="cal-total">0</strong></span>
+      </div>
+      <div class="cal-weekdays" aria-hidden="true">
+        <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <p class="cal-legend">
+        <span class="cal-dot checked"></span>已打卡
+        <span class="cal-dot today"></span>今天
+      </p>
+    </section>
   </div>
 
   <div class="tsumego-layout">
@@ -45,32 +67,11 @@ permalink: /tsumego/
         </div>
       </div>
       <div class="hint-box" id="hint-box">
-        本题来自扫描识别，仅含初始局面，无收录正解。请自行思考后落子练习；落子或点击「今日打卡」即可记入日历。
+        落子后由简易 <strong>Alpha-Beta</strong> 引擎在局部区域内应手（含提子规则）。深度有限，仅供推演练习，非正解保证。可用「悔棋」撤销双方一手。
       </div>
       <div class="error-box hidden" id="error-box" role="alert"></div>
     </div>
   </div>
-
-  <section class="checkin-calendar" aria-label="打卡日历">
-    <div class="cal-header">
-      <button type="button" class="cal-nav" onclick="shiftCalendarMonth(-1)" aria-label="上个月">◀</button>
-      <h3 class="cal-title" id="cal-title">2026年7月</h3>
-      <button type="button" class="cal-nav" onclick="shiftCalendarMonth(1)" aria-label="下个月">▶</button>
-    </div>
-    <div class="cal-summary">
-      <span>连续 <strong id="cal-streak">0</strong> 天</span>
-      <span>本月 <strong id="cal-month-count">0</strong> 天</span>
-      <span>累计 <strong id="cal-total">0</strong> 天</span>
-    </div>
-    <div class="cal-weekdays" aria-hidden="true">
-      <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
-    </div>
-    <div class="cal-grid" id="cal-grid"></div>
-    <p class="cal-legend">
-      <span class="cal-dot checked"></span> 已打卡
-      <span class="cal-dot today"></span> 今天
-    </p>
-  </section>
 </div>
 
 <style>
@@ -116,6 +117,20 @@ permalink: /tsumego/
   .tsumego-board-container {
     flex-shrink: 0;
     text-align: center;
+  }
+
+  .tsumego-top-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+
+  .tsumego-top-row .tsumego-header {
+    flex-shrink: 0;
+    text-align: left;
+    margin-bottom: 0;
   }
 
   #go-board {
@@ -270,25 +285,28 @@ permalink: /tsumego/
   }
 
   .checkin-calendar {
-    margin-top: 36px;
-    padding-top: 28px;
-    border-top: 1px solid #e8e8e8;
+    background: #fafafa;
+    border-radius: 10px;
+    padding: 10px 14px;
+    border: 1px solid #e8e8e8;
+    max-width: 280px;
+    flex-shrink: 0;
   }
 
   .cal-header {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 16px;
-    margin-bottom: 12px;
+    gap: 8px;
+    margin-bottom: 6px;
   }
 
   .cal-title {
     margin: 0;
-    font-size: 18px;
+    font-size: 13px;
     font-weight: 600;
     color: #1a1a2e;
-    min-width: 8em;
+    min-width: 7em;
     text-align: center;
   }
 
@@ -296,50 +314,52 @@ permalink: /tsumego/
     border: none;
     background: #f3f4f6;
     color: #374151;
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 11px;
+    line-height: 24px;
+    padding: 0;
   }
   .cal-nav:hover { background: #e5e7eb; }
 
   .cal-summary {
     display: flex;
     justify-content: center;
-    gap: 24px;
-    margin-bottom: 16px;
-    font-size: 13px;
-    color: #666;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 10px;
+    color: #999;
   }
   .cal-summary strong {
     color: #1a1a2e;
-    font-size: 16px;
+    font-size: 12px;
   }
 
   .cal-weekdays,
   .cal-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
-    max-width: 420px;
+    gap: 2px;
+    max-width: 236px;
     margin: 0 auto;
   }
 
   .cal-weekdays span {
     text-align: center;
-    font-size: 12px;
-    color: #999;
-    padding: 4px 0;
+    font-size: 9px;
+    color: #aaa;
+    padding: 2px 0;
   }
 
   .cal-cell {
     aspect-ratio: 1;
     border: none;
-    border-radius: 8px;
+    border-radius: 4px;
     background: transparent;
-    color: #555;
-    font-size: 13px;
+    color: #666;
+    font-size: 10px;
     font-weight: 500;
     cursor: default;
     display: flex;
@@ -357,11 +377,11 @@ permalink: /tsumego/
   }
 
   .cal-cell.today {
-    box-shadow: inset 0 0 0 2px #2563eb;
+    box-shadow: inset 0 0 0 1.5px #2563eb;
   }
 
   .cal-cell.checked.today {
-    box-shadow: inset 0 0 0 2px #93c5fd;
+    box-shadow: inset 0 0 0 1.5px #93c5fd;
   }
 
   .cal-cell.future {
@@ -370,26 +390,26 @@ permalink: /tsumego/
 
   .cal-legend {
     text-align: center;
-    margin: 14px 0 0;
-    font-size: 12px;
-    color: #888;
+    margin: 8px 0 0;
+    font-size: 10px;
+    color: #aaa;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
   }
 
   .cal-dot {
     display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 3px;
-    margin-left: 12px;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    margin-left: 8px;
   }
   .cal-dot.checked { background: #1a1a2e; margin-left: 0; }
   .cal-dot.today {
     background: transparent;
-    box-shadow: inset 0 0 0 2px #2563eb;
+    box-shadow: inset 0 0 0 1.5px #2563eb;
   }
 
   @media (max-width: 768px) {
@@ -446,7 +466,7 @@ function parseSgf(text) {
   };
 
   const gn = (text.match(/GN\[([^\]]*)\]/) || [])[1] || '';
-  const pl = (text.match(/PL\[([BW])\]/) || [])[1] || 'B';
+  const pl = (text.match(/PL\[([BW])\]/) || [])[1] || 'W';
   const sz = parseInt((text.match(/SZ\[(\d+)\]/) || [])[1] || '19', 10);
   const ab = getAll('AB').map(sgfCoordToRC);
   const aw = getAll('AW').map(sgfCoordToRC);
@@ -588,6 +608,9 @@ async function loadProblem(index) {
     currentProblem = parseSgf(text);
     currentBoard = currentProblem.board.map(row => row.slice());
     playerMoves = [];
+    moveHistory = [];
+    koPoint = null;
+    aiThinking = false;
     view = computeViewport(currentBoard, currentProblem.size);
 
     const plText = currentProblem.pl === 'W' ? '白先' : '黑先';
@@ -633,13 +656,343 @@ function goDaily() {
 }
 
 function undoMove() {
-  if (!playerMoves.length || !currentProblem) return;
-  const [r, c] = playerMoves.pop();
-  currentBoard[r][c] = 0;
+  if (!moveHistory.length || !currentProblem) return;
+  // Undo last ply (human or engine); if last was engine, undo human too for convenience
+  const last = moveHistory[moveHistory.length - 1];
+  if (last && last.by === 'engine' && moveHistory.length >= 2) {
+    restoreSnapshot(moveHistory.pop().before);
+    restoreSnapshot(moveHistory.pop().before);
+  } else {
+    restoreSnapshot(moveHistory.pop().before);
+  }
+  playerMoves = moveHistory.map(h => [h.r, h.c]);
+  const plText = currentProblem.pl === 'W' ? '白先' : '黑先';
+  const next = nextPlayerColor();
   document.getElementById('status-msg').textContent =
-    (currentProblem.pl === 'W' ? '白先' : '黑先') + '，请落子';
+    moveHistory.length ? `轮到${next === 1 ? '黑' : '白'}下` : plText + '，请落子';
   document.getElementById('status-msg').className = 'tsumego-status';
+  aiThinking = false;
   drawBoard();
+}
+
+function cloneBoard(board) {
+  return board.map(row => row.slice());
+}
+
+function restoreSnapshot(snap) {
+  currentBoard = cloneBoard(snap.board);
+  koPoint = snap.koPoint ? snap.koPoint.slice() : null;
+}
+
+function snapshotState() {
+  return {
+    board: cloneBoard(currentBoard),
+    koPoint: koPoint ? koPoint.slice() : null,
+  };
+}
+
+function nextPlayerColor() {
+  const firstIsBlack = currentProblem.pl !== 'W';
+  const moveIndex = moveHistory.length;
+  const isBlack = firstIsBlack ? (moveIndex % 2 === 0) : (moveIndex % 2 === 1);
+  return isBlack ? 1 : 2;
+}
+
+function humanColor() {
+  return currentProblem.pl === 'W' ? 2 : 1;
+}
+
+// ==================== 围棋规则 + Alpha-Beta ====================
+const EMPTY = 0;
+let koPoint = null;       // [r,c] forbidden for next move (simple ko)
+let moveHistory = [];     // {r,c,color,by,before}
+let aiThinking = false;
+const AI_DEPTH = 3;
+const AI_MOVE_LIMIT = 18;
+
+function boardSizeOf(board) {
+  return board.length;
+}
+
+function neighbors(r, c, n) {
+  const out = [];
+  if (r > 0) out.push([r - 1, c]);
+  if (r < n - 1) out.push([r + 1, c]);
+  if (c > 0) out.push([r, c - 1]);
+  if (c < n - 1) out.push([r, c + 1]);
+  return out;
+}
+
+function getGroup(board, r, c) {
+  const color = board[r][c];
+  const n = boardSizeOf(board);
+  const stones = [];
+  const libs = new Set();
+  const seen = new Set();
+  const key = (x, y) => x * n + y;
+  const stack = [[r, c]];
+  seen.add(key(r, c));
+  while (stack.length) {
+    const [cr, cc] = stack.pop();
+    stones.push([cr, cc]);
+    for (const [nr, nc] of neighbors(cr, cc, n)) {
+      const v = board[nr][nc];
+      if (v === EMPTY) {
+        libs.add(key(nr, nc));
+      } else if (v === color) {
+        const k = key(nr, nc);
+        if (!seen.has(k)) {
+          seen.add(k);
+          stack.push([nr, nc]);
+        }
+      }
+    }
+  }
+  return { stones, liberties: libs.size, libertyKeys: libs };
+}
+
+function removeGroup(board, stones) {
+  for (const [r, c] of stones) board[r][c] = EMPTY;
+}
+
+/** Try play; returns {board, captured, ko} or null if illegal. */
+function tryPlay(board, r, c, color, ko) {
+  const n = boardSizeOf(board);
+  if (r < 0 || c < 0 || r >= n || c >= n) return null;
+  if (board[r][c] !== EMPTY) return null;
+  if (ko && ko[0] === r && ko[1] === c) return null;
+
+  const next = cloneBoard(board);
+  next[r][c] = color;
+  const opp = color === 1 ? 2 : 1;
+  let captured = [];
+  for (const [nr, nc] of neighbors(r, c, n)) {
+    if (next[nr][nc] === opp) {
+      const g = getGroup(next, nr, nc);
+      if (g.liberties === 0) {
+        removeGroup(next, g.stones);
+        captured = captured.concat(g.stones);
+      }
+    }
+  }
+  const own = getGroup(next, r, c);
+  if (own.liberties === 0) return null; // suicide
+
+  let newKo = null;
+  if (captured.length === 1 && own.stones.length === 1 && own.liberties === 1) {
+    newKo = captured[0];
+  }
+  return { board: next, captured, ko: newKo };
+}
+
+function searchRegion() {
+  // Restrict search to current viewport (tsumego local fight)
+  return {
+    r0: view.r0,
+    c0: view.c0,
+    r1: view.r0 + view.size - 1,
+    c1: view.c0 + view.size - 1,
+  };
+}
+
+function inRegion(r, c, region) {
+  return r >= region.r0 && r <= region.r1 && c >= region.c0 && c <= region.c1;
+}
+
+function movePriority(board, r, c, color, lastMove) {
+  const n = boardSizeOf(board);
+  const opp = color === 1 ? 2 : 1;
+  let score = 0;
+  // Prefer capturing / atari
+  const trial = tryPlay(board, r, c, color, null);
+  if (trial && trial.captured.length) score += 1000 + trial.captured.length * 50;
+  for (const [nr, nc] of neighbors(r, c, n)) {
+    if (board[nr][nc] === opp) {
+      const g = getGroup(board, nr, nc);
+      if (g.liberties === 1) score += 800;
+      else if (g.liberties === 2) score += 200;
+    }
+    if (board[nr][nc] === color) {
+      const g = getGroup(board, nr, nc);
+      if (g.liberties <= 2) score += 150;
+    }
+    if (board[nr][nc] !== EMPTY) score += 10;
+  }
+  if (lastMove) {
+    const dr = Math.abs(r - lastMove[0]);
+    const dc = Math.abs(c - lastMove[1]);
+    score += Math.max(0, 8 - (dr + dc)) * 5;
+  }
+  return score;
+}
+
+function generateMoves(board, color, region, ko, lastMove) {
+  const moves = [];
+  for (let r = region.r0; r <= region.r1; r++) {
+    for (let c = region.c0; c <= region.c1; c++) {
+      if (board[r][c] !== EMPTY) continue;
+      if (ko && ko[0] === r && ko[1] === c) continue;
+      if (!tryPlay(board, r, c, color, ko)) continue;
+      moves.push({
+        r, c,
+        pri: movePriority(board, r, c, color, lastMove),
+      });
+    }
+  }
+  moves.sort((a, b) => b.pri - a.pri);
+  return moves.slice(0, AI_MOVE_LIMIT);
+}
+
+function evaluate(board, color, region) {
+  // Higher is better for `color`
+  const opp = color === 1 ? 2 : 1;
+  const n = boardSizeOf(board);
+  const seen = new Set();
+  const key = (r, c) => r * n + c;
+  let score = 0;
+
+  for (let r = region.r0; r <= region.r1; r++) {
+    for (let c = region.c0; c <= region.c1; c++) {
+      const v = board[r][c];
+      if (v === EMPTY) continue;
+      const k = key(r, c);
+      if (seen.has(k)) continue;
+      const g = getGroup(board, r, c);
+      for (const [sr, sc] of g.stones) seen.add(key(sr, sc));
+      const lib = g.liberties;
+      const size = g.stones.length;
+      if (v === color) {
+        score += size * 10 + lib * 25;
+        if (lib === 1) score -= 80;
+        if (lib === 0) score -= 500;
+      } else if (v === opp) {
+        score -= size * 10 + lib * 25;
+        if (lib === 1) score += 90;
+        if (lib === 0) score += 500;
+      }
+    }
+  }
+  return score;
+}
+
+function alphabeta(board, depth, alpha, beta, color, region, ko, lastMove, rootColor) {
+  if (depth === 0) {
+    return { score: evaluate(board, rootColor, region), move: null };
+  }
+  const moves = generateMoves(board, color, region, ko, lastMove);
+  if (!moves.length) {
+    return { score: evaluate(board, rootColor, region), move: null };
+  }
+
+  const maximizing = color === rootColor;
+  let bestMove = moves[0];
+  if (maximizing) {
+    let best = -Infinity;
+    for (const m of moves) {
+      const played = tryPlay(board, m.r, m.c, color, ko);
+      if (!played) continue;
+      const child = alphabeta(
+        played.board, depth - 1, alpha, beta,
+        color === 1 ? 2 : 1, region, played.ko, [m.r, m.c], rootColor
+      );
+      if (child.score > best) {
+        best = child.score;
+        bestMove = m;
+      }
+      alpha = Math.max(alpha, best);
+      if (beta <= alpha) break;
+    }
+    if (best === -Infinity) best = evaluate(board, rootColor, region);
+    return { score: best, move: bestMove };
+  } else {
+    let best = Infinity;
+    for (const m of moves) {
+      const played = tryPlay(board, m.r, m.c, color, ko);
+      if (!played) continue;
+      const child = alphabeta(
+        played.board, depth - 1, alpha, beta,
+        color === 1 ? 2 : 1, region, played.ko, [m.r, m.c], rootColor
+      );
+      if (child.score < best) {
+        best = child.score;
+        bestMove = m;
+      }
+      beta = Math.min(beta, best);
+      if (beta <= alpha) break;
+    }
+    if (best === Infinity) best = evaluate(board, rootColor, region);
+    return { score: best, move: bestMove };
+  }
+}
+
+function applyMove(r, c, color, by) {
+  const before = snapshotState();
+  const played = tryPlay(currentBoard, r, c, color, koPoint);
+  if (!played) return false;
+  currentBoard = played.board;
+  koPoint = played.ko;
+  moveHistory.push({ r, c, color, by, before, captured: played.captured.length });
+  playerMoves = moveHistory.map(h => [h.r, h.c]);
+  return true;
+}
+
+function coordLabel(r, c) {
+  const cols = 'ABCDEFGHJKLMNOPQRST';
+  return cols[c] + (currentProblem.size - r);
+}
+
+function runEngineReply() {
+  if (!currentProblem || aiThinking) return;
+  const engineColor = nextPlayerColor();
+  // Engine plays the opposite of human's first move color only when it's engine's turn
+  if (engineColor === humanColor()) return;
+
+  aiThinking = true;
+  const status = document.getElementById('status-msg');
+  status.textContent = 'Alpha-Beta 思考中…';
+  status.className = 'tsumego-status hint';
+
+  // Yield to UI so status paints
+  setTimeout(() => {
+    try {
+      // Use full board as search region so engine always has moves
+      const fullRegion = {
+        r0: 0,
+        c0: 0,
+        r1: currentProblem.size - 1,
+        c1: currentProblem.size - 1,
+      };
+      const last = moveHistory.length
+        ? [moveHistory[moveHistory.length - 1].r, moveHistory[moveHistory.length - 1].c]
+        : null;
+      const result = alphabeta(
+        currentBoard, AI_DEPTH, -Infinity, Infinity,
+        engineColor, fullRegion, koPoint, last, engineColor
+      );
+      if (result.move) {
+        const { r, c } = result.move;
+        const ok = applyMove(r, c, engineColor, 'engine');
+        if (ok) {
+          status.textContent =
+            `${engineColor === 1 ? '黑' : '白'}应 ${coordLabel(r, c)}（深度 ${AI_DEPTH}）`;
+          status.className = 'tsumego-status hint';
+        } else {
+          status.textContent = '引擎无合法应手';
+          status.className = 'tsumego-status wrong';
+        }
+      } else {
+        status.textContent = '引擎停着 / 无点可下';
+        status.className = 'tsumego-status hint';
+      }
+      drawBoard();
+    } catch (err) {
+      console.error(err);
+      status.textContent = '引擎出错：' + (err.message || err);
+      status.className = 'tsumego-status wrong';
+    } finally {
+      aiThinking = false;
+    }
+  }, 20);
 }
 
 function getCellSize() {
@@ -778,7 +1131,7 @@ function drawStone(x, y, radius, color) {
 }
 
 canvas.addEventListener('click', function (e) {
-  if (!currentProblem) return;
+  if (!currentProblem || aiThinking) return;
   const rect = canvas.getBoundingClientRect();
   const scaleX = BOARD_PX / rect.width;
   const scaleY = BOARD_PX / rect.height;
@@ -791,20 +1144,21 @@ canvas.addEventListener('click', function (e) {
 
   const row = view.r0 + vr;
   const col = view.c0 + vc;
-  if (currentBoard[row][col] !== 0) return;
-
-  // Alternate colors starting from PL
-  const moveIndex = playerMoves.length;
-  const firstIsBlack = currentProblem.pl !== 'W';
-  const isBlack = firstIsBlack ? (moveIndex % 2 === 0) : (moveIndex % 2 === 1);
-  currentBoard[row][col] = isBlack ? 1 : 2;
-  playerMoves.push([row, col]);
+  const color = nextPlayerColor();
+  // Human only plays the side to move that matches "player to solve" on odd/even —
+  // allow both sides alternately; human always plays the current side to move.
+  if (!applyMove(row, col, color, 'human')) {
+    document.getElementById('status-msg').textContent = '非法着手（自杀/劫争）';
+    document.getElementById('status-msg').className = 'tsumego-status wrong';
+    return;
+  }
 
   document.getElementById('status-msg').textContent =
-    `已下 ${playerMoves.length} 手（${isBlack ? '黑' : '白'}）`;
+    `${color === 1 ? '黑' : '白'}下于 ${coordLabel(row, col)}`;
   document.getElementById('status-msg').className = 'tsumego-status hint';
   checkInToday(false);
   drawBoard();
+  runEngineReply();
 });
 
 const STATS_KEY = 'tsumego_stats';

@@ -7,8 +7,6 @@ mathjax: true
 
 > **论文**：Alon Bright, Edward Chien, Ofir Weber. [*Harmonic Global Parametrization with Rational Holonomy*](https://doi.org/10.1145/3072959.3073646). ACM Transactions on Graphics (SIGGRAPH), 36(4), 2017.
 
-## 1. 概述
-
 平面映射与变形是图形学核心问题（图像变形、纹理映射、四边形网格化、方向场设计等）。**Harmonic Global Parametrization (HGP)** 对**任意亏格**三角网格，在给定锥点与**有理 holonomy**（$2\pi/q$ 的整数倍）下，同时追求：
 
 - **局部单射 (local injectivity)**：无 fold-over；
@@ -20,9 +18,7 @@ mathjax: true
 1. 在切开曲面 $S_c$ 上求**线性** $q$-CCM（调和 + seam 旋转）；
 2. 用 **$q$-fold 分支覆盖（branched cover）** $\tilde{S}_q$ 上的 **index counting** 证明 Theorem 6.1。
 
-**分支覆盖的作用**（详见 §7.0）：把 seam 旋转造成的多值 $\mathrm{d}f$ 单值化，并把锥点变成可计入 index 预算的分歧点——从而把 Gortler 论证搬到任意拓扑。它是**证明装置，不是求解空间**；算法从不显式构造 $\tilde{S}_q$，也**不是**「先在覆盖上做 Tutte 再投影」。
-
-加速实现见 [FastHGP](扭曲有界-全局调和参数化2-FastHGP.md)。
+**分支覆盖的作用**：把 seam 旋转造成的多值 $\mathrm{d}f$ 单值化，并把锥点变成可计入 index 预算的分歧点——从而把 Gortler 论证搬到任意拓扑。它是**证明装置，不是求解空间**；算法从不显式构造 $\tilde{S}_q$，也**不是**「先在覆盖上做 Tutte 再投影」。
 
 | 前驱 | 局限 | HGP |
 | :--- | :--- | :--- |
