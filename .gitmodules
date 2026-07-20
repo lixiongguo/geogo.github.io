@@ -20,3 +20,6 @@
 [submodule "cpp/CDT"]
 	path = cpp/CDT
 	url = https://github.com/lixiongguo/CDT.git
+[submodule "cpp/ddg-exercises"]
+	path = cpp/ddg-exercises
+	url = https://github.com/lixiongguo/ddg-exercises.git
