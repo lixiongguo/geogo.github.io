@@ -56,10 +56,6 @@ $$
 
 ![image-20260721192359607](/Users/lgxgeogo/Desktop/MyDoc/lixiongguo.github.io/imgs//image-20260721192359607.png)
 
----
-
-
-
 ## 准备知识
 
 ### Gortler 离散 1-form

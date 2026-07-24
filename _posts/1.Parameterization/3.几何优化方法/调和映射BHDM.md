@@ -122,6 +122,34 @@ C_j''(z) = \frac{1}{2\pi i}\left[
 \right]
 $$
 
+由于 $$\Phi,\Psi$$ 全纯且 $$f = \Phi + \overline{\Psi}$$，Wirtinger 导数及其导数可用 $$C_j', C_j''$$ 表达：
+
+$$
+\begin{aligned}
+f_z(z) &= \Phi'(z) = \sum_{j=1}^{n} C_j'(z)\, \phi_j \\
+f_{\bar z}(z) &= \overline{\Psi'(z)} = \overline{\sum_{j=1}^{n} C_j'(z)\, \psi_j}
+\end{aligned}
+$$
+
+再对 $$z$$ / $$\bar z$$ 求导（$$\Phi'',\Psi''$$ 仍全纯）：
+
+$$
+\begin{aligned}
+(f_z)_z &= \Phi''(z) = \sum_{j=1}^{n} C_j''(z)\, \phi_j \\
+(f_{\bar z})_{\bar z} &= \overline{\Psi''(z)} = \overline{\sum_{j=1}^{n} C_j''(z)\, \psi_j}
+\end{aligned}
+$$
+
+且 $$(f_z)_{\bar z} = 0$$（$$f_z$$ 全纯）、$$(f_{\bar z})_z = 0$$（$$f_{\bar z}$$ 反全纯）。后文定理中的 $$f_z''$$ 即 $$(f_z)_z = \Phi''$$。
+
+**矩阵形式**：在采样点 $$\{z_i\}$$ 上令 $$C_{ij}=C_j(z_i)$$、$$D_{ij}=C_j'(z_i)$$，则
+
+$$
+f = C\phi + \overline{C\psi},\qquad
+f_z = D\phi,\qquad
+f_{\bar z} = \overline{D\psi}.
+$$
+
 
 
 ## 有界失真映射
@@ -152,7 +180,7 @@ $$
 
 上述定义要求检查域中**每一个点**。以下定理将其简化为**仅需检查边界**：
 
-**定理(BDHM).** 定义在单连通域 $$\Omega$$ 上的复值调和映射 $$f$$ 是 $$(k,\sigma_1,\sigma_2)$$-有界失真的充要条件为：
+**定理4 (Theorem 4, BDHM).** 定义在单连通域 $$\Omega$$ 上的复值调和映射 $$f$$ 是 $$(k,\sigma_1,\sigma_2)$$-有界失真的充要条件为：
 $$
 \begin{aligned}
 \oint_{\partial\Omega} \frac{f_z''(z)}{f_z(z)} \, dz &= 0  \\
@@ -164,27 +192,19 @@ $$
 
 **积分为零条件的含义**：由 Cauchy 幅角原理，$$\frac{1}{2\pi i} \oint f_z''/f_z \, dz = N$$ 是 $$f_z$$ 在全域内的零点个数（计重数）,积分 = 0 等价于 $$f_z(z) \neq 0 \; \forall z \in \Omega$$，即共形部分处处非零。
 
-**其余三个条件**是原定义中 $$k \le k < 1$$, $$\sigma_1 \le \sigma_1 < \infty$$, $$0 < \sigma_2 \le \sigma_2$$ 限制到边界上的版本。
-
-
+**其余三个条件**是原定义中 $$k \le k < 1$$, $$\sigma_1 \le \sigma_1 < \infty$$, $$0 < \sigma_2 \le \sigma_2$$ 限制到边界上的版本。通过构建调和映射，将全域的问题转化到更小的边界上。
 
 ### 约束凸化
 
-定理4中 $$|f_{\bar z}| \le k |f_z|$$ 和 $$\sigma_2 \le |f_z| - |f_{\bar z}|$$ 都是**非凸**的（含变量在分母或非线性项 $$|f_z|$$）。
+定理4 (Theorem 4) 中 $$|f_{\bar z}| \le k |f_z|$$ 和 $$\sigma_2 \le |f_z| - |f_{\bar z}|$$ 都是**非凸**的（含变量在分母或非线性项 $$|f_z|$$），下面对其进行凸化。
 
-**核心不等式：**
+对于任意复数 $$w$$，$$\operatorname{Re}[w e^{i\theta}] \le |w|$$（实部不大于模），且当且仅当 $$\theta = -\arg w$$ 时取等号。因此用 $$\operatorname{Re}[f_z e^{i\theta}]$$ 替代 $$|f_z|$$ 得到凸的（实际上是一个**二阶锥**）约束：
 
-对于任意复数 $$w$$，$$\operatorname{Re}[w e^{i\theta}] \le |w|$$（实部不大于模），且当且仅当 $$\theta = -\arg w$$ 时取等号。
-
-因此用 $$\operatorname{Re}[f_z e^{i\theta}]$$ 替代 $$|f_z|$$ 得到凸的（实际上是一个**二阶锥**）约束：
-
-| 原非凸约束                            | 锥类型     | 凸化约束                                                     | 来源   |
-| ------------------------------------- | ---------- | ------------------------------------------------------------ | ------ |
-| $$\sigma_2 \le |f_z| - |f_{\bar z}|$$ | SOC        | $$|f_{\bar z}| \le \operatorname{Re}[f_z e^{i\theta}] - \sigma_2$$ | 式(12) |
-| $$|f_{\bar z}| \le k \cdot |f_z|$$    | SOC        | $$|f_{\bar z}| \le k \cdot \operatorname{Re}[f_z e^{i\theta}]$$ | 式(15) |
-| $$|f_z| + |f_{\bar z}| \le \sigma_1$$ | Linear+SOC | 保持原约束（已凸）                                           | 式(10) |
-
-**推导第一个凸约束：**
+| 原非凸约束                            | 锥类型     | 凸化约束                                                     |
+| ------------------------------------- | ---------- | ------------------------------------------------------------ |
+| $$\sigma_2 \le |f_z| - |f_{\bar z}|$$ | SOC        | $$|f_{\bar z}| \le \operatorname{Re}[f_z e^{i\theta}] - \sigma_2$$ |
+| $$|f_{\bar z}| \le k \cdot |f_z|$$    | SOC        | $$|f_{\bar z}| \le k \cdot \operatorname{Re}[f_z e^{i\theta}]$$ |
+| $$|f_z| + |f_{\bar z}| \le \sigma_1$$ | Linear+SOC | 保持原约束（已凸）                                           |
 
 由 $$\operatorname{Re}[f_z e^{i\theta}] \le |f_z|$$，代入 $$\sigma_2 \le |f_z| - |f_{\bar z}|$$：
 
@@ -198,30 +218,49 @@ $$
 |f_{\bar z}| + \sigma_2 \le \operatorname{Re}[f_z e^{i\theta}] \quad \Longrightarrow \quad |f_{\bar z}| \le \operatorname{Re}[f_z e^{i\theta}] - \sigma_2
 $$
 
-**极大性的含义**：凸化后约束定义的空间是所有满足原非凸约束的**极大凸子集**——没有其他严格更大的凸子集仍满足原约束。这保证了凸近似是"最优"的。
-
-**ARAP 能量的凸近似：**
+**ARAP 能量的凸近似（同一技巧）：**
 
 ARAP 能量定义为 $$E_{\text{ARAP}} = \frac12 \int (\sigma_1-1)^2 + (\sigma_2-1)^2 \, da$$。在局部单射保向条件下可展开为：
 
 $$
 E_{\text{ARAP}} = \frac12 \int \big[ (|f_z|+|f_{\bar z}|-1)^2 + (|f_z|-|f_{\bar z}|-1)^2 \big] da
-= \int (|f_z|-1)^2 + |f_{\bar z}|^2 \, da
+= \int \big(|f_z|-1\big)^2 + |f_{\bar z}|^2 \, da.
 $$
 
-此能量含有非凸项 $$|f_z|$$，凸化近似为二次泛函：
+非凸只来自 $$|f_z|$$。把被积函数按模展开：
 
 $$
-E_{\text{ARAP}}^{\text{convex}} = \int |f_z e^{i\theta} - 1|^2 + |f_{\bar z}|^2 \, da
+\big(|f_z|-1\big)^2 = |f_z|^2 - 2|f_z| + 1.
 $$
 
-当 $$\theta = -\arg f_z$$ 时，$$f_z e^{i\theta} = |f_z|$$，凸化能量退化为原 ARAP。
+对线性项再用同一不等式 $$\operatorname{Re}[f_z e^{i\theta}] \le |f_z|$$（因而 $$-2\operatorname{Re}[\cdots]\ge -2|f_z|$$）：
+
+$$
+\big(|f_z|-1\big)^2
+\;\le\;
+|f_z|^2 - 2\operatorname{Re}[f_z e^{i\theta}] + 1
+\;=\;
+\big|f_z e^{i\theta} - 1\big|^2,
+$$
+
+等号当且仅当 $$\theta = -\arg f_z$$。于是得到凸二次上界（majorizer）：
+
+$$
+E_{\text{ARAP}}^{\text{convex}}(\theta)
+= \int \big|f_z e^{i\theta} - 1\big|^2 + |f_{\bar z}|^2 \, da
+\;\ge\;
+E_{\text{ARAP}},
+$$
+
+固定 $$\theta$$ 时对 $$f_z,f_{\bar z}$$（亦即对 $$\phi,\psi$$）是凸二次的；$$\theta$$ 外循环取 $$\theta=-\arg\tilde f_z$$ 时上界贴合原能量。注意：约束侧用 $$\operatorname{Re}$$ 得到**更紧**的可行集，能量侧用同一替换得到**上界**——方向不同，但都源于 $$\operatorname{Re}[w e^{i\theta}]\le|w|$$。
 
 
 
 
 
-### BDHM 算法流程 
+### 2.4 BDHM 算法流程
+
+> SOCP 只保证有限活跃点上的畸变界；**全域** $$(k,\sigma_1,\sigma_2)$$-有界失真靠边界段上的 Lipschitz 界认证（论文 §6 *Global Bounds*）。下文把验证当作黑盒（解 SOCP → 验证 → 失败则加点/线搜索）；具体算法见 **附录 A–C**。
 
 #### 2.4.1 预处理：cage 与三组采样
 
@@ -233,7 +272,7 @@ $$
 | :-------- | :----------------------------------------------------------- | :--------------------- |
 | **$$M$$** | 离散近似 **$$E_{\text{ARAP}}$$**（式 (20)）；**仅边界**采样，域内加点未见收益 | 数百点                 |
 | **$$A$$** | **候选约束点池**：每轮在此扫描畸变、更新 active set；初始可取边界顶点 | $$\|A\|\approx 2000$$  |
-| **$$B$$** | **全局验证**（§2.5）：相邻样本连成边界段，逐段 Lipschitz 上/下界 | $$\|B\|\approx 10000$$ |
+| **$$B$$** | **全局验证 (global validation)**（附录 A）：相邻样本连成边界段，逐段 Lipschitz 上/下界 | $$\|B\|\approx 10000$$ |
 
 用户另选少量 **操控点** $$\mathcal{H}=\{r_j\to q_j\}$$（在 $$P$$ 上或内部）。论文记号里 handle 集与边界同名，下文用 $$\mathcal{H}$$ 避免混淆。
 
@@ -262,34 +301,9 @@ $$
 E_{\text{P2P}} = \sum_{j=1}^{|\mathcal{H}|} |f(r_j) - q_j|^2.
 $$
 
-也可改为硬约束 $$f(r_j)=q_j$$，但可能使 SOCP **不可行**（畸变界过紧时手柄拖不动）；论文默认用软约束，保证 (19) **始终可行**。
-
 其中 $$f_z = D\phi$$，$$f_{\bar z} = \overline{D\psi}$$；三个不等式只在 **active set** 的子集 $$A_k,A_{\sigma_1},A_{\sigma_2}\subseteq A$$ 上施加，而非全体 $$A$$。
 
-#### 2.4.3 为何需要两层迭代：有限约束 vs 全域证书
-
-(19) 是凸 SOCP，**总有解**，但畸变界只保证在 **有限个活跃点** 成立。要得到 **全域** $$(k,\sigma_1,\sigma_2)$$-有界失真，必须对解做 **Section 6 全局验证**（§2.5）。
-
-因此算法有两层逻辑：
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  外循环（θ 收紧，通常 1–3 轮）                                │
-│    1. 在 A_k, A_σ1, A_σ2 上解 SOCP (19)                      │
-│    2. 全局验证 (B 上 Lipschitz 证书)                          │
-│    3. 若证书失败 → active set 加点 / 线搜索 → 回到 1 或 2     │
-│    4. 验证通过 → θ ← −arg f̃_z，若能量仍可降则回到 1           │
-└─────────────────────────────────────────────────────────────┘
-         ↑ 每轮 SOCP 前：在 A 上扫描，更新 A_k, A_σ1, A_σ2
-```
-
-**$$\theta$$ 外循环**：验证通过后设 $$\theta(w)=-\arg \tilde f_z(w)$$，其中 $$\tilde f_z$$ 是对未知 $$f_z$$ 的估计。于是 $$e^{i\theta}=|\tilde f_z|/\tilde f_z$$，反复出现的 $$\operatorname{Re}[f_z e^{i\theta}]$$ 逼近 $$|f_z|$$——这正是非凸约束 (11)(14) 与凸约束 (12)(15) 的**唯一差别**。实践上：
-
-- 首轮 $$\tilde f_z\equiv 0$$（恒等映射，$$\theta=0$$），保证初始 SOCP 可行；
-- 之后 $$\tilde f_z$$ 取**上一轮** SOCP 解的 $$f_z$$，凸子空间逐轮收紧；
-- 能量不再下降时停止（通常 **1–3 次** $$\theta$$ 更新）。
-
-#### 2.4.4 Active Set 机制（核心）
+#### Active Set 机制
 
 **动机**：若在 $$A$$ 的每个点同时施加三种 SOC 约束，变量 $$2n$$ 个复系数、约束可达数千，MOSEK 内点法代价高。**Active set** 只在「需要」的点上加不等式——与 [Poranne & Lipman 2014]（Provably Good）的 **单** active set 不同，BDHM 维护 **三个独立** 活跃集：
 
@@ -309,17 +323,17 @@ $$
 
 **为何三个集合**：实验上 **很少** 同时违反多种畸变界（共形 $$k$$、最大拉伸 $$\sigma_1$$、最小拉伸 $$\sigma_2$$ 的「瓶颈」往往在不同位置）。分开维护可使 **活跃约束总数** 远小于「单集 + 三约束/点」——论文报告相对 Poranne–Lipman 2014 显著加速。
 
-**与验证的闭环**：SOCP 解算完后，在 **$$B$$** 上做段-wise 全局界（§2.5）。若证书显示某段超限，说明 active set **过稀**——将违反段上的样本补进对应 $$A_*$$，**重新解 SOCP**；论文称这是 line search 失败时最常见的补救路径，而非用户界本身不可达。
+**与验证的闭环**：SOCP 解算完后，在 **$$B$$** 上做段-wise 全局界（附录 A）。若界认证显示某段超限，说明 active set **过稀**——将违反段上的样本补进对应 $$A_*$$，**重新解 SOCP**；论文称这是 line search 失败时最常见的补救路径，而非用户界本身不可达。
 
 **与 Lipman / Provably Good 的对比**（见 [几何变形 Provably good mapping](几何变形2-Provably good mapping.md) §8.1）：
 
-|                 | Poranne–Lipman 2014                              | BDHM                              |
-| :-------------- | :----------------------------------------------- | :-------------------------------- |
-| Active set 个数 | 1（统一畸变 $$D$$）                              | 3（$$k,\sigma_1,\sigma_2$$）      |
-| 激活判据        | 局部极大 + $$K_{\text{on}}/K_{\text{off}}$$ 滞回 | 违反界 + 0.95/0.945/1.15/1.2 滞回 |
-| 证书            | 填充距离 + 连续性模                              | 边界段 Lipschitz（§2.5–2.6）      |
+|                      | Poranne–Lipman 2014                              | BDHM                         |
+| :------------------- | :----------------------------------------------- | :--------------------------- |
+| Active set 个数      | 1（统一畸变 $$D$$）                              | 3（$$k,\sigma_1,\sigma_2$$） |
+| 激活判据             | 局部极大 + $$K_{\text{on}}/K_{\text{off}}$$ 滞回 | 违反界 + 0.95/0.945/1.15/1.2 滞回 |
+| 界认证 (certificate) | 填充距离 + 连续性模                              | 边界段 Lipschitz（附录 A–B） |
 
-#### 2.4.5 验证失败时的线搜索
+#### 验证失败时的线搜索
 
 设 $$\phi^{i-1},\psi^{i-1}$$ 为**上一轮已验证**的系数，$$\phi^i,\psi^i$$ 为当前 SOCP 解。在区间 $$t\in(0,1]$$ 上插值
 
@@ -327,11 +341,11 @@ $$
 \phi(t)=(1-t)\phi^{i-1}+t\phi^i,\qquad \psi(t)=(1-t)\psi^{i-1}+t\psi^i,
 $$
 
-对 $$\phi(t),\psi(t)$$ 计算全局畸变界 $$\tilde k,\tilde\sigma_1,\tilde\sigma_2$$。若超过用户允许的松弛（默认 **$$1.2k,\,1.3\sigma_1,\,0.7\sigma_2$$**，最多 **10** 次二分），则令 $$t\leftarrow t/2$$ 重算，直到得到可证书映射或步长耗尽。
+对 $$\phi(t),\psi(t)$$ 计算全局畸变界 $$\tilde k,\tilde\sigma_1,\tilde\sigma_2$$。若超过用户允许的松弛（默认 **$$1.2k,\,1.3\sigma_1,\,0.7\sigma_2$$**，最多 **10** 次二分），则令 $$t\leftarrow t/2$$ 重算，直到得到可认证映射 (certified mapping) 或步长耗尽。
 
 线搜索失败时：先 **扩充 active set** 再解 SOCP，而非立即判定问题不可行。
 
-#### 2.4.6 完整算法伪码
+#### 完整算法伪码
 
 ```
 输入: 边界 P, cage P̂, 采样 M⊂A⊂B⊂∂P, 操控点 H, 用户界 k,σ₁,σ₂
@@ -343,23 +357,63 @@ $$
   重复 (active set 内循环):
     在 A 上更新 A_k, A_σ1, A_σ2（违反 / 近违反 / 移除）
     解 SOCP (19) → φ^i, ψ^i
-    线搜索 t∈(0,1]: 验证 φ(t),ψ(t) 的全局界
+    线搜索 t∈(0,1]: 验证 φ(t),ψ(t) 的全局界（附录 A–C）
     若验证失败且 t 已耗尽 → 继续 active set 内循环
   若验证通过:
     若 E_ARAP 相对上轮无显著下降 → 结束
     否则 θ(w)←−arg f_z(w)（用当前解）, 保存 φ,ψ 为已验证解
-输出: 最终 φ,ψ 及证书界 k̃,σ̃₁,σ̃₂
+输出: 最终 φ,ψ 及认证界 (certified / global bounds) k̃,σ̃₁,σ̃₂
 ```
 
-#### 2.4.7 共形特例
+#### 共形特例
 
 当 $$K \to 1$$（$$\kappa \to 0$$）时，有界扭曲约束退化为 $$f_{\bar z} = 0$$，即 $$f$$ 为全纯函数，等价于仅保留 $$\phi$$ 系数（$$\psi = 0$$），Cauchy 坐标的共轭部分消失，映射完全是共形的。此时 (19) 简化为 (22)：只需 $$\sigma_1,\sigma_2$$ 对 $$|f_z|$$ 的界，且 $$E_{\text{ARAP}}$$ 中 $$|f_{\bar z}|^2$$ 项消失。
 
-### 
 
-### 2.6 Lipschitz 常数与更紧的边界条件
+## 附录
 
-要将 Theorem 4 的无限多边界不等式化为有限个可计算的充分条件，需知道 $$f_z, f_{\bar z}$$ 在边界线段上的 Lipschitz 常数。
+> 对应论文 §6 *Global Bounds*。正文算法把下列内容当作黑盒；此处给出如何在边界上认证全域畸变界与 $$f_z$$ 无零点。
+
+### 附录 A. 全局验证与界认证 (global bounds)
+
+§2.4 的 SOCP 只在有限活跃点 $$A_k,A_{\sigma_1},A_{\sigma_2}$$ 上强制不等式。要回答「$$f$$ 是否为全域 $$(k,\sigma_1,\sigma_2)$$-有界失真」，需在 **$$B$$** 上做 **边界段分析**（全程只在边界上，比 Poranne–Lipman 的域内填充距离策略更紧、更快）。段上的 $$|f_z|_{\max/\min}$$ 等由端点采样值 + **附录 B** 的 Lipschitz 常数推出；$$f_z$$ 无零点用 **附录 C**。
+
+#### A.1 逐段上界（式 (23)）
+
+将 $$B$$ 中相邻样本连成段 $$(v_1,v_2)$$。若在段上已知
+
+$$
+|f_z|_{\min} \le |f_z(w)| \le |f_z|_{\max},\qquad |f_{\bar z}(w)| \le |f_{\bar z}|_{\max},
+$$
+
+则整段上
+
+$$
+\sigma_1(w) \le |f_z|_{\max}+|f_{\bar z}|_{\max},\quad
+\sigma_2(w) \ge |f_z|_{\min}-|f_{\bar z}|_{\max},\quad
+k(w) \le \frac{|f_{\bar z}|_{\max}}{|f_z|_{\min}}.
+\tag{23}
+$$
+
+全局界取 **所有段** 上的 max/min。认证界 (certified / global bounds) $$\tilde k,\tilde\sigma_1,\tilde\sigma_2$$ 略松于用户界 $$k,\sigma_1,\sigma_2$$（只在有限点强制），故允许用户设定最大偏差；超差则拒绝该步并触发正文的线搜索或 active set 扩充。
+
+#### A.2 与 active set 的反馈
+
+| 验证结果 | 动作 |
+| :--- | :--- |
+| 全部段通过界认证 | 接受当前解；进入 $$\theta$$ 外循环下一步 |
+| 某段 $$k$$ 超限 | 该段端点/内部极大加入 $$A_k$$，重解 SOCP |
+| 某段 $$\sigma_1$$ 超限 | 加入 $$A_{\sigma_1}$$ |
+| 某段 $$\sigma_2$$ 超限 | 加入 $$A_{\sigma_2}$$ |
+| 线搜索 $$t\to 0$$ 仍失败 | 通常因 active 约束不足；继续加点直至界认证通过或判定不可行 |
+
+#### A.3 $$f_z$$ 无零点
+
+除畸变界外须证 $$f_z\neq 0$$ 于域内（定理4 (Theorem 4) 的积分条件）。$$f_z=\Phi'$$ 全纯 ⇒ 可用 **Cauchy 幅角原理 (argument principle)**；BDHM 用定理11 (Theorem 11) + Lipschitz 在边界样本上 **25ms 级**验证（附录 C），替代慢速数值围道积分。
+
+### 附录 B. Lipschitz 常数与更紧的边界条件
+
+附录 A 式 (23) 需要段上的 $$|f_z|_{\max/\min}$$ 等。将定理4 (Theorem 4) 的无限多边界不等式化为有限充分条件，关键是求出 $$f_z, f_{\bar z}$$ 在边界线段上的 Lipschitz 常数：端点已知时，段内偏差不超过 $$L\cdot$$ 段长。
 
 **Lipschitz 连续性的加法性质：** 若 $$g, q$$ 分别为 $$L_g, L_q$$-Lipschitz，则线性组合 $$a g + b q$$ 为 $$(|a|L_g + |b|L_q)$$-Lipschitz。
 
@@ -370,7 +424,7 @@ L_{f_z} = \sum_{j=1}^{n} L_{C_j'} \cdot |\phi_j|, \qquad
 L_{f_{\bar z}} = \sum_{j=1}^{n} L_{C_j'} \cdot |\psi_j|
 $$
 
-**Proposition 10 (Cauchy 坐标导数的 Lipschitz 常数).** $$C_j'(z)$$ 在域内（除 cage 顶点外）的 Lipschitz 常数为：
+**命题10 (Proposition 10; Cauchy 坐标导数的 Lipschitz 常数).** $$C_j'(z)$$ 在域内（除 cage 顶点外）的 Lipschitz 常数为：
 
 $$
 L_{C_j'} = \frac{|z_{j+1} - z_{j-1}|}{2\pi \; d(z_{j-1}) \; d(z_j) \; d(z_{j+1})}
@@ -395,11 +449,11 @@ $$
 
 得到 $$a, b$$，代入上式得到更紧的 $$L_{f_z}^{\text{opt}}$$。BDHM 报告此方法在典型模型上（$$n=78$$ cage 顶点、$$|B|=340$$ 个线段）效果显著。
 
-### 2.7 无零点条件的高效验证 (Theorem 11)
+### 附录 C. 无零点条件的高效验证 (Theorem 11)
 
-除 Lipschitz 边界外，还需验证 $$f_z$$ 全域非零。BDHM 给出一个比数值积分快数个数量级的充分条件。
+承接附录 A.3：除 Lipschitz 边界畸变界外，还需验证 $$f_z$$ 全域非零。BDHM 给出一个比数值积分快数个数量级的充分条件。
 
-**Theorem 11.** 设 $$f$$ 是单连通域 $$\Omega$$ 上的复值调和映射，$$\theta(w)$$ 是边界上任意实值连续函数。定义 $$\gamma(w) = \operatorname{Re}[f_z(w) e^{i\theta(w)}]$$。若 $$\gamma(w) > 0$$ 在边界上处处成立，则 $$f_z$$ 在域内无零点。
+**定理11 (Theorem 11).** 设 $$f$$ 是单连通域 $$\Omega$$ 上的复值调和映射，$$\theta(w)$$ 是边界上任意实值连续函数。定义 $$\gamma(w) = \operatorname{Re}[f_z(w) e^{i\theta(w)}]$$。若 $$\gamma(w) > 0$$ 在边界上处处成立，则 $$f_z$$ 在域内无零点。
 
 **实际验证：** 利用 $$\gamma$$ 的 Lipschitz 常数，可以仅在边界样本点上验证。设 $$\theta$$ 为分段线性函数（取值 $$\theta(w_i) = -\arg f_z(w_i)$$），对每个线段 $$[w_{i-1}, w_i]$$（长度 $$l$$），充分条件为：
 
