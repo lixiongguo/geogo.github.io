@@ -1,4 +1,10 @@
 destination: docs
+
+# Machine Learning 专栏：公网暂不开放正文（见 _plugins/ml_posts_gate.rb）
+# 开放时改为 public: true
+ml_posts:
+  public: false
+
 markdown: kramdown
 kramdown:
   math_engine: mathjax

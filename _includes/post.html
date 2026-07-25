@@ -10,7 +10,20 @@
 	</header>
 
 	<div class="post-content">
+		{%- comment -%}仅拦截 Machine Learning；1.Parameterization 始终展示全文{%- endcomment -%}
+		{%- assign gate_ml = false -%}
+		{%- if jekyll.environment == 'production' and site.ml_posts.public != true -%}
+			{%- if page.path contains '2.Machine Learning' -%}
+				{%- unless page.path contains '1.Parameterization' -%}
+					{%- assign gate_ml = true -%}
+				{%- endunless -%}
+			{%- endif -%}
+		{%- endif -%}
+		{%- if gate_ml -%}
+		<p>尚未完整</p>
+		{%- else -%}
 		{{ content }}
+		{%- endif -%}
 	</div>
 
 	<nav class="post-nav">
