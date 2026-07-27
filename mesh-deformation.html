@@ -1,6 +1,9 @@
+---
+---
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+{% include algo_demo_models_dir.html id="mesh-deformation" %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>网格变形 — 固定点约束 + 拖动变形</title>
@@ -1112,6 +1115,7 @@
   });
 
   // ==================== 模型列表 ====================
+  const MODELS_DIR = (window.ALGO_MODELS_DIR || "assets/2dmodels").replace(/^\/+|\/+$/g, "");
   const d2Models = [
     { file: 'alligator.obj', label: 'alligator' },
     { file: 'woody.obj', label: 'woody' }
@@ -1124,7 +1128,7 @@
   }
   modelSelect.addEventListener('change', () => {
     if (!modelSelect.value) return;
-    loadMesh('assets/2dmodels/' + modelSelect.value,
+    loadMesh(MODELS_DIR + '/' + modelSelect.value,
              modelSelect.options[modelSelect.selectedIndex].textContent,
              modelSelect.value);
   });
@@ -1185,7 +1189,7 @@
   // ==================== 启动 ====================
   resize();
   modelSelect.value = d2Models[0].file;
-  loadMesh('assets/2dmodels/' + d2Models[0].file, d2Models[0].label, d2Models[0].file);
+  loadMesh(MODELS_DIR + '/' + d2Models[0].file, d2Models[0].label, d2Models[0].file);
   animate();
 })();
 </script>

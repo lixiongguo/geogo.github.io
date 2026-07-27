@@ -1,10 +1,25 @@
 ---
-layout: gallery_item
-slug: cpu-path-tracing
-title: CPU Path Tracing
 ---
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPU 路径追踪</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: #060b14;
+      color: #c6d1f4;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+  </style>
+</head>
+<body>
 <style>
-  .pt-wrapper { display: flex; flex-direction: column; height: 100%; }
+  .pt-wrapper { display: flex; flex-direction: column; height: 100vh; }
   .pt-header {
     display: flex; flex-wrap: wrap; align-items: center;
     gap: 12px 20px; padding: 10px 16px;
@@ -80,6 +95,7 @@ title: CPU Path Tracing
       </select></label>
       <button type="button" id="btn-reset" class="pt-btn">重置累积</button>
       <button type="button" id="btn-pause" class="pt-btn">暂停</button>
+      <a class="pt-btn" id="btn-editor" href="/path-tracing-editor.html" style="text-decoration:none;display:inline-block">场景编辑器</a>
     </div>
     <span id="status" class="pt-status">累积 0 spp · …</span>
   </div>
@@ -106,6 +122,14 @@ title: CPU Path Tracing
   const cv = document.getElementById('cv');
   const ctx = cv.getContext('2d', { alpha: false, willReadFrequently: true });
   const statusEl = document.getElementById('status');
+
+  /** Site-root relative asset URL (strip leading /). Works under Jekyll and file:// next to assets/. */
+  function assetUrl(p) {
+    if (!p) return p;
+    const s = String(p);
+    if (/^(https?:)?\/\//i.test(s) || s.startsWith('data:') || s.startsWith('blob:')) return s;
+    return s.replace(/^\//, '');
+  }
 
   function clamp(x, a, b) { return Math.min(b, Math.max(a, x)); }
   function length3(x, y, z) { return Math.hypot(x, y, z); }
@@ -413,7 +437,7 @@ title: CPU Path Tracing
   async function loadObjMesh(meshDesc) {
     const mesh = { ready: false, tris: [], bvh: null, source: meshDesc.path || '' };
     try {
-      const resp = await fetch(meshDesc.path);
+      const resp = await fetch(assetUrl(meshDesc.path));
       if (!resp.ok) throw new Error('无法读取 OBJ：' + resp.status);
       const text = await resp.text();
       const parsed = parseObjToTriangles(text, meshDesc);
@@ -432,6 +456,12 @@ title: CPU Path Tracing
   }
 
   async function loadSceneConfig(sceneEntry) {
+    if (sceneEntry && sceneEntry.inline) {
+      applyInlineScene(sceneEntry.inline, sceneEntry.id, sceneEntry.name);
+      await hydrateMeshesFromConfig(sceneEntry.inline);
+      statusEl.textContent = sceneEntry.name + ' · 已加载';
+      return true;
+    }
     currentScene.loading = true;
     currentScene.loadError = null;
     statusEl.textContent = '加载场景：' + sceneEntry.name + ' ...';
@@ -451,7 +481,7 @@ title: CPU Path Tracing
     spp = 0;
     rngBase = (Date.now() & 0xffff) + 1;
     try {
-      const resp = await fetch(sceneEntry.file);
+      const resp = await fetch(assetUrl(sceneEntry.file));
       if (!resp.ok) throw new Error('读取场景 JSON 失败：' + resp.status);
       const cfg = await resp.json();
       scene.camera = cfg.camera || scene.camera;
@@ -503,29 +533,132 @@ title: CPU Path Tracing
     }
   }
 
+  function applyInlineScene(cfg, key, label) {
+    const scene = {
+      key: key,
+      label: label,
+      loading: false,
+      loadError: null,
+      camera: cfg.camera || { eye: [0, 1.25, 6], target: [0, 1.75, 0], fovDeg: 45 },
+      sky: cfg.sky || { bottom: [0.06, 0.07, 0.12], top: [0.45, 0.62, 0.95], sunDir: [0.35, 0.85, 0.35], sunPow: 8, sunExp: 120, gain: 1.1 },
+      floor: cfg.floor || { enabled: true, y: 0, checker: true, scale: 0.5, c0: [0.28, 0.28, 0.30], c1: [0.42, 0.42, 0.44] },
+      spheres: [],
+      meshes: []
+    };
+    if (cfg.sky && cfg.sky.sunDir) {
+      scene.sky.sunDir = normalize3(cfg.sky.sunDir[0], cfg.sky.sunDir[1], cfg.sky.sunDir[2]);
+    }
+    const spheres = cfg.spheres || [];
+    for (let i = 0; i < spheres.length; i++) {
+      const s = spheres[i];
+      const m = materialFromDesc(s.material);
+      scene.spheres.push({
+        cx: s.center[0], cy: s.center[1], cz: s.center[2], r: s.radius,
+        mat: m.mat, albedo: m.albedo, eta: m.eta, rough: m.rough
+      });
+    }
+    currentScene = scene;
+    if (acc) acc.fill(0);
+    spp = 0;
+    rngBase = (Date.now() & 0xffff) + 1;
+  }
+
+  /** Sphere-only fallback when scenes.json cannot be fetched (e.g. file://). */
+  const FALLBACK_SCENE = {
+    camera: { eye: [0.0, 1.25, 6.0], target: [0.0, 1.75, 0.0], fovDeg: 45.0 },
+    sky: {
+      bottom: [0.06, 0.07, 0.12], top: [0.45, 0.62, 0.95],
+      sunDir: [0.35, 0.85, 0.35], sunPow: 8.0, sunExp: 120.0, gain: 1.1
+    },
+    floor: { enabled: true, y: 0.0, checker: true, scale: 0.5, c0: [0.28, 0.28, 0.30], c1: [0.42, 0.42, 0.44] },
+    spheres: [
+      { center: [-3.0, 0.9, 0.0], radius: 0.9, material: { type: 'specular', albedo: [0.95, 0.75, 0.31], rough: 0.05 } },
+      { center: [-1.0, 0.9, 0.0], radius: 0.9, material: { type: 'conductor', albedo: [0.92, 0.86, 0.72], rough: 0.25 } },
+      { center: [1.0, 0.9, 0.0], radius: 0.9, material: { type: 'dielectric', albedo: [0.98, 0.98, 0.92], rough: 0.08, eta: 1.45 } },
+      { center: [3.0, 0.9, 0.0], radius: 0.9, material: { type: 'diffuse', albedo: [0.95, 0.75, 0.31], rough: 1.0 } },
+      { center: [0.0, 3.75, 3.0], radius: 1.0, material: { type: 'specular', albedo: [1.0, 1.0, 1.0], rough: 0.02 } }
+    ],
+    meshes: []
+  };
+
   async function initSceneCatalog() {
+    // Bridge from path-tracing-editor: ?fromEditor=1 + localStorage pt_editor_scene
     try {
-      const resp = await fetch('/assets/renderer/Scenes/scenes.json');
-      if (!resp.ok) throw new Error('scenes.json not found: ' + resp.status);
-      const cfg = await resp.json();
-      sceneCatalog = cfg.scenes || [];
-      sceneSelEl.innerHTML = '';
-      for (let i = 0; i < sceneCatalog.length; i++) {
-        const o = document.createElement('option');
-        o.value = sceneCatalog[i].id;
-        o.textContent = sceneCatalog[i].name;
-        sceneSelEl.appendChild(o);
+      const params = new URLSearchParams(window.location.search || '');
+      if (params.get('fromEditor') === '1') {
+        const raw = localStorage.getItem('pt_editor_scene');
+        if (raw) {
+          const cfg = JSON.parse(raw);
+          sceneCatalog = [{ id: 'from-editor', name: '来自场景编辑器', file: null, inline: cfg }];
+          sceneSelEl.innerHTML = '';
+          const o = document.createElement('option');
+          o.value = 'from-editor';
+          o.textContent = '来自场景编辑器';
+          sceneSelEl.appendChild(o);
+          sceneSelEl.value = 'from-editor';
+          applyInlineScene(cfg, 'from-editor', '来自场景编辑器');
+          // Also load meshes from editor JSON (applyInlineScene is spheres-only)
+          await hydrateMeshesFromConfig(cfg);
+          statusEl.textContent = '已加载编辑器场景';
+          return true;
+        }
       }
-      const defId = cfg.default || (sceneCatalog[0] && sceneCatalog[0].id);
-      if (defId) sceneSelEl.value = defId;
-      const ent = sceneCatalog.find(function (s) { return s.id === sceneSelEl.value; }) || sceneCatalog[0];
-      if (ent) await loadSceneConfig(ent);
-      return true;
     } catch (e) {
-      console.error(e);
-      sceneSelEl.innerHTML = '<option value="">无可用场景</option>';
-      statusEl.textContent = '场景列表加载失败';
-      return false;
+      console.warn('fromEditor bridge failed:', e);
+    }
+
+    const candidates = [
+      'assets/renderer/Scenes/scenes.json',
+      '/assets/renderer/Scenes/scenes.json'
+    ];
+    let lastErr = null;
+    for (let c = 0; c < candidates.length; c++) {
+      try {
+        const resp = await fetch(candidates[c]);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status + ' @ ' + candidates[c]);
+        const cfg = await resp.json();
+        sceneCatalog = cfg.scenes || [];
+        if (!sceneCatalog.length) throw new Error('scenes.json 为空');
+        sceneSelEl.innerHTML = '';
+        for (let i = 0; i < sceneCatalog.length; i++) {
+          const o = document.createElement('option');
+          o.value = sceneCatalog[i].id;
+          o.textContent = sceneCatalog[i].name;
+          sceneSelEl.appendChild(o);
+        }
+        const defId = cfg.default || sceneCatalog[0].id;
+        sceneSelEl.value = defId;
+        const ent = sceneCatalog.find(function (s) { return s.id === sceneSelEl.value; }) || sceneCatalog[0];
+        if (ent) await loadSceneConfig(ent);
+        return true;
+      } catch (e) {
+        lastErr = e;
+        console.warn('scenes catalog try failed:', candidates[c], e);
+      }
+    }
+    console.error(lastErr);
+    sceneCatalog = [{ id: 'fallback-spheres', name: '内置球体场景（离线兜底）', file: null, inline: FALLBACK_SCENE }];
+    sceneSelEl.innerHTML = '';
+    const o = document.createElement('option');
+    o.value = sceneCatalog[0].id;
+    o.textContent = sceneCatalog[0].name;
+    sceneSelEl.appendChild(o);
+    applyInlineScene(FALLBACK_SCENE, 'fallback-spheres', sceneCatalog[0].name);
+    statusEl.textContent = '场景列表加载失败，已使用内置球体场景 · ' + String(lastErr && lastErr.message ? lastErr.message : lastErr);
+    return false;
+  }
+
+  async function hydrateMeshesFromConfig(cfg) {
+    const meshDescs = (cfg && cfg.meshes) || [];
+    currentScene.meshes = currentScene.meshes || [];
+    for (let i = 0; i < meshDescs.length; i++) {
+      if (String(meshDescs[i].type || '').toLowerCase() !== 'obj') continue;
+      const m = await loadObjMesh(meshDescs[i]);
+      currentScene.meshes.push(m);
+    }
+    const triCount = currentScene.meshes.reduce(function (sum, m) { return sum + (m.tris ? m.tris.length : 0); }, 0);
+    if (triCount > 0) {
+      statusEl.textContent = currentScene.label + ' · 场景已加载（mesh tris ' + triCount + '）';
     }
   }
 
@@ -774,3 +907,6 @@ title: CPU Path Tracing
   });
 })();
 </script>
+
+</body>
+</html>

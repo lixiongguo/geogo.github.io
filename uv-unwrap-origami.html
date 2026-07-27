@@ -3,16 +3,17 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-{% include algo_demo_models_dir.html id="uv-unwrap-simple" %}
+{% include algo_demo_models_dir.html id="uv-unwrap-origami" %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UV展开 - Tutte / LSCM / SCP / ARAP / ABF / BD-LSCM</title>
+  <title>UV展开 - 折纸展开 (Tutte 矩形边界)</title>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
   
   <script src="assets/js/wasm-loader.js"></script>
   <script src="assets/wasm/uv_unwrap_simple.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
@@ -298,6 +299,26 @@
         opacity: 0.4;
         cursor: not-allowed;
       }
+      #pdf-btn, #svg-btn, #fold-sim-btn {
+        padding: 9px 18px;
+        background: linear-gradient(135deg, #1a3a5a 0%, #2a5a7a 100%);
+        color: #8cc8ff;
+        border: 1px solid rgba(80,180,255,0.3);
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      #pdf-btn:not(:disabled):hover, #svg-btn:not(:disabled):hover, #fold-sim-btn:not(:disabled):hover {
+        background: linear-gradient(135deg, #2a5a8a 0%, #3a6a9a 100%);
+        color: #fff;
+        border-color: rgba(120,200,255,0.5);
+      }
+      #pdf-btn:disabled, #svg-btn:disabled, #fold-sim-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
       #fold-sim-overlay {
         display: none;
         position: fixed;
@@ -356,23 +377,6 @@
         min-height: 0;
         background: #fff;
       }
-      #change-pin-btn {
-        padding: 4px 10px;
-        font-size: 12px;
-        border-radius: 6px;
-        cursor: pointer;
-        border: 1px solid rgba(106, 132, 255, 0.3);
-        background: #111b31;
-        color: #c6d1f4;
-        transition: background 0.2s ease;
-      }
-      #change-pin-btn:hover {
-        background: #1a2a4a;
-        border-color: rgba(106, 132, 255, 0.55);
-      }
-      #change-pin-btn:active {
-        background: #0f1a30;
-      }
   </style>
 </head>
 <body>
@@ -399,53 +403,30 @@
         <fieldset id="method-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:8px 12px;margin:0;">
           <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开计算</legend>
           <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="tutte" checked> Tutte</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="lscm"> LSCM</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Spectral Conformal Parameterization (Mullen et al.)"><input type="radio" name="method" value="scp"> SCP</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="As-Rigid-As-Possible，Tutte 圆边界初始化"><input type="radio" name="method" value="arap"> ARAP</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Angle Based Flattening"><input type="radio" name="method" value="abf"> ABF</label>
-            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="LSCM + 有界失真优化"><input type="radio" name="method" value="bd_lscm"> BD-LSCM</label>
+            <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="Tutte 参数化，矩形（正方形）边界"><input type="radio" name="method" value="tutte" checked> Tutte（矩形边界）</label>
           </div>
         </fieldset>
 
-        <!-- 固定算法参数区（始终可见） -->
+        <!-- 固定算法参数区 -->
         <fieldset id="param-panel" style="border:1px solid rgba(255,180,70,0.35);border-radius:10px;padding:8px 12px;margin:0;background:rgba(20,25,45,0.7);">
           <legend style="color:#ffb446;font-size:11px;padding:0 6px;">算法参数</legend>
           <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;">
-            <span id="param-none" style="font-size:12px;color:#5a6791;">无参数</span>
-            <!-- LSCM 改pin点 -->
-            <span id="param-lscm-pin" style="display:none;font-size:12px;color:#c6d1f4;">
-              <button id="change-pin-btn" type="button">改pin点</button>
-            </span>
-            <!-- Tutte 边界选择 -->
-            <span id="param-tutte-boundary" style="display:none;font-size:12px;color:#c6d1f4;">
-              边界:
-              <label style="cursor:pointer;margin:0 4px;" title="映射到圆形边界"><input type="radio" name="tutte-boundary" value="circle" checked> 圆</label>
-              <label style="cursor:pointer;margin:0 4px;" title="映射到正方形边界"><input type="radio" name="tutte-boundary" value="square"> 方</label>
-              <label style="cursor:pointer;margin:0 4px;" title="自由边界：仅 pin 2 个顶点，边界形状由能量决定"><input type="radio" name="tutte-boundary" value="free"> 自由</label>
-            </span>
-            <!-- Tutte Laplace 权重（uniform 图 Laplace / cot-Laplace） -->
-            <span id="param-tutte-weight" style="display:none;font-size:12px;color:#c6d1f4;">
+            <span style="font-size:12px;color:#c6d1f4;">边界: 矩形</span>
+            <span id="param-tutte-weight" style="font-size:12px;color:#c6d1f4;">
               权重:
-              <label style="cursor:pointer;margin:0 4px;" title="均匀权重：Δf(v_i)=1/|N_i| Σ(f_j−f_i)，见 Tutte 参数化"><input type="radio" name="tutte-weight" value="uniform" checked> uniform</label>
+              <label style="cursor:pointer;margin:0 4px;" title="均匀权重"><input type="radio" name="tutte-weight" value="uniform" checked> uniform</label>
               <label style="cursor:pointer;margin:0 4px;" title="余切权重：cot-Laplace 调和映射"><input type="radio" name="tutte-weight" value="cot"> cot-Laplace</label>
-            </span>
-            <!-- ABF 子类型选择 -->
-            <span id="param-abf-type" style="display:none;font-size:12px;color:#c6d1f4;">
-              ABF方法:
-              <label style="cursor:pointer;margin:0 4px;" title="Angle Based Flattening++"><input type="radio" name="abf-type" value="abfpp" checked> ABF++</label>
-              <label style="cursor:pointer;margin:0 4px;" title="Linearized Angle Based Flattening"><input type="radio" name="abf-type" value="linabf"> linABF</label>
-            </span>
-            <!-- ARAP 迭代次数 -->
-            <span id="param-arap-iters" style="display:none;font-size:12px;color:#c6d1f4;">
-              迭代:
-              <input type="range" id="arap-iters-slider" min="1" max="100" value="30" style="width:80px;vertical-align:middle;margin:0 4px;">
-              <span id="arap-iters-val" style="min-width:24px;display:inline-block;">30</span>
             </span>
           </div>
         </fieldset>
         <button id="reload-btn"><span class="btn-text">展开</span><span class="btn-excl">!</span></button>
         <button id="clear-btn">清除</button>
+        <label style="color:#d8def7;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;margin:0 8px;">
+          <input type="checkbox" id="origami-checkbox" disabled> 折纸展开
+        </label>
+        <button id="pdf-btn" disabled>📄 保存PDF</button>
+        <button id="svg-btn" disabled style="display:none;">📐 导出折痕SVG</button>
+        <button id="fold-sim-btn" disabled style="display:none;" title="在 Origami Simulator 中模拟折叠">🔮 模拟折叠</button>
         <fieldset id="texture-radios" style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:6px 10px;margin:0;display:flex;gap:12px;align-items:center;">
           <legend style="color:#8a9dd4;font-size:11px;padding:0 4px;">纹理显示</legend>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;">
@@ -477,12 +458,37 @@
           <span>边界归一化到 0..1</span>
         </div>
 
+        <div id="fold-legend" style="display:none; padding:3px 12px; font-size:11px; gap:14px; align-items:center; border-bottom:1px solid #2a3a5a; color:#aab;">
+          <span style="display:inline-flex;align-items:center;gap:3px;">
+            <span style="display:inline-block;width:16px;height:3px;background:#ff6b6b;border-radius:2px;"></span>
+            峰折<span id="fold-legend-peak"></span>
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:3px;">
+            <span style="display:inline-block;width:16px;height:3px;background:#4ecdc4;border-radius:2px;"></span>
+            谷折<span id="fold-legend-valley"></span>
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:3px;">
+            <span style="display:inline-block;width:16px;height:3px;background:#5a7fcc;border-radius:2px;opacity:0.6;"></span>
+            平坦<span id="fold-legend-flat"></span>
+          </span>
+        </div>
+
         <div class="canvas-wrap">
           <canvas id="uv-canvas"></canvas>
         </div>
         <div class="footer-note">右侧展示展开后的线框 UV 结果。</div>
       </section>
     </div>
+    <div id="fold-sim-overlay" aria-hidden="true">
+      <div class="fold-sim-header">
+        <span>Origami Simulator 折叠模拟</span>
+        <span class="fold-sim-hint">共形展开可能与原始 3D 有偏差；闭合物体需切割线。峰/谷方向反了可在模拟器中将 Fold Percent 调至 -100%。</span>
+        <button id="fold-sim-close" type="button">关闭</button>
+      </div>
+      <div class="fold-sim-loading" id="fold-sim-loading">正在加载 Origami Simulator…</div>
+      <iframe id="fold-sim-iframe" title="Origami Simulator" src="about:blank"></iframe>
+    </div>
+
   </div>
 
   <script>
@@ -509,8 +515,18 @@
       const modelSelect = document.getElementById("model-select");
       const reloadBtn = document.getElementById("reload-btn");
       const clearBtn = document.getElementById("clear-btn");
+      const pdfBtn = document.getElementById("pdf-btn");
+      const svgBtn = document.getElementById("svg-btn");
+      const foldSimBtn = document.getElementById("fold-sim-btn");
+      const foldSimOverlay = document.getElementById("fold-sim-overlay");
+      const foldSimIframe = document.getElementById("fold-sim-iframe");
+      const foldSimClose = document.getElementById("fold-sim-close");
+      const foldSimLoading = document.getElementById("fold-sim-loading");
+      const UV_FOLD_SVG_KEY = "uvFoldPatternSvg";
+      let foldSimIframeReady = false;
       const radioCheckerboard = document.getElementById("radio-checkerboard");
       const radioDots = document.getElementById("radio-dots");
+      const origamiCheckbox = document.getElementById("origami-checkbox");
       const statusText = document.getElementById("status-text");
       const objLoader = new THREE.OBJLoader();
 
@@ -548,6 +564,7 @@
       let currentMeshData = null;
       let currentSourcePath = "";
       let currentUnwrapUv = null;
+      let currentFoldTypes = null;  // 缓存折纸展开的边分类结果，供 PDF 导出使用
       let textureEnabled = false;
       let currentTexturedMesh = null;
       let checkerTexture = null;
@@ -615,6 +632,7 @@
           if (radioCheckerboard) radioCheckerboard.disabled = true;
           if (radioDots) radioDots.disabled = true;
         }
+        if (origamiCheckbox) origamiCheckbox.disabled = nextBusy;
       }
 
       function populateSelect(sel, models) {
@@ -1099,34 +1117,12 @@
         return checked ? checked.value : 'lscm';
       }
 
-      function shouldShowPinPoints() {
-        const m = getCurrentMethod();
-        return m === 'lscm' || m === 'bd_lscm';
-      }
+      function shouldShowPinPoints() { return false; }
 
-      function getABFType() {
-        const r = document.querySelector('input[name="abf-type"]:checked');
-        return r ? r.value : 'abfpp';
-      }
 
-      /** 获取 ARAP 迭代次数 */
-      function getARAPIterations() {
-        const slider = document.getElementById('arap-iters-slider');
-        return slider ? parseInt(slider.value, 10) : 30;
-      }
 
-      /** 获取 Tutte 边界类型 */
-      function getTutteBoundary() {
-        const r = document.querySelector('input[name="tutte-boundary"]:checked');
-        return r ? r.value : 'circle';
-      }
-
-      function getTutteBoundaryLabel() {
-        const b = getTutteBoundary();
-        if (b === 'square') return '方';
-        if (b === 'free') return '自由';
-        return '圆';
-      }
+      function getTutteBoundary() { return 'square'; }
+      function getTutteBoundaryLabel() { return '矩形'; }
 
       /** 获取 Tutte Laplace 权重类型：uniform | cot */
       function getTutteWeight() {
@@ -1138,28 +1134,10 @@
         return getTutteWeight() === 'cot' ? 'cot-Laplace' : 'uniform';
       }
 
-      /** 算法切换 + Tutte边界切换 → 统一更新参数面板 */
       function onParamChange() {
-        const m = getCurrentMethod();
-        const hasParams = (m === 'tutte' || m === 'lscm' || m === 'bd_lscm' || m === 'arap' || m === 'abf');
-        document.getElementById('param-none').style.display = hasParams ? 'none' : '';
-        document.getElementById('param-tutte-boundary').style.display = (m === 'tutte') ? '' : 'none';
-        document.getElementById('param-tutte-weight').style.display = (m === 'tutte') ? '' : 'none';
-        document.getElementById('param-lscm-pin').style.display = (m === 'lscm' || m === 'bd_lscm') ? '' : 'none';
-        document.getElementById('param-arap-iters').style.display = (m === 'arap') ? '' : 'none';
-        document.getElementById('param-abf-type').style.display = (m === 'abf') ? '' : 'none';
-        if (m !== 'lscm' && m !== 'bd_lscm') currentCustomAnchors = null;
-        if (currentMeshData) {
-          updateModelPinPoints(currentCustomAnchors || chooseAnchorPair(currentMeshData.positions));
-        }
-        if (!shouldShowPinPoints() && currentUvPins) {
-          clearGroup(uvScene, currentUvPins);
-          currentUvPins = null;
-        }
         updateStartButtonState();
       }
-
-      window.onParamChange = onParamChange;  // 暴露到全局以便 HTML onchange 调用
+      window.onParamChange = onParamChange;
 
       /**
        * 更新按钮状态，显示 WASM 引擎加载状态
@@ -1181,126 +1159,13 @@
         }
       }
 
-      // 方法切换 + Tutte / ARAP 参数变化时更新 UI
-      document.querySelectorAll('input[name="method"]').forEach(function(radio) {
+      document.querySelectorAll('input[name="tutte-weight"]').forEach(function(radio) {
         radio.addEventListener('change', onParamChange);
       });
-      document.querySelectorAll('input[name="tutte-boundary"], input[name="tutte-weight"], input[name="abf-type"]').forEach(function(radio) {
-        radio.addEventListener('change', onParamChange);
-      });
-      const arapSlider = document.getElementById('arap-iters-slider');
-      if (arapSlider) {
-        arapSlider.addEventListener('input', function() {
-          document.getElementById('arap-iters-val').textContent = this.value;
-        });
-      }
-      document.getElementById('change-pin-btn').addEventListener('click', onChangePinClick);
-      onParamChange();  // 初始显示"无参数"
+      onParamChange();
 
       // ==================== WASM 驱动的 LSCM 求解 ====================
 
-      async function solveLSCMAsync(meshData, onProgress) {
-        const repair = repairMeshForSolver(meshData);
-        if (repair.edgeSplits > 0 || repair.vertexSplits > 0) {
-          meshData = repair.meshData;
-          currentMeshData = meshData;
-          currentCustomAnchors = null;
-          setStatus("已修复非流形结构，继续执行 LSCM...", "#ffd38a");
-        }
-        const vertices = meshData.positions;
-        const faces = meshData.faces;
-        if (vertices.length < 3 || faces.length < 1) {
-          throw new Error("模型顶点或三角形数量不足");
-        }
-
-        const anchors = getValidatedAnchors(vertices);
-        const usingCustomAnchors = !!(currentCustomAnchors &&
-          currentCustomAnchors.length >= 2 &&
-          currentCustomAnchors[0] === anchors[0] &&
-          currentCustomAnchors[1] === anchors[1]);
-
-        if (!wasmReady) {
-          const loaded = await initSimpleSolver();
-          if (!loaded) throw new Error("WASM 求解器初始化失败");
-        }
-
-        if (onProgress) onProgress(0, faces.length);
-
-        const flatPositions = new Float64Array(vertices.length * 3);
-        for (let i = 0; i < vertices.length; i++) {
-          flatPositions[i * 3] = vertices[i][0];
-          flatPositions[i * 3 + 1] = vertices[i][1];
-          flatPositions[i * 3 + 2] = vertices[i][2];
-        }
-
-        const flatFaces = new Int32Array(faces.length * 3);
-        for (let i = 0; i < faces.length; i++) {
-          flatFaces[i * 3] = faces[i][0];
-          flatFaces[i * 3 + 1] = faces[i][1];
-          flatFaces[i * 3 + 2] = faces[i][2];
-        }
-
-        if (onProgress) onProgress(faces.length * 0.3, faces.length);
-
-        let result;
-        try {
-          const posPtr = simpleInstance._malloc(flatPositions.length * 8);
-          for (let i = 0; i < flatPositions.length; i++) {
-            simpleInstance.setValue(posPtr + i * 8, flatPositions[i], 'double');
-          }
-
-          const facePtr = simpleInstance._malloc(flatFaces.length * 4);
-          for (let i = 0; i < flatFaces.length; i++) {
-            simpleInstance.setValue(facePtr + i * 4, flatFaces[i], 'i32');
-          }
-
-          try {
-            const ret = simpleInstance.ccall('solve_lscm', 'number', 
-              ['number', 'number', 'number', 'number', 'number', 'number'],
-              [posPtr, flatPositions.length, facePtr, flatFaces.length, anchors[0], anchors[1]]
-            );
-
-            if (ret !== 0) throw new Error('solve_lscm 返回: ' + _wasmErrorHint(ret));
-
-            const uvSize = simpleInstance.ccall('get_uv_result_size', 'number', [], []);
-            if (uvSize !== vertices.length * 2) {
-              throw new Error("UV 结果长度异常: " + uvSize + "，期望 " + (vertices.length * 2));
-            }
-            const uvPtr = simpleInstance.ccall('get_uv_result', 'number', [], []);
-
-            const uvs = [];
-            for (let i = 0; i < uvSize; i++) {
-              uvs.push(simpleInstance.getValue(uvPtr + i * 8, 'double'));
-            }
-
-            simpleInstance.ccall('dispose', 'void', [], []);
-
-            result = { uv: uvs, time_ms: simpleInstance.ccall('get_last_time_ms', 'number', [], []) };
-          } finally {
-            simpleInstance._free(posPtr);
-            simpleInstance._free(facePtr);
-          }
-        } catch (err) {
-          const msg = err && err.message ? err.message : String(err);
-          if (msg.indexOf("memory access out of bounds") >= 0 || msg.indexOf("non manifold") >= 0 || msg.indexOf("nonmanifold") >= 0) {
-            throw err;
-          }
-          throw new Error("WASM LSCM 求解失败: " + msg);
-        }
-
-        if (onProgress) onProgress(faces.length * 0.9, faces.length);
-
-        const uvArray = result.uv;
-        const n = vertices.length;
-        const uv = new Array(n);
-        for (let i = 0; i < n; i++) {
-          uv[i] = [uvArray[i * 2], uvArray[i * 2 + 1]];
-        }
-
-        if (onProgress) onProgress(faces.length, faces.length);
-
-        return { uv: uv, anchors: anchors, flippedFaceCount: countFlippedFaces(uv, faces), timeMs: result.time_ms || 0, method: 'lscm', pinInfo: anchors[0] + " & " + anchors[1] };
-      }
 
       // ==================== WASM 驱动的 Tutte 求解 ====================
 
@@ -1308,97 +1173,6 @@
         if (ret === -2) return 'UV 结果退化';
         if (ret === -3) return '需要带边界的网格';
         return '错误码 ' + ret;
-      }
-
-      // ==================== BD-LSCM (LSCM + 有界失真优化) ====================
-      let bdLscmInst = null, bdLscmReady = false, bdLscmFailed = false;
-      let bdLscmPromise = null;
-
-      async function initBDLscm() {
-        if (bdLscmReady) return true;
-        if (bdLscmFailed) return false;
-        try {
-          if (!bdLscmPromise) {
-            bdLscmPromise = WasmLoader.loadWasmModule('bd_lscm', 'BD_LSCMModule');
-          }
-          bdLscmInst = await bdLscmPromise;
-          bdLscmReady = true;
-          console.log('WASM BD-LSCM 加载成功');
-          return true;
-        } catch (err) {
-          bdLscmFailed = true; console.error('BD-LSCM WASM 加载失败:', err);
-          return false;
-        }
-      }
-
-      async function solveBDLscmAsync(meshData, onProgress) {
-        // Step 1: LSCM 初始参数化
-        const lscmResult = await solveLSCMAsync(meshData, onProgress);
-        if (onProgress) onProgress(0.5, 1);
-
-        // Step 2: 提取数据
-        const v = meshData.positions, f = meshData.faces;
-        const pos2D = [], facesFlat = [], uvFlat = [];
-        const nV = v.length;
-        for (let i = 0; i < nV; i++) {
-          pos2D.push(v[i][0], v[i][1]);
-          uvFlat.push(lscmResult.uv[i][0], lscmResult.uv[i][1]);
-        }
-        for (let i = 0; i < f.length; i++) {
-          facesFlat.push(f[i][0], f[i][1], f[i][2]);
-        }
-
-        // 锚点
-        const anchors = lscmResult.anchors;
-        const anchorVerts = [anchors[0], anchors[1]];
-        const anchorTargets = [
-          uvFlat[anchors[0]*2], uvFlat[anchors[0]*2+1],
-          uvFlat[anchors[1]*2], uvFlat[anchors[1]*2+1]
-        ];
-
-        // Step 3: BD 优化
-        const t0 = performance.now();
-        const initResult = await initBDLscm();
-        if (!initResult) throw new Error('BD-LSCM 引擎未就绪');
-
-        const result = bdLscmInst.solveBDLscmFull(
-          pos2D, facesFlat, uvFlat, anchorVerts, anchorTargets,
-          2.0,   // distortion_bound
-          8,     // outer_iterations
-          400,   // inner_iterations
-          1.0,   // lscm_weight
-          5000.0,// distortion_penalty
-          5000.0,// positivity_penalty
-          1e-2   // initial_step
-        );
-        const ms = performance.now() - t0;
-
-        if (onProgress) onProgress(1, 1);
-
-        // 提取 UV
-        const uv = new Array(nV);
-        for (let i = 0; i < nV; i++)
-          uv[i] = [result.uv_flat[i*2], result.uv_flat[i*2+1]];
-
-        return {
-          uv, anchors,
-          flippedFaceCount: countFlippedFaces(uv, f),
-          timeMs: ms,
-          method: 'bd_lscm',
-          pinInfo: anchors[0] + ' & ' + anchors[1],
-          details: 'Kmax=' + result.max_distortion.toFixed(3) +
-                   ' Jmin=' + result.min_jacobian.toFixed(4) +
-                   ' iter=' + result.iterations
-        };
-      }
-
-
-      async function solveLinABFAsync(meshData, onProgress) {
-        return solveSimpleWasmMethod(meshData, "solve_linabf", "linabf", onProgress);
-      }
-
-      async function solveABFPPAsync(meshData, onProgress) {
-        return solveSimpleWasmMethod(meshData, "solve_abfpp", "abfpp", onProgress);
       }
 
       async function _solveTutteWasmAsync(meshData, onProgress, wasmFuncName, methodTag) {
@@ -1446,23 +1220,14 @@
         } finally { simpleInstance._free(posPtr); simpleInstance._free(facePtr); }
       }
 
-      async function solveTutteCircleAsync(meshData, onProgress) {
-        return _solveTutteWasmAsync(meshData, onProgress, 'solve_tutte_circle', 'tutte_circle');
-      }
 
       async function solveTutteSquareAsync(meshData, onProgress) {
         return _solveTutteWasmAsync(meshData, onProgress, 'solve_tutte_square', 'tutte_square');
       }
 
-      async function solveTutteFreeAsync(meshData, onProgress) {
-        return _solveTutteWasmAsync(meshData, onProgress, 'solve_tutte_free', 'tutte_free');
-      }
 
       async function solveTutteAsync(meshData, onProgress) {
-        const boundaryType = getTutteBoundary();
-        if (boundaryType === 'square') return solveTutteSquareAsync(meshData, onProgress);
-        if (boundaryType === 'free') return solveTutteFreeAsync(meshData, onProgress);
-        return solveTutteCircleAsync(meshData, onProgress);
+        return solveTutteSquareAsync(meshData, onProgress);
       }
 
       function countFlippedFaces(uv, faces) {
@@ -1584,14 +1349,8 @@
         }
       }
 
-      async function solveSCPAsync(meshData, onProgress) {
-        return solveSimpleWasmMethod(meshData, "solve_scp", "scp", onProgress);
-      }
 
       /** ARAP — Tutte 圆边界初始化，C++ local-global 迭代 */
-      async function solveARAPAsync(meshData, maxIter, onProgress) {
-        return solveSimpleWasmMethod(meshData, "solve_arap", "arap", onProgress, maxIter || 30);
-      }
 
       function buildModelGroup(root, anchors, positions, showPins) {
         const group = new THREE.Group();
@@ -1720,21 +1479,160 @@
       }
 
 
-      function buildUvMesh(uv, faces, anchors, showPins) {
+      /**
+       * 根据 3D 网格的二面角，将每条边分类为峰折(mountain fold)、谷折(valley fold)或平坦(flat)。
+       *
+       * 峰折：表面局部凸起（类似山脊），二面角 > 0
+       * 谷折：表面局部凹陷（类似沟槽），二面角 < 0
+       *
+       * @param positions 3D顶点坐标数组 Array<[number,number,number]>
+       * @param faces 三角形面索引数组 Array<[number,number,number]>
+       * @param thresholdRad 阈值（弧度），默认约 1°
+       * @returns Map<string, string> 键为边去重键 "min_max"，值为 "peak" / "valley" / "flat"
+       */
+      function computeEdgeFoldTypes(positions, faces, thresholdRad) {
+        if (thresholdRad === undefined) thresholdRad = 0.01745; // ~1 degree
+
+        // 1. 预计算每个三角形的法向量
+        const faceNormals = new Array(faces.length);
+        for (let i = 0; i < faces.length; i++) {
+          const f = faces[i];
+          const a = positions[f[0]], b = positions[f[1]], c = positions[f[2]];
+          // 两条边向量
+          const abx = b[0] - a[0], aby = b[1] - a[1], abz = b[2] - a[2];
+          const acx = c[0] - a[0], acy = c[1] - a[1], acz = c[2] - a[2];
+          // 叉积 = 法向量（未归一化）
+          const nx = aby * acz - abz * acy;
+          const ny = abz * acx - abx * acz;
+          const nz = abx * acy - aby * acx;
+          const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+          if (len > 1e-12) {
+            faceNormals[i] = [nx / len, ny / len, nz / len];
+          } else {
+            faceNormals[i] = [0, 0, 1]; // 退化三角形，给个默认法向量
+          }
+        }
+
+        // 2. 构建边到面的映射
+        const edgeFaceMap = new Map(); // key: "min_max" -> [faceIndex1, faceIndex2]
+
+        for (let i = 0; i < faces.length; i++) {
+          const f = faces[i];
+          for (let k = 0; k < 3; k++) {
+            const va = f[k], vb = f[(k + 1) % 3];
+            const key = va < vb ? va + "_" + vb : vb + "_" + va;
+            if (!edgeFaceMap.has(key)) {
+              edgeFaceMap.set(key, []);
+            }
+            edgeFaceMap.get(key).push(i);
+          }
+        }
+
+        // 3. 对每条内部边计算有向二面角
+        const result = new Map();
+
+        for (const [key, faceList] of edgeFaceMap) {
+          if (faceList.length !== 2) {
+            // 边界边 或 非流形边 → 标记为 flat
+            result.set(key, "flat");
+            continue;
+          }
+
+          const fi = faceList[0], fj = faceList[1];
+          const n1 = faceNormals[fi];
+          const n2 = faceNormals[fj];
+
+          // 边方向向量（取 faceList[0] 中的边方向）
+          const parts = key.split("_");
+          const va = parseInt(parts[0]), vb = parseInt(parts[1]);
+          const pa = positions[va], pb = positions[vb];
+          const ex = pb[0] - pa[0], ey = pb[1] - pa[1], ez = pb[2] - pa[2];
+          const eLen = Math.sqrt(ex * ex + ey * ey + ez * ez);
+          if (eLen < 1e-12) {
+            result.set(key, "flat");
+            continue;
+          }
+          const edx = ex / eLen, edy = ey / eLen, edz = ez / eLen;
+
+          // 有向二面角: θ = atan2( dot(e, cross(n1, n2)), dot(n1, n2) )
+          const crx = n1[1] * n2[2] - n1[2] * n2[1];
+          const cry = n1[2] * n2[0] - n1[0] * n2[2];
+          const crz = n1[0] * n2[1] - n1[1] * n2[0];
+          const numerator = edx * crx + edy * cry + edz * crz;
+          const denominator = n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2];
+          const theta = Math.atan2(numerator, denominator);
+
+          if (theta > thresholdRad) {
+            result.set(key, "peak");
+          } else if (theta < -thresholdRad) {
+            result.set(key, "valley");
+          } else {
+            result.set(key, "flat");
+          }
+        }
+
+        return result;
+      }
+
+      function buildUvMesh(uv, faces, anchors, showPins, enableFoldTypes) {
+        // 计算二面角边分类（基于 3D 网格），仅在启用折纸展开时执行
+        let foldTypes = null;
+        if (enableFoldTypes) {
+          try {
+            if (currentMeshData && currentMeshData.positions && currentMeshData.faces) {
+              foldTypes = computeEdgeFoldTypes(currentMeshData.positions, currentMeshData.faces);
+            }
+          } catch (e) {
+            // 计算失败时回退到纯色渲染
+            foldTypes = null;
+          }
+        }
+        // 缓存分类结果供 PDF 导出使用
+        currentFoldTypes = foldTypes;
+
         const edgeSet = new Set();
-        const segments = [];
-        function toPlane(p) { return [(p[0] - 0.5) * 1.8, (p[1] - 0.5) * 1.8, 0]; }
+        const peakSegments = [];
+        const valleySegments = [];
+        const flatSegments = [];
+        let peakCount = 0, valleyCount = 0, flatCount = 0;
+
+        function toPlane(p) {
+          return [(p[0] - 0.5) * 1.8, (p[1] - 0.5) * 1.8, 0];
+        }
+
         function addEdge(a, b) {
-          const key = a < b ? a + '_' + b : b + '_' + a;
+          const key = a < b ? a + "_" + b : b + "_" + a;
           if (edgeSet.has(key)) return;
           edgeSet.add(key);
-          const pa = toPlane(uv[a]), pb = toPlane(uv[b]);
-          segments.push(pa[0], pa[1], pa[2], pb[0], pb[1], pb[2]);
+          const pa = toPlane(uv[a]);
+          const pb = toPlane(uv[b]);
+          const seg = [pa[0], pa[1], pa[2], pb[0], pb[1], pb[2]];
+
+          if (foldTypes) {
+            const ft = foldTypes.get(key) || "flat";
+            if (ft === "peak") {
+              peakSegments.push(seg[0], seg[1], seg[2], seg[3], seg[4], seg[5]);
+              peakCount++;
+            } else if (ft === "valley") {
+              valleySegments.push(seg[0], seg[1], seg[2], seg[3], seg[4], seg[5]);
+              valleyCount++;
+            } else {
+              flatSegments.push(seg[0], seg[1], seg[2], seg[3], seg[4], seg[5]);
+              flatCount++;
+            }
+          } else {
+            flatSegments.push(seg[0], seg[1], seg[2], seg[3], seg[4], seg[5]);
+            flatCount++;
+          }
         }
+
+        // 四边形网格用四边形边界，三角网格用三角边界
         if (isQuadMesh && currentRawFaces && currentRawFaces.length > 0) {
           for (let i = 0; i < currentRawFaces.length; i++) {
             const f = currentRawFaces[i];
-            for (let k = 0; k < f.length; k++) addEdge(f[k], f[(k + 1) % f.length]);
+            for (let k = 0; k < f.length; k++) {
+              addEdge(f[k], f[(k + 1) % f.length]);
+            }
           }
         } else {
           for (let i = 0; i < faces.length; i++) {
@@ -1743,9 +1641,65 @@
             addEdge(faces[i][2], faces[i][0]);
           }
         }
-        const lineGeom = new THREE.BufferGeometry();
-        lineGeom.setAttribute('position', new THREE.Float32BufferAttribute(segments, 3));
-        const lines = new THREE.LineSegments(lineGeom, new THREE.LineBasicMaterial({ color: 0x86b2ff, transparent: true, opacity: 0.95 }));
+
+        // 如果无分类或分类失败，回退到纯色
+        if (!foldTypes) {
+          const lineGeom = new THREE.BufferGeometry();
+          lineGeom.setAttribute("position", new THREE.Float32BufferAttribute(flatSegments, 3));
+          const lines = new THREE.LineSegments(
+            lineGeom,
+            new THREE.LineBasicMaterial({ color: 0x86b2ff, transparent: true, opacity: 0.95 })
+          );
+          let pins = null;
+          if (showPins) {
+            const pinPositions = [];
+            for (let i = 0; i < anchors.length; i++) {
+              const p = toPlane(uv[anchors[i]]);
+              pinPositions.push(p[0], p[1], 0.01);
+            }
+            pins = new THREE.Points(
+              new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pinPositions, 3)),
+              new THREE.PointsMaterial({ color: 0xffa94d, size: 8, sizeAttenuation: false })
+            );
+          }
+          return { lines: lines, pins: pins, peakCount: 0, valleyCount: 0, flatCount: 0 };
+        }
+
+        const group = new THREE.Group();
+
+        // 峰折（Mountain fold）：橙红色，最醒目
+        if (peakSegments.length > 0) {
+          const geom = new THREE.BufferGeometry();
+          geom.setAttribute("position", new THREE.Float32BufferAttribute(peakSegments, 3));
+          const peakLines = new THREE.LineSegments(
+            geom,
+            new THREE.LineBasicMaterial({ color: 0xff6b6b, transparent: true, opacity: 0.95 })
+          );
+          group.add(peakLines);
+        }
+
+        // 谷折（Valley fold）：青蓝色
+        if (valleySegments.length > 0) {
+          const geom = new THREE.BufferGeometry();
+          geom.setAttribute("position", new THREE.Float32BufferAttribute(valleySegments, 3));
+          const valleyLines = new THREE.LineSegments(
+            geom,
+            new THREE.LineBasicMaterial({ color: 0x4ecdc4, transparent: true, opacity: 0.95 })
+          );
+          group.add(valleyLines);
+        }
+
+        // 平坦/边界边：灰蓝色，略低透明度
+        if (flatSegments.length > 0) {
+          const geom = new THREE.BufferGeometry();
+          geom.setAttribute("position", new THREE.Float32BufferAttribute(flatSegments, 3));
+          const flatLines = new THREE.LineSegments(
+            geom,
+            new THREE.LineBasicMaterial({ color: 0x5a7fcc, transparent: true, opacity: 0.6 })
+          );
+          group.add(flatLines);
+        }
+
         let pins = null;
         if (showPins) {
           const pinPositions = [];
@@ -1754,11 +1708,196 @@
             pinPositions.push(p[0], p[1], 0.01);
           }
           pins = new THREE.Points(
-            new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pinPositions, 3)),
+            new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pinPositions, 3)),
             new THREE.PointsMaterial({ color: 0xffa94d, size: 8, sizeAttenuation: false })
           );
         }
-        return { lines: lines, pins: pins };
+
+        return { lines: group, pins: pins, peakCount: peakCount, valleyCount: valleyCount, flatCount: flatCount };
+      }
+
+      /**
+       * 更新 UV 面板中的峰折/谷折图例（仅在折纸展开模式下显示）
+       */
+      function updateFoldLegend(uvVisual) {
+        const legend = document.getElementById('fold-legend');
+        if (!legend) return;
+        const peakEl = document.getElementById('fold-legend-peak');
+        const valleyEl = document.getElementById('fold-legend-valley');
+        const flatEl = document.getElementById('fold-legend-flat');
+        if (!peakEl || !valleyEl || !flatEl) return;
+
+        const peakCount = uvVisual.peakCount || 0;
+        const valleyCount = uvVisual.valleyCount || 0;
+        const flatCount = uvVisual.flatCount || 0;
+        const total = peakCount + valleyCount + flatCount;
+
+        if (!origamiCheckbox.checked || total === 0) {
+          legend.style.display = 'none';
+          svgBtn.style.display = 'none';
+          if (foldSimBtn) { foldSimBtn.style.display = 'none'; foldSimBtn.disabled = true; }
+        } else {
+          legend.style.display = 'flex';
+          svgBtn.style.display = '';
+          svgBtn.disabled = false;
+          if (foldSimBtn) { foldSimBtn.style.display = ''; foldSimBtn.disabled = false; }
+          peakEl.textContent = ' ' + peakCount + '条';
+          valleyEl.textContent = ' ' + valleyCount + '条';
+          flatEl.textContent = ' ' + flatCount + '条';
+        }
+      }
+
+      function refreshUvFoldVisual() {
+        if (!currentUnwrapUv || !currentMeshData) return;
+        const anchors = getValidatedAnchors(currentMeshData.positions);
+        clearGroup(uvScene, currentUvLines);
+        clearGroup(uvScene, currentUvPins);
+        const uvVisual = buildUvMesh(
+          currentUnwrapUv,
+          currentMeshData.faces,
+          anchors,
+          shouldShowPinPoints(),
+          origamiCheckbox.checked
+        );
+        currentUvLines = uvVisual.lines;
+        currentUvPins = uvVisual.pins;
+        uvScene.add(currentUvLines);
+        if (currentUvPins) uvScene.add(currentUvPins);
+        updateFoldLegend(uvVisual);
+      }
+
+      function buildMeshEdgeSets(faces) {
+        const intEdgeSet = new Set();
+        const bndEdgeSet = new Set();
+        function addEdge(a, b) {
+          const key = Math.min(a, b) + '_' + Math.max(a, b);
+          if (intEdgeSet.has(key)) { intEdgeSet.delete(key); }
+          else if (bndEdgeSet.has(key)) { bndEdgeSet.delete(key); intEdgeSet.add(key); }
+          else { bndEdgeSet.add(key); }
+        }
+        if (isQuadMesh && currentRawFaces && currentRawFaces.length > 0) {
+          for (let i = 0; i < currentRawFaces.length; i++) {
+            const f = currentRawFaces[i];
+            for (let k = 0; k < f.length; k++) {
+              addEdge(f[k], f[(k + 1) % f.length]);
+            }
+          }
+        } else {
+          for (let fi = 0; fi < faces.length; fi++) {
+            const f = faces[fi];
+            for (const [a, b] of [[f[0], f[1]], [f[1], f[2]], [f[2], f[0]]]) {
+              addEdge(a, b);
+            }
+          }
+        }
+        return { intEdgeSet: intEdgeSet, bndEdgeSet: bndEdgeSet };
+      }
+
+      /** Build Origami Simulator-compatible SVG string, or null if unavailable. */
+      function buildFoldSVG() {
+        if (!currentUnwrapUv || !currentMeshData) return null;
+        if (!origamiCheckbox.checked || !currentFoldTypes || currentFoldTypes.size === 0) return null;
+
+        const uv = currentUnwrapUv;
+        const faces = currentMeshData.faces;
+        const pad = 20;
+        const svgW = 800, svgH = 800;
+
+        let minU = Infinity, minV = Infinity, maxU = -Infinity, maxV = -Infinity;
+        for (let i = 0; i < uv.length; i++) {
+          if (uv[i][0] < minU) minU = uv[i][0];
+          if (uv[i][0] > maxU) maxU = uv[i][0];
+          if (uv[i][1] < minV) minV = uv[i][1];
+          if (uv[i][1] > maxV) maxV = uv[i][1];
+        }
+        const rangeU = maxU - minU || 1, rangeV = maxV - minV || 1;
+        const scale = Math.min((svgW - 2 * pad) / rangeU, (svgH - 2 * pad) / rangeV);
+        const ox = pad + ((svgW - 2 * pad) - rangeU * scale) / 2;
+        const oy = pad + ((svgH - 2 * pad) - rangeV * scale) / 2;
+        const sx = function(u) { return (ox + (u - minU) * scale).toFixed(1); };
+        const sy = function(v) { return (svgH - oy - (v - minV) * scale).toFixed(1); };
+
+        const edgeSets = buildMeshEdgeSets(faces);
+        const intEdgeSet = edgeSets.intEdgeSet;
+        const bndEdgeSet = edgeSets.bndEdgeSet;
+
+        const mountainD = [];
+        const valleyD = [];
+        const boundaryD = [];
+
+        for (const key of intEdgeSet) {
+          const parts = key.split('_').map(Number);
+          const a = parts[0], b = parts[1];
+          const d = 'M' + sx(uv[a][0]) + ',' + sy(uv[a][1]) + 'L' + sx(uv[b][0]) + ',' + sy(uv[b][1]);
+          const ft = currentFoldTypes.get(key);
+          if (ft === 'peak') {
+            mountainD.push(d);
+          } else if (ft === 'valley') {
+            valleyD.push(d);
+          } else {
+            boundaryD.push(d);
+          }
+        }
+        for (const key of bndEdgeSet) {
+          const parts = key.split('_').map(Number);
+          const a = parts[0], b = parts[1];
+          boundaryD.push('M' + sx(uv[a][0]) + ',' + sy(uv[a][1]) + 'L' + sx(uv[b][0]) + ',' + sy(uv[b][1]));
+        }
+
+        const totalW = rangeU * scale + 2 * pad, totalH = rangeV * scale + 2 * pad;
+        const pathAttrs = 'stroke-width="1" fill="none" stroke-linecap="round"';
+        const lines = [
+          '<?xml version="1.0" encoding="UTF-8"?>',
+          '<svg xmlns="http://www.w3.org/2000/svg" width="' + totalW + '" height="' + totalH + '" viewBox="0 0 ' + totalW + ' ' + totalH + '">',
+          '<rect width="' + totalW + '" height="' + totalH + '" fill="#ffffff"/>',
+          '<g>'
+        ];
+        if (boundaryD.length) {
+          lines.push('  <path stroke="#000000" ' + pathAttrs + ' d="' + boundaryD.join(' ') + '"/>');
+        }
+        if (valleyD.length) {
+          lines.push('  <path stroke="#0000ff" ' + pathAttrs + ' d="' + valleyD.join(' ') + '"/>');
+        }
+        if (mountainD.length) {
+          lines.push('  <path stroke="#ff0000" ' + pathAttrs + ' d="' + mountainD.join(' ') + '"/>');
+        }
+        lines.push('</g>', '</svg>');
+        return lines.join('\n');
+      }
+
+      function pushFoldSvgToSimulator(svgText) {
+        sessionStorage.setItem(UV_FOLD_SVG_KEY, svgText);
+        if (foldSimIframeReady && foldSimIframe && foldSimIframe.contentWindow) {
+          foldSimIframe.contentWindow.postMessage({ type: 'uv-fold-svg', svg: svgText }, window.location.origin);
+        }
+      }
+
+      function openFoldSimulator() {
+        const svgText = buildFoldSVG();
+        if (!svgText) {
+          setStatus("请先勾选「折纸展开」并展开以获取折痕数据", "#ffd38a");
+          return;
+        }
+        pushFoldSvgToSimulator(svgText);
+        if (foldSimLoading) foldSimLoading.classList.add('visible');
+        if (foldSimOverlay) {
+          foldSimOverlay.classList.add('open');
+          foldSimOverlay.setAttribute('aria-hidden', 'false');
+        }
+        if (!foldSimIframeReady) {
+          foldSimIframe.src = 'origami-simulator/index.html?autoload=uv';
+        } else if (foldSimLoading) {
+          foldSimLoading.classList.remove('visible');
+        }
+        setStatus("已加载折痕图到 Origami Simulator", "#89f0b6");
+      }
+
+      function closeFoldSimulator() {
+        if (foldSimOverlay) {
+          foldSimOverlay.classList.remove('open');
+          foldSimOverlay.setAttribute('aria-hidden', 'true');
+        }
+        if (foldSimLoading) foldSimLoading.classList.remove('visible');
       }
 
 
@@ -1981,9 +2120,17 @@
           currentUvLines = null;
           currentUvPins = null;
           currentUnwrapUv = null;
+          currentFoldTypes = null;
+          if (pdfBtn) pdfBtn.disabled = true;
           textureEnabled = false;
           if (radioCheckerboard) { radioCheckerboard.checked = false; radioCheckerboard.disabled = true; }
           if (radioDots) { radioDots.checked = false; radioDots.disabled = true; }
+          if (origamiCheckbox) origamiCheckbox.checked = false;
+          const foldLegendEl = document.getElementById('fold-legend');
+          if (foldLegendEl) foldLegendEl.style.display = 'none';
+          if (svgBtn) { svgBtn.style.display = 'none'; svgBtn.disabled = true; }
+          if (foldSimBtn) { foldSimBtn.style.display = 'none'; foldSimBtn.disabled = true; }
+          closeFoldSimulator();
 
           setStatus("正在提取三角网格...");
           let meshData = collectMeshData(root);
@@ -2025,6 +2172,7 @@
             faceCount + " " + faceType + repairNote + "，点击「开始展开」执行 UV",
             "#89f0b6"
           );
+          if (origamiCheckbox) origamiCheckbox.disabled = false;
         } catch (error) {
           console.error(error);
           setStatus("模型加载失败: " + error.message, "#ff9d9d");
@@ -2044,57 +2192,18 @@
         // UV 重算/更新前，先清理“其他计算”的覆盖层，避免与新模型/新网格混淆
         clearOtherOverlays();
 
-        const method = getCurrentMethod();
-
-        let methodLabel;
-        if (method === 'lscm') methodLabel = 'LSCM';
-        else if (method === 'bd_lscm') methodLabel = 'BD-LSCM (有界失真)';
-        else if (method === 'tutte') {
-          methodLabel = 'Tutte (' + getTutteWeightLabel() + ', ' + getTutteBoundaryLabel() + ')';
-        }
-        else if (method === 'scp') methodLabel = 'SCP (谱共形)';
-        else if (method === 'arap') methodLabel = 'ARAP (' + getARAPIterations() + ' iters, Tutte圆边界初始化)';
-        else if (method === 'abf') methodLabel = 'ABF (' + (getABFType() === 'abfpp' ? 'ABF++' : 'linABF') + ')';
-        else methodLabel = 'LSCM';
+        const methodLabel = 'Tutte (' + getTutteWeightLabel() + ', ' + getTutteBoundaryLabel() + ')';
 
         setBusy(true);
         setStatus("正在执行 " + methodLabel + " 求解...");
-        // hideTiming();
 
         try {
-          // const startTime = performance.now();
-          let unwrapResult;
-          if (method === 'lscm') {
-            unwrapResult = await solveLSCMAsync(currentMeshData, function(/* progress, total */) {
-              // updateTimingProgress(progress, total);
-            });
-          } else if (method === 'bd_lscm') {
-            unwrapResult = await solveBDLscmAsync(currentMeshData, function(/* progress, total */) {});
-          } else if (method === 'tutte') {
-            unwrapResult = await solveTutteAsync(currentMeshData, function() {});
-          } else if (method === 'scp') {
-            unwrapResult = await solveSCPAsync(currentMeshData, function(/* p, t */) {
-              // updateTimingProgress(p, t);
-            });
-          } else if (method === 'arap') {
-            unwrapResult = await solveARAPAsync(currentMeshData, getARAPIterations(), function(/* p, t */) {
-              // updateTimingProgress(p, t);
-            });
-            unwrapResult.maxIter = getARAPIterations();
-          } else if (method === 'abf') {
-            const abfType = getABFType();
-            unwrapResult = await (abfType === 'linabf'
-              ? solveLinABFAsync(currentMeshData, function() {})
-              : solveABFPPAsync(currentMeshData, function() {}));
-          } else {
-            unwrapResult = await solveLSCMAsync(currentMeshData, function(/* progress, total */) {
-              // updateTimingProgress(progress, total);
-            });
-          }
+          let unwrapResult = await solveTutteAsync(currentMeshData, function() {});
 
           // const elapsedMs = unwrapResult.timeMs > 0 ? unwrapResult.timeMs : (performance.now() - startTime);
           currentUnwrapUv = unwrapResult.uv;
           _normalizeUvBox(currentUnwrapUv);
+          if (pdfBtn) pdfBtn.disabled = false;
 
           if (radioCheckerboard && radioDots) {
             radioCheckerboard.disabled = false;
@@ -2104,18 +2213,18 @@
             setTextureDistortionEnabled(true, "checkerboard");
           }
 
-          const methodNames = { lscm:'LSCM', bd_lscm:'BD-LSCM', tutte:'Tutte', scp:'SCP', arap:'ARAP', linabf:'ABF', abfpp:'ABF', abf:'ABF' };
           const uvPanelLabelEl = document.getElementById('uv-panel-label');
-          uvPanelLabelEl.textContent = (methodNames[unwrapResult.method] || unwrapResult.method) + ' UV 网格';
+          uvPanelLabelEl.textContent = 'Tutte UV 网格';
           uvPanelLabelEl.style.color = '';
 
           clearGroup(uvScene, currentUvLines);
           clearGroup(uvScene, currentUvPins);
-          const uvVisual = buildUvMesh(unwrapResult.uv, currentMeshData.faces, unwrapResult.anchors, shouldShowPinPoints());
+          const uvVisual = buildUvMesh(unwrapResult.uv, currentMeshData.faces, unwrapResult.anchors, shouldShowPinPoints(), origamiCheckbox && origamiCheckbox.checked);
           currentUvLines = uvVisual.lines;
           currentUvPins = uvVisual.pins;
           uvScene.add(currentUvLines);
           if (currentUvPins) uvScene.add(currentUvPins);
+          updateFoldLegend(uvVisual);
 
           /*
           let details =
@@ -2165,6 +2274,211 @@
       modelSelect.addEventListener("change", loadModelPreview);
       reloadBtn.addEventListener("click", updateModel);
       clearBtn.addEventListener("click", clearAndReload);
+      if (pdfBtn) pdfBtn.addEventListener("click", saveUVtoPDF);
+      /** Save current UV mesh to A4 PDF */
+      function saveUVtoPDF() {
+        if (!currentUnwrapUv || !currentMeshData) {
+          setStatus("No UV data to save", "#ffd38a");
+          return;
+        }
+        if (typeof window.jspdf === 'undefined' && typeof jspdf === 'undefined') {
+          setStatus("PDF library loading...", "#ffd38a");
+          return;
+        }
+        const { jsPDF } = window.jspdf || { jsPDF: jspdf };
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const pageW = 297, pageH = 210;
+        const margin = 10;
+        const drawW = pageW - 2 * margin;
+        const drawH = pageH - 2 * margin;
+
+        const uv = currentUnwrapUv;
+        const faces = currentMeshData.faces;
+
+        // Compute UV bounding box
+        let minU = Infinity, minV = Infinity, maxU = -Infinity, maxV = -Infinity;
+        for (let i = 0; i < uv.length; i++) {
+          if (uv[i][0] < minU) minU = uv[i][0];
+          if (uv[i][0] > maxU) maxU = uv[i][0];
+          if (uv[i][1] < minV) minV = uv[i][1];
+          if (uv[i][1] > maxV) maxV = uv[i][1];
+        }
+        const rangeU = maxU - minU || 1, rangeV = maxV - minV || 1;
+
+        // Uniform scale: preserve aspect ratio, fit within draw area
+        const scale = Math.min(drawW / rangeU, drawH / rangeV);
+        const uvW = rangeU * scale, uvH = rangeV * scale;
+
+        // Hi-res off-screen canvas
+        const res = 4;
+        const canvasW = Math.round(drawW * res), canvasH = Math.round(drawH * res);
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = canvasW;
+        offCanvas.height = canvasH;
+        const ctx = offCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvasW, canvasH);
+
+        // Map UV [0,1] coordinates to canvas, centered
+        const offX = (canvasW - uvW * res) / 2;
+        const offY = (canvasH - uvH * res) / 2;
+        function ux(u) { return offX + (u - minU) * scale * res; }
+        function uy(v) { return canvasH - offY - (v - minV) * scale * res; }
+
+        // 构建边去重集合（用于折痕分类和边界判定）
+        const intEdgeSet = new Set();  // 内部边
+        const bndEdgeSet = new Set();  // 边界边
+        for (let fi = 0; fi < faces.length; fi++) {
+          const f = faces[fi];
+          for (const [a, b] of [[f[0], f[1]], [f[1], f[2]], [f[2], f[0]]]) {
+            const key = Math.min(a, b) + '_' + Math.max(a, b);
+            if (intEdgeSet.has(key)) { intEdgeSet.delete(key); bndEdgeSet.delete(key); /* should not happen */ }
+            else if (bndEdgeSet.has(key)) { /* boundary edge appears 2+ times -> internal */ bndEdgeSet.delete(key); intEdgeSet.add(key); }
+            else { bndEdgeSet.add(key); }
+          }
+        }
+
+        // Fill triangles
+        ctx.fillStyle = '#f0f4ff';
+        for (let fi = 0; fi < faces.length; fi++) {
+          const f = faces[fi], p0 = uv[f[0]], p1 = uv[f[1]], p2 = uv[f[2]];
+          ctx.beginPath();
+          ctx.moveTo(ux(p0[0]), uy(p0[1]));
+          ctx.lineTo(ux(p1[0]), uy(p1[1]));
+          ctx.lineTo(ux(p2[0]), uy(p2[1]));
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        const useFoldColor = origamiCheckbox.checked && currentFoldTypes && currentFoldTypes.size > 0;
+
+        if (useFoldColor) {
+          // ---- 折纸展开模式：峰折/谷折/平坦 分色渲染 ----
+          // 峰折（Mountain fold）橙红色
+          ctx.lineWidth = 1.8;
+          ctx.strokeStyle = '#ff6b6b';
+          ctx.beginPath();
+          for (const key of intEdgeSet) {
+            if (currentFoldTypes.get(key) === 'peak') {
+              const [a, b] = key.split('_').map(Number);
+              ctx.moveTo(ux(uv[a][0]), uy(uv[a][1]));
+              ctx.lineTo(ux(uv[b][0]), uy(uv[b][1]));
+            }
+          }
+          ctx.stroke();
+
+          // 谷折（Valley fold）青蓝色
+          ctx.strokeStyle = '#4ecdc4';
+          ctx.beginPath();
+          for (const key of intEdgeSet) {
+            if (currentFoldTypes.get(key) === 'valley') {
+              const [a, b] = key.split('_').map(Number);
+              ctx.moveTo(ux(uv[a][0]), uy(uv[a][1]));
+              ctx.lineTo(ux(uv[b][0]), uy(uv[b][1]));
+            }
+          }
+          ctx.stroke();
+
+          // 平坦边（flat）灰蓝色
+          ctx.lineWidth = 0.8;
+          ctx.strokeStyle = '#5a7fcc';
+          ctx.beginPath();
+          for (const key of intEdgeSet) {
+            const ft = currentFoldTypes.get(key);
+            if (!ft || ft === 'flat') {
+              const [a, b] = key.split('_').map(Number);
+              ctx.moveTo(ux(uv[a][0]), uy(uv[a][1]));
+              ctx.lineTo(ux(uv[b][0]), uy(uv[b][1]));
+            }
+          }
+          ctx.stroke();
+
+          // 边界边加粗
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = '#cc4400';
+          ctx.beginPath();
+          for (const key of bndEdgeSet) {
+            const [a, b] = key.split('_').map(Number);
+            ctx.moveTo(ux(uv[a][0]), uy(uv[a][1]));
+            ctx.lineTo(ux(uv[b][0]), uy(uv[b][1]));
+          }
+          ctx.stroke();
+        } else {
+          // ---- 普通模式：统一颜色边 ----
+          ctx.lineWidth = 0.8;
+          ctx.strokeStyle = '#334466';
+          ctx.beginPath();
+          for (const key of intEdgeSet) {
+            const [a, b] = key.split('_').map(Number);
+            ctx.moveTo(ux(uv[a][0]), uy(uv[a][1]));
+            ctx.lineTo(ux(uv[b][0]), uy(uv[b][1]));
+          }
+          ctx.stroke();
+
+          // 边界边加粗
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = '#cc4400';
+          ctx.beginPath();
+          for (const key of bndEdgeSet) {
+            const [a, b] = key.split('_').map(Number);
+            ctx.moveTo(ux(uv[a][0]), uy(uv[a][1]));
+            ctx.lineTo(ux(uv[b][0]), uy(uv[b][1]));
+          }
+          ctx.stroke();
+        }
+
+        // Add to PDF: center the image on the landscape page
+        const imgData = offCanvas.toDataURL('image/png');
+        doc.addImage(imgData, 'PNG', margin, margin, drawW, drawH);
+
+        // Footer
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(new Date().toISOString().slice(0, 10), margin, pageH - 6);
+
+        doc.save('uv_unwrap.pdf');
+        setStatus("PDF saved", "#89f0b6");
+      }
+
+      /** Export UV fold pattern as SVG (Origami Simulator standard format) */
+      function saveFoldSVG() {
+        const svgText = buildFoldSVG();
+        if (!svgText) {
+          setStatus("请先勾选「折纸展开」并展开以获取折痕数据", "#ffd38a");
+          return;
+        }
+        const blob = new Blob([svgText], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'uv_fold_pattern.svg';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setStatus("折痕SVG已导出 (Origami Simulator 格式)", "#89f0b6");
+      }
+
+      svgBtn.addEventListener("click", saveFoldSVG);
+      if (foldSimBtn) foldSimBtn.addEventListener("click", openFoldSimulator);
+      if (foldSimClose) foldSimClose.addEventListener("click", closeFoldSimulator);
+      if (origamiCheckbox) origamiCheckbox.addEventListener("change", refreshUvFoldVisual);
+      window.addEventListener("message", function (e) {
+        if (e.origin !== window.location.origin || !e.data) return;
+        if (e.data.type === "uv-fold-bridge-ready") {
+          foldSimIframeReady = true;
+          if (foldSimLoading) foldSimLoading.classList.remove('visible');
+        }
+      });
+      if (foldSimIframe) {
+        foldSimIframe.addEventListener("load", function () {
+          if (foldSimIframe.src && foldSimIframe.src !== "about:blank") {
+            foldSimIframeReady = true;
+            if (foldSimLoading) foldSimLoading.classList.remove('visible');
+          }
+        });
+      }
+
 
       // 纹理显示单选框切换
       if (radioCheckerboard) {
@@ -2186,17 +2500,11 @@
       
       // 页面启动时预加载 uv_unwrap_simple WASM
       updateStartButtonState();
-      Promise.all([initSimpleSolver(), initBDLscm()]).then(function () {
+      initSimpleSolver().then(function (ok) {
         updateStartButtonState();
+        if (!ok) setStatus("WASM 引擎加载失败", "#ff9d9d");
         loadModelPreview();
       });
-        if (!simpleOk) {
-          setStatus("WASM 引擎加载失败", "#ff9d9d");
-        }
-      });
-      
-      // 启动加载第一个模型
-      (function(){ loadModelPreview(); })();
       animate();
     })();
   </script>

@@ -1,6 +1,9 @@
+---
+---
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+{% include algo_demo_models_dir.html id="vector-field" %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>向量场 — Trivial Connection / N-PolyVector</title>
@@ -1786,7 +1789,8 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
     scene.add(streamlineGroup);
   }
 
-  // Model file mapping for OBJ models
+  // Model file mapping for OBJ models (dir from _data/algo_demos.yml)
+  const MODELS_DIR = (window.ALGO_MODELS_DIR || "assets/Models2").replace(/^\/+|\/+$/g, "");
   const MODEL_FILES = {
     cow: 'cow_F5804.obj',
     'double-torus': 'double-torus_F6144.obj',
@@ -1813,7 +1817,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
     if (MODEL_FILES[type]) {
       // Load external OBJ model
-      loadOBJModel('/assets/Models2/' + MODEL_FILES[type]);
+      loadOBJModel('/' + MODELS_DIR + '/' + MODEL_FILES[type]);
       return;
     }
 

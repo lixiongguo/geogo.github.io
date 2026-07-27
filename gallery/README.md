@@ -31,9 +31,6 @@ _data/
 ```
 WebGL Water.html   →  slug: webgl-water
 WebGL Water.md     →  pipeline slugify("WebGL Water") = webgl-water  ✓
-
-cpu-path-tracing.html  →  slug: cpu-path-tracing
-cpu-path-tracing.md    →  pipeline slugify("cpu-path-tracing") = cpu-path-tracing  ✓
 ```
 
 > slug 规则：取 `.md` 文件名 → 小写 → 非字母数字替换为 `-` → 去首尾 `-`
@@ -222,7 +219,6 @@ python3 Tools/gallery_pipeline.py
 | slug | 标题 | 文件 |
 |:---|:---|:---|
 | `webgl-water` | WebGL 水面焦散 | `WebGL Water.html` / `WebGL Water.md` |
-| `cpu-path-tracing` | CPU 路径追踪 | `cpu-path-tracing.html` / `cpu-path-tracing.md` |
 | `wfc` | WFC 纹理合成 | `wfc.html` / `wfc.md` |
 | `ik-spider` | IK 蜘蛛 | `ik-spider.html` / `ik-spider.md` |
 

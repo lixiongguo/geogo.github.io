@@ -1,0 +1,10 @@
+{%- comment -%}
+  Inject models_dir from _data/algo_demos.yml as window.ALGO_MODELS_DIR.
+  Usage: {% include algo_demo_models_dir.html id="uv-unwrap-simple" %}
+{%- endcomment -%}
+{%- assign _algo_demo = site.data.algo_demos | where: "id", include.id | first -%}
+{%- assign _models_dir = _algo_demo.models_dir | default: "assets/Models" -%}
+<script>
+  window.ALGO_DEMO_ID = {{ include.id | jsonify }};
+  window.ALGO_MODELS_DIR = {{ _models_dir | jsonify }};
+</script>

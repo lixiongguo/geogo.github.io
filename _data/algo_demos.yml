@@ -2,31 +2,44 @@
 # ready: true  — 侧边栏正常显示，公网可访问
 # ready: false — 侧边栏置灰；本地 jekyll serve 仍可打开调试；公网构建后该页面不可访问（404）
 #
+# models_dir — 该 Demo 索引 OBJ 模型的目录（相对站点根，无首尾斜杠）
+#
 # 公网部署由 CI 设置 JEKYLL_ENV=production 触发 _plugins/algo_demo_gate.rb
 
 - id: uv-unwrap-simple
   title: 基础曲面参数化
   url: /uv-unwrap-simple.html
+  models_dir: assets/Models
+  ready: true
+
+- id: uv-unwrap-origami
+  title: 参数化与折纸展开
+  url: /uv-unwrap-origami.html
+  models_dir: assets/Models
   ready: true
 
 - id: uv-unwrap-cone-global
   title: 锥奇异点参数化
   url: /uv-unwrap-cone_global.html
+  models_dir: assets/Models2
   ready: true
 
 - id: vector-field
   title: 向量场设计
   url: /vector-field.html
+  models_dir: assets/Models2
   ready: true
 
 - id: uv-unwrap-field-global
   title: 向量场引导全局参数化
   url: /uv_unwrap_field_global.html
+  models_dir: assets/Models2
   ready: true
 
 - id: uv-unwrap-oneform-global
   title: 1-form全局参数化
   url: /uv_unwrap_oneform_global.html
+  models_dir: assets/Models2
   ready: true
 
 - id: deformation-lab
@@ -37,11 +50,7 @@
 - id: mesh-deformation
   title: 网格变形
   url: /mesh-deformation.html
-  ready: false
-
-- id: semi-discrete-ot
-  title: 最优传输测试
-  url: /semi-discrete-ot.html
+  models_dir: assets/2dmodels
   ready: false
 
 - id: bdhm-deformation
@@ -52,6 +61,11 @@
 - id: ruppert
   title: 网格三角化
   url: /ruppert.html
+  ready: false
+
+- id: semi-discrete-ot
+  title: 最优传输测试
+  url: /semi-discrete-ot.html
   ready: false
 
 - id: non-euclidean-roam
@@ -67,4 +81,13 @@
 - id: voronoi_delaunay
   title: Voronoi / Delaunay
   url: /voronoi_delaunay.html
+- id: cpu-path-tracing
+  title: CPU路径追踪
+  url: /cpu-path-tracing.html
+  ready: true
+
+- id: path-tracing-editor
+  title: 路径追踪场景编辑
+  url: /path-tracing-editor.html
+  models_dir: assets/Models2
   ready: true

@@ -5,13 +5,6 @@
   detail_url: "/gallery/WebGL Water.html"
   ready: true
 
-- slug: cpu-path-tracing
-  title: CPU 路径追踪
-  description: 纯 CPU 实现的路径追踪渲染器，与 cpp/CPUPathTracing 同构演示。
-  thumbnail: /assets/gallery/cpu_pathtracing.png
-  detail_url: "/gallery/cpu-path-tracing.html"
-  ready: true
-
 - slug: wfc
   title: WFC 纹理合成
   description: Wave Function Collapse 算法：从样本纹理中提取 tile 邻接约束，回溯合成大尺寸纹理。

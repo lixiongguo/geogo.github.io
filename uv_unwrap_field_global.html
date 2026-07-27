@@ -1,6 +1,9 @@
+---
+---
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+{% include algo_demo_models_dir.html id="uv-unwrap-field-global" %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UV Unwrap — Field-based Global Parameterization</title>
@@ -114,6 +117,7 @@
 (function(){
 
   // ============ Models ============
+  const MODELS_DIR = (window.ALGO_MODELS_DIR || "assets/Models2").replace(/^\/+|\/+$/g, "");
   const MODELS = {
     doubletorus:{ label: "Double Torus (6.1K)",file: "double-torus_F6144.obj" },
     holes3:     { label: "3 Holes (7.2K)",     file: "3holes_F7200.obj" },
@@ -559,7 +563,7 @@
     const key=modelSel.value,m=MODELS[key];
     setStatus("加载 "+m.label+" ...");
     try{
-      const urls=["assets/Models2/"+m.file,"./assets/Models2/"+m.file,"../assets/Models2/"+m.file];
+      const urls=[MODELS_DIR+"/"+m.file,"./"+MODELS_DIR+"/"+m.file,"../"+MODELS_DIR+"/"+m.file];
       let root=null,rawText=null;
       for(const u of urls){try{root=await loadOBJ(u);rawText=await fetchObjText(u);break}catch(e){}}
       if(!root)throw new Error("模型加载失败");
