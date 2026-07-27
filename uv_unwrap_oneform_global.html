@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UV Unwrap — Global Parameterization</title>
+  <title>UV Unwrap — Global Parameterization (Topology / Conformal)</title>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@v0.117.0/examples/js/loaders/OBJLoader.js"></script>
@@ -71,12 +71,14 @@
       <fieldset style="border:1px solid rgba(106,132,255,0.22);border-radius:10px;padding:8px 12px;margin:0;">
         <legend style="color:#8a9dd4;font-size:11px;padding:0 6px;">展开算法</legend>
         <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="miq"> MIQ (向量场引导)</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="pgp"> PGP (周期全局参数化)</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="abel_jacobi"> Abel–Jacobi (闭合 g≥1)</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="abel_jacobi" checked> Abel–Jacobi (闭合 g≥1)</label>
           <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="hof"> 全纯1-形式 (HOF)</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="bd_lscm"> BD-LSCM (有界失真)</label>
-          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap"><input type="radio" name="method" value="quadcover" checked> QuadCover</label>
+          <label style="color:#d8def7;font-size:13px;cursor:pointer;white-space:nowrap" title="FastHGP-style symmetric Dirichlet refinement"><input type="radio" name="method" value="fasthgp"> FastHGP</label>
+        </div>
+        <div id="param-fasthgp" style="display:none;margin-top:8px;font-size:12px;color:#c6d1f4;">
+          迭代次数:
+          <input type="range" id="fasthgp-iters-slider" min="1" max="100" value="30" style="width:80px;vertical-align:middle;margin:0 4px;">
+          <span id="fasthgp-iters-val" style="min-width:24px;display:inline-block;">30</span>
         </div>
       </fieldset>
 
@@ -170,7 +172,7 @@
   let currentMeshData=null,currentUnwrapUv=null;
   let textureEnabled=false,currentTexturedMesh=null,checkerTexture=null,dotTexture=null,currentTextureMode="checkerboard";
   let distortionEnabled=false,currentDistortionMesh=null,taInst=null,taReady=false,taFailed=false;
-  let bdInst=null,bdReady=false,bdFailed=false,bdPromise=null;
+  let simpleInst=null,simpleReady=false,simpleFailed=false,simplePromise=null;
   let currentRawObjText=null;
   let homologyEdges=[];
   let tcDisplayGroup=null;
@@ -820,45 +822,40 @@
     }finally{ajInst._free(pp);ajInst._free(fpt)}
   }
 
-  // ============ BD-LSCM WASM（LSCM + 有界失真优化）============
-  async function initBDLscmSolver(){
-    if(bdReady)return true;if(bdFailed)return false;
+  // ============ FastHGP WASM（uv_unwrap_simple）============
+  async function initSimpleSolver(){
+    if(simpleReady)return true;if(simpleFailed)return false;
     try{
-      if(!bdPromise)bdPromise=WasmLoader.loadWasmModule('bd_lscm','BD_LSCMModule');
-      bdInst=await bdPromise;
-      bdReady=true;return true;
-    }catch(e){bdFailed=true;console.error(e);return false;}
+      if(typeof UvUnwrapSimpleSolver!=='function')throw new Error('UvUnwrapSimpleSolver 未加载');
+      if(!simplePromise)simplePromise=UvUnwrapSimpleSolver({locateFile:(p)=>WasmLoader.BASE+p});
+      simpleInst=await simplePromise;
+      simpleReady=true;return true;
+    }catch(e){simpleFailed=true;console.error(e);return false;}
   }
 
-  async function solveBDLscm(meshData,rawObjText){
-    const ok=await initBDLscmSolver();if(!ok)throw new Error("BD-LSCM WASM 初始化失败");
-    if(!rawObjText)throw new Error("缺少 OBJ 原始文本");
-    // 写 OBJ 到虚拟文件系统
-    bdInst.FS.writeFile('/mesh.obj',rawObjText);
-    // 加载网格
-    const mesh=new bdInst.Mesh();
-    if(!mesh.read('/mesh.obj'))throw new Error("Mesh 加载失败");
-    // LSCM 初始参数化
-    const lscm=new bdInst.Lscm(mesh);
-    lscm.parameterize();
-    const qcErr=lscm.computeQcError();
-    // 选两个最远顶点作为锚点
-    const anchors=chooseAnchorPair(meshData.positions);
-    const anchorVerts=[anchors[0],anchors[1]];
-    const initUv=mesh.getVertexUvs();
-    const anchorTargets=[initUv[anchors[0]*2],initUv[anchors[0]*2+1],initUv[anchors[1]*2],initUv[anchors[1]*2+1]];
-    // 运行 BD-LSCM 优化
-    const t0=performance.now();
-    const result=bdInst.runBDLscmOnMesh(mesh,anchorVerts,anchorTargets,2.0);
-    const ms=performance.now()-t0;
-    // 读取 UV
-    const uvFlat=mesh.getVertexUvs();
-    const n=meshData.positions.length,uv=new Array(n);
-    for(let i=0;i<n;i++)uv[i]=[uvFlat[i*2],uvFlat[i*2+1]];
-    // 清理
-    try{bdInst.FS.unlink('/mesh.obj')}catch(e){}
-    return{uv,timeMs:ms,method:'bd_lscm',
-      details:'Kmax='+result.max_distortion.toFixed(3)+' Jmin='+result.min_jacobian.toFixed(4)+' LSCM-QC='+qcErr.toFixed(4)+' iter='+result.iterations};
+  function getFastHgpIters(){
+    const el=document.getElementById('fasthgp-iters-slider');
+    return el?parseInt(el.value)||30:30;
+  }
+
+  async function solveFastHGP(meshData,maxIter){
+    const ok=await initSimpleSolver();if(!ok)throw new Error("uv_unwrap_simple WASM 初始化失败");
+    const v=meshData.positions,f=meshData.faces;
+    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
+    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
+    const pp=wasmWritePosInst(simpleInst,fp),fpt=wasmWriteFacesInst(simpleInst,ff);
+    try{
+      const iters=maxIter||30;
+      const rc=simpleInst.ccall('solve_fasthgp','number',
+        ['number','number','number','number','number'],
+        [pp,fp.length,fpt,ff.length,iters]);
+      if(rc!==0)throw new Error("solve_fasthgp 错误:"+rc);
+      const us=wasmReadUV(simpleInst,'get_uv_result_size','get_uv_result');
+      const t=simpleInst.ccall('get_last_time_ms','number',[],[]);
+      simpleInst.ccall('dispose','void',[],[]);
+      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
+      return{uv,timeMs:t,method:'fasthgp',details:'iters='+iters};
+    }finally{simpleInst._free(pp);simpleInst._free(fpt)}
   }
 
   // ============ uv_unwrap_field WASM（分步流程）============
@@ -874,28 +871,24 @@
   }
 
   // ============ WASM 求解器 ============
-  // uv_unwrap_field.wasm: QuadCover（分步）+ MIQ（整数规划向量场 + Poisson UV）。PGP 仍为占位。
+  // uv_unwrap_field.wasm: 本页用于 HOF；MIQ/PGP/QuadCover 见 uv_unwrap_global_field.html。
 
-  function getMethod(){const c=document.querySelector('input[name="method"]:checked');return c?c.value:'quadcover'}
+  function getMethod(){const c=document.querySelector('input[name="method"]:checked');return c?c.value:'abel_jacobi'}
 
   function updateButtonState(){
     const m=getMethod();
-    if(m==='miq'){
-      if(fieldFailed){reloadBtn.textContent='引擎加载失败';reloadBtn.disabled=true}
-      else if(!fieldReady){reloadBtn.textContent='引擎加载中...';reloadBtn.disabled=true}
-      else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
-      return;
-    }
-    if(m==='pgp'){reloadBtn.textContent='展开!';reloadBtn.disabled=false;return;}
+    const paramBox=document.getElementById('param-fasthgp');
+    if(paramBox)paramBox.style.display=(m==='fasthgp')?'':'none';
+
     if(m==='abel_jacobi'){
       if(ajFailed){reloadBtn.textContent='Abel引擎失败';reloadBtn.disabled=true}
       else if(!ajReady){reloadBtn.textContent='Abel引擎加载中...';reloadBtn.disabled=true}
       else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
       return;
     }
-    if(m==='bd_lscm'){
-      if(bdFailed){reloadBtn.textContent='BD-LSCM引擎失败';reloadBtn.disabled=true}
-      else if(!bdReady){reloadBtn.textContent='BD-LSCM引擎加载中...';reloadBtn.disabled=true}
+    if(m==='fasthgp'){
+      if(simpleFailed){reloadBtn.textContent='FastHGP引擎失败';reloadBtn.disabled=true}
+      else if(!simpleReady){reloadBtn.textContent='FastHGP引擎加载中...';reloadBtn.disabled=true}
       else{reloadBtn.textContent='展开!';reloadBtn.disabled=false}
       return;
     }
@@ -921,30 +914,7 @@
     return uvs;
   }
 
-  // ============ 求解器调用（分 3 步） ============
-  async function solveQuadCover(meshData){
-    const ok=await initFieldSolver();if(!ok)throw new Error("uv_unwrap_field WASM 初始化失败");
-    const v=meshData.positions,f=meshData.faces;
-    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
-    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
-    const pp=wasmWritePosInst(fieldInst,fp),fpt=wasmWriteFacesInst(fieldInst,ff);
-    try{
-      let rc=fieldInst.ccall('load_mesh','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length]);
-      if(rc!==0)throw new Error("load_mesh 错误:"+rc);
-      rc=fieldInst.ccall('step1_compute_principal_field','number',[],[]);
-      if(rc!==0)throw new Error("step1_compute_principal_field 错误:"+rc);
-      rc=fieldInst.ccall('step2_smooth_and_matching','number',['number'],[3]);
-      if(rc!==0)throw new Error("step2_smooth_and_matching 错误:"+rc);
-      rc=fieldInst.ccall('step3_solve_quadcover','number',['number'],[1]);
-      if(rc!==0)throw new Error("step3_solve_quadcover 错误:"+rc);
-      const us=wasmReadUV(fieldInst,'get_uv_result_size','get_uv_result');
-      const t=fieldInst.ccall('get_last_time_ms','number',[],[]);
-      fieldInst.ccall('dispose','void',[],[]);
-      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
-      return{uv,timeMs:t,method:'quadcover'};
-    }finally{fieldInst._free(pp);fieldInst._free(fpt)}
-  }
-
+  // ============ 求解器调用 ============
   async function solveHOF(meshData){
     const ok=await initFieldSolver();if(!ok)throw new Error("uv_unwrap_field WASM 初始化失败");
     const v=meshData.positions,f=meshData.faces;
@@ -961,26 +931,6 @@
       fieldInst.ccall('dispose','void',[],[]);
       const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
       return{uv,timeMs:t,method:'hof'};
-    }finally{fieldInst._free(pp);fieldInst._free(fpt)}
-  }
-
-  async function solveMIQ(meshData,crossIters,jumpRefinePasses){
-    const ok=await initFieldSolver();if(!ok)throw new Error("uv_unwrap_field WASM 初始化失败");
-    const v=meshData.positions,f=meshData.faces;
-    const fp=new Float64Array(v.length*3);for(let i=0;i<v.length;i++){fp[i*3]=v[i][0];fp[i*3+1]=v[i][1];fp[i*3+2]=v[i][2]}
-    const ff=new Int32Array(f.length*3);for(let i=0;i<f.length;i++){ff[i*3]=f[i][0];ff[i*3+1]=f[i][1];ff[i*3+2]=f[i][2]}
-    const pp=wasmWritePosInst(fieldInst,fp),fpt=wasmWriteFacesInst(fieldInst,ff);
-    try{
-      let rc=fieldInst.ccall('load_mesh','number',['number','number','number','number'],[pp,fp.length,fpt,ff.length]);
-      if(rc!==0)throw new Error("load_mesh 错误:"+rc);
-      rc=fieldInst.ccall('solve_miq','number',['number','number'],[crossIters||12,jumpRefinePasses||2]);
-      if(rc!==0)throw new Error("solve_miq 错误:"+rc);
-      const us=wasmReadUV(fieldInst,'get_uv_result_size','get_uv_result');
-      const t=fieldInst.ccall('get_last_time_ms','number',[],[]);
-      const e=fieldInst.ccall('get_miq_energy','number',[],[]);
-      fieldInst.ccall('dispose','void',[],[]);
-      const n=v.length,uv=new Array(n);for(let i=0;i<n;i++)uv[i]=[us[i*2],us[i*2+1]];
-      return{uv,timeMs:t,method:'miq',details:'cross-field E='+e.toExponential(3)};
     }finally{fieldInst._free(pp);fieldInst._free(fpt)}
   }
 
@@ -1014,29 +964,25 @@
 
   async function doUnwrap(){
     if(busy||!currentMeshData)return;
-    const method=getMethod(),mNames={miq:'MIQ 向量场引导',pgp:'PGP 周期全局参数化',abel_jacobi:'Abel–Jacobi',hof:'全纯1-形式 (HOF)',bd_lscm:'BD-LSCM 有界失真',quadcover:'QuadCover'};
+    const method=getMethod(),mNames={abel_jacobi:'Abel–Jacobi',hof:'全纯1-形式 (HOF)',fasthgp:'FastHGP'};
     const label=mNames[method]||method;
     setBusy(true);setStatus(label+" 求解中...");
     const t0=performance.now();
     try{
       let r;
-      if(method==='miq'){
-        setStatus("MIQ: 交替 MIQP + 整数跳跃精化 + Poisson UV ...");
-        r=await solveMIQ(currentMeshData,12,2);
-      }else if(method==='pgp'){
-        setStatus("PGP 暂未实现，请选择其他方法","#ffd38a");setBusy(false);return;
-      }else if(method==='abel_jacobi'){
+      if(method==='abel_jacobi'){
         setStatus("Abel–Jacobi: 同调基 + 正规全纯1-形式 + 周期整数化 ...");
         r=await solveAbelJacobi(currentMeshData);
       }else if(method==='hof'){
         setStatus("全纯1-形式: 离散1-形式 + Hodge星 + 积分 ...");
         r=await solveHOF(currentMeshData);
-      }else if(method==='bd_lscm'){
-        setStatus("BD-LSCM: LSCM 共形初始化 → 有界失真优化 ...");
-        r=await solveBDLscm(currentMeshData,currentRawObjText);
+      }else if(method==='fasthgp'){
+        const iters=getFastHgpIters();
+        setStatus("FastHGP: symmetric Dirichlet 精化 ("+iters+" iters) ...");
+        r=await solveFastHGP(currentMeshData,iters);
       }else{
-        setStatus("QuadCover: step1主曲率 -> step2平滑/匹配 -> step3参数化 ...");
-        r=await solveQuadCover(currentMeshData);
+        setStatus("Abel–Jacobi: 同调基 + 正规全纯1-形式 + 周期整数化 ...");
+        r=await solveAbelJacobi(currentMeshData);
       }
       const ms=r.timeMs>0?r.timeMs:(performance.now()-t0);
       currentUnwrapUv=r.uv;
@@ -1086,13 +1032,20 @@
   document.querySelectorAll('input[name="method"]').forEach(function(r){
     r.addEventListener("change", function(){ updateButtonState(); });
   });
+  const fasthgpSlider=document.getElementById('fasthgp-iters-slider');
+  if(fasthgpSlider){
+    fasthgpSlider.addEventListener('input',function(){
+      const valEl=document.getElementById('fasthgp-iters-val');
+      if(valEl)valEl.textContent=this.value;
+    });
+  }
   if(radioCheckerboard)radioCheckerboard.addEventListener("change",function(){if(radioCheckerboard.checked){setTextureDisplayEnabled(true,"checkerboard");if(radioDots)radioDots.checked=false}});
   if(radioDots)radioDots.addEventListener("change",function(){if(radioDots.checked){setTextureDisplayEnabled(true,"dots");if(radioCheckerboard)radioCheckerboard.checked=false;if(radioDistortion)radioDistortion.checked=false}});
   if(radioDistortion)radioDistortion.addEventListener("change",function(){if(radioDistortion.checked){setTextureDisplayEnabled(false);setDistortionEnabled(true)}});
   updateButtonState();
 
   // 预加载 WASM
-  Promise.all([initFieldSolver(),initAbelJacobiSolver(),initBDLscmSolver()]).then(()=>{updateButtonState();loadModel()});
+  Promise.all([initFieldSolver(),initAbelJacobiSolver(),initSimpleSolver()]).then(()=>{updateButtonState();loadModel()});
   animate();
 })();
 </script>

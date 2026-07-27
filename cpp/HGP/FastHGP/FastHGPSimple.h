@@ -1,7 +1,7 @@
 #ifndef FAST_HGP_SIMPLE_H
 #define FAST_HGP_SIMPLE_H
 
-#include "../Parameterization/Parameterization.h"
+#include "Parameterization.h"
 #include <Eigen/Dense>
 #include <vector>
 

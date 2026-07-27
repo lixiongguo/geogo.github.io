@@ -433,14 +433,61 @@ cmake --build build -j$(nproc)
 
 ### 学习路径
 
-1. **官方 Tutorial**：[halide-lang.org/tutorials](https://halide-lang.org/tutorials) — 从 lesson 01 到 lesson 16，逐步掌握所有核心概念
-2. **论文阅读顺序**（建议）：
-   - *Halide: A Language and Compiler...* (PLDI 2013) — 原始论文，理解设计哲学
-   - *Automatically Scheduling...* (SIGGRAPH 2016) — 理解自动调度问题
-   - *Learning to Optimize...* (SIGGRAPH 2019) — 理解 ML + 编译器的结合
-3. **实践**：用 Halide 重写一个你熟悉的图像处理算法（如 bilateral filter），对比性能
+建议顺序：**CppCon 视频 → Tutorial 01–16 → `apps/` 实操 → CVPR notes / 博士论文深挖 → 自动调度论文**。
+
+#### 1. 官方入口（优先）
+
+| 资源 | 说明 |
+|:---|:---|
+| [Tutorials](https://halide-lang.org/tutorials) | lesson 01–16，语法与调度的主线教材；源码在仓库 `tutorials/` |
+| [API 文档](https://halide-lang.org/docs) | `Func` / `Var` / schedule 原语查手册 |
+| [CppCon 2020 演讲](https://halide-lang.org/)（Videos） | 语言全貌，比论文好上手 |
+| 专家调度实录（同页第二条视频） | 同一算法的手写 schedule 过程 |
+| GitHub [`apps/`](https://github.com/halide/Halide/tree/main/apps) | 真实管线示例（相机、滤波等） |
+| GitHub `test/` | 语言边角用例；能查行为，但非教学向、偏 cryptic |
+| Python 绑定 | `pip install halide`；说明见仓库 [`doc/Python.md`](https://github.com/halide/Halide/blob/main/doc/Python.md) |
+| 提问渠道 | [GitHub Discussions](https://github.com/halide/Halide/discussions)（首选）；`halide-dev` 邮件列表；SO `#halide` |
+
+#### 2. 课程讲义
+
+- **CVPR 2015 Halide course notes**（官网 [Course Notes](https://halide-lang.org/)）— 图像处理语境下的系统导论
+- **MIT 6.815 / 6.865** Frédo Durand 计算摄影课中的 Halide 导论
+
+#### 3. 论文阅读顺序
+
+**核心三篇**（设计哲学 → 自动调度 → ML 成本模型）：
+
+1. *Halide: A Language and Compiler for Optimizing Parallelism, Locality, and Recomputation in Image Processing Pipelines*（PLDI 2013）
+2. *Automatically Scheduling Halide Image Processing Pipelines*（SIGGRAPH 2016）
+3. *Learning to Optimize Halide with Tree Search and Random Programs*（SIGGRAPH 2019）
+
+**补充阅读**：
+
+| 文献 | 用途 |
+|:---|:---|
+| SIGGRAPH 2012 *Decoupling Algorithms from Schedules...* | 调度模型雏形，比 PLDI 更偏动机 |
+| CACM Research Highlights（同上工作综述版） | 比 PLDI 原文更易读 |
+| Ragan-Kelley **MIT 博士论文**（2014） | 设计与实现最全 |
+| *Differentiable Programming...*（SIGGRAPH 2018） | Differentiable Halide / 自动微分，与本文后半相关 |
+
+官网列出的论文页也会提醒：语法会演进，**正确写法以 Tutorial 为准**，论文只用来理解思想。
+
+#### 4. 工业 / 后端文档
+
+- **Qualcomm Halide for HVX** 用户指南：Hexagon、Generator、AOT 很细
+- 仓库 [`doc/`](https://github.com/halide/Halide/tree/main/doc)：Hexagon、WebAssembly、Vulkan / WebGPU、RunGen、CMake 集成等
+
+#### 5. 中文 / 二手笔记
+
+- AutoKernel：[Introduction to Halide](https://autokernel-docs-en.readthedocs.io/en/latest/tutorials/halide/halide_intro.html) — 入门概述
+- 各类个人论文清单/笔记 — 当索引用；语法仍以官方 Tutorial 为准
+
+#### 6. 实践
+
+用 Halide 重写一个熟悉的图像处理算法（如 bilateral filter），对比手写 C++ / OpenCV 的性能与 schedule 改动成本；再试 `autoscheduler` 与手写 schedule 的差距。
 
 ---
+
 
 ## 总结
 

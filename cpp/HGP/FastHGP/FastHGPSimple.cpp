@@ -1,5 +1,5 @@
 #include "FastHGPSimple.h"
-#include "../Parameterization/SimpleParam/LSCM/Lscm.h"
+#include "Lscm.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>

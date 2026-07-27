@@ -5,8 +5,28 @@
 # 公网部署由 CI 设置 JEKYLL_ENV=production 触发 _plugins/algo_demo_gate.rb
 
 - id: uv-unwrap-simple
-  title: 曲面展开
+  title: 基础曲面参数化
   url: /uv-unwrap-simple.html
+  ready: true
+
+- id: uv-unwrap-cone-global
+  title: 锥奇异点参数化
+  url: /uv-unwrap-cone_global.html
+  ready: true
+
+- id: vector-field
+  title: 向量场设计
+  url: /vector-field.html
+  ready: true
+
+- id: uv-unwrap-field-global
+  title: 向量场引导全局参数化
+  url: /uv_unwrap_field_global.html
+  ready: true
+
+- id: uv-unwrap-oneform-global
+  title: 1-form全局参数化
+  url: /uv_unwrap_oneform_global.html
   ready: true
 
 - id: deformation-lab
@@ -17,16 +37,6 @@
 - id: mesh-deformation
   title: 网格变形
   url: /mesh-deformation.html
-  ready: false
-
-- id: uv-unwrap
-  title: 曲面展开2
-  url: /uv-unwrap.html
-  ready: false
-
-- id: uv-unwrap-global
-  title: 全局参数化
-  url: /uv_unwrap_global.html
   ready: false
 
 - id: semi-discrete-ot
