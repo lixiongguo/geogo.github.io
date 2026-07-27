@@ -216,6 +216,27 @@ packages:
     sources:
       - wasm/bindings_ruppert_compat.cpp
 
+  fluid3d:
+    kind: compat
+    export_name: Fluid3DSolver
+    make_target: build-fluid3d
+    make_dir: Fluid3D/wasm
+    binding: Fluid3D/wasm/bindings_fluid3d_compat.cpp
+    methods: [fluid3d]
+    exports:
+      - fluid3d_init
+      - fluid3d_advance
+      - fluid3d_reset
+      - fluid3d_dispose
+      - fluid3d_particle_count
+      - fluid3d_particle_radius
+      - fluid3d_particles_ptr
+      - fluid3d_resolution
+    sources:
+      - Fluid3D/fluidsim.cpp
+      - Fluid3D/levelset_util.cpp
+      - Fluid3D/wasm/bindings_fluid3d_compat.cpp
+
 pages:
   uv-unwrap.html:
     packages:
@@ -248,6 +269,10 @@ pages:
   ruppert.html:
     packages:
       - { name: ruppert, load: eager }
+
+  fluid-sim.html:
+    packages:
+      - { name: fluid3d, load: eager }
 
   vector-field.html:
     packages:
