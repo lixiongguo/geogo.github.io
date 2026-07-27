@@ -66,7 +66,7 @@
 - id: semi-discrete-ot
   title: 最优传输测试
   url: /semi-discrete-ot.html
-  ready: false
+  ready: true
 
 - id: non-euclidean-roam
   title: 非欧曲面漫游
@@ -84,10 +84,4 @@
 - id: cpu-path-tracing
   title: CPU路径追踪
   url: /cpu-path-tracing.html
-  ready: true
-
-- id: path-tracing-editor
-  title: 路径追踪场景编辑
-  url: /path-tracing-editor.html
-  models_dir: assets/Models2
   ready: true
