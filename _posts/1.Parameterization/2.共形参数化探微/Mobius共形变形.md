@@ -186,6 +186,91 @@ $\Gamma_{ik}=1$ 表示两边为同一 Möbius；$|\Gamma|$、$\arg\Gamma$ 分别
 
 全部采用 [Tang et al. 2014] 的 **guided projection Gauss–Newton**：能量 $E=\sum_k \alpha_k F_k^2$，二次等式约束 $C_l=0$，每步解 $J^{\mathsf T}J D=-J^{\mathsf T}F$ 并线搜索。$\alpha$ 逐迭代减半以优先满足约束；$\beta=10^{-6}$ 保持接近上一迭代。
 
+## 公式与 Ceres 对应（按论文 + 官方代码）
+
+下面把论文里的 AMAP/INV 目标，与 `libhedra` 里 Ceres 残差块做一一对应。
+
+### 1) 论文中的优化表达（ED 变量系统）
+
+论文第 6.2 节（ED 系统）核心是：
+
+$$
+E_{\text{AMAP,ED}}^{2D}=\sum_{(i,k)\in E}\left|\,w_{ik}-Y_i z_{ik}Y_k\,\right|^2,
+\qquad
+E_{\text{AMAP,ED}}^{3D}=\sum_{(i,k)\in E}\left\|\,w_{ik}-Y_i q_{ik}Y_k\,\right\|^2
+$$
+
+其中 $w_{ik}=w_k-w_i$，2D 用复数乘法，3D 用四元数乘法。
+
+反演控制项（论文中的 $E_{\text{INV}}$）：
+
+$$
+E_{\text{INV}}=\alpha_{\text{INV}}\sum_{(i,k)\in E}\|Y_i-Y_k\|^2
+$$
+
+位置约束（硬约束写法）：
+
+$$
+C_{\text{pos}}(i)=w_i-w_i^*=0.
+$$
+
+此外，在“精确 MC/IAP”模式下，ED 里再加边偏差约束（论文 6.3）：
+
+$$
+|e_{ik}|^2=1 \quad(\text{MC}),\qquad \Im(e_{ik})=0 \quad(\text{IAP}).
+$$
+
+### 2) Ceres 实现里的残差块（`CeresQuatDeformSolver.h`）
+
+官方代码（`libhedra/include/hedra/CeresQuatDeformSolver.h`）把上面的项写成 NLLS 残差：
+
+- **AMAPError**（4 维残差）  
+  对每条边构造
+  $$
+  r^{\text{AMAP}}_{ik}= (w_j-w_i)-\overline{Y_i}\,q_{ij}\,Y_j
+  $$
+  （代码用 `QConjT(Yi)` + `QMultT`，然后把四元数 4 分量都作为残差）。
+
+- **RigidityError**（代码里对应论文 $E_{\text{INV}}$ 的离散化）  
+  $$
+  r^{\text{INV}}_{ik}=Y_i-Y_j
+  $$
+  逐分量加入残差，权重由 `rigidityFactor` 控制。
+
+- **DCError**（离散共形软约束，标量残差）  
+  代码写成
+  $$
+  r^{\text{DC}}_{ik}= \|w_j-w_i\|^2-\|\overline{Y_i}\,q_{ij}\,Y_j\|^2
+  $$
+  并乘 `DCFactor`。这等价于“长度交比一致”在边上的软约束版本。
+
+总目标就是最小化这些残差平方和（省略常数）：
+
+$$
+\min \sum_{ik}\|r^{\text{AMAP}}_{ik}\|^2
+ + \lambda_{\text{inv}}\sum_{ik}\|r^{\text{INV}}_{ik}\|^2
+ + \lambda_{\text{dc}}\sum_{ik}(r^{\text{DC}}_{ik})^2.
+$$
+
+### 3) 句柄约束在 Ceres 中的实现方式
+
+论文写的是 $w_i=w_i^*$。在 Ceres 代码里不是加罚项，而是把对应位置参数块设为常量：
+
+- `problem->SetParameterBlockConstant(currSolution + 3*constIndices(i));`
+
+这相当于**硬约束**句柄位置。
+
+### 实现查证（MoebiusCode / libhedra）
+
+- **是否化为非线性最小二乘？**  
+  是。论文与代码都把问题写成残差平方和（并带约束/罚项）的迭代优化，本质是（约束）**非线性最小二乘**框架。
+- **官方实现是否使用 Ceres？**  
+  是，但要区分层次：  
+  1) `MoebiusCode` 顶层构建脚本里明确 `find_package(Ceres REQUIRED)` 并链接 `${CERES_LIBRARIES}`；  
+  2) README 又说明核心算法在 `libhedra` 的 traits + `LMSolver`（Levenberg-Marquadt）中；  
+  3) `libhedra` 内也确实包含 `CeresQuatDeformSolver.h` / `CeresMRSolver.h` 等 Ceres 求解器实现。  
+  因此更准确的表述是：**官方代码栈包含并使用 Ceres，同时也使用 libhedra 自身的 LM/GN 风格求解器，不是“只用 Ceres”这一种路径。**
+
 ---
 
 ## 参考文献
@@ -196,3 +281,5 @@ $\Gamma_{ik}=1$ 表示两边为同一 Möbius；$|\Gamma|$、$\arg\Gamma$ 分别
 4. K. Crane et al. *Spin Transformations of Discrete Surfaces*. SIGGRAPH 2011.
 5. C. Tang et al. *Guided Projection for Constrained Optimization*. SIGGRAPH 2014.
 6. A. Vaxman et al. *Canonical Möbius Subdivision*. SIGGRAPH Asia 2018.
+7. avaxman. **MoebiusCode** (official demo repo). [GitHub](https://github.com/avaxman/MoebiusCode)（`CMakeLists.txt` 含 `find_package(Ceres REQUIRED)`；README 说明核心在 `libhedra` traits + LM solver）。
+8. avaxman. **libhedra**. [GitHub](https://github.com/avaxman/libhedra)（含 `include/hedra/LMSolver.h`、`include/hedra/CeresQuatDeformSolver.h`、`include/hedra/CeresMRSolver.h`）。
