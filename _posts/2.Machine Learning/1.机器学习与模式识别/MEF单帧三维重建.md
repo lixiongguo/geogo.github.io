@@ -4,8 +4,6 @@ title: "华为分享-MRF在三维重建中的应用"
 categories: [TechSharing]
 ---
 
-### MRF用于三维重建的贴图生成 《Let There Be Color》
-
 ### MRF用于三维重建《Class Specific 3D Object Shape Priors Using Surface Normals》
 
 输入：rgb图像，深度图。
