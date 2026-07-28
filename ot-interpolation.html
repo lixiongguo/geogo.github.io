@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>最优传输图像插值 — Optimal Transport Image Morphing</title>
+<script src="assets/js/wasm-loader.js"></script>
 <script src="assets/wasm/omt_solver.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -96,12 +97,53 @@ body {
   letter-spacing: 0.5px;
 }
 .controls select:hover { border-color: rgba(106,200,255,0.85); box-shadow: 0 0 12px rgba(106,180,255,0.3); }
-.controls label { color: #aac0ff; font-weight: 600; }
-  font-size: 14px;
-}
 .controls label {
   font-size: 13px;
   color: #8a9eca;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.pair-bar {
+  background: #11192c;
+  border: 1px solid rgba(255,170,68,0.35);
+  border-radius: 16px;
+  padding: 14px 20px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+}
+.pair-bar label {
+  font-size: 14px;
+  color: #ffaa44;
+  font-weight: 700;
+  letter-spacing: 1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.pair-bar select {
+  padding: 9px 16px;
+  border: 2px solid rgba(255,170,68,0.55);
+  border-radius: 10px;
+  background: linear-gradient(135deg, #1a1a3a, #2a2040);
+  color: #ffcc66;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(255,170,68,0.2);
+}
+.pair-bar select:hover {
+  border-color: rgba(255,170,68,0.9);
+  box-shadow: 0 0 20px rgba(255,170,68,0.35);
+}
+.pair-bar .hint {
+  font-size: 12px;
+  color: #6e84b8;
 }
 
 /* Display area */
@@ -240,6 +282,16 @@ body {
 <script>document.getElementById('page-switch').addEventListener('change',function(){location.href=this.value})</script>
 
 <div class="main">
+  <div class="pair-bar">
+    <label>图像对
+      <select id="pair-select">
+        <option value="flame" selected>flame_1 → flame_2（176×176）</option>
+        <option value="cloud">cloud_1 → cloud_2（486×324）</option>
+      </select>
+    </label>
+    <span class="hint">切换后会重新加载源/目标图</span>
+  </div>
+
   <!-- Controls -->
   <div class="controls">
     <button id="compute-btn" class="compute" disabled>⚡ 计算最优传输</button>
@@ -270,7 +322,7 @@ body {
   <div class="display">
     <div class="image-box">
       <canvas id="canvas-img0"></canvas>
-      <div class="label">SOURCE — flame_1</div>
+      <div class="label" id="label-src">SOURCE — flame_1</div>
     </div>
     <div class="image-box">
       <canvas id="canvas-interp"></canvas>
@@ -278,7 +330,7 @@ body {
     </div>
     <div class="image-box">
       <canvas id="canvas-img1"></canvas>
-      <div class="label">TARGET — flame_2</div>
+      <div class="label" id="label-tgt">TARGET — flame_2</div>
     </div>
   </div>
 
@@ -323,19 +375,64 @@ body {
   }
 
   // ============ WASM Init ============
+  const WASM_BASE = (typeof WasmLoader !== 'undefined' && WasmLoader.BASE)
+    ? WasmLoader.BASE
+    : 'assets/wasm/';
+
+  function loadScriptOnce(url) {
+    return new Promise(function(resolve, reject) {
+      const existing = document.querySelector('script[src="' + url + '"]');
+      if (existing && typeof OmTSolver === 'function') { resolve(); return; }
+      const s = document.createElement('script');
+      s.src = url;
+      s.onload = function() { resolve(); };
+      s.onerror = function() { reject(new Error('Failed to load ' + url)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function ensureOmTFactory() {
+    if (typeof OmTSolver === 'function') return;
+    const candidates = [
+      WASM_BASE + 'omt_solver.js',
+      './assets/wasm/omt_solver.js',
+      '/assets/wasm/omt_solver.js'
+    ];
+    let lastErr = null;
+    for (let i = 0; i < candidates.length; i++) {
+      try {
+        await loadScriptOnce(candidates[i]);
+        if (typeof OmTSolver === 'function') return;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error('omt_solver.js 未加载（请确认 assets/wasm/omt_solver.js 已部署）');
+  }
+
   async function initOmT() {
     if (omtReady) return true;
     if (omtFailed) return false;
     try {
-      if (typeof OmTSolver === 'undefined') throw new Error('omt_solver.js 未加载');
       setStatus('WASM 模块加载中...', 'loading');
-      omtInstance = await OmTSolver();
+      await ensureOmTFactory();
+      // 显式 locateFile：避免 document.currentScript 为空时去根路径找 .wasm
+      omtInstance = await OmTSolver({
+        locateFile: function(path) {
+          if (path.endsWith('.wasm') || path.endsWith('.js')) {
+            return WASM_BASE + path.replace(/^.*\//, '');
+          }
+          return WASM_BASE + path;
+        }
+      });
       omtReady = true;
       setStatus('WASM 就绪，正在加载图像...', 'loading');
       return true;
     } catch (e) {
       omtFailed = true;
-      setStatus('WASM 加载失败: ' + e.message, 'error');
+      const msg = (e && e.message) ? e.message : String(e);
+      setStatus('WASM 加载失败: ' + msg + '（检查 ' + WASM_BASE + 'omt_solver.wasm）', 'error');
+      console.error(e);
       return false;
     }
   }
@@ -378,48 +475,60 @@ body {
     ctx.putImageData(new ImageData(frame.slice(), w, h), 0, 0);
   }
 
+  // ============ Image pairs ============
+  const IMAGE_PAIRS = {
+    flame: { id: 'flame', src: 'flame_1.bmp', tgt: 'flame_2.bmp', labelSrc: 'flame_1', labelTgt: 'flame_2' },
+    cloud: { id: 'cloud', src: 'cloud_1.bmp', tgt: 'cloud_2.bmp', labelSrc: 'cloud_1', labelTgt: 'cloud_2' }
+  };
+
+  async function loadImageWithFallback(fileName) {
+    const candidates = [
+      'assets/ot_data/' + fileName,
+      './assets/ot_data/' + fileName
+    ];
+    let lastErr = null;
+    for (let i = 0; i < candidates.length; i++) {
+      try {
+        return await loadImage(candidates[i]);
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error('无法加载 ' + fileName);
+  }
+
   // ============ Load Images ============
-  async function loadImages() {
+  async function loadImages(pairKey) {
+    const key = pairKey || document.getElementById('pair-select').value;
+    const pair = IMAGE_PAIRS[key] || IMAGE_PAIRS.flame;
+
+    computeBtn.disabled = true;
+    frameData = null;
+    framesGrid.innerHTML = '';
+    framesLabel.textContent = '插值序列（点击计算后生成）';
+    drawFrameToCanvas(canvasInterp, null, 0, 0);
+
     try {
-      const base = 'assets/ot_data/';
-      const urls = [
-        base + 'flame_1.bmp',
-        base + 'flame_2.bmp'
-      ];
-      // Try alternate paths
-      const altBase = './assets/ot_data/';
-      const altUrls = [
-        altBase + 'flame_1.bmp',
-        altBase + 'flame_2.bmp'
-      ];
+      setStatus('加载 ' + pair.src + ' ...', 'loading');
+      image0Data = await loadImageWithFallback(pair.src);
 
-      setStatus('加载 flame_1.bmp ...', 'loading');
-      try {
-        image0Data = await loadImage(urls[0]);
-      } catch (e1) {
-        try { image0Data = await loadImage(altUrls[0]); }
-        catch (e2) { throw new Error('无法加载 flame_1.bmp'); }
-      }
+      setStatus('加载 ' + pair.tgt + ' ...', 'loading');
+      image1Data = await loadImageWithFallback(pair.tgt);
 
-      setStatus('加载 flame_2.bmp ...', 'loading');
-      try {
-        image1Data = await loadImage(urls[1]);
-      } catch (e1) {
-        try { image1Data = await loadImage(altUrls[1]); }
-        catch (e2) { throw new Error('无法加载 flame_2.bmp'); }
-      }
-
-      // Check sizes match
       if (image0Data.w !== image1Data.w || image0Data.h !== image1Data.h) {
         throw new Error('图像尺寸不一致: ' + image0Data.w + 'x' + image0Data.h +
           ' vs ' + image1Data.w + 'x' + image1Data.h);
       }
 
+      document.getElementById('label-src').textContent = 'SOURCE — ' + pair.labelSrc;
+      document.getElementById('label-tgt').textContent = 'TARGET — ' + pair.labelTgt;
+
       drawImageToCanvas(canvasImg0, image0Data);
       drawImageToCanvas(canvasImg1, image1Data);
 
       computeBtn.disabled = false;
-      setStatus('就绪 — ' + image0Data.w + '×' + image0Data.h + '，点击"计算最优传输"', 'success');
+      setStatus('就绪 — ' + pair.labelSrc + ' → ' + pair.labelTgt + '（' +
+        image0Data.w + '×' + image0Data.h + '），点击"计算最优传输"', 'success');
     } catch (e) {
       setStatus('图像加载失败: ' + e.message, 'error');
       console.error(e);
@@ -589,6 +698,11 @@ body {
   tSlider.addEventListener('input', updateSlider);
 
   computeBtn.addEventListener('click', computeOT);
+
+  document.getElementById('pair-select').addEventListener('change', function() {
+    if (!omtReady) return;
+    loadImages(this.value);
+  });
 
   // Start: init WASM then load images
   (async function start() {

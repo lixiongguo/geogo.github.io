@@ -395,14 +395,83 @@ $$
 
 ### 5.2 Blue noise through optimal transport [de Goes et al. 2012]
 
-等权 stippling：$\mathbf{W}=\{1/n\}$，$\mathbf{X}=\Omega^n$。Algorithm 1 的特例，度量
+> **论文**：Fernando de Goes, Katherine Breeden, Victor Ostromoukhov, Mathieu Desbrun. [*Blue Noise through Optimal Transport*](https://doi.org/10.1145/2366145.2366190). ACM TOG 31(6), SIGGRAPH Asia 2012.  
+> **项目页**：[geometry.caltech.edu/BlueNoise](https://geometry.caltech.edu/BlueNoise/) · PDF：[Caltech](https://www.geometry.caltech.edu/pubs/dGBOD12.pdf)
+
+本节是本文最直接的前驱：两边都在做「用半离散 $W_2$ / Power 图把连续密度 $\rho$ 凝聚成点集」。de Gournay et al. 2019 把 de Goes 的蓝噪声视为等权特例，并推广到可变权重、曲线、线段等结构化测度。
+
+#### 5.2.1 问题设定：蓝噪声 = 容量约束 + 最优传输
+
+给定域 $\mathcal{D}$ 与正密度 $\rho$（墨水分布），蓝噪声采样把连续墨水**凝聚**成 $n$ 个 Dirac。de Goes 用三条要求刻画：
+
+| 要求 | 含义 |
+| :--- | :--- |
+| **A. 均匀采样（容量）** | 每点承载等量墨水：$m_i=\int_{V_i}\rho=m\equiv\frac{1}{n}\int_{\mathcal{D}}\rho$ |
+| **B. 最优传输** | 把 $\rho$ 搬到点集的总代价最小 |
+| **C. 局部不规则** | 避免六角晶格 / Moire 伪影 |
+
+传输代价（对任意剖分 $\mathcal{V}=\{V_i\}$）为
+
+$$
+E(X,\mathcal{V})=\sum_{i}\int_{V_i}\rho(x)\,\|x-x_i\|_2^2\,\mathrm{d}x.
+\tag{27a}
+$$
+
+[Aurenhammer et al. 1998] 证明：在容量约束下极小化 $E$ 的最优剖分必为 **Power 图**（权重 Voronoi / Laguerre）。因此不必在全体剖分中搜索，可限制到加权点集 $(X,W)$ 的 Power 单元 $V_i^w$。这与本文把半离散 $W_2$ 写成 Laguerre 图上的对偶问题完全同构。
+
+#### 5.2.2 变分形式
+
+带 Lagrange 乘子的约束极小化可化为对标量泛函求驻点：
+
+$$
+F(X,W)=E(X,W)-\sum_{i} w_i\bigl(m_i-m\bigr).
+\tag{27b}
+$$
+
+关键性质（与本文对偶 / 梯度公式同构）：
+
+- **固定 $X$，对 $W$**：Hessian $=-\Delta_{w,\rho}$（加权 Laplacian）→ **凹极大化**；Newton 解稀疏 Poisson 系统即可精确满足容量约束（残差可达 $10^{-12}$）。这对应本文的 $\psi$-step（对偶变量与 Power 权重一一对应）。
+- **固定 $W$，对 $X$**：
+
+$$
+\nabla_{x_i}F=2\,m_i\,(x_i-b_i),\qquad
+b_i=\frac{1}{m_i}\int_{V_i^w}x\,\rho(x)\,\mathrm{d}x.
+\tag{27c}
+$$
+
+临界点要求 $x_i=b_i$，即 **centroidal Power diagram**。这正是本文梯度 (23)–(24) 的等权版本（$\mathbf{w}[i]=m_i=1/n$）。
+
+算法：**交替**「对 $X$ 做带线搜索的梯度下降」与「对 $W$ 做 Newton 投影到容量可行集」；Power 图由 CGAL 更新。另加局部规则性检测 + jitter，实现要求 C。
+
+#### 5.2.3 与本文（de Gournay et al. 2019）的对照
+
+两边「很像」，是因为共享同一半离散 OT 内核；差别在**可容许测度族**与**数值细节**。
+
+| | **BNOT** (de Goes 2012) | **本文** (de Gournay 2019) |
+| :--- | :--- | :--- |
+| 目标 | 蓝噪声点采样 / stippling | 结构化测度逼近：点、曲线、线段… |
+| 测度族 $\mathcal{M}$ | 等权 Dirac：$\mathbf{w}=1/n$ | $\mathcal{M}_{f,n}$ / $\mathcal{M}_{a,n}$ / 曲线 / dashing |
+| 距离 | 半离散 $W_2$（Power 图） | 同左，显式写为 $W_2^2(\nu,\mu)$ |
+| 对偶变量 | Power 权重 $w_i$ | Laguerre 势 $\psi$（等价） |
+| 站点更新 | $\nabla_{x_i}F\propto m_i(x_i-b_i)$ + 线搜索 | (23)–(25)，$\Sigma_k$ 拟 Newton，常取 $s_k=1$ |
+| 权重 | 固定等权；用 $W$ 只为**精确容量** | 可选可变 $\mathbf{w}$（$w$-step） |
+| 约束投影 $\Pi$ | 无（点自由）+ 局部 jitter | 曲线运动学 / 几何约束的 ADMM |
+| 积分加速 | 像素–单元精确求交 | Green 公式（本文相对 ibnot 的主要加速） |
+| $\psi$-步稳定 | Newton + Armijo | **正则化 Newton**，非均匀密度下仍收敛（ibnot 常失败） |
+| 在本文中的位置 | Algorithm 1 + $\mathbf{W}=\{1/n\}$ 的特例 | 见度量 (27) |
+
+等权 stippling 时，本文度量退化为
 
 $$
 \Sigma_k=\mathrm{diag}\bigl(\mu(\mathcal{L}_i(\bm{\phi}^*(\mathbf{x}),\mathbf{x}))\bigr)=\frac{1}{n}\,\mathrm{Id},
 \tag{27}
 $$
 
-并对 $\mathbf{x}$-步做线搜索（每次 $F$ 求值需解 (13)，线搜索代价较高；本文经验上 $s_k=1$ 已足够）。de Goes 将 **CCVT（容量约束 Voronoi）** 表述为最优传输 + Power 图上的凸约束极小化，容量约束**精确**满足。详见 [最优传输计算焦散透镜](2020-12-12-最优传输计算焦散透镜.md)。
+并对 $\mathbf{x}$-步做线搜索时与 BNOT 一致；本文经验上 $s_k=1$ 已够，可省去每次线搜索中反复解对偶的开销。
+
+**一句话**：BNOT =「等权半离散 OT + Power 图上的容量精确约束」；本文 =「同一 OT 内核 + 更广的 $\mathcal{M}$（可变权 / 曲线）+ 更稳的 Newton + Green 加速」。把 BNOT 看成本文框架在 $\mathcal{M}_{f,n}$ 上的历史特例，最贴切。
+
+相关讨论亦可对照 [最优传输计算焦散透镜](2020-12-12-最优传输计算焦散透镜.md)（同一 Power / 半离散 OT 计算内核在透镜设计中的应用）。
 
 ### 5.3 静电 halftoning（卷积距离）
 
@@ -728,6 +797,7 @@ flowchart TD
 | Green 积分 | 2D 大规模 stippling 的关键加速 |
 | (22)(23)(25) | 权重闭式 + 站点移向 Laguerre 重心 |
 | (26)(27) | Lloyd 与 de Goes 蓝噪声为特例 |
+| (27a)–(27c) | BNOT：容量约束 + Power 图 OT；与本文半离散内核同构 |
 | (29)–(43) | 曲线约束、ADMM 分裂与投影 |
 | (44)(45) | 彩色 curvling、MRI 重建 |
 | (46) | Algorithm 1 局部收敛条件 |
@@ -758,8 +828,8 @@ $$
 ## 参考文献
 
 - de Gournay F., Kahn J., Lebrat L., Weiss P. *Optimal transport approximation of 2-dimensional measures*. SIAM J. Imaging Sci., 12(4), 2019. [DOI](https://doi.org/10.1137/18M1193736) · [arXiv:1804.08356](https://arxiv.org/abs/1804.08356)
-- de Goes F., Cohen-Steiner D., Alliez P., Desbrun M. *Blue noise through optimal transport*. ACM TOG (SIGGRAPH), 31(5), 2012. [DOI](https://doi.org/10.1145/2366145.2366190)
-- Aurenhammer F., Hoffmann M., Aronov B. *Minkowski-type theorems and least-squares clustering*. Algorithmica, 1998.
+- de Goes F., Breeden K., Ostromoukhov V., Desbrun M. *Blue noise through optimal transport*. ACM TOG (SIGGRAPH Asia), 31(6), 2012. [DOI](https://doi.org/10.1145/2366145.2366190) · [项目页](https://geometry.caltech.edu/BlueNoise/)
+- de Goes F., Cohen-Steiner D., Alliez P., Desbrun M. *An optimal transport approach to robust reconstruction and simplification of 2d shapes*. CGF, 30(5), 2011.- Aurenhammer F., Hoffmann M., Aronov B. *Minkowski-type theorems and least-squares clustering*. Algorithmica, 1998.
 - Lévy B., Schwindt C., Steele E. *Laguerre–Minkowski diagrams and applications*. 2015.
 - Merigot Q., Mérigot J. *A multiscale approach to optimal transport*. Computer Graphics Forum, 2018.
 - Balzer M., Deussen O., et al. *Capacity-constrained point distributions*. CGF, 2009.

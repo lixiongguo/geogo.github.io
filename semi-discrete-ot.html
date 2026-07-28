@@ -111,6 +111,23 @@
     </div>
   </div>
 
+<script>
+  // 必须在胶水脚本之前设置：currentScript 为空时默认会去根路径找 .wasm
+  var Module = window.Module || {};
+  Module.locateFile = function(path) {
+    var name = String(path).replace(/^.*\//, '');
+    try {
+      return new URL('assets/wasm/' + name, window.location.href).href;
+    } catch (e) {
+      return 'assets/wasm/' + name;
+    }
+  };
+  Module.onAbort = function(what) {
+    console.error('wasm_power_diagram abort:', what);
+    window.__wasmPowerAbort = what;
+  };
+</script>
+<script src="assets/js/wasm-loader.js"></script>
 <script src="assets/wasm/wasm_power_diagram.js"></script>
 <script>
 (function(){
@@ -132,6 +149,16 @@
   const jsLegend = document.getElementById('js-legend');
   const wasmLegend = document.getElementById('wasm-legend');
   const showSitesCheckbox = document.getElementById('show-sites');
+
+  // Diagnose missing glue early (assets were deleted in commit 7a1a30fe historically).
+  if (typeof Module === 'undefined') {
+    wasmTimingEl.textContent = '🧬 WASM: 脚本未加载';
+    wasmTimingEl.style.color = '#ff6b6b';
+    statusBar.textContent = '缺少 assets/wasm/wasm_power_diagram.js（请确认 WASM 资源已部署）';
+    statusBar.style.color = '#ff6b6b';
+  } else {
+    wasmTimingEl.textContent = '🧬 WASM: 已加载（待运行）';
+  }
 
   [srcCanvas, tgtCanvas, srcPowerCanvas, tgtPowerCanvas, jsPowerCanvas, wasmPowerCanvas].forEach(c=>{c.width=SIZE;c.height=SIZE});
 
@@ -659,6 +686,20 @@
     return [r, g, b];
   }
 
+  // 新版 Emscripten 不把 HEAP* 挂到 Module 上，而是脚本顶层 var（即 window.HEAPF64）
+  function getHeapF64() {
+    if (Module.HEAPF64) return Module.HEAPF64;
+    if (typeof HEAPF64 !== 'undefined' && HEAPF64) {
+      Module.HEAPF64 = HEAPF64;
+      return HEAPF64;
+    }
+    return null;
+  }
+
+  function isWasmReady() {
+    return !!(Module && Module.calledRun && typeof Module._malloc === 'function' && getHeapF64());
+  }
+
   async function runWasmTest() {
     // Called only after the click handler has validated + disabled + waitForWasm
     setStatus('正在用 WASM (Geogram) 计算 Power Diagram...');
@@ -667,6 +708,8 @@
     await sleep(10);
 
     const nSites = srcSites.length;
+    const heapF64 = getHeapF64();
+    if (!heapF64) throw new Error('WASM 堆视图 HEAPF64 不可用');
 
     // Get JS reference labels for pixel consistency comparison
     const jsResult = computePowerDiagram(srcSites, srcWeights, srcGray, SIZE);
@@ -685,9 +728,9 @@
     const ptr_x = Module._malloc(nSites * 8);
     const ptr_y = Module._malloc(nSites * 8);
     const ptr_w = Module._malloc(nSites * 8);
-    Module.HEAPF64.set(xs, ptr_x >> 3);
-    Module.HEAPF64.set(ys, ptr_y >> 3);
-    Module.HEAPF64.set(ws, ptr_w >> 3);
+    heapF64.set(xs, ptr_x >> 3);
+    heapF64.set(ys, ptr_y >> 3);
+    heapF64.set(ws, ptr_w >> 3);
 
     // Call WASM — measure just the Geogram computation
     const wasmT0 = performance.now();
@@ -738,12 +781,32 @@
     wasmBtn.disabled = false;
   }
 
-  // WASM-ready check: poll until HEAPF64 is available
+  // WASM-ready：新版胶水不导出 Module.HEAPF64，改查 calledRun + _malloc + 全局 HEAPF64
   function waitForWasm() {
-    return new Promise(resolve => {
-      if (Module.HEAPF64) { resolve(); return; }
+    return new Promise((resolve, reject) => {
+      if (typeof Module === 'undefined') {
+        reject(new Error('wasm_power_diagram.js 未加载'));
+        return;
+      }
+      if (isWasmReady()) { resolve(); return; }
+      let tries = 0;
       const check = setInterval(() => {
-        if (Module.HEAPF64) { clearInterval(check); resolve(); }
+        tries++;
+        if (window.__wasmPowerAbort) {
+          clearInterval(check);
+          reject(new Error('WASM 中止: ' + window.__wasmPowerAbort));
+          return;
+        }
+        if (isWasmReady()) { clearInterval(check); resolve(); }
+        else if (tries > 200) {
+          clearInterval(check);
+          const detail = [
+            'calledRun=' + !!(Module && Module.calledRun),
+            '_malloc=' + !!(Module && Module._malloc),
+            'HEAPF64=' + !!getHeapF64()
+          ].join(', ');
+          reject(new Error('WASM 初始化超时（' + detail + '）'));
+        }
       }, 50);
     });
   }
