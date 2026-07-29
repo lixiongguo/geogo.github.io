@@ -1,0 +1,181 @@
+---
+layout: post
+title: "华为分享-基于Mesh的几何深度学习-隐式表达"
+categories: [TechSharing]
+---
+
+> 与「显式表达」篇对照：显式直接预测点 / 网格 / 图结构；本篇用**连续隐函数**表示形状，再经 Marching Cubes / 等值面抽取得到 mesh。常见输出是占据概率、符号距离（SDF）或无符号距离（UDF）。
+
+---
+
+## OCCNet（Occupancy Networks）
+
+> Mescheder et al., *Occupancy Networks: Learning 3D Reconstruction in Function Space*, CVPR 2019.
+
+### 想法
+
+不把形状建成固定分辨率的体素栅格，而建成可查询的函数
+
+$$
+f_\theta(\mathbf{x}\mid\mathbf{z})\;\in\;[0,1],
+$$
+
+表示点 $\mathbf{x}\in\mathbb{R}^3$ 落在物体**内部**的概率（占据）。条件 $\mathbf{z}$ 可以来自单图 CNN、点云编码器等。
+
+相对体素：分辨率与内存解耦——推理时任意密采样再抽等值面；相对 mesh 直接回归：拓扑可变、无需固定顶点数。
+
+### 训练与推理
+
+- **监督**：在物体包围盒内采点，用 GT mesh 判断 in/out，对 $f_\theta$ 做二元交叉熵。  
+- **推理**：密网格上评估 $f_\theta$，取 $0.5$ 等值面做 Marching Cubes；可用多分辨率 / 八叉树加速。  
+- **条件化**：$\mathbf{z}$ 经 FiLM / 拼接注入 MLP；单视图重建时图像特征常再与 $\mathbf{x}$ 的投影对齐（与后文 PIFu 思路相近，但 OCCNet 更通用物体）。
+
+### 位置
+
+开启「形状 = 神经网络」的主流路线之一；后续 DeepSDF（连续距离）、Neural Radiance / NeuS（外观+几何）都在同一函数空间框架上延伸。局限：开曲面、薄结构用占据表示较别扭 → UDF / 混合表示。
+
+---
+
+## AutoSDF & DeepSDF
+
+### DeepSDF
+
+> Park et al., *DeepSDF: Learning Continuous Signed Distance Functions for Shape Representation*, CVPR 2019.
+
+用 MLP 逼近**符号距离场**
+
+$$
+f_\theta(\mathbf{x},\mathbf{z})\;\approx\;\mathrm{SDF}(\mathbf{x}),
+$$
+
+$\mathrm{SDF}>0$ 外、$<0$ 内、$=0$ 即表面。每个形状一个 latent $\mathbf{z}$（自编码器式：编码器可有可无；经典设定是**每形状优化 $\mathbf{z}$** + 共享解码器）。
+
+损失大致为
+
+$$
+\mathcal{L}
+=\sum_{\mathbf{x}}
+\bigl|\,\mathrm{clamp}\bigl(f_\theta(\mathbf{x},\mathbf{z}),\delta\bigr)
+-\mathrm{clamp}\bigl(\mathrm{SDF}^*(\mathbf{x}),\delta\bigr)\bigr|
++\lambda\|\mathbf{z}\|_2^2,
+$$
+
+近表面多采样。表面用 Marching Cubes 抽零水平集；也可球追踪做渲染。
+
+相对 OCCNet：SDF 给出**到表面的度量信息**，利于精修、刚体/形变、物理；但对**开曲面、非流形、内部未定义**的形状不自然（符号难定）。
+
+### AutoSDF
+
+> Mittal et al., *AutoSDF: Shape Priors for 3D Completion, Reconstruction and Generation*, CVPR 2022.
+
+在离散化的「局部 SDF patch / 体素码」上建 **自回归先验**（类似 GPT 对 token 建模），而不是只做一个全局 $\mathbf{z}$：
+
+- 把形状编成一组离散码（VQ）；  
+- Transformer 自回归预测码序列，学到**部分观察 → 完整形状**的强先验；  
+- 用于补全、单视图重建、条件生成。
+
+可理解为：DeepSDF 解决「一个连续场怎么表示一个形状」；AutoSDF 解决「形状分布怎么在离散码空间里生成 / 补全」。工程上常与局部隐式或体素解码器衔接，再落到 mesh。
+
+| | DeepSDF | AutoSDF |
+|:---|:---|:---|
+| 先验形式 | 全局 latent 高斯式 | 离散码上的自回归 |
+| 擅长 | 类别内精确表面 | 大缺失补全、多模态生成 |
+| 解码 | MLP SDF | 码 → 局部/全局形状解码 |
+
+---
+
+## PIFu（Pixel-Aligned Implicit Function）
+
+> Saito et al., *PIFu: Pixel-Aligned Implicit Function for High-Resolution Clothed Human Digitization*, ICCV 2019.  
+> 后续：PIFuHD（高分辨率法向）、ICON / ARCH 等人体线。
+
+面向**着装人体**：输入单张（或少数）彩色图，输出可抽成 mesh 的隐式场，强调衣服褶皱等高频细节。
+
+### 2D 特征图与 3D 空间的对齐（Pixel-Aligned）
+
+核心操作：对查询点 $\mathbf{X}\in\mathbb{R}^3$，
+
+1. 用已知（或估计的）相机投影 $\pi(\mathbf{X})$ 得到像素坐标；  
+2. 在编码器得到的 2D 特征图 $F$ 上做**双线性采样**，取出特征向量 $\Phi(\pi(\mathbf{X}))$；  
+3. 与深度（或归一化 $z$）等一起送入 MLP：
+
+$$
+f\bigl(\Phi(\pi(\mathbf{X})),\,z(\mathbf{X})\bigr)
+\;\mapsto\;
+\text{占据 / 颜色}.
+$$
+
+「Pixel-aligned」：三维点的特征**锚定**在它投到的像素上，因此图像上的褶皱、纹理能直接接到对应 3D 位置，避免全局向量压掉高频。多视图时对多个 $\Phi_i$ 聚合再问 MLP。
+
+### 3D 空间的采样
+
+训练时在人体周围采查询点：
+
+- **表面附近**加密（类似 DeepSDF），正负样本来自 mesh 内外或深度；  
+- 也可在视觉外壳 / 粗体素内均匀采，保证整体体积约束；  
+- 推理：在包围盒或 coarse 体上密采 $f$，Marching Cubes；PIFuHD 等先低分辨率场再局部高分辨率细化。
+
+颜色分支可并行：$f_{\mathrm{rgb}}$ 同样 pixel-aligned，得到带纹理的隐式表面。
+
+### 与 OCCNet 的差别（人体设定）
+
+OCCNet 常用全局 $\mathbf{z}$；PIFu **强制**每点查 2D 特征，专为图像条件的高细节人体。代价：依赖相机与对齐质量；侧面、遮挡背面要靠先验或再多视图。
+
+---
+
+## Stacked Hourglass 网络提供人体先验
+
+PIFu 原版用 **Stacked Hourglass**（Newell et al., ECCV 2016）作为 2D 骨干：反复下采样–上采样的沙漏堆叠，本为 2D 姿态估计设计，输出多尺度热图。
+
+在人体隐式重建里它的作用是：
+
+1. **姿态 / 语义热图先验**：关节点、肢体布局进入特征，约束「人该长什么样」；  
+2. **多尺度外观特征**：浅层纹理 + 深层结构，供 pixel-aligned 采样；  
+3. **与隐式头解耦**：2D 网扛识别与对齐，3D MLP 只做「特征+深度 → in/out」。
+
+实践中也可换成 HRNet、ResNet 等；Hourglass 代表的是「**强 2D 人体先验编码器 + 像素对齐隐式**」这一设计槽位，而非唯一实现。
+
+---
+
+## NeuralUDF
+
+> Long / Liu 等脉络下的 Neural UDF 工作（如 *NeuralUDF: Learning Unsigned Distance Fields for Multi-view Reconstruction of Surfaces with Arbitrary Topologies*, CVPR 2023 等）：用**无符号距离**代替 SDF/占据。
+
+### 为何需要 UDF
+
+| 表示 | 适合 | 困难场景 |
+|:---|:---|:---|
+| Occupancy | 封闭体积 | 开曲面、纸片、衣角单侧 |
+| SDF | 封闭有向表面 | 符号在开放面、非流形上不定义 |
+| **UDF** | 到表面的距离 $\ge 0$，零集即表面 | 法向需另估；零水平集优化更刁 |
+
+衣服摆边、场景墙面、开放薄壳等更适合 UDF：$f_\theta(\mathbf{x})\approx\mathrm{dist}(\mathbf{x},\mathcal{S})$。
+
+### 学习与抽表面
+
+- 多视图下用可微渲染 / 水平集约束拟合 UDF；  
+- 零集抽取比 SDF 更敏感（梯度在零集两侧同号），常需专门的等值面或梯度对齐技巧；  
+- 可与 NeuS 类体积渲染结合，用密度变换挂在 UDF 上做外观。
+
+对「基于 mesh 的几何深度学习」而言：UDF → 仍抽三角网格，但表示层比占据/SDF **更宽容拓扑**，是隐式人体/场景重建的重要补充。
+
+---
+
+## 小结
+
+```text
+图像 / 点云 / latent
+    → 条件编码器（含 Hourglass 等人先验）
+    → 隐式场 f(x)：Occupancy | SDF | UDF
+    → 等值面 / MC → Mesh
+```
+
+| 方法 | 场类型 | 条件方式 | 典型用途 |
+|:---|:---|:---|:---|
+| OCCNet | 占据 | 全局/图像 $\mathbf{z}$ | 通用物体重建 |
+| DeepSDF | SDF | 每形状 latent | 类别形状先验、编辑 |
+| AutoSDF | 离散码 + 局部形状 | 自回归补全 | 大洞补全、生成 |
+| PIFu | 占据(+颜色) | **像素对齐** 2D 特征 | 着装人体单目数字化 |
+| NeuralUDF | UDF | 多视图 / 神经渲染 | 开放、任意拓扑表面 |
+
+**一句话**：隐式路线把 mesh 的「顶点表」换成「任意点可查的场」；OCCNet/DeepSDF 立住表示，PIFu 用像素对齐把图像细节打进人体，UDF 再放开封闭曲面假设。

@@ -1,41 +1,50 @@
 ---
 layout: post
-title: "Optimal Transport Approximation of 2-Dimensional Measures — 二维测度的最优传输逼近"
+title: "从蓝噪声 OT 到结构化测度逼近 — BNOT 与 OTA"
 category: Parameterization
 categories: ["Parameterization", "Parameterization-OptimalTransport"]
 mathjax: true
 ---
 
-> **论文**：Frédéric de Gournay, Jonas Kahn, Léo Lebrat, Pierre Weiss. [*Optimal Transport Approximation of 2-Dimensional Measures*](https://doi.org/10.1137/18M1193736). SIAM Journal on Imaging Sciences, 12(4), 1563–1595, 2019.  
-> **预印本**：[arXiv:1804.08356](https://arxiv.org/abs/1804.08356)
+> **阅读顺序**：① [BNOT](https://doi.org/10.1145/2366145.2366190)（de Goes et al., 2012）→ ② [OTA](https://doi.org/10.1137/18M1193736)（de Gournay et al., 2019；[arXiv:1804.08356](https://arxiv.org/abs/1804.08356)）。先特例后一般。
 
 ## 概述
 
-给定紧域 $\Omega\subset\mathbb{R}^2$ 上的目标密度 $\rho$（对应测度 $\mu$），希望用**具有结构**的测度 $\nu$ 去逼近它：可以是**离散点**（stippling / halftoning）、**曲线**（curvling）、**线段**（dashing）等。统一目标为
+本笔记串联两篇密切相关的工作，建议按**时间与特例→一般**的顺序阅读：
+
+| 顺序 | 论文 | 角色 |
+| :--- | :--- | :--- |
+| **①** | Fernando de Goes, Katherine Breeden, Victor Ostromoukhov, Mathieu Desbrun. [*Blue Noise through Optimal Transport*](https://doi.org/10.1145/2366145.2366190). ACM TOG 31(6), SIGGRAPH Asia 2012. | **等权**点集 / 蓝噪声 stippling：容量约束 + 半离散 $W_2$ / Power 图 |
+| **②** | Frédéric de Gournay, Jonas Kahn, Léo Lebrat, Pierre Weiss. [*Optimal Transport Approximation of 2-Dimensional Measures*](https://doi.org/10.1137/18M1193736). SIAM J. Imaging Sci. 12(4), 2019. ([arXiv:1804.08356](https://arxiv.org/abs/1804.08356)) | 把 ① 推广为**结构化测度族** $\mathcal{M}$ 上的 $W_2$ 逼近（可变权、曲线、线段…） |
+
+下文分别简称 **BNOT**（①）与 **OTA**（②）。逻辑链是：
+
+1. 先用 BNOT 把「连续密度 → 等权点」写成半离散 OT / Power 图，并弄清容量约束与站点–重心更新；
+2. 再进入 OTA：同一 OT 内核嵌入交替投影梯度（$\psi$/$\mathbf{w}$/$\mathbf{x}$/$\Pi$），扩展可容许测度与数值稳定性（正则 Newton、Green 积分）。
+
+给定紧域 $\Omega\subset\mathbb{R}^2$ 上的目标密度 $\rho$（测度 $\mu$），统一目标可写成
 
 $$
 \min_{\nu\in\mathcal{M}} D(\nu,\mu),
 \tag{1}
 $$
 
-其中 $\mathcal{M}$ 是可容许测度族，$D$ 为测度间距离。本文取 $D=W_2$（二次 Wasserstein 距离），$\Omega=[0,1]^2$。
-
-该框架把多条看似无关的路线统一起来：
+取 $D=W_2$（二次 Wasserstein），$\Omega=[0,1]^2$。$\mathcal{M}$ 从「$n$ 个等权 Dirac」（BNOT）扩到：
 
 | 特例 | $\mathcal{M}$ | 与经典方法的关系 |
 | :--- | :--- | :--- |
-| **Stippling / 蓝噪声** | $n$ 个 Dirac，可变权重 | Lloyd 算法、de Goes et al. 的 CCVT / 最优传输 halftoning |
-| **等权点集** | 权重固定为 $1/n$ | Blue noise through optimal transport [de Goes et al. 2012] |
-| **曲线测度** | 弧长参数化、有界曲率/速度/加速度的离散曲线 | Curvling、路径规划、3D 打印喷嘴轨迹 |
+| **等权点集 / 蓝噪声** | 权重固定为 $1/n$ | **BNOT** [de Goes et al. 2012] |
+| **Stippling（可变权）** | $n$ 个 Dirac，可变权重 | Lloyd、CCVT；OTA 的 $\mathcal{M}_{a,n}$ |
+| **曲线测度** | 弧长参数化、有界曲率/速度/加速度 | Curvling、路径规划、喷嘴轨迹 |
 | **线段测度** | 分段线性约束 | Dashing 风格渲染 |
 
-**主要贡献**：(i) 交替极小化 + 变度量投影梯度，含 $\psi$/$\mathbf{w}$/$\mathbf{x}$/$\Pi$ 四步；(ii) 稳定化正则 Newton 解半离散 OT 对偶，并给出**全局收敛**保证；(iii) Green 公式加速 Laguerre 单元积分；(iv) 曲线空间上的投影算子（运动学 + 几何约束）；(v) 与静电 halftoning、Lloyd、de Goes 方法的系统对照。
+**OTA 主要贡献**：(i) 交替极小化 + 变度量投影梯度；(ii) 稳定化正则 Newton 解半离散 OT 对偶并给全局收敛；(iii) Green 公式加速 Laguerre 积分；(iv) 曲线空间投影（运动学 + 几何约束）；(v) 与静电 halftoning、Lloyd、BNOT 的系统对照。
 
-**前置**：[最优传输介绍](2018-05-01-最优传输介绍.md)、[半离散 OT（凸几何）](2020-05-01-基于凸几何的半离散最优传输.md)、[Blue noise through OT](2020-12-12-最优传输计算焦散透镜.md)。
+**前置**：[最优传输介绍](2018-05-01-最优传输介绍.md)、[半离散 OT（凸几何）](2020-05-01-基于凸几何的半离散最优传输.md)。透镜侧应用见 [最优传输计算焦散透镜](2020-12-12-最优传输计算焦散透镜.md)。
 
 ---
 
-## 1. 问题与可容许测度族
+## 1. 问题与可容许测度族（共同设定）
 
 ### 1.1 目标
 
@@ -55,7 +64,7 @@ $$
 
 $\Delta_{n-1}$ 为标准单纯形。解 (1) 且 $\mathcal{M}=\mathcal{M}_{a,n}$ 即**可变权重的量化**；$\mathcal{M}_{f,n}$ 为等权 stippling。
 
-**曲线 / 线段**：$\mathcal{M}$ 为弧长参数化曲线、或固定长度/曲率的离散曲线的 pushforward 测度（§6）。
+**曲线 / 线段**：$\mathcal{M}$ 为弧长参数化曲线、或固定长度/曲率的离散曲线的 pushforward 测度（§7）。
 
 ### 1.2 半离散 $W_2$ 距离
 
@@ -68,7 +77,7 @@ $$
 
 最优 $T^*$ 描述如何把连续质量 $\mu$ 搬到离散支撑上——这是半离散 OT 的核心。
 
-在结构化测度族 $\mathcal{M}$ 上，本文核心问题为
+在结构化测度族 $\mathcal{M}$ 上，OTA 的核心问题为
 
 $$
 \inf_{\nu\in\mathcal{M}} W_2^2(\nu,\mu).
@@ -77,7 +86,7 @@ $$
 
 ### 1.3 相关工作与应用背景
 
-问题 (1) 最早由 [Chauffert et al. 2017] 以**卷积核距离**形式提出；本文用 $W_2$ 重述并大幅扩展。同一框架覆盖：
+问题 (1) 最早由 [Chauffert et al. 2017] 以**卷积核距离**形式提出；OTA 用 $W_2$ 重述并大幅扩展。同一框架覆盖：
 
 | 领域 | 典型 $\mathcal{M}$ | 文献线索 |
 | :--- | :--- | :--- |
@@ -87,15 +96,97 @@ $$
 | 设施选址 / 网络 | 空间分布网络 | Gastner & Newman 2006 |
 | 3D 打印 / 雕刻 | 连续喷嘴/激光轨迹 | Chen et al. 2017 |
 
-**曲线逼近**在 NPR、TSP art、线雕 3D 打印中常见，但以往多无显式优化表述；本文将 curvling 纳入 (5)。
+**曲线逼近**在 NPR、TSP art、线雕 3D 打印中常见，但以往多无显式优化表述；OTA 将 curvling 纳入 (5)。
 
 **线段测度（dashing）**：用短线段密度表达明暗，是 stippling 的结构化推广。
 
 ---
 
-## 2. 离散化与总算法框架
+## 2. Blue Noise through Optimal Transport（de Goes et al. 2012）
 
-### 2.1 用原子测度逼近一般 $\mathcal{M}$
+> **论文**：Fernando de Goes, Katherine Breeden, Victor Ostromoukhov, Mathieu Desbrun. [*Blue Noise through Optimal Transport*](https://doi.org/10.1145/2366145.2366190). ACM TOG 31(6), SIGGRAPH Asia 2012.  
+> **项目页**：[geometry.caltech.edu/BlueNoise](https://geometry.caltech.edu/BlueNoise/) · PDF：[Caltech](https://www.geometry.caltech.edu/pubs/dGBOD12.pdf)
+
+本节是后文一般框架最直接的前驱：两边都在做「用半离散 $W_2$ / Power 图把连续密度 $\rho$ 凝聚成点集」。后文 de Gournay et al. 2019 正是把这里的蓝噪声视为等权特例，再推广到可变权重、曲线、线段等结构化测度。
+
+### 2.1 问题设定：蓝噪声 = 容量约束 + 最优传输
+
+给定域 $\mathcal{D}$ 与正密度 $\rho$（墨水分布），蓝噪声采样把连续墨水**凝聚**成 $n$ 个 Dirac。de Goes 用三条要求刻画：
+
+| 要求 | 含义 |
+| :--- | :--- |
+| **A. 均匀采样（容量）** | 每点承载等量墨水：$m_i=\int_{V_i}\rho=m\equiv\frac{1}{n}\int_{\mathcal{D}}\rho$ |
+| **B. 最优传输** | 把 $\rho$ 搬到点集的总代价最小 |
+| **C. 局部不规则** | 避免六角晶格 / Moire 伪影 |
+
+传输代价（对任意剖分 $\mathcal{V}=\{V_i\}$）为
+
+$$
+E(X,\mathcal{V})=\sum_{i}\int_{V_i}\rho(x)\,\|x-x_i\|_2^2\,\mathrm{d}x.
+\tag{27a}
+$$
+
+[Aurenhammer et al. 1998] 证明：在容量约束下极小化 $E$ 的最优剖分必为 **Power 图**（权重 Voronoi / Laguerre）。因此不必在全体剖分中搜索，可限制到加权点集 $(X,W)$ 的 Power 单元 $V_i^w$。这与 OTA 把半离散 $W_2$ 写成 Laguerre 图上的对偶问题完全同构。
+
+### 2.2 变分形式
+
+带 Lagrange 乘子的约束极小化可化为对标量泛函求驻点：
+
+$$
+F(X,W)=E(X,W)-\sum_{i} w_i\bigl(m_i-m\bigr).
+\tag{27b}
+$$
+
+关键性质（与后文 OTA 对偶 / 梯度公式同构）：
+
+- **固定 $X$，对 $W$**：Hessian $=-\Delta_{w,\rho}$（加权 Laplacian）→ **凹极大化**；Newton 解稀疏 Poisson 系统即可精确满足容量约束（残差可达 $10^{-12}$）。这对应后文 OTA 的 $\psi$-step（对偶变量与 Power 权重一一对应）。
+- **固定 $W$，对 $X$**：
+
+$$
+\nabla_{x_i}F=2\,m_i\,(x_i-b_i),\qquad
+b_i=\frac{1}{m_i}\int_{V_i^w}x\,\rho(x)\,\mathrm{d}x.
+\tag{27c}
+$$
+
+临界点要求 $x_i=b_i$，即 **centroidal Power diagram**。这正是后文 OTA 梯度 (23)–(24) 的等权版本（$\mathbf{w}[i]=m_i=1/n$）。
+
+算法：**交替**「对 $X$ 做带线搜索的梯度下降」与「对 $W$ 做 Newton 投影到容量可行集」；Power 图由 CGAL 更新。另加局部规则性检测 + jitter，实现要求 C。
+
+### 2.3 与 de Gournay et al. 2019 的对照（预告）
+
+两边「很像」，是因为共享同一半离散 OT 内核；差别在**可容许测度族**与**数值细节**。
+
+| | **BNOT** (de Goes 2012) | **OTA** (de Gournay 2019) |
+| :--- | :--- | :--- |
+| 目标 | 蓝噪声点采样 / stippling | 结构化测度逼近：点、曲线、线段… |
+| 测度族 $\mathcal{M}$ | 等权 Dirac：$\mathbf{w}=1/n$ | $\mathcal{M}_{f,n}$ / $\mathcal{M}_{a,n}$ / 曲线 / dashing |
+| 距离 | 半离散 $W_2$（Power 图） | 同左，显式写为 $W_2^2(\nu,\mu)$ |
+| 对偶变量 | Power 权重 $w_i$ | Laguerre 势 $\psi$（等价） |
+| 站点更新 | $\nabla_{x_i}F\propto m_i(x_i-b_i)$ + 线搜索 | (23)–(25)，$\Sigma_k$ 拟 Newton，常取 $s_k=1$ |
+| 权重 | 固定等权；用 $W$ 只为**精确容量** | 可选可变 $\mathbf{w}$（$w$-step） |
+| 约束投影 $\Pi$ | 无（点自由）+ 局部 jitter | 曲线运动学 / 几何约束的 ADMM |
+| 积分加速 | 像素–单元精确求交 | Green 公式（OTA 相对 ibnot 的主要加速） |
+| $\psi$-步稳定 | Newton + Armijo | **正则化 Newton**，非均匀密度下仍收敛（ibnot 常失败） |
+| 在后文中的位置 | Algorithm 1 + $\mathbf{W}=\{1/n\}$ 的特例 | 见后文度量 (27) |
+
+等权 stippling 时，后文框架的度量退化为
+
+$$
+\Sigma_k=\mathrm{diag}\bigl(\mu(\mathcal{L}_i(\bm{\phi}^*(\mathbf{x}),\mathbf{x}))\bigr)=\frac{1}{n}\,\mathrm{Id},
+\tag{27}
+$$
+
+并对 $\mathbf{x}$-步做线搜索时与 BNOT 一致；OTA 经验上 $s_k=1$ 已够，可省去每次线搜索中反复解对偶的开销。
+
+**一句话**：BNOT =「等权半离散 OT + Power 图上的容量精确约束」；OTA =「同一 OT 内核 + 更广的 $\mathcal{M}$（可变权 / 曲线）+ 更稳的 Newton + Green 加速」。阅读顺序上应先掌握 BNOT，再把它看作 OTA 在 $\mathcal{M}_{f,n}$ 上的特例。
+
+同一 Power / 半离散 OT 内核在透镜设计中的应用，见 [最优传输计算焦散透镜](2020-12-12-最优传输计算焦散透镜.md)。
+
+---
+
+## 3. OTA：离散化与总算法框架（de Gournay et al. 2019）
+
+### 3.1 用原子测度逼近一般 $\mathcal{M}$
 
 无穷维问题 (5) 用一族原子测度空间逼近：
 
@@ -132,9 +223,9 @@ F(\mathbf{x},\mathbf{w})=\tfrac{1}{2}W_2^2(\nu(\mathbf{x},\mathbf{w}),\mu).
 \tag{10}
 $$
 
-### 2.2 Algorithm 1：交替投影梯度
+### 3.2 Algorithm 1：交替投影梯度
 
-**变度量投影**（论文 §2.2）：
+**变度量投影**（OTA 论文 §2.2）：
 
 $$
 \Pi^{\Sigma_k}_{\mathbf{X}}(\mathbf{x}_0)
@@ -176,9 +267,9 @@ x̂ ← x_{N_it},  ŵ ← w_{N_it}
 
 ---
 
-## 3. $\psi$-step：半离散最优传输
+## 4. $\psi$-step：半离散最优传输
 
-### 3.1 假设与 Laguerre 图
+### 4.1 假设与 Laguerre 图
 
 **Assumption 1**：$\Omega$ 为紧凸多面体（通常 $[0,1]^2$）；$\mu$ 绝对连续；$\nu$ 为 $n$ 个原子的离散测度。
 
@@ -204,7 +295,7 @@ $$
 
 即每个站点的质量恰好来自其 Laguerre 单元——与 [Alexandrov / 半离散 OT](2020-05-01-基于凸几何的半离散最优传输.md) 中「支撑高度 $\mathbf{h}$ ↔ 单元体积」对偶一脉相承。
 
-### 3.2 对偶问题
+### 4.2 对偶问题
 
 无穷维 (4) 化为有限维**凹**极大化：
 
@@ -270,13 +361,13 @@ $$
 
 **一阶 vs 二阶方法的困境** [Kitagawa et al.; Levy]：一阶法依赖梯度 Lipschitz 常数；二阶法依赖 $g$ 的 Hölder 正则性，且要求 Laguerre 单元质量不消失。故早期迭代宜一阶 + 好初值，接近最优解后切换二阶。LM / trust-region 的全局 $C^2$ 假设此处不满足。
 
-### 3.3 正则化 Newton 法（稳定化）
+### 4.3 正则化 Newton 法（稳定化）
 
 先前方法 [Aurenhammer et al. 1998; de Goes et al. 2012; Levy et al.] 的收敛常依赖梯度 Lipschitz 常数，而该常数在点共线、密度不均匀时可**任意大**。
 
 **Remark 1（高 Lipschitz 常数）**：$\mu$ 为 $\Omega=[0,1]^2$ 上均匀测度，$n$ 个点等距竖直排列 $\mathbf{x}[i]=(\tfrac12,\tfrac{1+2i}{2n})$。Hessian 为 1D Neumann Laplacian 的倍数，最大特征值 $\sim 4n$，Lipschitz 常数随 $n$ 爆炸——**曲线逼近密度时典型**。
 
-本文采用**正则化 Newton**（类似 Levenberg–Marquardt，但正则参数自动选取）：
+OTA 采用**正则化 Newton**（类似 Levenberg–Marquardt，但正则参数自动选取）：
 
 $$
 \bm{\psi}_{k+1}=\bm{\psi}_k-t_k\bigl(A(\bm{\psi}_k)+\|\nabla_{\bm{\psi}}g(\bm{\psi}_k)\|_2\,\mathrm{Id}\bigr)^{-1}\nabla_{\bm{\psi}}g(\bm{\psi}_k),
@@ -298,7 +389,7 @@ $$
 
 实践上可结合 [Merigot 2011] 的多尺度初始化；亦可用标准 LM $\bm{\psi}_{k+1}=\bm{\psi}_k-(A+c_k\mathrm{Id})^{-1}\nabla g$，$c_k$ 由 Wolfe 准则调节，收敛率相近。
 
-### 3.4 Green 公式加速积分
+### 4.4 Green 公式加速积分
 
 计算 (14)(16) 需对 Laguerre 单元积分。策略：
 
@@ -306,13 +397,13 @@ $$
 2. 用 **Green 公式**把体积分化为沿 Laguerre 边界的多项式线积分；
 3. **预计算**边上各阶矩，之后每次 $\psi$-step 仅做线性组合。
 
-对笛卡尔网格，Laguerre 单元与网格交可解析求交，复杂度从 $O(n_{\text{pixels}})$ 降至约 $O(\sqrt{n_{\text{pixels}}})$，使 $10^5$ 级点集在分钟量级可行。这是本文相对 ibnot [de Goes] 的主要加速来源之一。
+对笛卡尔网格，Laguerre 单元与网格交可解析求交，复杂度从 $O(n_{\text{pixels}})$ 降至约 $O(\sqrt{n_{\text{pixels}}})$，使 $10^5$ 级点集在分钟量级可行。这是 OTA 相对 ibnot（BNOT 实现）的主要加速来源之一。
 
 ---
 
-## 4. $\mathbf{w}$-step 与 $\mathbf{x}$-step
+## 5. $\mathbf{w}$-step 与 $\mathbf{x}$-step
 
-### 4.1 最优权重
+### 5.1 最优权重
 
 子问题
 
@@ -321,11 +412,11 @@ $$
 \tag{21}
 $$
 
-#### 4.1.1 完全约束 $\mathbf{w}$
+#### 5.1.1 完全约束 $\mathbf{w}$
 
 $\mathbf{W}=\{\mathbf{w}_0\}$（singleton，如等权 $1/n$）：$\mathbf{w}^*=\mathbf{w}_0$。
 
-#### 4.1.2 单纯形上无约束极小化
+#### 5.1.2 单纯形上无约束极小化
 
 $\mathbf{W}=\Delta_{n-1}$：**Proposition 4** 给出闭式解
 
@@ -344,7 +435,7 @@ $$
 
 的 Lagrange 乘子；对 $\mathbf{w}$ 极小化时该约束被移除，故可取 $\bm{\psi}=\mathbf{0}$。
 
-### 4.2 站点梯度与变度量
+### 5.2 站点梯度与变度量
 
 设 $\bm{\psi}^*$ 为 (13) 的极大izer。**Proposition 5**：在 $\rho\in C^0\cap W^{1,1}$、$\mathbf{w}>0$、站点分离时，$F$ 对 $\mathbf{x}$ 为 $C^2$，且
 
@@ -380,100 +471,22 @@ $$
 
 ---
 
-## 5. 与经典方法的关系
+## 6. 与其他经典方法的关系
 
-### 5.1 Lloyd 算法
+BNOT 已在 §2 单独展开；此处补 Lloyd 与静电 / 卷积路线，便于对照数值行为。
 
-Lloyd 算法求解 (5)，$\mathbf{X}=\Omega^n$，$\mathbf{W}=\Delta_{n-1}$。等价于 Algorithm 1，但度量用 **Voronoi 质量**（$\bm{\psi}=0$）：
+### 6.1 Lloyd 算法
+
+Lloyd 算法求解 (5)，$\mathbf{X}=\Omega^n$，$\mathbf{W}=\Delta_{n-1}$。等价于 OTA 的 Algorithm 1，但度量用 **Voronoi 质量**（$\bm{\psi}=0$）：
 
 $$
 \Sigma_k=\mathrm{diag}\bigl(\mu(\mathcal{L}_i(\mathbf{0},\mathbf{x}))\bigr).
 \tag{26}
 $$
 
-与 (25) 的差别：Lloyd **不做** $\psi$-step（不解 OT 对偶），直接用 Voronoi 剖分近似传输；本文每步先求最优 $\bm{\psi}^*$，再更新站点。
+与 (25) 的差别：Lloyd **不做** $\psi$-step（不解 OT 对偶），直接用 Voronoi 剖分近似传输；OTA 每步先求最优 $\bm{\psi}^*$，再更新站点。BNOT（§2）则在 Power 图上解精确容量，介于二者之间。
 
-### 5.2 Blue noise through optimal transport [de Goes et al. 2012]
-
-> **论文**：Fernando de Goes, Katherine Breeden, Victor Ostromoukhov, Mathieu Desbrun. [*Blue Noise through Optimal Transport*](https://doi.org/10.1145/2366145.2366190). ACM TOG 31(6), SIGGRAPH Asia 2012.  
-> **项目页**：[geometry.caltech.edu/BlueNoise](https://geometry.caltech.edu/BlueNoise/) · PDF：[Caltech](https://www.geometry.caltech.edu/pubs/dGBOD12.pdf)
-
-本节是本文最直接的前驱：两边都在做「用半离散 $W_2$ / Power 图把连续密度 $\rho$ 凝聚成点集」。de Gournay et al. 2019 把 de Goes 的蓝噪声视为等权特例，并推广到可变权重、曲线、线段等结构化测度。
-
-#### 5.2.1 问题设定：蓝噪声 = 容量约束 + 最优传输
-
-给定域 $\mathcal{D}$ 与正密度 $\rho$（墨水分布），蓝噪声采样把连续墨水**凝聚**成 $n$ 个 Dirac。de Goes 用三条要求刻画：
-
-| 要求 | 含义 |
-| :--- | :--- |
-| **A. 均匀采样（容量）** | 每点承载等量墨水：$m_i=\int_{V_i}\rho=m\equiv\frac{1}{n}\int_{\mathcal{D}}\rho$ |
-| **B. 最优传输** | 把 $\rho$ 搬到点集的总代价最小 |
-| **C. 局部不规则** | 避免六角晶格 / Moire 伪影 |
-
-传输代价（对任意剖分 $\mathcal{V}=\{V_i\}$）为
-
-$$
-E(X,\mathcal{V})=\sum_{i}\int_{V_i}\rho(x)\,\|x-x_i\|_2^2\,\mathrm{d}x.
-\tag{27a}
-$$
-
-[Aurenhammer et al. 1998] 证明：在容量约束下极小化 $E$ 的最优剖分必为 **Power 图**（权重 Voronoi / Laguerre）。因此不必在全体剖分中搜索，可限制到加权点集 $(X,W)$ 的 Power 单元 $V_i^w$。这与本文把半离散 $W_2$ 写成 Laguerre 图上的对偶问题完全同构。
-
-#### 5.2.2 变分形式
-
-带 Lagrange 乘子的约束极小化可化为对标量泛函求驻点：
-
-$$
-F(X,W)=E(X,W)-\sum_{i} w_i\bigl(m_i-m\bigr).
-\tag{27b}
-$$
-
-关键性质（与本文对偶 / 梯度公式同构）：
-
-- **固定 $X$，对 $W$**：Hessian $=-\Delta_{w,\rho}$（加权 Laplacian）→ **凹极大化**；Newton 解稀疏 Poisson 系统即可精确满足容量约束（残差可达 $10^{-12}$）。这对应本文的 $\psi$-step（对偶变量与 Power 权重一一对应）。
-- **固定 $W$，对 $X$**：
-
-$$
-\nabla_{x_i}F=2\,m_i\,(x_i-b_i),\qquad
-b_i=\frac{1}{m_i}\int_{V_i^w}x\,\rho(x)\,\mathrm{d}x.
-\tag{27c}
-$$
-
-临界点要求 $x_i=b_i$，即 **centroidal Power diagram**。这正是本文梯度 (23)–(24) 的等权版本（$\mathbf{w}[i]=m_i=1/n$）。
-
-算法：**交替**「对 $X$ 做带线搜索的梯度下降」与「对 $W$ 做 Newton 投影到容量可行集」；Power 图由 CGAL 更新。另加局部规则性检测 + jitter，实现要求 C。
-
-#### 5.2.3 与本文（de Gournay et al. 2019）的对照
-
-两边「很像」，是因为共享同一半离散 OT 内核；差别在**可容许测度族**与**数值细节**。
-
-| | **BNOT** (de Goes 2012) | **本文** (de Gournay 2019) |
-| :--- | :--- | :--- |
-| 目标 | 蓝噪声点采样 / stippling | 结构化测度逼近：点、曲线、线段… |
-| 测度族 $\mathcal{M}$ | 等权 Dirac：$\mathbf{w}=1/n$ | $\mathcal{M}_{f,n}$ / $\mathcal{M}_{a,n}$ / 曲线 / dashing |
-| 距离 | 半离散 $W_2$（Power 图） | 同左，显式写为 $W_2^2(\nu,\mu)$ |
-| 对偶变量 | Power 权重 $w_i$ | Laguerre 势 $\psi$（等价） |
-| 站点更新 | $\nabla_{x_i}F\propto m_i(x_i-b_i)$ + 线搜索 | (23)–(25)，$\Sigma_k$ 拟 Newton，常取 $s_k=1$ |
-| 权重 | 固定等权；用 $W$ 只为**精确容量** | 可选可变 $\mathbf{w}$（$w$-step） |
-| 约束投影 $\Pi$ | 无（点自由）+ 局部 jitter | 曲线运动学 / 几何约束的 ADMM |
-| 积分加速 | 像素–单元精确求交 | Green 公式（本文相对 ibnot 的主要加速） |
-| $\psi$-步稳定 | Newton + Armijo | **正则化 Newton**，非均匀密度下仍收敛（ibnot 常失败） |
-| 在本文中的位置 | Algorithm 1 + $\mathbf{W}=\{1/n\}$ 的特例 | 见度量 (27) |
-
-等权 stippling 时，本文度量退化为
-
-$$
-\Sigma_k=\mathrm{diag}\bigl(\mu(\mathcal{L}_i(\bm{\phi}^*(\mathbf{x}),\mathbf{x}))\bigr)=\frac{1}{n}\,\mathrm{Id},
-\tag{27}
-$$
-
-并对 $\mathbf{x}$-步做线搜索时与 BNOT 一致；本文经验上 $s_k=1$ 已够，可省去每次线搜索中反复解对偶的开销。
-
-**一句话**：BNOT =「等权半离散 OT + Power 图上的容量精确约束」；本文 =「同一 OT 内核 + 更广的 $\mathcal{M}$（可变权 / 曲线）+ 更稳的 Newton + Green 加速」。把 BNOT 看成本文框架在 $\mathcal{M}_{f,n}$ 上的历史特例，最贴切。
-
-相关讨论亦可对照 [最优传输计算焦散透镜](2020-12-12-最优传输计算焦散透镜.md)（同一 Power / 半离散 OT 计算内核在透镜设计中的应用）。
-
-### 5.3 静电 halftoning（卷积距离）
+### 6.2 静电 halftoning（卷积距离）
 
 另一路线用
 
@@ -484,7 +497,7 @@ $$
 
 $h$ 为光滑核（Maximum Mean Discrepancy / 模糊 SSD）。在适当假设下 $W_2$ 与 (28) **强等价** [Peyré 2016]，但数值行为差异大。优化为**一阶**方法 + FMM/NUFFT；高维 $d$ 上复杂度 $O(dn\log n)$，优于 Laguerre 图的 $O(n^{\lceil d/2\rceil})$。
 
-| | 卷积 / 静电 | 最优传输（本文） |
+| | 卷积 / 静电 | 最优传输（OTA） |
 | :--- | :--- | :--- |
 | 优化 | 一阶 | 一、二阶混合 |
 | 计算核心 | NUFFT / FMM | Laguerre 图 + Green 积分 |
@@ -492,13 +505,13 @@ $h$ 为光滑核（Maximum Mean Discrepancy / 模糊 SSD）。在适当假设下
 | 2D 速度 | 慢（迭代多） | 快 1–2 个数量级 |
 | 视觉质量 | 相当 | 相当 |
 
-#### 5.3.1 停止准则与 Benchmark
+#### 6.2.1 停止准则与 Benchmark
 
 **停止准则** [Schmaltz et al.]：原图与 stipple 图经高斯卷积后的 SNR；高斯标准差 $\sigma=1/\sqrt{n}$（典型点间距）。所有 benchmark 在 **31 dB** 停止。Fig. 3 展示 8 / 25 / 31 / 34 dB 的迭代演化。
 
 **Table 2**（均匀密度，$1024\times 1024$ 像素，Poisson 初始化；格式：秒 — 迭代次数）：
 
-| # pts | Electro 20核 | Electro BB 20核 | ibnot 1核 | 本文 1核 |
+| # pts | Electro 20核 | Electro BB 20核 | ibnot 1核 | OTA 1核 |
 | :---: | :---: | :---: | :---: | :---: |
 | $2^{10}$ | 130.3 — 317 | 34.4 — 84 | 131.47 — 15 | **4.03 — 19** |
 | $2^{12}$ | 293.9 — 637 | 47.8 — 104 | 267.59 — 22 | **10.86 — 19** |
@@ -506,25 +519,25 @@ $h$ 为光滑核（Maximum Mean Discrepancy / 模糊 SSD）。在适当假设下
 | $2^{16}$ | 4568.5 — 3286 | 569.2 — 410 | 1208.45 — 20 | **252.24 — 26** |
 | $2^{18}$ | TL | 12125.2 — 1103 | 5633.68 — 23 | **1136.51 — 21** |
 
-ibnot 与本文迭代次数相近，但 Green 积分使**每步**更快（积分复杂度约从 $n_{\text{pix}}$ 降至 $\sqrt{n_{\text{pix}}}$）。
+ibnot 与 OTA 迭代次数相近，但 Green 积分使**每步**更快（积分复杂度约从 $n_{\text{pix}}$ 降至 $\sqrt{n_{\text{pix}}}$）。
 
 **Table 3**（非均匀密度 $\rho=2$ 若 $x<0.5$ else $0$）：
 
-| # pts | Electro BB 20核 | ibnot 1核 | 本文 1核 |
+| # pts | Electro BB 20核 | ibnot 1核 | OTA 1核 |
 | :---: | :---: | :---: | :---: |
 | $2^{10}$ | 40.2 — 99 | NC | **4.34 — 24** |
 | $2^{14}$ | 177.7 — 282 | NC | **79.73 — 27** |
 | $2^{18}$ | 39546.1 — 2022 | NC | **1315.01 — 24** |
 
-ibnot 因 $\psi$-步 Hessian 不定常**不收敛**；本文正则 Newton 仍稳定。静电法迭代次数随点数增长，OT 法约恒定 $\sim 20$ 次。
+ibnot 因 $\psi$-步 Hessian 不定常**不收敛**；OTA 正则 Newton 仍稳定。静电法迭代次数随点数增长，OT 法约恒定 $\sim 20$ 次。
 
 ---
 
-## 6. 曲线空间投影（$\Pi$-step）
+## 7. 曲线空间投影（$\Pi$-step）
 
 Stippling 无约束时 $\Pi$ 平凡。对 **curvling / 路径规划**，$\mathbf{X}$ 描述离散曲线上的运动学或几何约束。
 
-### 6.1 离散曲线算子
+### 7.1 离散曲线算子
 
 离散曲线 $\mathbf{x}=(\mathbf{x}[1],\ldots,\mathbf{x}[n])\in\Omega^n$。**一阶差分**算子（开/闭曲线）：
 
@@ -628,7 +641,7 @@ $$
 
 权重常取 $\mathbf{W}=\{1/n\}$ 或 $\Delta_{n-1}$。
 
-### 6.2 ADMM 投影
+### 7.2 ADMM 投影
 
 **欧氏投影**（Algorithm 1 的 $\Pi$-步在无变度量时，或 ADMM 子问题）：
 
@@ -688,19 +701,19 @@ $\mathbf{x}$-步用**共轭梯度**求解。$\mathbf{y}$-步为逐约束欧氏�
 
 **参数选取**：$\gamma_i=\|A_i\|_2$（谱范数）经验稳定；$\beta$ 手动调一次后固定。
 
-### 6.3 投影算例（Fig. 4）
+### 7.3 投影算例（Fig. 4）
 
 将猫轮廓（红）投影到蓝约束曲线集：中图——更短长度 + 有界曲率（简化变光滑）；右图——更长长度 + 有界曲率（加环保持形状）。
 
-### 6.4 多分辨率实现
+### 7.4 多分辨率实现
 
 曲线优化时**不全点同时优化**：先在降采样曲线上解 (9)，再二分上采样中点作 warm start。实现用**二进尺度**：相邻采样间插中点；分辨率间权重除以 2。
 
 ---
 
-## 7. 应用
+## 8. 应用
 
-### 7.1 非真实感绘制（NPR）
+### 8.1 非真实感绘制（NPR）
 
 | 模式 | $\mathcal{M}$ | 效果 |
 | :--- | :--- | :--- |
@@ -710,11 +723,11 @@ $\mathbf{x}$-步用**共轭梯度**求解。$\mathbf{y}$-步为逐约束欧氏�
 
 Fig. 1：$10^5$ 点 stippling $\approx 202''$；curvling $\approx 313''$；dashing $3.3\times 10^4$ 段 $\approx 237''$（单核，随机均匀初始化）。
 
-#### 7.1.1 灰度 Curvling
+#### 8.1.1 灰度 Curvling
 
 先 stippling 再曲线投影。Fig. 5：256k 点，$\approx 10'$；不同曲线长度 $l$、$l/3$、$l/12$ 控制细节层次。
 
-#### 7.1.2 彩色图像
+#### 8.1.2 彩色图像
 
 给定向量密度 $\rho=(\rho_R,\rho_G,\rho_B):\Omega\to[0,1]^3$：
 
@@ -729,23 +742,23 @@ $$
 
 Fig. 6：512k 点彩色 curvling，$\approx 24'$。
 
-#### 7.1.3 动态 / 视频
+#### 8.1.3 动态 / 视频
 
 首帧从任意初值投影；后续帧以前一帧结果为初值，保证帧间点/曲线连续性（补充材料含视频）。
 
-### 7.2 路径规划
+### 8.2 路径规划
 
-#### 7.2.1 无人机监视（Videodrone）
+#### 8.2.1 无人机监视（Videodrone）
 
 费城犯罪数据 [OpenDataPhilly] 加权成密度 $\mu$（Fig. 7a）。在 (31) 运动学约束下最小化 (1)，轨迹更常经过高危区；附加**有界偏航角速度**、**指定时刻经过充电点**（ autonomy）。8k 离散点，30'' 优化。轨迹分色表示多次充电往返。
 
-#### 7.2.2 激光雕刻
+#### 8.2.2 激光雕刻
 
 Fig. 8：激光沿连续轨迹灼烧木材复现风景。同一技术可推广至 3D 打印喷嘴与料流轨迹 [Chen et al.]。
 
-#### 7.2.3 MRI 压缩采样
+#### 8.2.3 MRI 压缩采样
 
-MRI 在 Fourier 域沿**有界速度、有界加速度**曲线采样 [Boyer et al. 2016]，恰为 (31) 约束集。理论建议按稀疏结构在 wavelet 域的分布 $\mu$ 随机采样，物理上不可行 → 用本文将 $\mu$ **投影**到可执行轨迹。
+MRI 在 Fourier 域沿**有界速度、有界加速度**曲线采样 [Boyer et al. 2016]，恰为 (31) 约束集。理论建议按稀疏结构在 wavelet 域的分布 $\mu$ 随机采样，物理上不可行 → 用 OTA 将 $\mu$ **投影**到可执行轨迹。
 
 采样得 $\mathbf{y}[i]=\hat{u}(\mathbf{x}[i])$，重建解
 
@@ -757,17 +770,17 @@ $$
 
 $\Psi$ 为冗余小波等稀疏变换。Fig. 9：目标密度、生成轨迹（约为全 Fourier 采样 1/4）、真图与重建图。
 
-### 7.3 高级采样理论
+### 8.3 高级采样理论
 
 将目标密度投影到满足几何约束的曲线点集，用于**结构化采样模式**设计 [de Gournay et al.]。
 
-### 7.4 与焦散 / 透镜设计的联系
+### 8.4 与焦散 / 透镜设计的联系
 
-半离散 OT + Power 图是 [焦散透镜](2020-12-12-最优传输计算焦散透镜.md)、[多尺度半离散 OT](2020-05-02-多尺度半离散最优传输.md) 的共同计算内核；本文把同一套 $\psi$-step 嵌入**更一般的测度投影**循环，并补上曲线约束的 $\Pi$-step。
+半离散 OT + Power 图是 [焦散透镜](2020-12-12-最优传输计算焦散透镜.md)、[多尺度半离散 OT](2020-05-02-多尺度半离散最优传输.md) 的共同计算内核；OTA 把同一套 $\psi$-step 嵌入**更一般的测度投影**循环，并补上曲线约束的 $\Pi$-step。
 
 ---
 
-## 8. 算法流程总览
+## 9. 算法流程总览
 
 ```mermaid
 flowchart TD
@@ -786,7 +799,7 @@ flowchart TD
 
 ---
 
-## 9. 小结
+## 10. 小结
 
 | 概念 | 作用 |
 | :--- | :--- |
@@ -796,8 +809,8 @@ flowchart TD
 | (19)(20) | 正则化 Newton；全局 + 局部二次收敛 |
 | Green 积分 | 2D 大规模 stippling 的关键加速 |
 | (22)(23)(25) | 权重闭式 + 站点移向 Laguerre 重心 |
-| (26)(27) | Lloyd 与 de Goes 蓝噪声为特例 |
-| (27a)–(27c) | BNOT：容量约束 + Power 图 OT；与本文半离散内核同构 |
+| §2 / (27a)–(27c) | **先读** BNOT：容量约束 + Power 图 OT |
+| (26)(27) | Lloyd 与 BNOT 为 OTA 在特定 $\mathcal{M}$ 上的特例 |
 | (29)–(43) | 曲线约束、ADMM 分裂与投影 |
 | (44)(45) | 彩色 curvling、MRI 重建 |
 | (46) | Algorithm 1 局部收敛条件 |
@@ -806,7 +819,7 @@ flowchart TD
 
 ---
 
-## 10. 附录 A：Algorithm 1 的收敛性
+## 11. 附录 A：Algorithm 1 的收敛性
 
 **Theorem 3** [Nesterov]：设 $\mathbf{X}\subset\mathbb{R}^n$ 闭凸，$\Sigma_k=\Sigma\succ 0$ 常数，$F\in C^1$ 且
 
@@ -842,4 +855,4 @@ $$
 - Polyak R. A. *Regularized Newton method for unconstrained convex optimization*. Math. Program., 120(1), 2009.
 - Schmaltz C., Gwosdek P., Bruhn A., Weickert J. *Electrostatic halftoning*. CGF, 29, 2010.
 
-**相关笔记**：[最优传输介绍](2018-05-01-最优传输介绍.md) · [Monge/Kantorovich](2018-06-01-Monge问题与Kantorivch问题.md) · [半离散 OT](2020-05-01-基于凸几何的半离散最优传输.md) · [多尺度半离散 OT](2020-05-02-多尺度半离散最优传输.md) · [焦散透镜 / 蓝噪声 OT](2020-12-12-最优传输计算焦散透镜.md) · [Sinkhorn](2020-05-12-Sinkhorn算法与DSB.md)
+**相关笔记**：[最优传输介绍](2018-05-01-最优传输介绍.md) · [Monge/Kantorovich](2018-06-01-Monge问题与Kantorivch问题.md) · [半离散 OT](2020-05-01-基于凸几何的半离散最优传输.md) · [多尺度半离散 OT](2020-05-02-多尺度半离散最优传输.md) · [最优传输计算焦散透镜](2020-12-12-最优传输计算焦散透镜.md) · [Sinkhorn](2020-05-12-Sinkhorn算法与DSB.md)

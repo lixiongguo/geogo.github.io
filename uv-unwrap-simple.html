@@ -489,19 +489,59 @@
     (function () {
       // Indexed from window.ALGO_MODELS_DIR (via _data/algo_demos.yml)
       const MODELS_DIR = (window.ALGO_MODELS_DIR || "assets/Models").replace(/^\/+|\/+$/g, "");
-      const MODELS1 = {
-        beetle:        { label: "Beetle (2.1K)",          file: "beetle_F2052.obj" },
-        bunnyhead:     { label: "Bunny Head (3K)",        file: "bunnyhead_F3000.obj" },
-        camelhead:     { label: "Camel Head (22.7K)",     file: "camelhead_F22704.obj" },
-        cathead:       { label: "Cat Head (248)",          file: "cathead_F248.obj" },
-        hand:          { label: "Hand (3.8K)",             file: "hand_F3769.obj" },
-        hand1i:        { label: "Hand 1i (5K)",            file: "hand_1_i_F4999.obj" },
-        hemi:          { label: "Hemi",                    file: "hemi.obj" },
-        hencky:        { label: "Hencky (20K)",            file: "hencky_F20000.obj" },
-        max:           { label: "Max (3.6K)",              file: "max_F3599.obj" },
-        nefertiti:     { label: "Nefertiti Face",          file: "Nefertiti_face.obj" },
-        spot_cowhead:  { label: "Spot Cow Head (9K)",     file: "spot_cowhead_F9024.obj" },
-      };
+      const FALLBACK_MODEL_FILES = ['beetle_F2052.obj', 'bunnyhead_F3000.obj', 'camelhead_F22704.obj', 'cathead_F248.obj', 'hand_F3769.obj', 'hand_1_i_F4999.obj', 'hemi.obj', 'hencky_F20000.obj', 'max_F3599.obj', 'Nefertiti_face.obj', 'spot_cowhead_F9024.obj'];
+      const SOURCE_MODEL_FILES = (Array.isArray(window.ALGO_MODEL_FILES) && window.ALGO_MODEL_FILES.length
+        ? window.ALGO_MODEL_FILES
+        : FALLBACK_MODEL_FILES).filter(function (name) { return /\.obj$/i.test(name); });
+
+      function formatFaceCountLabel(faceCount) {
+        if (!Number.isFinite(faceCount) || faceCount <= 0) return null;
+        if (faceCount >= 1000) {
+          const k = Math.round(faceCount / 100) / 10;
+          return k + 'K';
+        }
+        return String(faceCount);
+      }
+
+      function toTitleWords(stem) {
+        return stem
+          .replace(/[_-]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .replace(/\b\w/g, function (ch) { return ch.toUpperCase(); });
+      }
+
+      function buildModelLabel(fileName) {
+        const stem = fileName.replace(/\.obj$/i, '');
+        const m = stem.match(/_F(\d+)$/i);
+        const base = m ? stem.slice(0, m.index) : stem;
+        const pretty = toTitleWords(base);
+        if (!m) return pretty;
+        const count = parseInt(m[1], 10);
+        const countLabel = formatFaceCountLabel(count);
+        return countLabel ? (pretty + ' (' + countLabel + ')') : pretty;
+      }
+
+      function buildModelCatalog(fileNames) {
+        const catalog = {};
+        const sorted = fileNames.slice().sort(function (a, b) {
+          return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+        });
+        for (let i = 0; i < sorted.length; i++) {
+          const file = sorted[i];
+          let key = file
+            .replace(/\.obj$/i, '')
+            .replace(/[^a-zA-Z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .toLowerCase();
+          if (!key) key = 'model_' + i;
+          if (Object.prototype.hasOwnProperty.call(catalog, key)) key = key + '_' + i;
+          catalog[key] = { label: buildModelLabel(file), file: file };
+        }
+        return catalog;
+      }
+
+      const MODEL_CATALOG = buildModelCatalog(SOURCE_MODEL_FILES);
 
 
       const modelCanvas = document.getElementById("model-canvas");
@@ -626,10 +666,10 @@
           opt.textContent = models[keys[i]].label;
           sel.appendChild(opt);
         }
-        if (keys.length > 0) sel.value = keys[0];
+        if (keys.length > 0) { sel.value = keys[0]; } else { setStatus("模型目录为空：" + MODELS_DIR, "#ff6b6b"); }
       }
       function initModelOptions() {
-        populateSelect(modelSelect, MODELS1);
+        populateSelect(modelSelect, MODEL_CATALOG);
       }
 
       function resize() {
@@ -709,7 +749,7 @@
       }
 
       function getModelCandidateUrls(modelKey) {
-        const model = MODELS1[modelKey];
+        const model = MODEL_CATALOG[modelKey];
         if (!model) return [];
         return [MODELS_DIR + "/" + model.file, "./" + MODELS_DIR + "/" + model.file, "../" + MODELS_DIR + "/" + model.file];
       }
@@ -1091,7 +1131,7 @@
       }
 
       function getCurrentModelKey() { return modelSelect.value; }
-      function getCurrentModelObj() { return MODELS1[getCurrentModelKey()]; }
+      function getCurrentModelObj() { return MODEL_CATALOG[getCurrentModelKey()]; }
 
       /** 当前选中的算法 */
       function getCurrentMethod() {

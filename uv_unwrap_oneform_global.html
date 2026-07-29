@@ -135,15 +135,59 @@
 
   // ============ Models ============
   const MODELS_DIR = (window.ALGO_MODELS_DIR || "assets/Models2").replace(/^\/+|\/+$/g, "");
-  const MODELS = {
-    doubletorus:{ label: "Double Torus (6.1K)",file: "double-torus_F6144.obj" },
-    holes3:     { label: "3 Holes (7.2K)",     file: "3holes_F7200.obj" },
-    torus:      { label: "Torus (7.7K)",       file: "torus_F7680.obj" },
-    kitten:     { label: "Kitten (18.9K)",     file: "kitten_F18894.obj" },
-    rocker:     { label: "Rocker Arm (20.1K)", file: "rocker-arm_F20088.obj" },
-    bunny:      { label: "Bunny (28.6K)",      file: "bunny_F28576.obj" },
-    soccerball: { label: "Soccer Ball (57.6K)",file: "soccerball_F57600.obj" },
-  };
+  const FALLBACK_MODEL_FILES = ['double-torus_F6144.obj', '3holes_F7200.obj', 'torus_F7680.obj', 'kitten_F18894.obj', 'rocker-arm_F20088.obj', 'bunny_F28576.obj', 'soccerball_F57600.obj'];
+      const SOURCE_MODEL_FILES = (Array.isArray(window.ALGO_MODEL_FILES) && window.ALGO_MODEL_FILES.length
+        ? window.ALGO_MODEL_FILES
+        : FALLBACK_MODEL_FILES).filter(function (name) { return /\.obj$/i.test(name); });
+
+      function formatFaceCountLabel(faceCount) {
+        if (!Number.isFinite(faceCount) || faceCount <= 0) return null;
+        if (faceCount >= 1000) {
+          const k = Math.round(faceCount / 100) / 10;
+          return k + 'K';
+        }
+        return String(faceCount);
+      }
+
+      function toTitleWords(stem) {
+        return stem
+          .replace(/[_-]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .replace(/\b\w/g, function (ch) { return ch.toUpperCase(); });
+      }
+
+      function buildModelLabel(fileName) {
+        const stem = fileName.replace(/\.obj$/i, '');
+        const m = stem.match(/_F(\d+)$/i);
+        const base = m ? stem.slice(0, m.index) : stem;
+        const pretty = toTitleWords(base);
+        if (!m) return pretty;
+        const count = parseInt(m[1], 10);
+        const countLabel = formatFaceCountLabel(count);
+        return countLabel ? (pretty + ' (' + countLabel + ')') : pretty;
+      }
+
+      function buildModelCatalog(fileNames) {
+        const catalog = {};
+        const sorted = fileNames.slice().sort(function (a, b) {
+          return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+        });
+        for (let i = 0; i < sorted.length; i++) {
+          const file = sorted[i];
+          let key = file
+            .replace(/\.obj$/i, '')
+            .replace(/[^a-zA-Z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .toLowerCase();
+          if (!key) key = 'model_' + i;
+          if (Object.prototype.hasOwnProperty.call(catalog, key)) key = key + '_' + i;
+          catalog[key] = { label: buildModelLabel(file), file: file };
+        }
+        return catalog;
+      }
+
+      const MODEL_CATALOG = buildModelCatalog(SOURCE_MODEL_FILES);
 
   // ============ Three.js 初始化 ============
   const modelCanvas=document.getElementById("model-canvas");
@@ -489,14 +533,14 @@
 
   // ============ 模型加载 ============
   function populateSelect(){
-    const keys=Object.keys(MODELS);
+    const keys=Object.keys(MODEL_CATALOG);
     modelSel.innerHTML="";
     for(let i=0;i<keys.length;i++){
       const o=document.createElement("option");
-      o.value=keys[i];o.textContent=MODELS[keys[i]].label;
+      o.value=keys[i];o.textContent=MODEL_CATALOG[keys[i]].label;
       modelSel.appendChild(o);
     }
-    if(keys.length)modelSel.value=keys[0];
+    if(keys.length)modelSel.value=keys[0]; else setStatus("模型目录为空："+MODELS_DIR,"#ff6b6b");
   }
 
   function loadOBJ(url){
@@ -941,7 +985,7 @@
   // ============ 加载 & 展开 ============
   async function loadModel(){
     if(busy)return;setBusy(true);
-    const key=modelSel.value,m=MODELS[key];
+    const key=modelSel.value,m=MODEL_CATALOG[key];
     setStatus("加载 "+m.label+" ...");
     try{
       const urls=[MODELS_DIR+"/"+m.file,"./"+MODELS_DIR+"/"+m.file,"../"+MODELS_DIR+"/"+m.file];
@@ -1002,7 +1046,7 @@
       const uvV=buildUvMesh(r.uv,currentMeshData.faces,anchors);
       currentUvLines=uvV.lines;currentUvPins=uvV.pins;uvScene.add(currentUvLines);if(currentUvPins)uvScene.add(currentUvPins);
       const fc=countFlippedFaces(r.uv,currentMeshData.faces);
-      showTiming(ms,(r.details?r.details+' / ':'')+label+' / '+MODELS[modelSel.value].label+' / '+currentMeshData.positions.length+' 顶点 / '+currentMeshData.faces.length+' 三角面',fc);
+      showTiming(ms,(r.details?r.details+' / ':'')+label+' / '+MODEL_CATALOG[modelSel.value].label+' / '+currentMeshData.positions.length+' 顶点 / '+currentMeshData.faces.length+' 三角面',fc);
       setStatus(label+" 完成，翻转面 "+fc+" 个",fc===0?"#89f0b6":"#ffd38a");
     }catch(e){console.error(e);setStatus("失败: "+e.message,"#ff9d9d")}
     finally{setBusy(false)}

@@ -9,3 +9,4 @@ PointNet
 OccNet
 MeshCNN
 AtlasNet
+TightCap

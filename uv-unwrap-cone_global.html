@@ -441,19 +441,59 @@
     (function () {
       // Indexed from window.ALGO_MODELS_DIR (via _data/algo_demos.yml)
       const MODELS_DIR = (window.ALGO_MODELS_DIR || "assets/Models").replace(/^\/+|\/+$/g, "");
-      const MODELS1 = {
-        beetle:        { label: "Beetle (2.1K)",          file: "beetle_F2052.obj" },
-        bunnyhead:     { label: "Bunny Head (3K)",        file: "bunnyhead_F3000.obj" },
-        camelhead:     { label: "Camel Head (22.7K)",     file: "camelhead_F22704.obj" },
-        cathead:       { label: "Cat Head (248)",          file: "cathead_F248.obj" },
-        hand:          { label: "Hand (3.8K)",             file: "hand_F3769.obj" },
-        hand1i:        { label: "Hand 1i (5K)",            file: "hand_1_i_F4999.obj" },
-        hemi:          { label: "Hemi",                    file: "hemi.obj" },
-        hencky:        { label: "Hencky (20K)",            file: "hencky_F20000.obj" },
-        max:           { label: "Max (3.6K)",              file: "max_F3599.obj" },
-        nefertiti:     { label: "Nefertiti Face",          file: "Nefertiti_face.obj" },
-        spot_cowhead:  { label: "Spot Cow Head (9K)",     file: "spot_cowhead_F9024.obj" },
-      };
+      const FALLBACK_MODEL_FILES = ['beetle_F2052.obj', 'bunnyhead_F3000.obj', 'camelhead_F22704.obj', 'cathead_F248.obj', 'hand_F3769.obj', 'hand_1_i_F4999.obj', 'hemi.obj', 'hencky_F20000.obj', 'max_F3599.obj', 'Nefertiti_face.obj', 'spot_cowhead_F9024.obj'];
+      const SOURCE_MODEL_FILES = (Array.isArray(window.ALGO_MODEL_FILES) && window.ALGO_MODEL_FILES.length
+        ? window.ALGO_MODEL_FILES
+        : FALLBACK_MODEL_FILES).filter(function (name) { return /\.obj$/i.test(name); });
+
+      function formatFaceCountLabel(faceCount) {
+        if (!Number.isFinite(faceCount) || faceCount <= 0) return null;
+        if (faceCount >= 1000) {
+          const k = Math.round(faceCount / 100) / 10;
+          return k + 'K';
+        }
+        return String(faceCount);
+      }
+
+      function toTitleWords(stem) {
+        return stem
+          .replace(/[_-]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .replace(/\b\w/g, function (ch) { return ch.toUpperCase(); });
+      }
+
+      function buildModelLabel(fileName) {
+        const stem = fileName.replace(/\.obj$/i, '');
+        const m = stem.match(/_F(\d+)$/i);
+        const base = m ? stem.slice(0, m.index) : stem;
+        const pretty = toTitleWords(base);
+        if (!m) return pretty;
+        const count = parseInt(m[1], 10);
+        const countLabel = formatFaceCountLabel(count);
+        return countLabel ? (pretty + ' (' + countLabel + ')') : pretty;
+      }
+
+      function buildModelCatalog(fileNames) {
+        const catalog = {};
+        const sorted = fileNames.slice().sort(function (a, b) {
+          return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+        });
+        for (let i = 0; i < sorted.length; i++) {
+          const file = sorted[i];
+          let key = file
+            .replace(/\.obj$/i, '')
+            .replace(/[^a-zA-Z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .toLowerCase();
+          if (!key) key = 'model_' + i;
+          if (Object.prototype.hasOwnProperty.call(catalog, key)) key = key + '_' + i;
+          catalog[key] = { label: buildModelLabel(file), file: file };
+        }
+        return catalog;
+      }
+
+      const MODEL_CATALOG = buildModelCatalog(SOURCE_MODEL_FILES);
 
 
       const modelCanvas = document.getElementById("model-canvas");
@@ -618,10 +658,10 @@
           opt.textContent = models[keys[i]].label;
           sel.appendChild(opt);
         }
-        if (keys.length > 0) sel.value = keys[0];
+        if (keys.length > 0) { sel.value = keys[0]; } else { setStatus("模型目录为空：" + MODELS_DIR, "#ff6b6b"); }
       }
       function initModelOptions() {
-        populateSelect(modelSelect, MODELS1);
+        populateSelect(modelSelect, MODEL_CATALOG);
       }
 
       function resize() {
@@ -701,7 +741,7 @@
       }
 
       function getModelCandidateUrls(modelKey) {
-        const model = MODELS1[modelKey];
+        const model = MODEL_CATALOG[modelKey];
         if (!model) return [];
         return [MODELS_DIR + "/" + model.file, "./" + MODELS_DIR + "/" + model.file, "../" + MODELS_DIR + "/" + model.file];
       }
@@ -1185,7 +1225,7 @@
       }
 
       function getCurrentModelKey() { return modelSelect.value; }
-      function getCurrentModelObj() { return MODELS1[getCurrentModelKey()]; }
+      function getCurrentModelObj() { return MODEL_CATALOG[getCurrentModelKey()]; }
 
       /** 当前选中的算法 */
       function getCurrentMethod() {
@@ -1350,14 +1390,26 @@
 
       async function solveSimpleWasmMethod(meshData, wasmFuncName, methodName, onProgress, optScheme, coneVertices) {
         const vertices = meshData.positions, faces = meshData.faces;
+        const nV = vertices.length;
+        const coneMethods = { solve_cp: true, solve_cetm: true, solve_ricci: true };
         if (!wasmReady) {
           const loaded = await initSimpleSolver();
           if (!loaded) throw new Error(methodName + " WASM 求解器初始化失败");
         }
         if (onProgress) onProgress(0, 1);
 
-        const flatPositions = new Float64Array(vertices.length * 3);
-        for (let i = 0; i < vertices.length; i++) {
+        for (let i = 0; i < faces.length; i++) {
+          const f = faces[i];
+          if (!f || f.length < 3 ||
+              f[0] < 0 || f[0] >= nV ||
+              f[1] < 0 || f[1] >= nV ||
+              f[2] < 0 || f[2] >= nV) {
+            throw new Error(methodName + " 面索引非法: face[" + i + "]=" + JSON.stringify(f) + ", nV=" + nV);
+          }
+        }
+
+        const flatPositions = new Float64Array(nV * 3);
+        for (let i = 0; i < nV; i++) {
           flatPositions[i * 3] = vertices[i][0];
           flatPositions[i * 3 + 1] = vertices[i][1];
           flatPositions[i * 3 + 2] = vertices[i][2];
@@ -1369,20 +1421,27 @@
           flatFaces[i * 3 + 2] = faces[i][2];
         }
 
+        const cones = Array.isArray(coneVertices) ? coneVertices : [];
+        for (let i = 0; i < cones.length; i++) {
+          const idx = cones[i] && cones[i].index;
+          if (typeof idx !== "number" || idx < 0 || idx >= nV || (idx | 0) !== idx) {
+            throw new Error(methodName + " 锥点索引越界: cones[" + i + "]=" + idx + ", nV=" + nV);
+          }
+        }
+
         const posPtr = simpleInstance._malloc(flatPositions.length * 8);
         for (let i = 0; i < flatPositions.length; i++) simpleInstance.setValue(posPtr + i * 8, flatPositions[i], "double");
         const facePtr = simpleInstance._malloc(flatFaces.length * 4);
         for (let i = 0; i < flatFaces.length; i++) simpleInstance.setValue(facePtr + i * 4, flatFaces[i], "i32");
 
-        // Prepare cone singularity data if provided
         let conePtr = 0, coneAnglesPtr = 0;
-        const hasCones = coneVertices && coneVertices.length > 0;
-        if (hasCones) {
-          const coneIdx = new Int32Array(coneVertices.length);
-          const coneAng = new Float64Array(coneVertices.length);
-          for (let i = 0; i < coneVertices.length; i++) {
-            coneIdx[i] = coneVertices[i].index;
-            coneAng[i] = coneVertices[i].angle || (4 * Math.PI);
+        const coneCount = cones.length;
+        if (coneCount > 0) {
+          const coneIdx = new Int32Array(coneCount);
+          const coneAng = new Float64Array(coneCount);
+          for (let i = 0; i < coneCount; i++) {
+            coneIdx[i] = cones[i].index;
+            coneAng[i] = cones[i].angle || (4 * Math.PI);
           }
           conePtr = simpleInstance._malloc(coneIdx.length * 4);
           for (let i = 0; i < coneIdx.length; i++) simpleInstance.setValue(conePtr + i * 4, coneIdx[i], "i32");
@@ -1392,23 +1451,29 @@
 
         try {
           let ret;
-          if (hasCones) {
-            // Cone-enabled methods: 9 params (pos, posLen, faces, faceLen, optScheme, coneIdx, coneIdxLen, coneAngles, coneAnglesLen)
-            ret = simpleInstance.ccall(wasmFuncName, "number",
-              ["number", "number", "number", "number", "number",
-               "number", "number", "number", "number"],
-              [posPtr, flatPositions.length, facePtr, flatFaces.length, optScheme || 0,
-               conePtr, coneVertices.length, coneAnglesPtr, coneVertices.length]);
-          } else if (typeof optScheme === 'number') {
-            // Methods with optScheme but no cones (e.g. ARAP): 5 params
-            ret = simpleInstance.ccall(wasmFuncName, "number",
-              ["number", "number", "number", "number", "number"],
-              [posPtr, flatPositions.length, facePtr, flatFaces.length, optScheme]);
-          } else {
-            // Methods without optScheme or cones: 4 params
-            ret = simpleInstance.ccall(wasmFuncName, "number",
-              ["number", "number", "number", "number"],
-              [posPtr, flatPositions.length, facePtr, flatFaces.length]);
+          try {
+            if (coneMethods[wasmFuncName]) {
+              // C API 固定 9 参：即使无锥也传 coneIdxLen=0，避免 arity 错位导致 OOB
+              ret = simpleInstance.ccall(wasmFuncName, "number",
+                ["number", "number", "number", "number", "number",
+                 "number", "number", "number", "number"],
+                [posPtr, flatPositions.length, facePtr, flatFaces.length, optScheme || 0,
+                 conePtr, coneCount, coneAnglesPtr, coneCount]);
+            } else if (typeof optScheme === "number") {
+              ret = simpleInstance.ccall(wasmFuncName, "number",
+                ["number", "number", "number", "number", "number"],
+                [posPtr, flatPositions.length, facePtr, flatFaces.length, optScheme]);
+            } else {
+              ret = simpleInstance.ccall(wasmFuncName, "number",
+                ["number", "number", "number", "number"],
+                [posPtr, flatPositions.length, facePtr, flatFaces.length]);
+            }
+          } catch (wasmErr) {
+            const msg = wasmErr && wasmErr.message ? wasmErr.message : String(wasmErr);
+            throw new Error(
+              methodName + " / " + wasmFuncName + " WASM 失败: " + msg +
+              "（V=" + nV + ", F=" + faces.length + ", cones=" + coneCount + "）"
+            );
           }
           if (ret !== 0) throw new Error(wasmFuncName + " 返回错误码: " + ret);
 
@@ -1421,9 +1486,8 @@
           simpleInstance.ccall("dispose", "void", [], []);
           if (onProgress) onProgress(1, 1);
 
-          const n = vertices.length;
           const uv = [];
-          for (let i = 0; i < n; i++) uv.push([uvs[i * 2], uvs[i * 2 + 1]]);
+          for (let i = 0; i < nV; i++) uv.push([uvs[i * 2], uvs[i * 2 + 1]]);
           return {
             uv: uv,
             anchors: chooseAnchorPair(vertices),
@@ -2350,8 +2414,12 @@
         else if (method === 'incflat') methodLabel = 'Incremental Flattening';
         else methodLabel = 'Circle Pattern';
 
+        const wasmFnByMethod = { cp: "solve_cp", cetm: "solve_cetm", ricci: "solve_ricci", incflat: "solve_incremental_flattening" };
+        const wasmFn = wasmFnByMethod[method] || "solve_cp";
+        console.log("[uv-unwrap-cone] method=", method, "→", wasmFn, "model=", getCurrentModelKey());
+
         setBusy(true);
-        setStatus("正在执行 " + methodLabel + " 求解...");
+        setStatus("正在执行 " + methodLabel + "（" + method + " → " + wasmFn + "）...");
         hideTiming();
 
         try {

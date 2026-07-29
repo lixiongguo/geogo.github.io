@@ -49,7 +49,7 @@ $$
 
 ### 1.4 局限（留给后续工作）
 
-- 大 MLP + 每射线数百次查询 → 训练 / 推断都慢 → [Nerf_InstantNGP.md](Nerf_InstantNGP.md)、[Nerf_Plenoxels.md](Nerf_Plenoxels.md)。  
+- 大 MLP + 每射线数百次查询 → 训练 / 推断都慢 → [Nerf_NSVF.md](Nerf_NSVF.md)（稀疏八叉树跳空）、[Nerf_InstantNGP.md](Nerf_InstantNGP.md)、[Nerf_Plenoxels.md](Nerf_Plenoxels.md)。  
 - $\sigma$ 场表面模糊 → 抽 mesh 差 → [Nerf_NeuS.md](Nerf_NeuS.md)。  
 - 理想细射线 → 多尺度锯齿 → [Nerf_MipNeRF.md](Nerf_MipNeRF.md)。
 

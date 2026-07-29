@@ -21,7 +21,7 @@
 - id: uv-unwrap-cone-global
   title: 锥奇异点参数化
   url: /uv-unwrap-cone_global.html
-  models_dir: assets/Models2
+  models_dir: assets/Models
   ready: true
 
 - id: vector-field
