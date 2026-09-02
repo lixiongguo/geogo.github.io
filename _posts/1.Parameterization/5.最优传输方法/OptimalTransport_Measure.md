@@ -6,12 +6,6 @@ categories: ["Parameterization", "Parameterization-OptimalTransport"]
 mathjax: true
 ---
 
-> **阅读顺序**：① [BNOT](https://doi.org/10.1145/2366145.2366190)（de Goes et al., 2012）→ ② [OTA](https://doi.org/10.1137/18M1193736)（de Gournay et al., 2019；[arXiv:1804.08356](https://arxiv.org/abs/1804.08356)）。先特例后一般。
-
-## 概述
-
-本笔记串联两篇密切相关的工作，建议按**时间与特例→一般**的顺序阅读：
-
 | 顺序 | 论文 | 角色 |
 | :--- | :--- | :--- |
 | **①** | Fernando de Goes, Katherine Breeden, Victor Ostromoukhov, Mathieu Desbrun. [*Blue Noise through Optimal Transport*](https://doi.org/10.1145/2366145.2366190). ACM TOG 31(6), SIGGRAPH Asia 2012. | **等权**点集 / 蓝噪声 stippling：容量约束 + 半离散 $W_2$ / Power 图 |
@@ -19,8 +13,9 @@ mathjax: true
 
 下文分别简称 **BNOT**（①）与 **OTA**（②）。逻辑链是：
 
-1. 先用 BNOT 把「连续密度 → 等权点」写成半离散 OT / Power 图，并弄清容量约束与站点–重心更新；
-2. 再进入 OTA：同一 OT 内核嵌入交替投影梯度（$\psi$/$\mathbf{w}$/$\mathbf{x}$/$\Pi$），扩展可容许测度与数值稳定性（正则 Newton、Green 积分）。
+1.  BNOT 把「连续密度 → 等权点」写成半离散 OT / Power 图，并弄清容量约束与站点–重心更新；
+2.  对照 Lloyd / CVT：为何必须进 Power 图、Lloyd 更新在 BNOT 中的角色（§3）；
+3.  OTA：同一 OT 内核嵌入交替投影梯度（$\psi$/$\mathbf{w}$/$\mathbf{x}$/$\Pi$），扩展可容许测度与数值稳定性（正则 Newton、Green 积分）。
 
 给定紧域 $\Omega\subset\mathbb{R}^2$ 上的目标密度 $\rho$（测度 $\mu$），统一目标可写成
 
@@ -46,8 +41,6 @@ $$
 
 ## 1. 问题与可容许测度族（共同设定）
 
-### 1.1 目标
-
 $\mu$ 有密度 $\rho:\Omega\to\mathbb{R}_+$，$\int_\Omega \rho=1$。希望 $\nu\in\mathcal{M}$ 在 $W_2$ 意义下最接近 $\mu$，且 $\mathcal{M}$ 编码所需结构。
 
 **有限支撑（点）**：
@@ -64,7 +57,7 @@ $$
 
 $\Delta_{n-1}$ 为标准单纯形。解 (1) 且 $\mathcal{M}=\mathcal{M}_{a,n}$ 即**可变权重的量化**；$\mathcal{M}_{f,n}$ 为等权 stippling。
 
-**曲线 / 线段**：$\mathcal{M}$ 为弧长参数化曲线、或固定长度/曲率的离散曲线的 pushforward 测度（§7）。
+**曲线 / 线段**：$\mathcal{M}$ 为弧长参数化曲线、或固定长度/曲率的离散曲线的 pushforward 测度（§8）。
 
 ### 1.2 半离散 $W_2$ 距离
 
@@ -98,8 +91,6 @@ $$
 
 **曲线逼近**在 NPR、TSP art、线雕 3D 打印中常见，但以往多无显式优化表述；OTA 将 curvling 纳入 (5)。
 
-**线段测度（dashing）**：用短线段密度表达明暗，是 stippling 的结构化推广。
-
 ---
 
 ## 2. Blue Noise through Optimal Transport（de Goes et al. 2012）
@@ -107,9 +98,7 @@ $$
 > **论文**：Fernando de Goes, Katherine Breeden, Victor Ostromoukhov, Mathieu Desbrun. [*Blue Noise through Optimal Transport*](https://doi.org/10.1145/2366145.2366190). ACM TOG 31(6), SIGGRAPH Asia 2012.  
 > **项目页**：[geometry.caltech.edu/BlueNoise](https://geometry.caltech.edu/BlueNoise/) · PDF：[Caltech](https://www.geometry.caltech.edu/pubs/dGBOD12.pdf)
 
-本节是后文一般框架最直接的前驱：两边都在做「用半离散 $W_2$ / Power 图把连续密度 $\rho$ 凝聚成点集」。后文 de Gournay et al. 2019 正是把这里的蓝噪声视为等权特例，再推广到可变权重、曲线、线段等结构化测度。
-
-### 2.1 问题设定：蓝噪声 = 容量约束 + 最优传输
+本节是后文一般框架最直接的前驱：两边都在做「用半离散 $W_2$ / Power 图把连续密度 $\rho$ 凝聚成点集」。
 
 给定域 $\mathcal{D}$ 与正密度 $\rho$（墨水分布），蓝噪声采样把连续墨水**凝聚**成 $n$ 个 Dirac。de Goes 用三条要求刻画：
 
@@ -126,7 +115,11 @@ E(X,\mathcal{V})=\sum_{i}\int_{V_i}\rho(x)\,\|x-x_i\|_2^2\,\mathrm{d}x.
 \tag{27a}
 $$
 
-[Aurenhammer et al. 1998] 证明：在容量约束下极小化 $E$ 的最优剖分必为 **Power 图**（权重 Voronoi / Laguerre）。因此不必在全体剖分中搜索，可限制到加权点集 $(X,W)$ 的 Power 单元 $V_i^w$。这与 OTA 把半离散 $W_2$ 写成 Laguerre 图上的对偶问题完全同构。
+[Aurenhammer et al. 1998] 证明：在容量约束下极小化 $E$ 的最优剖分必为 **Power 图**（权重 Voronoi / Laguerre）。
+
+因此不必在全体剖分中搜索，可限制到加权点集 $(X,W)$ 的 Power 单元 $V_i^w$。
+
+这与 OTA 把半离散 $W_2$ 写成 Laguerre 图上的对偶问题完全同构。
 
 ### 2.2 变分形式
 
@@ -150,43 +143,33 @@ $$
 
 临界点要求 $x_i=b_i$，即 **centroidal Power diagram**。这正是后文 OTA 梯度 (23)–(24) 的等权版本（$\mathbf{w}[i]=m_i=1/n$）。
 
-算法：**交替**「对 $X$ 做带线搜索的梯度下降」与「对 $W$ 做 Newton 投影到容量可行集」；Power 图由 CGAL 更新。另加局部规则性检测 + jitter，实现要求 C。
-
-### 2.3 与 de Gournay et al. 2019 的对照（预告）
-
-两边「很像」，是因为共享同一半离散 OT 内核；差别在**可容许测度族**与**数值细节**。
-
-| | **BNOT** (de Goes 2012) | **OTA** (de Gournay 2019) |
-| :--- | :--- | :--- |
-| 目标 | 蓝噪声点采样 / stippling | 结构化测度逼近：点、曲线、线段… |
-| 测度族 $\mathcal{M}$ | 等权 Dirac：$\mathbf{w}=1/n$ | $\mathcal{M}_{f,n}$ / $\mathcal{M}_{a,n}$ / 曲线 / dashing |
-| 距离 | 半离散 $W_2$（Power 图） | 同左，显式写为 $W_2^2(\nu,\mu)$ |
-| 对偶变量 | Power 权重 $w_i$ | Laguerre 势 $\psi$（等价） |
-| 站点更新 | $\nabla_{x_i}F\propto m_i(x_i-b_i)$ + 线搜索 | (23)–(25)，$\Sigma_k$ 拟 Newton，常取 $s_k=1$ |
-| 权重 | 固定等权；用 $W$ 只为**精确容量** | 可选可变 $\mathbf{w}$（$w$-step） |
-| 约束投影 $\Pi$ | 无（点自由）+ 局部 jitter | 曲线运动学 / 几何约束的 ADMM |
-| 积分加速 | 像素–单元精确求交 | Green 公式（OTA 相对 ibnot 的主要加速） |
-| $\psi$-步稳定 | Newton + Armijo | **正则化 Newton**，非均匀密度下仍收敛（ibnot 常失败） |
-| 在后文中的位置 | Algorithm 1 + $\mathbf{W}=\{1/n\}$ 的特例 | 见后文度量 (27) |
-
-等权 stippling 时，后文框架的度量退化为
-
-$$
-\Sigma_k=\mathrm{diag}\bigl(\mu(\mathcal{L}_i(\bm{\phi}^*(\mathbf{x}),\mathbf{x}))\bigr)=\frac{1}{n}\,\mathrm{Id},
-\tag{27}
-$$
-
-并对 $\mathbf{x}$-步做线搜索时与 BNOT 一致；OTA 经验上 $s_k=1$ 已够，可省去每次线搜索中反复解对偶的开销。
-
-**一句话**：BNOT =「等权半离散 OT + Power 图上的容量精确约束」；OTA =「同一 OT 内核 + 更广的 $\mathcal{M}$（可变权 / 曲线）+ 更稳的 Newton + Green 加速」。阅读顺序上应先掌握 BNOT，再把它看作 OTA 在 $\mathcal{M}_{f,n}$ 上的特例。
-
-同一 Power / 半离散 OT 内核在透镜设计中的应用，见 [最优传输计算焦散透镜](2020-12-12-最优传输计算焦散透镜.md)。
+数值上交替执行：对 $W$ 做 Newton 投影到容量可行集；对 $X$ 做带线搜索的梯度下降。与经典 Lloyd / CVT 的对照见下一节。
 
 ---
 
-## 3. OTA：离散化与总算法框架（de Gournay et al. 2019）
+### BNOT 与 Lloyd / CVT 的对比
 
-### 3.1 用原子测度逼近一般 $\mathcal{M}$
+蓝噪声生成中大量迭代法依赖 **Voronoi 图 + Lloyd 松弛** [Lloyd 1982]：把站点移到各自 Voronoi 单元的密度重心，极小化量化 RMS（即经典 **CVT** 能量）[McCool & Fiume 1992; Du et al. 1999]。
+
+BNOT 把同一几何问题改写成**带容量约束的半离散 OT**，并在 **Power 图**上优化——与 Lloyd 的差异可按原文归纳为下表。
+
+原文 §1.2：**充分收敛的 Lloyd 往往过规整**，实践中只好早停；Balzer et al. [2009] 的 **CCVT** 给每个站点加等容量约束以抑伪影，但容量被**离散量化**，复杂度近二次，难上大规模。随后 Chen et al. [2012]、Xu et al. [2011] 在 Voronoi / Delaunay 空间用面积方差作惩罚，只能**近似**容量——把「空间各向同性」与「等容量」捆进同一无约束目标，必然折中。
+
+BNOT 的关键一步（原文 §2.3）：在容量约束下极小化传输代价 $E$ 时，最优剖分**不是**一般 Voronoi，而是 Power 图。
+
+多出的权重 $w_i$ 正好用来**精确**满足 $m_i=m$，从而可在「容量可行集」上专心优化各向同性，而不必与约束做权衡。实践中最优权重并不均匀（原文 Fig. 2），这也从侧面说明：若强制 $w_i$ 全等（即退回 Voronoi），容量一般不可同时精确满足。
+
+## 整体循环（原文 Algorithm）：
+
+反复「$W$：Newton 投影到等容量」→「$X$：带线搜索的梯度步（可含一次 Lloyd 式重心移动）」→ 必要时对过规整邻域抖动。
+
+这与后文 OTA 的「$\psi$-step → $\mathbf{x}$-step」同构；
+
+---
+
+## 4. OTA：离散化与总算法框架（de Gournay et al. 2019）
+
+### 4.1 用原子测度逼近一般 $\mathcal{M}$
 
 无穷维问题 (5) 用一族原子测度空间逼近：
 
@@ -223,7 +206,7 @@ F(\mathbf{x},\mathbf{w})=\tfrac{1}{2}W_2^2(\nu(\mathbf{x},\mathbf{w}),\mu).
 \tag{10}
 $$
 
-### 3.2 Algorithm 1：交替投影梯度
+### 4.2 Algorithm 1：交替投影梯度
 
 **变度量投影**（OTA 论文 §2.2）：
 
@@ -267,65 +250,65 @@ x̂ ← x_{N_it},  ŵ ← w_{N_it}
 
 ---
 
-## 4. $\psi$-step：半离散最优传输
+## 5. $\psi$-step：半离散最优传输
 
-### 4.1 假设与 Laguerre 图
+### 5.1 假设与 Laguerre 图
 
 **Assumption 1**：$\Omega$ 为紧凸多面体（通常 $[0,1]^2$）；$\mu$ 绝对连续；$\nu$ 为 $n$ 个原子的离散测度。
 
 **Theorem 1**：在 Assumption 1 下，(4) 的最优传输计划 $T^*$ 在 $\mu$-a.e. 意义下唯一。
 
-**Laguerre 单元**（Power 图）：给定点位置 $\mathbf{x}$ 与权重 $\bm{\psi}\in\mathbb{R}^n$，
+**Laguerre 单元**（Power 图）：给定点位置 $\mathbf{x}$ 与权重 $\boldsymbol{\psi}\in\mathbb{R}^n$，
 
 $$
-\mathcal{L}_i(\bm{\psi},\mathbf{x})
+\mathcal{L}_i(\boldsymbol{\psi},\mathbf{x})
 =\Bigl\{x\in\Omega:\forall j\neq i,\;
-\|x-\mathbf{x}[i]\|^2-\bm{\psi}[i]\le \|x-\mathbf{x}[j]\|^2-\bm{\psi}[j]\Bigr\}.
+\|x-\mathbf{x}[i]\|^2-\boldsymbol{\psi}[i]\le \|x-\mathbf{x}[j]\|^2-\boldsymbol{\psi}[j]\Bigr\}.
 \tag{11}
 $$
 
-$\bm{\psi}=\mathbf{0}$ 时退化为 Voronoi 图。平面 Laguerre 图可在 $O(n\log n)$ 内计算（CGAL）。
+$\boldsymbol{\psi}=\mathbf{0}$ 时退化为 Voronoi 图。平面 Laguerre 图可在 $O(n\log n)$ 内计算（CGAL）。
 
-**Theorem 2**：存在 $\bm{\psi}^*\in\mathbb{R}^n$ 使最优传输满足
+**Theorem 2**：存在 $\boldsymbol{\psi}^*\in\mathbb{R}^n$ 使最优传输满足
 
 $$
-(T^*)^{-1}(\mathbf{x}[i])=\mathcal{L}_i(\bm{\psi}^*,\mathbf{x}).
+(T^*)^{-1}(\mathbf{x}[i])=\mathcal{L}_i(\boldsymbol{\psi}^*,\mathbf{x}).
 \tag{12}
 $$
 
-即每个站点的质量恰好来自其 Laguerre 单元——与 [Alexandrov / 半离散 OT](2020-05-01-基于凸几何的半离散最优传输.md) 中「支撑高度 $\mathbf{h}$ ↔ 单元体积」对偶一脉相承。
+即每个站点的质量恰好来自其 Laguerre 单元
 
-### 4.2 对偶问题
+### 5.2 对偶问题
 
 无穷维 (4) 化为有限维**凹**极大化：
 
 $$
-W_2(\mu,\nu)=\max_{\bm{\psi}\in\mathbb{R}^n} g(\bm{\psi},\mathbf{x},\mathbf{w}),
+W_2(\mu,\nu)=\max_{\boldsymbol{\psi}\in\mathbb{R}^n} g(\boldsymbol{\psi},\mathbf{x},\mathbf{w}),
 \tag{13}
 $$
 
 $$
-g(\bm{\psi},\mathbf{x},\mathbf{w})
-=\sum_{i=1}^{n}\int_{\mathcal{L}_i(\bm{\psi},\mathbf{x})}
-\bigl(\|\mathbf{x}[i]-x\|^2-\bm{\psi}[i]\bigr)\,\mathrm{d}\mu(x)
-+\sum_{i=1}^{n}\bm{\psi}[i]\,\mathbf{w}[i].
+g(\boldsymbol{\psi},\mathbf{x},\mathbf{w})
+=\sum_{i=1}^{n}\int_{\mathcal{L}_i(\boldsymbol{\psi},\mathbf{x})}
+\bigl(\|\mathbf{x}[i]-x\|^2-\boldsymbol{\psi}[i]\bigr)\,\mathrm{d}\mu(x)
++\sum_{i=1}^{n}\boldsymbol{\psi}[i]\,\mathbf{w}[i].
 \tag{14}
 $$
 
 **Proposition 1**（$g$ 的光滑性）：
 
-- $g$ 对 $\bm{\psi}$ **凹**，梯度 Lipschitz；
+- $g$ 对 $\boldsymbol{\psi}$ **凹**，梯度 Lipschitz；
 - 梯度：
 
 $$
-\frac{\partial g}{\partial\bm{\psi}_i}=\mathbf{w}[i]-\mu(\mathcal{L}_i(\bm{\psi},\mathbf{x})).
+\frac{\partial g}{\partial\boldsymbol{\psi}_i}=\mathbf{w}[i]-\mu(\mathcal{L}_i(\boldsymbol{\psi},\mathbf{x})).
 \tag{15}
 $$
 
 - 若 $\rho\in C^1$，则 $g$ 几乎处处二阶可微；$i\neq j$ 时
 
 $$
-\frac{\partial^2 g}{\partial\bm{\psi}_i\partial\bm{\psi}_j}
+\frac{\partial^2 g}{\partial\boldsymbol{\psi}_i\partial\boldsymbol{\psi}_j}
 =\int_{\partial\mathcal{L}_i\cap\partial\mathcal{L}_j}\frac{\mathrm{d}\mu(x)}{\|\mathbf{x}[i]-\mathbf{x}[j]\|},
 \tag{16}
 $$
@@ -333,35 +316,37 @@ $$
 对角元由闭包关系
 
 $$
-\sum_{j=1}^{n}\frac{\partial^2 g}{\partial\bm{\psi}_i\partial\bm{\psi}_j}=0
+\sum_{j=1}^{n}\frac{\partial^2 g}{\partial\boldsymbol{\psi}_i\partial\boldsymbol{\psi}_j}=0
 \tag{17}
 $$
 
-确定。Hessian 结构与 [Levy et al. 2015] 半离散 OT 笔记一致：相邻 Laguerre 面共享时非零。由 Gershgorin 圆盘定理，Hessian 最小特征值有下界 $-n\eta\|\rho\|_\infty\mathrm{diam}(\Omega)$，其中 $\eta=1/\min_{i\neq j}\|\mathbf{x}[i]-\mathbf{x}[j]\|$。
+确定。Hessian 结构与 [Levy et al. 2015] 半离散 OT 笔记一致：相邻 Laguerre 面共享时非零。
+
+由 Gershgorin 圆盘定理，Hessian 最小特征值有下界 $-n\eta\|\rho\|_\infty\mathrm{diam}(\Omega)$，其中 $\eta=1/\min_{i\neq j}\|\mathbf{x}[i]-\mathbf{x}[j]\|$。
 
 **二阶可微性的证明要点**：若某 Laguerre 单元测度为零，则其为线段或点。在一般位置假设下，点 $x$ 满足至少 3 个等式
 
 $$
-\|x-\mathbf{x}[i]\|^2-\bm{\psi}[i]=\|x-\mathbf{x}[j_k]\|^2-\bm{\psi}[j_k],
+\|x-\mathbf{x}[i]\|^2-\boldsymbol{\psi}[i]=\|x-\mathbf{x}[j_k]\|^2-\boldsymbol{\psi}[j_k],
 \tag{18}
 $$
 
-使 $\mathcal{L}_i$ 退化为单点；满足 (18) 的 $\bm{\psi}$ 集合余维 $\ge 1$，故几乎处处二阶可微。
+使 $\mathcal{L}_i$ 退化为单点；满足 (18) 的 $\boldsymbol{\psi}$ 集合余维 $\ge 1$，故几乎处处二阶可微。
 
-**Lipschitz 梯度界**（命题 1 证明）：Laguerre 边界随 $\bm{\psi}$ 线性移动，速率 $\le\eta$。对单位方向 $\Delta$，
+**Lipschitz 梯度界**（命题 1 证明）：Laguerre 边界随 $\boldsymbol{\psi}$ 线性移动，速率 $\le\eta$。对单位方向 $\Delta$，
 
 $$
-\bigl|\mu(\mathcal{L}_i(\bm{\psi}+t\Delta,\mathbf{x}))-\mu(\mathcal{L}_i(\bm{\psi},\mathbf{x}))\bigr|
+\bigl|\mu(\mathcal{L}_i(\boldsymbol{\psi}+t\Delta,\mathbf{x}))-\mu(\mathcal{L}_i(\boldsymbol{\psi},\mathbf{x}))\bigr|
 \le t(n-1)\|\rho\|_\infty\eta\,\mathrm{diam}(\Omega),
 $$
 
-求和得 $\|\nabla_{\bm{\psi}}g(\bm{\psi}+t\Delta)-\nabla_{\bm{\psi}}g(\bm{\psi})\|_2\le t n^{3/2}\|\rho\|_\infty\eta\,\mathrm{diam}(\Omega)$（偏悲观）。
+求和得 $\|\nabla_{\boldsymbol{\psi}}g(\boldsymbol{\psi}+t\Delta)-\nabla_{\boldsymbol{\psi}}g(\boldsymbol{\psi})\|_2\le t n^{3/2}\|\rho\|_\infty\eta\,\mathrm{diam}(\Omega)$（偏悲观）。
 
 **Proposition 2**：若 $\min\rho>0$ 且站点两两不同，(13) 的极大化子在加常数意义下唯一；极大点附近 $g$ 强凹。
 
 **一阶 vs 二阶方法的困境** [Kitagawa et al.; Levy]：一阶法依赖梯度 Lipschitz 常数；二阶法依赖 $g$ 的 Hölder 正则性，且要求 Laguerre 单元质量不消失。故早期迭代宜一阶 + 好初值，接近最优解后切换二阶。LM / trust-region 的全局 $C^2$ 假设此处不满足。
 
-### 4.3 正则化 Newton 法（稳定化）
+### 5.3 正则化 Newton 法（稳定化）
 
 先前方法 [Aurenhammer et al. 1998; de Goes et al. 2012; Levy et al.] 的收敛常依赖梯度 Lipschitz 常数，而该常数在点共线、密度不均匀时可**任意大**。
 
@@ -370,14 +355,14 @@ $$
 OTA 采用**正则化 Newton**（类似 Levenberg–Marquardt，但正则参数自动选取）：
 
 $$
-\bm{\psi}_{k+1}=\bm{\psi}_k-t_k\bigl(A(\bm{\psi}_k)+\|\nabla_{\bm{\psi}}g(\bm{\psi}_k)\|_2\,\mathrm{Id}\bigr)^{-1}\nabla_{\bm{\psi}}g(\bm{\psi}_k),
+\boldsymbol{\psi}_{k+1}=\boldsymbol{\psi}_k-t_k\bigl(A(\boldsymbol{\psi}_k)+\|\nabla_{\boldsymbol{\psi}}g(\boldsymbol{\psi}_k)\|_2\,\mathrm{Id}\bigr)^{-1}\nabla_{\boldsymbol{\psi}}g(\boldsymbol{\psi}_k),
 \tag{19}
 $$
 
 $$
-A(\bm{\psi})=
+A(\boldsymbol{\psi})=
 \begin{cases}
-\nabla^2_{\bm{\psi}} g(\bm{\psi}) & \text{若 Hessian 在 }\bm{\psi}\text{ 有定义},\\
+\nabla^2_{\boldsymbol{\psi}} g(\boldsymbol{\psi}) & \text{若 Hessian 在 }\boldsymbol{\psi}\text{ 有定义},\\
 0 & \text{否则}.
 \end{cases}
 \tag{20}
@@ -387,9 +372,9 @@ $$
 
 **设计 rationale**：去掉 $\|\nabla g\|\mathrm{Id}$ 则为纯 Newton；加入后，远离最优解时 $\|\nabla g\|$ 大 → 接近梯度下降；接近最优时 $\|\nabla g\|\to 0$ → 接近阻尼 Newton。
 
-实践上可结合 [Merigot 2011] 的多尺度初始化；亦可用标准 LM $\bm{\psi}_{k+1}=\bm{\psi}_k-(A+c_k\mathrm{Id})^{-1}\nabla g$，$c_k$ 由 Wolfe 准则调节，收敛率相近。
+实践上可结合 [Merigot 2011] 的多尺度初始化；亦可用标准 LM $\boldsymbol{\psi}_{k+1}=\boldsymbol{\psi}_k-(A+c_k\mathrm{Id})^{-1}\nabla g$，$c_k$ 由 Wolfe 准则调节，收敛率相近。
 
-### 4.4 Green 公式加速积分
+### 5.4 Green 公式加速积分
 
 计算 (14)(16) 需对 Laguerre 单元积分。策略：
 
@@ -401,9 +386,9 @@ $$
 
 ---
 
-## 5. $\mathbf{w}$-step 与 $\mathbf{x}$-step
+## 6. $\mathbf{w}$-step 与 $\mathbf{x}$-step
 
-### 5.1 最优权重
+### 6.1 最优权重
 
 子问题
 
@@ -412,11 +397,11 @@ $$
 \tag{21}
 $$
 
-#### 5.1.1 完全约束 $\mathbf{w}$
+#### 6.1.1 完全约束 $\mathbf{w}$
 
 $\mathbf{W}=\{\mathbf{w}_0\}$（singleton，如等权 $1/n$）：$\mathbf{w}^*=\mathbf{w}_0$。
 
-#### 5.1.2 单纯形上无约束极小化
+#### 6.1.2 单纯形上无约束极小化
 
 $\mathbf{W}=\Delta_{n-1}$：**Proposition 4** 给出闭式解
 
@@ -425,19 +410,19 @@ $$
 \tag{22}
 $$
 
-即权重等于 **Voronoi 单元**（$\bm{\psi}=0$ 的 Laguerre 单元）内的 $\mu$-质量。
+即权重等于 **Voronoi 单元**（$\boldsymbol{\psi}=0$ 的 Laguerre 单元）内的 $\mu$-质量。
 
-**证明要点**：在 (14) 中 $\bm{\psi}$ 是质量约束
+**证明要点**：在 (14) 中 $\boldsymbol{\psi}$ 是质量约束
 
 $$
 \mu\bigl(T^{-1}(\mathbf{x}[i])\bigr)=\mathbf{w}[i]
 $$
 
-的 Lagrange 乘子；对 $\mathbf{w}$ 极小化时该约束被移除，故可取 $\bm{\psi}=\mathbf{0}$。
+的 Lagrange 乘子；对 $\mathbf{w}$ 极小化时该约束被移除，故可取 $\boldsymbol{\psi}=\mathbf{0}$。
 
-### 5.2 站点梯度与变度量
+### 6.2 站点梯度与变度量
 
-设 $\bm{\psi}^*$ 为 (13) 的极大izer。**Proposition 5**：在 $\rho\in C^0\cap W^{1,1}$、$\mathbf{w}>0$、站点分离时，$F$ 对 $\mathbf{x}$ 为 $C^2$，且
+设 $\boldsymbol{\psi}^*$ 为 (13) 的极大izer。**Proposition 5**：在 $\rho\in C^0\cap W^{1,1}$、$\mathbf{w}>0$、站点分离时，$F$ 对 $\mathbf{x}$ 为 $C^2$，且
 
 $$
 \frac{\partial F(\mathbf{x},\mathbf{w})}{\partial\mathbf{x}[i]}
@@ -448,15 +433,15 @@ $$
 其中 $\mathbf{b}[i]$ 为第 $i$ 个 Laguerre 单元的 $\mu$-重心：
 
 $$
-\mathbf{b}[i]=\frac{\int_{\mathcal{L}_i(\bm{\psi}^*,\mathbf{x})} x\,\mathrm{d}\mu(x)}
-{\int_{\mathcal{L}_i(\bm{\psi}^*,\mathbf{x})}\mathrm{d}\mu(x)}.
+\mathbf{b}[i]=\frac{\int_{\mathcal{L}_i(\boldsymbol{\psi}^*,\mathbf{x})} x\,\mathrm{d}\mu(x)}
+{\int_{\mathcal{L}_i(\boldsymbol{\psi}^*,\mathbf{x})}\mathrm{d}\mu(x)}.
 \tag{24}
 $$
 
 **度量矩阵**（Algorithm 1 中 $\Sigma_k$）：
 
 $$
-\Sigma_k=\mathrm{diag}\bigl(\mu(\mathcal{L}_i(\bm{\psi}^*_k,\mathbf{x}_k))\bigr)_{1\le i\le n}.
+\Sigma_k=\mathrm{diag}\bigl(\mu(\mathcal{L}_i(\boldsymbol{\psi}^*_k,\mathbf{x}_k))\bigr)_{1\le i\le n}.
 \tag{25}
 $$
 
@@ -471,73 +456,13 @@ $$
 
 ---
 
-## 6. 与其他经典方法的关系
 
-BNOT 已在 §2 单独展开；此处补 Lloyd 与静电 / 卷积路线，便于对照数值行为。
 
-### 6.1 Lloyd 算法
-
-Lloyd 算法求解 (5)，$\mathbf{X}=\Omega^n$，$\mathbf{W}=\Delta_{n-1}$。等价于 OTA 的 Algorithm 1，但度量用 **Voronoi 质量**（$\bm{\psi}=0$）：
-
-$$
-\Sigma_k=\mathrm{diag}\bigl(\mu(\mathcal{L}_i(\mathbf{0},\mathbf{x}))\bigr).
-\tag{26}
-$$
-
-与 (25) 的差别：Lloyd **不做** $\psi$-step（不解 OT 对偶），直接用 Voronoi 剖分近似传输；OTA 每步先求最优 $\bm{\psi}^*$，再更新站点。BNOT（§2）则在 Power 图上解精确容量，介于二者之间。
-
-### 6.2 静电 halftoning（卷积距离）
-
-另一路线用
-
-$$
-D(\nu,\mu)=\tfrac{1}{2}\|h\star(\nu-\mu)\|_{L^2(\Omega)}^2,
-\tag{28}
-$$
-
-$h$ 为光滑核（Maximum Mean Discrepancy / 模糊 SSD）。在适当假设下 $W_2$ 与 (28) **强等价** [Peyré 2016]，但数值行为差异大。优化为**一阶**方法 + FMM/NUFFT；高维 $d$ 上复杂度 $O(dn\log n)$，优于 Laguerre 图的 $O(n^{\lceil d/2\rceil})$。
-
-| | 卷积 / 静电 | 最优传输（OTA） |
-| :--- | :--- | :--- |
-| 优化 | 一阶 | 一、二阶混合 |
-| 计算核心 | NUFFT / FMM | Laguerre 图 + Green 积分 |
-| 维数扩展 | 线性于 $d$ | 2D 高效；高维受限 |
-| 2D 速度 | 慢（迭代多） | 快 1–2 个数量级 |
-| 视觉质量 | 相当 | 相当 |
-
-#### 6.2.1 停止准则与 Benchmark
-
-**停止准则** [Schmaltz et al.]：原图与 stipple 图经高斯卷积后的 SNR；高斯标准差 $\sigma=1/\sqrt{n}$（典型点间距）。所有 benchmark 在 **31 dB** 停止。Fig. 3 展示 8 / 25 / 31 / 34 dB 的迭代演化。
-
-**Table 2**（均匀密度，$1024\times 1024$ 像素，Poisson 初始化；格式：秒 — 迭代次数）：
-
-| # pts | Electro 20核 | Electro BB 20核 | ibnot 1核 | OTA 1核 |
-| :---: | :---: | :---: | :---: | :---: |
-| $2^{10}$ | 130.3 — 317 | 34.4 — 84 | 131.47 — 15 | **4.03 — 19** |
-| $2^{12}$ | 293.9 — 637 | 47.8 — 104 | 267.59 — 22 | **10.86 — 19** |
-| $2^{14}$ | 783.5 — 1306 | 106.3 — 177 | 344.77 — 17 | **47.90 — 21** |
-| $2^{16}$ | 4568.5 — 3286 | 569.2 — 410 | 1208.45 — 20 | **252.24 — 26** |
-| $2^{18}$ | TL | 12125.2 — 1103 | 5633.68 — 23 | **1136.51 — 21** |
-
-ibnot 与 OTA 迭代次数相近，但 Green 积分使**每步**更快（积分复杂度约从 $n_{\text{pix}}$ 降至 $\sqrt{n_{\text{pix}}}$）。
-
-**Table 3**（非均匀密度 $\rho=2$ 若 $x<0.5$ else $0$）：
-
-| # pts | Electro BB 20核 | ibnot 1核 | OTA 1核 |
-| :---: | :---: | :---: | :---: |
-| $2^{10}$ | 40.2 — 99 | NC | **4.34 — 24** |
-| $2^{14}$ | 177.7 — 282 | NC | **79.73 — 27** |
-| $2^{18}$ | 39546.1 — 2022 | NC | **1315.01 — 24** |
-
-ibnot 因 $\psi$-步 Hessian 不定常**不收敛**；OTA 正则 Newton 仍稳定。静电法迭代次数随点数增长，OT 法约恒定 $\sim 20$ 次。
-
----
-
-## 7. 曲线空间投影（$\Pi$-step）
+## 8. 曲线空间投影（$\Pi$-step）
 
 Stippling 无约束时 $\Pi$ 平凡。对 **curvling / 路径规划**，$\mathbf{X}$ 描述离散曲线上的运动学或几何约束。
 
-### 7.1 离散曲线算子
+### 8.1 离散曲线算子
 
 离散曲线 $\mathbf{x}=(\mathbf{x}[1],\ldots,\mathbf{x}[n])\in\Omega^n$。**一阶差分**算子（开/闭曲线）：
 
@@ -641,7 +566,7 @@ $$
 
 权重常取 $\mathbf{W}=\{1/n\}$ 或 $\Delta_{n-1}$。
 
-### 7.2 ADMM 投影
+### 8.2 ADMM 投影
 
 **欧氏投影**（Algorithm 1 的 $\Pi$-步在无变度量时，或 ADMM 子问题）：
 
@@ -680,7 +605,7 @@ $$
 \tag{43}
 $$
 
-**Algorithm 2**（通用 ADMM）：交替更新 $\mathbf{y}$、$\mathbf{x}$、对偶 $\bm{\lambda}$，罚参数 $\beta>0$。
+**Algorithm 2**（通用 ADMM）：交替更新 $\mathbf{y}$、$\mathbf{x}$、对偶 $\boldsymbol{\lambda}$，罚参数 $\beta>0$。
 
 **Algorithm 3**（专用于 (39)）：
 
@@ -701,125 +626,19 @@ $\mathbf{x}$-步用**共轭梯度**求解。$\mathbf{y}$-步为逐约束欧氏�
 
 **参数选取**：$\gamma_i=\|A_i\|_2$（谱范数）经验稳定；$\beta$ 手动调一次后固定。
 
-### 7.3 投影算例（Fig. 4）
+### 8.3 投影算例（Fig. 4）
 
 将猫轮廓（红）投影到蓝约束曲线集：中图——更短长度 + 有界曲率（简化变光滑）；右图——更长长度 + 有界曲率（加环保持形状）。
 
-### 7.4 多分辨率实现
+### 8.4 多分辨率实现
 
 曲线优化时**不全点同时优化**：先在降采样曲线上解 (9)，再二分上采样中点作 warm start。实现用**二进尺度**：相邻采样间插中点；分辨率间权重除以 2。
 
----
 
-## 8. 应用
 
-### 8.1 非真实感绘制（NPR）
+## 附录 ：
 
-| 模式 | $\mathcal{M}$ | 效果 |
-| :--- | :--- | :--- |
-| **Stippling** | 离散点，可变权 | 灰度图用点密度+大小近似 |
-| **Curvling** | 有界曲率/速度的曲线 | 单条或多条平滑曲线描绘图像 |
-| **Dashing** | 线段测度 | 短线段密度表达明暗 |
-
-Fig. 1：$10^5$ 点 stippling $\approx 202''$；curvling $\approx 313''$；dashing $3.3\times 10^4$ 段 $\approx 237''$（单核，随机均匀初始化）。
-
-#### 8.1.1 灰度 Curvling
-
-先 stippling 再曲线投影。Fig. 5：256k 点，$\approx 10'$；不同曲线长度 $l$、$l/3$、$l/12$ 控制细节层次。
-
-#### 8.1.2 彩色图像
-
-给定向量密度 $\rho=(\rho_R,\rho_G,\rho_B):\Omega\to[0,1]^3$：
-
-1. 构造灰度 $\bar{\rho}=(\rho_R+\rho_G+\rho_B)/3$；
-2. 用 Algorithm 1 将 $\bar{\rho}$ 投影到 $\mathcal{M}$，得站点 $\mathbf{x}$；
-3. 每点颜色取 $\rho(\mathbf{x}[i])/\bar{\rho}(\mathbf{x}[i])$（饱和色）。
-
-$$
-\bar{\rho}=\frac{\rho_R+\rho_G+\rho_B}{3}.
-\tag{44}
-$$
-
-Fig. 6：512k 点彩色 curvling，$\approx 24'$。
-
-#### 8.1.3 动态 / 视频
-
-首帧从任意初值投影；后续帧以前一帧结果为初值，保证帧间点/曲线连续性（补充材料含视频）。
-
-### 8.2 路径规划
-
-#### 8.2.1 无人机监视（Videodrone）
-
-费城犯罪数据 [OpenDataPhilly] 加权成密度 $\mu$（Fig. 7a）。在 (31) 运动学约束下最小化 (1)，轨迹更常经过高危区；附加**有界偏航角速度**、**指定时刻经过充电点**（ autonomy）。8k 离散点，30'' 优化。轨迹分色表示多次充电往返。
-
-#### 8.2.2 激光雕刻
-
-Fig. 8：激光沿连续轨迹灼烧木材复现风景。同一技术可推广至 3D 打印喷嘴与料流轨迹 [Chen et al.]。
-
-#### 8.2.3 MRI 压缩采样
-
-MRI 在 Fourier 域沿**有界速度、有界加速度**曲线采样 [Boyer et al. 2016]，恰为 (31) 约束集。理论建议按稀疏结构在 wavelet 域的分布 $\mu$ 随机采样，物理上不可行 → 用 OTA 将 $\mu$ **投影**到可执行轨迹。
-
-采样得 $\mathbf{y}[i]=\hat{u}(\mathbf{x}[i])$，重建解
-
-$$
-\min_{v,\,v|_{\mathbf{x}}=\mathbf{y}}
-\tfrac{1}{2}\|\hat{v}(\mathbf{x})-\mathbf{y}\|_2^2+\lambda\|\Psi u\|_1,
-\tag{45}
-$$
-
-$\Psi$ 为冗余小波等稀疏变换。Fig. 9：目标密度、生成轨迹（约为全 Fourier 采样 1/4）、真图与重建图。
-
-### 8.3 高级采样理论
-
-将目标密度投影到满足几何约束的曲线点集，用于**结构化采样模式**设计 [de Gournay et al.]。
-
-### 8.4 与焦散 / 透镜设计的联系
-
-半离散 OT + Power 图是 [焦散透镜](2020-12-12-最优传输计算焦散透镜.md)、[多尺度半离散 OT](2020-05-02-多尺度半离散最优传输.md) 的共同计算内核；OTA 把同一套 $\psi$-step 嵌入**更一般的测度投影**循环，并补上曲线约束的 $\Pi$-step。
-
----
-
-## 9. 算法流程总览
-
-```mermaid
-flowchart TD
-  A[目标密度 rho / 测度 mu] --> B[初始化 x, w]
-  B --> C{迭代}
-  C --> D[psi-step: 解对偶 13 得 psi*]
-  D --> E[w-step: 更新权重 22]
-  E --> F[x-step: 重心梯度 23-25]
-  F --> G{有曲线约束?}
-  G -->|否| H[x <- y]
-  G -->|是| I[Pi-step: ADMM 投影 39]
-  H --> C
-  I --> C
-  C -->|收敛| J[输出结构化测度 nu]
-```
-
----
-
-## 10. 小结
-
-| 概念 | 作用 |
-| :--- | :--- |
-| (1)(5) | 在结构化测度族 $\mathcal{M}$ 上最小化 $W_2^2$ |
-| (11)(12) | Laguerre 图 = 半离散 OT 最优传输计划 |
-| (13)(14)(15) | 对偶凹极大化；梯度 = 质量残差 |
-| (19)(20) | 正则化 Newton；全局 + 局部二次收敛 |
-| Green 积分 | 2D 大规模 stippling 的关键加速 |
-| (22)(23)(25) | 权重闭式 + 站点移向 Laguerre 重心 |
-| §2 / (27a)–(27c) | **先读** BNOT：容量约束 + Power 图 OT |
-| (26)(27) | Lloyd 与 BNOT 为 OTA 在特定 $\mathcal{M}$ 上的特例 |
-| (29)–(43) | 曲线约束、ADMM 分裂与投影 |
-| (44)(45) | 彩色 curvling、MRI 重建 |
-| (46) | Algorithm 1 局部收敛条件 |
-
-**局限**：主要针对 **2D**；高维 Laguerre 图代价高。非凸曲线约束下 $\Pi$-step 无全局最优保证。密度需在网格上离散，极非均匀时 $\psi$-step 可能需多尺度初始化。
-
----
-
-## 11. 附录 A：Algorithm 1 的收敛性
+### Algorithm 1 的收敛性
 
 **Theorem 3** [Nesterov]：设 $\mathbf{X}\subset\mathbb{R}^n$ 闭凸，$\Sigma_k=\Sigma\succ 0$ 常数，$F\in C^1$ 且
 
@@ -836,7 +655,7 @@ $$
 
 **无 $\Pi$-步**（$\mathbf{X}=\Omega^n$）：临界点处梯度 1-Lipschitz（centroidal tessellation）[Du et al. Prop. 6.3]，故 $s_k=1$、$\Sigma_k$ 如 (25) 时可在 $\mathbf{x}^*$ 邻域内证明收敛。邻域大小依赖最优 Laguerre 剖分几何；数值上数百次随机初始化均收敛到视觉良好的驻点。
 
----
+
 
 ## 参考文献
 
