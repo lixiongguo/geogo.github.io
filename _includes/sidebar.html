@@ -21,6 +21,7 @@
 		</a>
 	</div>
 	<div class="quick-link-card">
+		<span class="dev-banner">未开发完</span>
 		<a class="quick-link" href="/tsumego/" aria-label="进入每日死活题">
 			<img src="/assets/image/go_logo.jpeg" alt="每日死活" class="quick-link-icon">
 			<div class="quick-link-text">
@@ -53,6 +54,9 @@
 	</ul>
 </div> -->
 
+{% assign hidden_categories = site.data.post_visibility.hidden_categories %}
+{% assign unready_posts = site.data.post_visibility.unready_posts %}
+
 <!-- 曲面展开 - 文章目录树 -->
 <div class="sidebar-item sidebar-nav">
   <ul class="nav">
@@ -60,6 +64,7 @@
     {% assign param_cats = "Parameterization-Preface|Parameterization-BasicParameterization|Parameterization-ConformalMapping|Parameterization-GeometricOptimization|Parameterization-QuadRemeshing|Parameterization-OptimalTransport|Parameterization-Appendix" | split: "|" %}
     {% assign cat_displays = "前言|基础曲面展开方法|共形参数化探微|几何优化方法|全局参数化与四边形网格化|最优传输方法|附录-数值计算与最优化" | split: "|" %}
     {% for cat in param_cats %}
+      {% unless hidden_categories contains cat %}
       {% assign cat_idx = forloop.index0 %}
       {% assign cat_display = cat_displays[cat_idx] %}
       {%- assign cat_posts = '' | split: '' -%}
@@ -78,15 +83,18 @@
         </a>
         <ul class="sidebar-post-list" style="display:block;">
           {% for post in cat_posts reversed %}
+          {% unless unready_posts contains post.slug %}
           <li class="sidebar-post-item">
             <a href="{{ post.url | relative_url }}" class="sidebar-post-link" title="{{ post.title | escape }}">
               {{ post.title | escape }}
             </a>
           </li>
+          {% endunless %}
           {% endfor %}
         </ul>
       </li>
       {% endif %}
+      {% endunless %}
     {% endfor %}
   </ul>
 </div>
@@ -143,11 +151,15 @@ function toggleSidebarGroup(el) {
 
 <!-- 机器学习 - 文章目录树 -->
 <div class="sidebar-item sidebar-nav">
+  {% assign ml_cats = "ProbabilityGraphModel|DiffusionModel|DiffusionSupplement|ReinforcementLearning" | split: "|" %}
+  {% assign ml_shown = false %}
+  {% for c in ml_cats %}{% unless hidden_categories contains c %}{% assign ml_shown = true %}{% endunless %}{% endfor %}
+  {% if ml_shown %}
   <ul class="nav">
     <li class="nav-title">🤖 机器学习</li>
-    {% assign ml_cats = "ProbabilityGraphModel|DiffusionModel|DiffusionSupplement|ReinforcementLearning" | split: "|" %}
     {% assign ml_displays = "概率图模型|扩散模型|扩散模型补充|强化学习" | split: "|" %}
     {% for cat in ml_cats %}
+      {% unless hidden_categories contains cat %}
       {% assign cat_idx = forloop.index0 %}
       {% assign cat_display = ml_displays[cat_idx] %}
       {%- assign cat_posts = '' | split: '' -%}
@@ -165,17 +177,21 @@ function toggleSidebarGroup(el) {
         </a>
         <ul class="sidebar-post-list" style="display:block;">
           {% for post in cat_posts reversed %}
+          {% unless unready_posts contains post.slug %}
           <li class="sidebar-post-item">
             <a href="{{ post.url | relative_url }}" class="sidebar-post-link" title="{{ post.title | escape }}">
               {{ post.title | escape }}
             </a>
           </li>
+          {% endunless %}
           {% endfor %}
         </ul>
       </li>
       {% endif %}
+      {% endunless %}
     {% endfor %}
   </ul>
+  {% endif %}
 </div>
 
 <!-- 

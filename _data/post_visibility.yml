@@ -1,0 +1,18 @@
+# 文章可见性配置
+# 侧边栏栏目渲染时按此配置过滤：
+#   hidden_categories —— 列出的分类整体不显示（栏目消失）
+#   unready_posts     —— 列出的单篇文章不显示（其余文章正常展示）
+# 默认值：未列出的文章均正常展示。
+
+# 整体不显示的栏目（按 Jekyll category 名）
+# 机器学习栏目由以下 4 个分类组成，整体先不显示
+hidden_categories:
+  - ProbabilityGraphModel
+  - DiffusionModel
+  - DiffusionSupplement
+  - ReinforcementLearning
+
+# 尚未完成、不在侧边栏显示的文章（按文章 slug，即文件名去掉日期前缀）
+# 例：2016-07-14-my-post.md 的 slug 为 my-post
+unready_posts:
+  # - my-post-slug
