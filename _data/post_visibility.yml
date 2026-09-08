@@ -11,6 +11,8 @@ hidden_categories:
   - DiffusionModel
   - DiffusionSupplement
   - ReinforcementLearning
+  - Parameterization-Appendix
+  - Parameterization-GeometricOptimization
 
 # 尚未完成、不在侧边栏显示的文章（按文章 slug，即文件名去掉日期前缀）
 # 例：2016-07-14-my-post.md 的 slug 为 my-post

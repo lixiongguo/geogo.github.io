@@ -4,7 +4,7 @@ title: "Flow Matching：连续标准化流的仿真无关训练"
 date: 2023-03-01
 categories: [DiffusionModel]
 ---
-> 本文是 Flow Matching 系列的第二篇，介绍 Flow Matching 如何实现对连续标准化流（CNF）的仿真无关训练。建议先阅读[第一篇：标准化流基础]({% post_url 2.Machine Learning/3.扩散模型/2023-02-01-标准化流基础：从离散流到连续流 %})。
+> 本文是 Flow Matching 系列的第二篇，介绍 Flow Matching 如何实现对连续标准化流（CNF）的仿真无关训练。建议先阅读第一篇：标准化流基础。
 
 ## 1. 从 CNF 到 Flow Matching
 
