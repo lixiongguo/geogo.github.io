@@ -6,7 +6,7 @@ mathjax: true
 ---
 
 > **论文**：Xintao Wang et al. [*ESRGAN: Enhanced Super-Resolution Generative Adversarial Networks*](https://arxiv.org/abs/1809.00219). ECCV Workshops 2018（PIRM-SR Challenge 感知区第一）。  
-> 代码：[xinntao/ESRGAN](https://github.com/xinntao/ESRGAN)。GAN 基础见 [生成模型与 GAN](2020-01-11-生成模型与GAN生成对抗网络.md)。
+> 代码：[xinntao/ESRGAN](https://github.com/xinntao/ESRGAN)。GAN 基础见 [生成模型与 GAN]({% post_url 2.Machine Learning/1.机器学习与模式识别/2022-07-01-GAN及其后续优化 %})。
 
 **一句话**：在 SRGAN 上改三处——**生成器（RRDB、去 BN）**、**判别器（Relativistic average GAN）**、**感知损失（激活前特征）**——得到更自然的纹理、更少伪影。
 

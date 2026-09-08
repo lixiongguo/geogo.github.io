@@ -5,7 +5,7 @@ categories: [TechSharing]
 mathjax: true
 ---
 
-> 路线：**cGAN**（条件对抗）→ **Pix2Pix / CycleGAN**（图像翻译与 PatchGAN）→ **Pix2Surf**（衣物 → SMPL UV）→ **Adversarial Loss** 在超分 / 修复等后续视觉任务中的延续。GAN 基础见 [生成模型与 GAN]({% post_url 2.Machine Learning/2.扩散模型/2020-01-11-生成模型与GAN生成对抗网络 %})；感知超分见 [ESRGAN](ESRGAN.md)。
+> 路线：**cGAN**（条件对抗）→ **Pix2Pix / CycleGAN**（图像翻译与 PatchGAN）→ **Pix2Surf**（衣物 → SMPL UV）→ **Adversarial Loss** 在超分 / 修复等后续视觉任务中的延续。GAN 基础见 [生成模型与 GAN]({% post_url 2.Machine Learning/1.机器学习与模式识别/2022-07-01-GAN及其后续优化 %})；感知超分见 [ESRGAN](ESRGAN.md)。
 
 ---
 

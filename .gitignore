@@ -33,3 +33,4 @@ Tools/imgs
 imgs/imgs
 Tests/
 *.ply
+cpp/emsdk/

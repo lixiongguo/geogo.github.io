@@ -21,7 +21,7 @@
 		</a>
 	</div>
 	<div class="quick-link-card tsumego-pending">
-		<span class="dev-banner">未开发完</span>
+		<span class="dev-ribbon">未开发完</span>
 		<a class="quick-link" href="/tsumego/" aria-label="进入每日死活题（开发中）">
 			<img src="/assets/image/go_logo.jpeg" alt="每日死活" class="quick-link-icon">
 			<div class="quick-link-text">
@@ -77,11 +77,11 @@
       {% if post_count > 0 %}
       <li class="sidebar-post-group">
         <a class="nav-item sidebar-cat-toggle" href="javascript:void(0)" onclick="toggleSidebarGroup(this)" title="展开/折叠">
-          <span class="toggle-icon">▾</span>
+          <span class="toggle-icon">▸</span>
           <span class="name">{{ cat_display }}</span>
           <!-- <span class="cat-count">({{ post_count }})</span> -->
         </a>
-        <ul class="sidebar-post-list" style="display:block;">
+        <ul class="sidebar-post-list" style="display:none;">
           {% for post in cat_posts reversed %}
           {% unless unready_posts contains post.slug %}
           <li class="sidebar-post-item">
@@ -111,6 +111,25 @@ function toggleSidebarGroup(el) {
     icon.textContent = '▸';
   }
 }
+
+// 名言从 _data/quotes.json 随机索引（Jekyll 构建时注入数组）
+document.addEventListener('DOMContentLoaded', function () {
+  var quotes = {{ site.data.quotes | jsonify }};
+  if (Array.isArray(quotes) && quotes.length > 0) {
+    var q = quotes[Math.floor(Math.random() * quotes.length)];
+    var card = document.querySelector('.sidebar-footer .quote-card');
+    if (card) {
+      if (q.text) {
+        var t = card.querySelector('.quote-text');
+        if (t) { t.textContent = '"' + q.text + '"'; }
+      }
+      if (q.source) {
+        var s = card.querySelector('.quote-source');
+        if (s) { s.textContent = q.source; }
+      }
+    }
+  }
+});
 </script>
 
 <!-- 相关链接 -->
@@ -172,10 +191,10 @@ function toggleSidebarGroup(el) {
       {% if post_count > 0 %}
       <li class="sidebar-post-group">
         <a class="nav-item sidebar-cat-toggle" href="javascript:void(0)" onclick="toggleSidebarGroup(this)" title="展开/折叠">
-          <span class="toggle-icon">▾</span>
+          <span class="toggle-icon">▸</span>
           <span class="name">{{ cat_display }}</span>
         </a>
-        <ul class="sidebar-post-list" style="display:block;">
+        <ul class="sidebar-post-list" style="display:none;">
           {% for post in cat_posts reversed %}
           {% unless unready_posts contains post.slug %}
           <li class="sidebar-post-item">

@@ -76,7 +76,7 @@
 - id: fluid-sim
   title: 流体模拟
   url: /fluid-sim.html
-  ready: true
+  ready: false
 
 - id: voronoi_delaunay
   title: Voronoi / Delaunay
