@@ -111,6 +111,25 @@ function toggleSidebarGroup(el) {
     icon.textContent = '▸';
   }
 }
+
+// 名言从 _data/quotes.json 随机索引（Jekyll 构建时注入数组）
+document.addEventListener('DOMContentLoaded', function () {
+  var quotes = {{ site.data.quotes | jsonify }};
+  if (Array.isArray(quotes) && quotes.length > 0) {
+    var q = quotes[Math.floor(Math.random() * quotes.length)];
+    var card = document.querySelector('.sidebar-footer .quote-card');
+    if (card) {
+      if (q.text) {
+        var t = card.querySelector('.quote-text');
+        if (t) { t.textContent = '"' + q.text + '"'; }
+      }
+      if (q.source) {
+        var s = card.querySelector('.quote-source');
+        if (s) { s.textContent = q.source; }
+      }
+    }
+  }
+});
 </script>
 
 <!-- 相关链接 -->
